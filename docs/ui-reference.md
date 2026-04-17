@@ -2,11 +2,32 @@
 
 # Chajá UX reference
 
-This document is the durable, in-repo spec of the UI/UX that Chajá is cloning as
-its baseline: **GitKraken Desktop 11.10.0**. It captures layout, components,
-menus, shortcuts, and interaction patterns observed from a set of user-captured
-screenshots on 2026-04-17, and anchors them with stable section IDs so individual
-feature issues can point here instead of duplicating the spec.
+> **Read this first — what this document is and is NOT.**
+>
+> Chajá's product scope is **all of Git, exposed through user-friendly UX**.
+> Not "all of GitKraken". GitKraken Desktop 11.10.0 is studied here because it
+> is currently the best-executed UX in the market for a Git client — so it
+> serves as our **inspiration source** for layout, interaction, and visual
+> patterns. It is **not** a paridad checklist.
+>
+> **Decision rules when planning a feature:**
+> - Git supports it → we expose it with good UX, regardless of whether GitKraken
+>   does (e.g. `bisect`, `reflog` browser, `worktree` first-class, `notes`,
+>   patch series via `format-patch`/`am`, etc.).
+> - GitKraken does it but it is not Git-native (Cloud Patches, AI features,
+>   PRO licensing, marketing) → we skip it; see [§12](#12-features-not-cloned).
+> - Git supports it AND GitKraken hides or under-exposes it → we surface it
+>   better than GitKraken does.
+> - Git supports it AND GitKraken nails it → we follow GitKraken's pattern as
+>   far as it makes sense; this doc captures those patterns.
+>
+> So treat the section below as a **vocabulary of proven UX** for the
+> Git operations we already plan to ship — not as the product's outer boundary.
+
+This document captures layout, components, menus, shortcuts, and interaction
+patterns observed from a set of user-captured screenshots on 2026-04-17, and
+anchors them with stable section IDs so individual feature issues can point
+here instead of duplicating the spec.
 
 GitKraken itself is closed-source. Nothing here is copied from GitKraken's code;
 the reference is strictly the observable UX of the public product. Open-source

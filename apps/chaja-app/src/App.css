@@ -40,15 +40,18 @@ body, html, #root {
   flex: 1;
 }
 
-.app__repo-input {
+.app__repo-path {
   flex: 1;
   background: #1d2028;
-  color: #e7e9ee;
+  color: #d4d7df;
   border: 1px solid #2a2e38;
   border-radius: 4px;
   padding: 0.35rem 0.6rem;
   font-family: ui-monospace, monospace;
   font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app__repo-form button {
@@ -112,7 +115,6 @@ body, html, #root {
   list-style: none;
   margin: 0;
   padding: 0;
-  position: relative;
 }
 
 .commit-graph__row {

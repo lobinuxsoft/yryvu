@@ -28,12 +28,17 @@ export function CommitGraph(props: CommitGraphProps) {
 
   onMount(() => {
     if (!canvas || !scrollEl) return;
-    renderer = new CommitGraphRenderer(canvas, {
-      rowHeight: ROW_HEIGHT,
-      laneWidth: LANE_WIDTH,
-      nodeRadius: 5,
-      edgeThickness: 2,
-    });
+    try {
+      renderer = new CommitGraphRenderer(canvas, {
+        rowHeight: ROW_HEIGHT,
+        laneWidth: LANE_WIDTH,
+        nodeRadius: 5,
+        edgeThickness: 2,
+      });
+    } catch (e) {
+      setError(`Renderer init failed: ${String(e)}`);
+      return;
+    }
 
     const ro = new ResizeObserver(() => {
       if (!canvas || !scrollEl) return;

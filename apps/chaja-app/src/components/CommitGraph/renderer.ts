@@ -98,14 +98,24 @@ export class CommitGraphRenderer {
 
   constructor(canvas: HTMLCanvasElement, options: Partial<RendererOptions> = {}) {
     this.options = { ...DEFAULTS, ...options };
+
+    if (!document.createElement("canvas").getContext("webgl2")) {
+      throw new Error(
+        "WebGL2 is not available in this WebView. The commit graph requires WebGL2.",
+      );
+    }
+
     this.renderer = new Renderer({
       canvas,
       dpr: Math.min(window.devicePixelRatio || 1, 2),
       alpha: true,
       premultipliedAlpha: false,
-      antialias: false, // we use SDF in the fragment shader
+      antialias: false,
     });
     this.gl = this.renderer.gl;
+    if (!(this.gl instanceof WebGL2RenderingContext)) {
+      throw new Error("ogl fell back to WebGL1; shaders require WebGL2 (#version 300 es)");
+    }
     this.gl.clearColor(0.08, 0.09, 0.11, 1.0);
     this.gl.enable(this.gl.BLEND);
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);

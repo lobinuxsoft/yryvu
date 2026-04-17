@@ -1,79 +1,630 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 
 :root {
+  /* Theme-independent tokens */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+
+  --panel-width-left: 240px;
+  --panel-width-right: 340px;
+  --panel-width-left-collapsed: 44px;
+  --toolbar-height: 56px;
+  --tabs-height: 36px;
+  --statusbar-height: 28px;
+
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
+/* ========================================================================
+   Theme tokens — dark (default)
+   Applied by adding data-theme="dark" to <html>.
+   Semantic names: layers bg-0..4 darkest→lightest, fg-0..3 primary→muted.
+   ======================================================================== */
+:root,
+:root[data-theme="dark"] {
   color-scheme: dark;
-  font-family: system-ui, -apple-system, sans-serif;
-  background: #15171d;
-  color: #e7e9ee;
+
+  --bg-0: #0f1116;
+  --bg-1: #15171d;
+  --bg-2: #1d2028;
+  --bg-3: #262a33;
+  --bg-4: #2a2e38;
+  --bg-accent: #3a4a7a;
+  --bg-accent-hover: #4a5a8a;
+
+  --fg-0: #e7e9ee;
+  --fg-1: #d4d7df;
+  --fg-2: #8a92a6;
+  --fg-3: #6b7285;
+
+  --success: #4e9a5a;
+  --warning: #c9a24c;
+  --danger: #c54a4a;
+  --info: #4a8ec9;
+}
+
+/* ========================================================================
+   Theme tokens — light
+   ======================================================================== */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-0: #f5f6f8;
+  --bg-1: #ffffff;
+  --bg-2: #eaecf0;
+  --bg-3: #d7d9e1;
+  --bg-4: #c8cbd4;
+  --bg-accent: #2d5bc7;
+  --bg-accent-hover: #1d4bb7;
+
+  --fg-0: #1a1d23;
+  --fg-1: #3a3d45;
+  --fg-2: #6a6f7b;
+  --fg-3: #8a8f9b;
+
+  --success: #3b8547;
+  --warning: #a8832c;
+  --danger: #b83a3a;
+  --info: #2a73b5;
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--fg-0);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body, html, #root {
   margin: 0;
+  padding: 0;
   height: 100vh;
   overflow: hidden;
 }
 
-.app {
-  display: flex;
-  flex-direction: column;
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ========================================================================
+   AppShell — top-level CSS grid
+   Regions: tabs / toolbar / sidebar | main | inspector / statusbar
+   ======================================================================== */
+.shell {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: var(--tabs-height) var(--toolbar-height) 1fr var(--statusbar-height);
+  grid-template-areas:
+    "tabs      tabs    tabs"
+    "toolbar   toolbar toolbar"
+    "sidebar   main    inspector"
+    "statusbar statusbar statusbar";
   height: 100vh;
+  background: var(--bg-0);
 }
 
-.app__header {
+.shell__tabs       { grid-area: tabs; }
+.shell__toolbar    { grid-area: toolbar; }
+.shell__sidebar    { grid-area: sidebar; }
+.shell__main       { grid-area: main; overflow: hidden; position: relative; }
+.shell__inspector  { grid-area: inspector; }
+.shell__statusbar  { grid-area: statusbar; }
+
+/* Hide panels by toggling data attributes on the shell */
+.shell[data-show-left="false"]  .shell__sidebar   { display: none; }
+.shell[data-show-right="false"] .shell__inspector { display: none; }
+
+/* ========================================================================
+   Tabs bar
+   ======================================================================== */
+.tabs {
   display: flex;
-  gap: 1rem;
   align-items: center;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid #262a33;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+  padding: 0 8px;
+  gap: 4px;
+  overflow: hidden;
 }
 
-.app__header h1 {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-
-.app__repo-form {
+.tabs__leading {
   display: flex;
-  gap: 0.5rem;
-  flex: 1;
+  gap: 6px;
+  padding-right: 6px;
+  border-right: 1px solid var(--bg-3);
+  margin-right: 4px;
 }
 
-.app__repo-path {
+.tabs__leading-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-2);
+}
+
+.tabs__leading-btn:hover { background: var(--bg-4); color: var(--fg-0); }
+
+.tabs__list {
+  display: flex;
+  gap: 2px;
   flex: 1;
-  background: #1d2028;
-  color: #d4d7df;
-  border: 1px solid #2a2e38;
-  border-radius: 4px;
-  padding: 0.35rem 0.6rem;
-  font-family: ui-monospace, monospace;
-  font-size: 0.85rem;
+  overflow: hidden;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: calc(var(--tabs-height) - 4px);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  color: var(--fg-2);
+  border: 0;
+  font-size: 12px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.app__repo-form button {
-  background: #3a4a7a;
-  color: #e7e9ee;
+.tab[data-active="true"] {
+  background: var(--bg-0);
+  color: var(--fg-0);
+  box-shadow: inset 0 2px 0 var(--info);
+}
+
+.tab:hover { color: var(--fg-0); }
+
+.tabs__trailing {
+  display: flex;
+  gap: 6px;
+  padding-left: 8px;
+  margin-left: auto;
+  border-left: 1px solid var(--bg-3);
+}
+
+/* ========================================================================
+   Toolbar
+   ======================================================================== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 12px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+  height: var(--toolbar-height);
+}
+
+.toolbar__selector {
+  display: flex;
+  flex-direction: column;
+  font-size: 10px;
+  color: var(--fg-3);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+.toolbar__selector-value {
+  font-size: 13px;
+  color: var(--fg-0);
+  background: transparent;
   border: 0;
-  border-radius: 4px;
-  padding: 0.35rem 0.9rem;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar__selector-value:hover { background: var(--bg-2); }
+
+.toolbar__arrow {
+  color: var(--fg-3);
+  font-size: 14px;
+  padding: 0 2px;
+}
+
+.toolbar__spacer { flex: 1; }
+
+.toolbar__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.toolbar__btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 52px;
+  height: 48px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--fg-1);
+}
+
+.toolbar__btn:hover:not(:disabled) { background: var(--bg-2); color: var(--fg-0); }
+.toolbar__btn:disabled { color: var(--fg-3); cursor: not-allowed; }
+
+.toolbar__btn-icon { font-size: 16px; line-height: 1; }
+.toolbar__btn-label { font-size: 10px; letter-spacing: 0.02em; }
+
+.toolbar__btn-split {
+  min-width: 68px;
+  padding-right: 4px;
+  position: relative;
+}
+
+.toolbar__btn-split-caret {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  font-size: 9px;
+  color: var(--fg-3);
+}
+
+/* ========================================================================
+   Left Sidebar
+   ======================================================================== */
+.sidebar {
+  width: var(--panel-width-left);
+  background: var(--bg-1);
+  border-right: 1px solid var(--bg-3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar[data-collapsed="true"] { width: var(--panel-width-left-collapsed); }
+
+.sidebar__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  color: var(--fg-2);
+  font-size: 12px;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.sidebar__filter {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.sidebar__filter input {
+  width: 100%;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.sidebar__sections {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.sidebar__section {
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.sidebar__section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 0;
+  width: 100%;
+  color: var(--fg-2);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   cursor: pointer;
 }
 
-.app__body {
+.sidebar__section-header:hover { color: var(--fg-0); }
+
+.sidebar__section-caret {
+  transition: transform 100ms;
+  display: inline-block;
+  width: 10px;
+}
+
+.sidebar__section[data-expanded="true"] .sidebar__section-caret { transform: rotate(90deg); }
+
+.sidebar__section-count {
+  margin-left: auto;
+  font-size: 10px;
+  background: var(--bg-3);
+  color: var(--fg-1);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.sidebar__section-add {
+  background: transparent;
+  border: 0;
+  color: var(--fg-2);
+  padding: 0 4px;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+}
+
+.sidebar__section-add:hover { background: var(--bg-4); color: var(--fg-0); }
+
+.sidebar__section-body {
+  display: none;
+  padding: 0 0 6px 0;
+}
+
+.sidebar__section[data-expanded="true"] .sidebar__section-body { display: block; }
+
+.sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 24px;
+  color: var(--fg-1);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sidebar__item:hover { background: var(--bg-2); }
+
+.sidebar__item[data-active="true"] {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--fg-0);
+}
+
+.sidebar__item-badge {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--fg-3);
+}
+
+/* Collapsed sidebar icon rail */
+.sidebar[data-collapsed="true"] .sidebar__filter,
+.sidebar[data-collapsed="true"] .sidebar__section-header span:not(.sidebar__section-count),
+.sidebar[data-collapsed="true"] .sidebar__section-body,
+.sidebar[data-collapsed="true"] .sidebar__section-add {
+  display: none;
+}
+
+.sidebar[data-collapsed="true"] .sidebar__section-header {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+/* ========================================================================
+   Main area (hosts CommitGraph or empty state)
+   ======================================================================== */
+.main {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-0);
+}
+
+.main__graph-column-headers {
+  display: grid;
+  grid-template-columns: 180px 240px 1fr;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.main__graph-host {
   flex: 1;
   min-height: 0;
   position: relative;
 }
 
-.app__hint {
-  padding: 2rem;
-  color: #8a92a6;
+/* ========================================================================
+   Right panel (inspector)
+   ======================================================================== */
+.inspector {
+  width: var(--panel-width-right);
+  background: var(--bg-1);
+  border-left: 1px solid var(--bg-3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
+.inspector__banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--warning) 12%, var(--bg-2));
+  border-bottom: 1px solid var(--bg-3);
+  color: var(--fg-0);
+  font-size: 12px;
+}
+
+.inspector__banner-action {
+  margin-left: auto;
+  background: var(--bg-accent);
+  color: var(--fg-0);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.inspector__banner-action:hover { background: var(--bg-accent-hover); }
+
+.inspector__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  color: var(--fg-1);
+}
+
+.inspector__empty {
+  padding: 24px 12px;
+  color: var(--fg-3);
+  text-align: center;
+  font-size: 12px;
+}
+
+/* ========================================================================
+   Status bar
+   ======================================================================== */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  background: var(--bg-1);
+  border-top: 1px solid var(--bg-3);
+  color: var(--fg-2);
+  font-size: 11px;
+  height: var(--statusbar-height);
+}
+
+.statusbar__spacer { flex: 1; }
+
+.statusbar__segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusbar__badge-pro {
+  padding: 1px 8px;
+  background: color-mix(in srgb, var(--info) 24%, var(--bg-2));
+  color: var(--info);
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+/* ========================================================================
+   Cold start (no repo selected)
+   ======================================================================== */
+.cold-start {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+  padding: 48px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.cold-start__title {
+  font-size: 16px;
+  color: var(--fg-0);
+  margin: 0 0 16px;
+  font-weight: 500;
+}
+
+.cold-start__actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.cold-start__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.cold-start__action:hover { background: var(--bg-4); border-color: var(--bg-4); }
+
+.cold-start__recent-title {
+  color: var(--fg-2);
+  font-size: 12px;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cold-start__recent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cold-start__recent-item {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 0;
+  background: transparent;
+  border: 0;
+  color: var(--fg-1);
+  text-align: left;
+  font-size: 12px;
+}
+
+.cold-start__recent-item:hover { color: var(--fg-0); }
+.cold-start__recent-item-name { color: var(--info); font-weight: 500; }
+.cold-start__recent-item-path { color: var(--fg-3); font-family: var(--font-mono); font-size: 11px; }
+
+.cold-start__aside-title {
+  color: var(--fg-2);
+  font-size: 12px;
+  margin: 32px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cold-start__aside-link {
+  display: block;
+  padding: 4px 0;
+  color: var(--info);
+  font-size: 12px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+}
+
+/* ========================================================================
+   CommitGraph (existing component — minimal overrides for shell integration)
+   ======================================================================== */
 .commit-graph {
   position: absolute;
   inset: 0;
@@ -82,17 +633,17 @@ body, html, #root {
 }
 
 .commit-graph__error {
-  background: #3a1e20;
-  color: #ffb6b8;
-  padding: 0.5rem 1rem;
-  font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
+  background: color-mix(in srgb, var(--danger) 20%, var(--bg-1));
+  color: var(--fg-0);
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .commit-graph__status {
-  padding: 0.5rem 1rem;
-  color: #8a92a6;
-  font-size: 0.85rem;
+  padding: 6px 12px;
+  color: var(--fg-2);
+  font-size: 12px;
 }
 
 .commit-graph__scroll {
@@ -102,9 +653,7 @@ body, html, #root {
   position: relative;
 }
 
-.commit-graph__spacer {
-  position: relative;
-}
+.commit-graph__spacer { position: relative; }
 
 .commit-graph__canvas {
   display: block;
@@ -119,21 +668,19 @@ body, html, #root {
 
 .commit-graph__row {
   display: flex;
-  gap: 0.75rem;
+  gap: 12px;
   align-items: center;
-  padding: 0 0.75rem;
-  font-size: 0.85rem;
-  color: #d4d7df;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--fg-1);
 }
 
-.commit-graph__row:hover {
-  background: #1c1f27;
-}
+.commit-graph__row:hover { background: var(--bg-2); }
 
 .commit-graph__sha {
-  font-family: ui-monospace, monospace;
-  color: #7b86a0;
-  width: 4.5rem;
+  font-family: var(--font-mono);
+  color: var(--fg-2);
+  width: 72px;
   flex-shrink: 0;
 }
 
@@ -145,8 +692,8 @@ body, html, #root {
 }
 
 .commit-graph__author {
-  color: #6b7285;
-  font-size: 0.75rem;
+  color: var(--fg-3);
+  font-size: 11px;
   max-width: 30%;
   overflow: hidden;
   text-overflow: ellipsis;

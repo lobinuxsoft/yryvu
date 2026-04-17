@@ -1,0 +1,20 @@
+[package]
+name = "chaja-bridge"
+description = "Tauri command surface + gix-backed Git backend for chaja"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+gix.workspace = true
+graph-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tauri.workspace = true
+tokio.workspace = true
+tracing.workspace = true

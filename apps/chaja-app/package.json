@@ -13,6 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
     "@tauri-apps/plugin-opener": "^2",
     "ogl": "^1.0.11",
     "solid-js": "^1.9.3"

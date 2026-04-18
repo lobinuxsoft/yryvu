@@ -732,6 +732,9 @@ button {
 .commit-graph__canvas {
   display: block;
   pointer-events: none;
+  position: sticky;
+  top: 0;
+  left: 0;
 }
 
 .commit-graph__list {

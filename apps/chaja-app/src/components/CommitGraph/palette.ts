@@ -5,7 +5,11 @@
  * Hand-picked for distinguishability on a dark background while keeping stable
  * assignments via `blake3(sha) % 32`.
  */
-export const PALETTE: Float32Array = new Float32Array([
+// Must be a plain number[] (not Float32Array) so that OGL's array-uniform
+// detection (`Array.isArray(uniform.value)`) matches and the palette is
+// actually uploaded with `uniform3fv`. Using a Float32Array here silently
+// fails the array check and every node/edge renders with zero colour.
+export const PALETTE: number[] = [
   0.93, 0.42, 0.45, // red
   0.96, 0.57, 0.29, // orange
   0.95, 0.77, 0.29, // amber
@@ -38,6 +42,6 @@ export const PALETTE: Float32Array = new Float32Array([
   0.47, 0.61, 0.40,
   0.32, 0.58, 0.65,
   0.58, 0.43, 0.69,
-]);
+];
 
 export const PALETTE_SIZE = 32;

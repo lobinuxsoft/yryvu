@@ -9,11 +9,21 @@ import {
 } from "solid-js";
 
 import {
+  abortMerge,
+  checkoutBranch,
   createBranch,
   deleteLocalBranch,
+  deleteRemoteBranch,
+  getRepoState,
+  isWorkingTreeDirty,
   listBranches,
+  mergeBranch,
   renameBranch,
+  stashPush,
   type BranchInfo,
+  type MergeResult,
+  type MergeStrategy,
+  type RepoStateInfo,
 } from "../../ipc";
 import { repoPath, setShowLeftPanel, showLeftPanel } from "../../state";
 import { ContextMenu, type ContextMenuItem } from "../ContextMenu";
@@ -84,7 +94,19 @@ type DialogState =
   | { kind: "create"; from?: string }
   | { kind: "rename"; oldName: string }
   | { kind: "delete"; name: string; unmerged?: boolean }
+  | { kind: "checkout-dirty"; target: string }
+  | { kind: "merge-pick"; source: string }
+  | { kind: "merge-result"; result: MergeResult }
+  | { kind: "delete-remote"; remote: string; name: string }
   | null;
+
+function parseRemoteBranchName(
+  shortName: string,
+): { remote: string; name: string } | null {
+  const idx = shortName.indexOf("/");
+  if (idx === -1) return null;
+  return { remote: shortName.slice(0, idx), name: shortName.slice(idx + 1) };
+}
 
 export function LeftSidebar() {
   const [collapsed, setCollapsed] = createSignal(false);
@@ -92,14 +114,28 @@ export function LeftSidebar() {
   const [dialog, setDialog] = createSignal<DialogState>(null);
   const [dialogError, setDialogError] = createSignal<string | null>(null);
   const [dialogNameInput, setDialogNameInput] = createSignal("");
+  const [mergeStrategy, setMergeStrategy] =
+    createSignal<MergeStrategy>("fast-forward-or-merge");
 
-  const [branches, { refetch }] = createResource<BranchInfo[], string>(
-    () => repoPath() ?? "",
-    async (path) => {
+  const [tick, setTick] = createSignal(0);
+  const refresh = () => setTick((t) => t + 1);
+
+  const [branches] = createResource<BranchInfo[], [string, number]>(
+    () => [repoPath() ?? "", tick()] as [string, number],
+    async ([path]) => {
       if (!path) return [] as BranchInfo[];
       return await listBranches(path);
     },
     { initialValue: [] },
+  );
+
+  const [repoState] = createResource<RepoStateInfo, [string, number]>(
+    () => [repoPath() ?? "", tick()] as [string, number],
+    async ([path]) => {
+      if (!path) return { kind: "clean", conflict_paths: [] };
+      return await getRepoState(path);
+    },
+    { initialValue: { kind: "clean", conflict_paths: [] } },
   );
 
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
@@ -109,10 +145,20 @@ export function LeftSidebar() {
     e.preventDefault();
     const items: ContextMenuItem[] = [
       {
+        label: "Checkout",
+        disabled: b.is_head,
+        onSelect: () => void tryCheckout(b.name),
+      },
+      {
+        label: `Merge '${b.name}' into current`,
+        disabled: b.is_head,
+        onSelect: () => openMergePickDialog(b.name),
+      },
+      { type: "separator" },
+      {
         label: "Create branch here",
         onSelect: () => openCreateDialog(b.tip_sha),
       },
-      { type: "separator" },
       {
         label: `Rename '${b.name}'…`,
         onSelect: () => openRenameDialog(b.name),
@@ -129,10 +175,23 @@ export function LeftSidebar() {
 
   function openRemoteContextMenu(e: MouseEvent, b: BranchInfo) {
     e.preventDefault();
+    const parsed = parseRemoteBranchName(b.name);
     const items: ContextMenuItem[] = [
+      {
+        label: `Merge '${b.name}' into current`,
+        onSelect: () => openMergePickDialog(b.name),
+      },
+      { type: "separator" },
       {
         label: "Create branch here",
         onSelect: () => openCreateDialog(b.tip_sha),
+      },
+      {
+        label: `Delete remote '${b.name}'…`,
+        danger: true,
+        disabled: !parsed,
+        onSelect: () =>
+          parsed && openDeleteRemoteDialog(parsed.remote, parsed.name),
       },
     ];
     setMenu({ x: e.clientX, y: e.clientY, items });
@@ -152,9 +211,103 @@ export function LeftSidebar() {
     setDialogError(null);
     setDialog({ kind: "delete", name });
   }
+  function openMergePickDialog(source: string) {
+    setDialogError(null);
+    setMergeStrategy("fast-forward-or-merge");
+    setDialog({ kind: "merge-pick", source });
+  }
+  function openDeleteRemoteDialog(remote: string, name: string) {
+    setDialogError(null);
+    setDialog({ kind: "delete-remote", remote, name });
+  }
   function closeDialog() {
     setDialog(null);
     setDialogError(null);
+  }
+
+  async function tryCheckout(target: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      const dirty = await isWorkingTreeDirty(path);
+      if (dirty) {
+        setDialogError(null);
+        setDialog({ kind: "checkout-dirty", target });
+        return;
+      }
+      await doCheckout(target);
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
+  async function doCheckout(target: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await checkoutBranch(path, target);
+      closeDialog();
+      refresh();
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
+  async function stashAndCheckout(target: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await stashPush(path, `chaja: auto-stash before checkout to ${target}`);
+      await checkoutBranch(path, target);
+      closeDialog();
+      refresh();
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
+  async function submitMerge() {
+    const state = dialog();
+    if (state?.kind !== "merge-pick") return;
+    const path = repoPath();
+    if (!path) return;
+    try {
+      const result = await mergeBranch(path, state.source, mergeStrategy());
+      if (result.kind === "conflict") {
+        setDialog({ kind: "merge-result", result });
+      } else {
+        setDialog({ kind: "merge-result", result });
+      }
+      refresh();
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
+  async function submitDeleteRemote() {
+    const state = dialog();
+    if (state?.kind !== "delete-remote") return;
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await deleteRemoteBranch(path, state.remote, state.name);
+      closeDialog();
+      refresh();
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
+  async function doAbortMerge() {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await abortMerge(path);
+      closeDialog();
+      refresh();
+    } catch (err) {
+      setDialogError(String(err));
+    }
   }
 
   async function submitCreate() {
@@ -166,7 +319,7 @@ export function LeftSidebar() {
     try {
       await createBranch(path, name, state.from);
       closeDialog();
-      refetch();
+      refresh();
     } catch (err) {
       setDialogError(String(err));
     }
@@ -184,7 +337,7 @@ export function LeftSidebar() {
     try {
       await renameBranch(path, state.oldName, newName);
       closeDialog();
-      refetch();
+      refresh();
     } catch (err) {
       setDialogError(String(err));
     }
@@ -198,7 +351,7 @@ export function LeftSidebar() {
     try {
       await deleteLocalBranch(path, state.name, force);
       closeDialog();
-      refetch();
+      refresh();
     } catch (err) {
       const msg = String(err);
       if (!force && msg.includes("not fully merged")) {
@@ -231,6 +384,48 @@ export function LeftSidebar() {
         </div>
       </Show>
 
+      <Show
+        when={
+          !collapsed() &&
+          repoState() &&
+          repoState()!.kind !== "clean"
+        }
+      >
+        <div class="sidebar__state-banner" data-kind={repoState()!.kind}>
+          <div class="sidebar__state-banner__title">
+            <span>⚠</span>
+            <span>{stateBannerTitle(repoState()!.kind)}</span>
+          </div>
+          <Show when={repoState()!.conflict_paths.length > 0}>
+            <div class="sidebar__state-banner__subtitle">
+              Conflicted files ({repoState()!.conflict_paths.length}):
+            </div>
+            <ul class="sidebar__state-banner__paths">
+              <For each={repoState()!.conflict_paths}>
+                {(p) => <li>{p}</li>}
+              </For>
+            </ul>
+          </Show>
+          <div class="sidebar__state-banner__actions">
+            <Show when={repoState()!.kind === "merge"}>
+              <button
+                class="dialog__btn dialog__btn--danger"
+                type="button"
+                onClick={() => void doAbortMerge()}
+              >
+                Abort merge
+              </button>
+            </Show>
+            <Show when={repoState()!.kind !== "merge"}>
+              <span class="sidebar__state-banner__hint">
+                Abort support for this state is not implemented yet — resolve
+                manually or via CLI.
+              </span>
+            </Show>
+          </div>
+        </div>
+      </Show>
+
       <div class="sidebar__sections">
         <SidebarSection
           title="Local"
@@ -255,8 +450,15 @@ export function LeftSidebar() {
                   <div
                     class="sidebar__branch-row"
                     data-active={b.is_head ? "true" : "false"}
-                    title={b.upstream ? `tracks ${b.upstream}` : "no upstream"}
+                    title={
+                      b.upstream
+                        ? `tracks ${b.upstream} — double-click to checkout`
+                        : "no upstream — double-click to checkout"
+                    }
                     onContextMenu={(e) => openBranchContextMenu(e, b)}
+                    onDblClick={() => {
+                      if (!b.is_head) void tryCheckout(b.name);
+                    }}
                   >
                     <span class="sidebar__branch-name">{b.name}</span>
                     <Show when={b.ahead > 0 || b.behind > 0}>
@@ -463,8 +665,266 @@ export function LeftSidebar() {
           <p class="dialog__error">{dialogError()}</p>
         </Show>
       </Dialog>
+
+      <Dialog
+        open={dialog()?.kind === "checkout-dirty"}
+        title="Uncommitted changes"
+        onClose={closeDialog}
+        footer={
+          <>
+            <button
+              class="dialog__btn"
+              type="button"
+              data-dismiss
+              onClick={closeDialog}
+            >
+              Cancel
+            </button>
+            <button
+              class="dialog__btn dialog__btn--primary"
+              type="button"
+              onClick={() =>
+                void stashAndCheckout(
+                  (dialog() as { target: string }).target,
+                )
+              }
+            >
+              Stash & Checkout
+            </button>
+          </>
+        }
+      >
+        <p>
+          Your working tree has uncommitted changes. Stash them and switch to{" "}
+          <code>{(dialog() as { target?: string })?.target}</code>?
+        </p>
+        <p style={{ color: "var(--fg-3)", "font-size": "12px", "margin-top": "8px" }}>
+          You can restore the stash afterwards via the Stash section
+          (coming with issue #12).
+        </p>
+        <Show when={dialogError()}>
+          <p class="dialog__error">{dialogError()}</p>
+        </Show>
+      </Dialog>
+
+      <Dialog
+        open={dialog()?.kind === "merge-pick"}
+        title={`Merge '${(dialog() as { source?: string })?.source ?? ""}' into current`}
+        onClose={closeDialog}
+        footer={
+          <>
+            <button
+              class="dialog__btn"
+              type="button"
+              data-dismiss
+              onClick={closeDialog}
+            >
+              Cancel
+            </button>
+            <button
+              class="dialog__btn dialog__btn--primary"
+              type="button"
+              onClick={() => void submitMerge()}
+            >
+              Merge
+            </button>
+          </>
+        }
+      >
+        <div class="dialog__field">
+          <label>Strategy</label>
+          <div style={{ display: "flex", "flex-direction": "column", gap: "6px" }}>
+            <label style={{ display: "flex", gap: "6px", "align-items": "center" }}>
+              <input
+                type="radio"
+                name="merge-strategy"
+                value="fast-forward-or-merge"
+                checked={mergeStrategy() === "fast-forward-or-merge"}
+                onChange={() => setMergeStrategy("fast-forward-or-merge")}
+              />
+              <span>Fast-forward if possible, otherwise merge commit</span>
+            </label>
+            <label style={{ display: "flex", gap: "6px", "align-items": "center" }}>
+              <input
+                type="radio"
+                name="merge-strategy"
+                value="fast-forward-only"
+                checked={mergeStrategy() === "fast-forward-only"}
+                onChange={() => setMergeStrategy("fast-forward-only")}
+              />
+              <span>Fast-forward only (abort otherwise)</span>
+            </label>
+            <label style={{ display: "flex", gap: "6px", "align-items": "center" }}>
+              <input
+                type="radio"
+                name="merge-strategy"
+                value="no-fast-forward"
+                checked={mergeStrategy() === "no-fast-forward"}
+                onChange={() => setMergeStrategy("no-fast-forward")}
+              />
+              <span>Always create a merge commit (no fast-forward)</span>
+            </label>
+          </div>
+        </div>
+        <Show when={dialogError()}>
+          <p class="dialog__error">{dialogError()}</p>
+        </Show>
+      </Dialog>
+
+      <Dialog
+        open={dialog()?.kind === "merge-result"}
+        title={mergeResultTitle((dialog() as { result?: MergeResult })?.result)}
+        onClose={closeDialog}
+        footer={
+          <Show
+            when={(dialog() as { result?: MergeResult })?.result?.kind === "conflict"}
+            fallback={
+              <button
+                class="dialog__btn dialog__btn--primary"
+                type="button"
+                data-dismiss
+                onClick={closeDialog}
+              >
+                Close
+              </button>
+            }
+          >
+            <button
+              class="dialog__btn dialog__btn--danger"
+              type="button"
+              onClick={() => void doAbortMerge()}
+            >
+              Abort merge
+            </button>
+            <button
+              class="dialog__btn"
+              type="button"
+              data-dismiss
+              onClick={closeDialog}
+            >
+              Leave for manual resolve
+            </button>
+          </Show>
+        }
+      >
+        <Show
+          when={dialog()?.kind === "merge-result"}
+          fallback={null}
+        >
+          {(() => {
+            const res = (dialog() as { result: MergeResult }).result;
+            if (res.kind === "already-up-to-date") {
+              return <p>Already up to date. No changes applied.</p>;
+            }
+            if (res.kind === "fast-forward") {
+              return (
+                <p>
+                  Fast-forwarded HEAD to <code>{res.new_head.slice(0, 7)}</code>.
+                </p>
+              );
+            }
+            if (res.kind === "merged") {
+              return (
+                <p>
+                  Created merge commit <code>{res.new_head.slice(0, 7)}</code>.
+                </p>
+              );
+            }
+            return (
+              <>
+                <p>Merge produced conflicts in:</p>
+                <ul style={{ "font-family": "var(--font-mono)", "font-size": "12px", margin: "6px 0 0 16px" }}>
+                  <For each={res.paths}>{(p) => <li>{p}</li>}</For>
+                </ul>
+                <p style={{ color: "var(--fg-3)", "font-size": "12px", "margin-top": "8px" }}>
+                  The repo is in a merge-in-progress state. Resolve the files
+                  manually (editor + <code>git add</code> + <code>git commit</code>)
+                  — or wait for Chajá's conflict resolver (issue #10).
+                  Click <strong>Abort merge</strong> to discard the merge
+                  entirely (reset hard to HEAD).
+                </p>
+              </>
+            );
+          })()}
+        </Show>
+      </Dialog>
+
+      <Dialog
+        open={dialog()?.kind === "delete-remote"}
+        title="Delete remote branch"
+        onClose={closeDialog}
+        footer={
+          <>
+            <button
+              class="dialog__btn"
+              type="button"
+              data-dismiss
+              onClick={closeDialog}
+            >
+              Cancel
+            </button>
+            <button
+              class="dialog__btn dialog__btn--danger"
+              type="button"
+              onClick={() => void submitDeleteRemote()}
+            >
+              Delete remote
+            </button>
+          </>
+        }
+      >
+        <p>
+          Delete{" "}
+          <code>
+            {(dialog() as { remote?: string })?.remote}/
+            {(dialog() as { name?: string })?.name}
+          </code>{" "}
+          from the remote? This cannot be undone without push access to the
+          remote again.
+        </p>
+        <p style={{ color: "var(--fg-3)", "font-size": "12px", "margin-top": "8px" }}>
+          Authentication uses your SSH agent. HTTPS credential helpers will
+          land later.
+        </p>
+        <Show when={dialogError()}>
+          <p class="dialog__error">{dialogError()}</p>
+        </Show>
+      </Dialog>
     </aside>
   );
+}
+
+function mergeResultTitle(result?: MergeResult): string {
+  if (!result) return "Merge";
+  switch (result.kind) {
+    case "already-up-to-date":
+      return "Already up to date";
+    case "fast-forward":
+      return "Fast-forwarded";
+    case "merged":
+      return "Merge commit created";
+    case "conflict":
+      return "Merge conflict";
+  }
+}
+
+function stateBannerTitle(kind: string): string {
+  switch (kind) {
+    case "merge":
+      return "Merge in progress";
+    case "rebase":
+      return "Rebase in progress";
+    case "cherry-pick":
+      return "Cherry-pick in progress";
+    case "revert":
+      return "Revert in progress";
+    case "bisect":
+      return "Bisect in progress";
+    case "apply-mailbox":
+      return "Patch application in progress";
+    default:
+      return `${kind} in progress`;
+  }
 }
 
 /** Re-export a control so the shell can hide/show the whole sidebar via Ctrl+J handler. */

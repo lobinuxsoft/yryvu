@@ -975,3 +975,59 @@ button {
   font-size: 11px;
   font-style: italic;
 }
+
+/* ========================================================================
+   Repo-state banner (merge / rebase / cherry-pick in progress)
+   ======================================================================== */
+.sidebar__state-banner {
+  padding: 8px 12px 10px;
+  background: color-mix(in srgb, var(--warning) 16%, var(--bg-1));
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--warning) 60%, var(--bg-3));
+  color: var(--fg-0);
+  font-size: 12px;
+}
+
+.sidebar__state-banner__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--warning);
+}
+
+.sidebar__state-banner__subtitle {
+  margin-top: 6px;
+  color: var(--fg-2);
+  font-size: 11px;
+}
+
+.sidebar__state-banner__paths {
+  margin: 4px 0 0 16px;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-1);
+  max-height: 80px;
+  overflow-y: auto;
+  list-style-position: outside;
+}
+
+.sidebar__state-banner__paths li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__state-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sidebar__state-banner__hint {
+  color: var(--fg-2);
+  font-size: 11px;
+  font-style: italic;
+}

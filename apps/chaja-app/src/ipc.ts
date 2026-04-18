@@ -76,6 +76,70 @@ export function renameBranch(
   return invoke<void>("rename_branch", { repoPath, oldName, newName });
 }
 
+export type MergeStrategy =
+  | "fast-forward-only"
+  | "fast-forward-or-merge"
+  | "no-fast-forward";
+
+export type MergeResult =
+  | { kind: "already-up-to-date" }
+  | { kind: "fast-forward"; new_head: string }
+  | { kind: "merged"; new_head: string }
+  | { kind: "conflict"; paths: string[] };
+
+export function isWorkingTreeDirty(repoPath: string): Promise<boolean> {
+  return invoke<boolean>("is_working_tree_dirty", { repoPath });
+}
+
+export function checkoutBranch(repoPath: string, name: string): Promise<void> {
+  return invoke<void>("checkout_branch", { repoPath, name });
+}
+
+export function stashPush(repoPath: string, message?: string): Promise<void> {
+  return invoke<void>("stash_push", { repoPath, message });
+}
+
+export function stashPop(repoPath: string): Promise<void> {
+  return invoke<void>("stash_pop", { repoPath });
+}
+
+export function mergeBranch(
+  repoPath: string,
+  source: string,
+  strategy: MergeStrategy,
+): Promise<MergeResult> {
+  return invoke<MergeResult>("merge_branch", { repoPath, source, strategy });
+}
+
+export function deleteRemoteBranch(
+  repoPath: string,
+  remote: string,
+  name: string,
+): Promise<void> {
+  return invoke<void>("delete_remote_branch", { repoPath, remote, name });
+}
+
+export function abortMerge(repoPath: string): Promise<void> {
+  return invoke<void>("abort_merge", { repoPath });
+}
+
+export interface RepoStateInfo {
+  kind:
+    | "clean"
+    | "merge"
+    | "rebase"
+    | "cherry-pick"
+    | "revert"
+    | "bisect"
+    | "apply-mailbox"
+    | string;
+  conflict_paths: string[];
+}
+
+export function getRepoState(repoPath: string): Promise<RepoStateInfo> {
+  return invoke<RepoStateInfo>("repo_state", { repoPath });
+}
+
 export function streamGraph(
   repoPath: string,
   onBatch: (rows: GraphRow[]) => void,

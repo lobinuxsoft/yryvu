@@ -40,16 +40,25 @@ export function CommitGraph(props: CommitGraphProps) {
       return;
     }
 
-    const ro = new ResizeObserver(() => {
-      if (!canvas || !scrollEl) return;
+    // Force an initial resize synchronously + on the next frame. The WebKit
+    // WebView sometimes reports `clientHeight === 0` during the first mount
+    // pass; without this the canvas stays at 0×0 until a user-driven resize.
+    const applySize = () => {
+      if (!canvas || !scrollEl || !renderer) return;
       const w = GRAPH_COLUMN_WIDTH;
-      const h = scrollEl.clientHeight;
+      const rect = scrollEl.getBoundingClientRect();
+      const h = Math.max(scrollEl.clientHeight, Math.floor(rect.height));
+      if (h === 0) return;
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
-      renderer?.resize(w, h);
+      renderer.resize(w, h);
       setViewportH(h);
       scheduleDraw();
-    });
+    };
+
+    applySize();
+    requestAnimationFrame(applySize);
+    const ro = new ResizeObserver(() => applySize());
     ro.observe(scrollEl);
 
     const handle = streamGraph(props.repoPath, (batch) => {
@@ -106,7 +115,6 @@ export function CommitGraph(props: CommitGraphProps) {
           <canvas
             class="commit-graph__canvas"
             ref={(el) => (canvas = el)}
-            style={{ position: "sticky", top: "0", left: "0" }}
           />
           <ul class="commit-graph__list" style={{ "margin-left": `${GRAPH_COLUMN_WIDTH}px` }}>
             {rows().map((r, i) => (

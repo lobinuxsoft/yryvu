@@ -91,7 +91,6 @@ type OGLGL = Renderer["gl"];
 export class CommitGraphRenderer {
   private readonly renderer: Renderer;
   private readonly gl: OGLGL;
-  private nodeMesh: Mesh | undefined;
   private edgeMesh: Mesh | undefined;
   private readonly options: RendererOptions;
   private viewportSize: [number, number] = [0, 0];
@@ -116,7 +115,7 @@ export class CommitGraphRenderer {
     if (!(this.gl instanceof WebGL2RenderingContext)) {
       throw new Error("ogl fell back to WebGL1; shaders require WebGL2 (#version 300 es)");
     }
-    this.gl.clearColor(0.08, 0.09, 0.11, 1.0);
+    this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
     this.gl.enable(this.gl.BLEND);
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
   }
@@ -175,41 +174,95 @@ export class CommitGraphRenderer {
     this.drawNodes(centers, colors, viewport, nodeRadius * dpr);
   }
 
+  private nodeProgram: WebGLProgram | null = null;
+  private nodeLocs: { a_quad: number; a_center: number; a_color: number; u_viewport: WebGLUniformLocation | null; u_radius: WebGLUniformLocation | null; u_palette: WebGLUniformLocation | null } | null = null;
+  private nodeQuadBuf: WebGLBuffer | null = null;
+  private nodeCenterBuf: WebGLBuffer | null = null;
+  private nodeColorBuf: WebGLBuffer | null = null;
+  private nodeVAO: WebGLVertexArrayObject | null = null;
+
   private drawNodes(
     centers: Float32Array,
     colors: Float32Array,
     viewport: readonly [number, number],
     radiusPx: number,
   ) {
-    const gl: OGLGL = this.gl;
-    const quad = new Float32Array([
-      -1, -1,
-      1, -1,
-      -1, 1,
-      -1, 1,
-      1, -1,
-      1, 1,
-    ]);
+    const gl = this.gl as WebGL2RenderingContext;
 
-    const geometry = new Geometry(gl, {
-      a_quad: { size: 2, data: quad },
-      a_center_px: { size: 2, data: centers, instanced: 1 },
-      a_color_idx: { size: 1, data: colors, instanced: 1 },
-    });
+    if (!this.nodeProgram) {
+      const vs = gl.createShader(gl.VERTEX_SHADER)!;
+      gl.shaderSource(vs, NODE_VERT);
+      gl.compileShader(vs);
+      if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+        console.error("[nodes] vs:", gl.getShaderInfoLog(vs));
+        return;
+      }
+      const fs = gl.createShader(gl.FRAGMENT_SHADER)!;
+      gl.shaderSource(fs, NODE_FRAG);
+      gl.compileShader(fs);
+      if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+        console.error("[nodes] fs:", gl.getShaderInfoLog(fs));
+        return;
+      }
+      const prog = gl.createProgram()!;
+      gl.attachShader(prog, vs);
+      gl.attachShader(prog, fs);
+      gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+        console.error("[nodes] link:", gl.getProgramInfoLog(prog));
+        return;
+      }
+      this.nodeProgram = prog;
+      this.nodeLocs = {
+        a_quad: gl.getAttribLocation(prog, "a_quad"),
+        a_center: gl.getAttribLocation(prog, "a_center_px"),
+        a_color: gl.getAttribLocation(prog, "a_color_idx"),
+        u_viewport: gl.getUniformLocation(prog, "u_viewport"),
+        u_radius: gl.getUniformLocation(prog, "u_radius"),
+        u_palette: gl.getUniformLocation(prog, "u_palette[0]"),
+      };
 
-    const program = new Program(gl, {
-      vertex: NODE_VERT,
-      fragment: NODE_FRAG,
-      uniforms: {
-        u_viewport: { value: [viewport[0], viewport[1]] },
-        u_radius: { value: radiusPx },
-        u_palette: { value: PALETTE },
-      },
-      transparent: true,
-    });
+      const quad = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
+      this.nodeQuadBuf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.nodeQuadBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
+      this.nodeCenterBuf = gl.createBuffer();
+      this.nodeColorBuf = gl.createBuffer();
+      this.nodeVAO = gl.createVertexArray();
 
-    this.nodeMesh = new Mesh(gl, { geometry, program });
-    this.renderer.render({ scene: this.nodeMesh });
+      gl.bindVertexArray(this.nodeVAO);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.nodeQuadBuf);
+      gl.enableVertexAttribArray(this.nodeLocs.a_quad);
+      gl.vertexAttribPointer(this.nodeLocs.a_quad, 2, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribDivisor(this.nodeLocs.a_quad, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.nodeCenterBuf);
+      gl.enableVertexAttribArray(this.nodeLocs.a_center);
+      gl.vertexAttribPointer(this.nodeLocs.a_center, 2, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribDivisor(this.nodeLocs.a_center, 1);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.nodeColorBuf);
+      gl.enableVertexAttribArray(this.nodeLocs.a_color);
+      gl.vertexAttribPointer(this.nodeLocs.a_color, 1, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribDivisor(this.nodeLocs.a_color, 1);
+      gl.bindVertexArray(null);
+    }
+
+    gl.useProgram(this.nodeProgram);
+    gl.bindVertexArray(this.nodeVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.nodeCenterBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, centers, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.nodeColorBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.DYNAMIC_DRAW);
+
+    gl.uniform2f(this.nodeLocs!.u_viewport, viewport[0], viewport[1]);
+    gl.uniform1f(this.nodeLocs!.u_radius, radiusPx);
+    gl.uniform3fv(this.nodeLocs!.u_palette, PALETTE);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.CULL_FACE); // critical: our shader flips y, which reverses winding
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, centers.length / 2);
+    gl.bindVertexArray(null);
   }
 
   private drawEdges(
@@ -233,10 +286,11 @@ export class CommitGraphRenderer {
         u_palette: { value: PALETTE },
       },
       transparent: true,
+      cullFace: false,
     });
 
     this.edgeMesh = new Mesh(gl, { geometry, program, mode: gl.TRIANGLES });
-    this.renderer.render({ scene: this.edgeMesh });
+    this.renderer.render({ scene: this.edgeMesh, clear: false });
   }
 
   private pushEdgeQuad(

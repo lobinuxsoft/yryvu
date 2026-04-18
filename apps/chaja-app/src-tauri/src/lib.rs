@@ -15,7 +15,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            chaja_bridge::commands::stream_graph
+            chaja_bridge::commands::stream_graph,
+            chaja_bridge::commands::list_branches,
+            chaja_bridge::commands::create_branch,
+            chaja_bridge::commands::delete_local_branch,
+            chaja_bridge::commands::rename_branch,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

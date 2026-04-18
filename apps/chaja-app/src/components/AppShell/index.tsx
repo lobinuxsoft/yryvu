@@ -10,6 +10,7 @@ import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
 import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
+import { IconOpenFolder, IconPlus, IconStar } from "../Icons";
 import {
   pushRecentRepo,
   repoPath,
@@ -60,19 +61,19 @@ export function AppShell() {
       <div class="shell__tabs tabs">
         <div class="tabs__leading">
           <button class="tabs__leading-btn" type="button" title="Open repository" onClick={openRepoPicker}>
-            ◰
+            <IconOpenFolder />
           </button>
           <button class="tabs__leading-btn" type="button" title="Favorites" disabled>
-            ★
+            <IconStar />
           </button>
         </div>
         <div class="tabs__list">
           <Show when={repoPath()} fallback={<SingleTab label="New Tab" active />}>
             <SingleTab label={repoPath()!.split("/").filter(Boolean).pop() ?? "Repo"} active />
           </Show>
-        </div>
-        <div class="tabs__trailing">
-          <button class="tabs__leading-btn" type="button" title="New tab">＋</button>
+          <button class="tabs__leading-btn tabs__new" type="button" title="New tab" aria-label="New tab">
+            <IconPlus />
+          </button>
         </div>
       </div>
 

@@ -1,8 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { Show } from "solid-js";
+import { type JSX, Show } from "solid-js";
 
 import { repoPath } from "../../state";
+import {
+  IconArrowDown,
+  IconArrowUp,
+  IconBranch,
+  IconChevronDown,
+  IconGear,
+  IconRedo,
+  IconSearch,
+  IconStashIn,
+  IconStashOut,
+  IconTerminal,
+  IconUndo,
+} from "../Icons";
 
 export interface ToolbarProps {
   onOpenRepo: () => void;
@@ -38,42 +51,48 @@ export function Toolbar(props: ToolbarProps) {
       <div class="toolbar__spacer" />
 
       <div class="toolbar__actions">
-        <ToolbarBtn icon="↶" label="Undo" disabled />
-        <ToolbarBtn icon="↷" label="Redo" disabled />
-        <ToolbarBtn icon="↓" label="Pull" disabled split />
-        <ToolbarBtn icon="↑" label="Push" disabled />
-        <ToolbarBtn icon="⎇" label="Branch" disabled />
-        <ToolbarBtn icon="⊞" label="Stash" disabled />
-        <ToolbarBtn icon="⊟" label="Pop" disabled />
-        <ToolbarBtn icon="›_" label="Terminal" disabled />
+        <ToolbarBtn icon={<IconUndo />} label="Undo" disabled />
+        <ToolbarBtn icon={<IconRedo />} label="Redo" disabled />
+        <ToolbarBtn icon={<IconArrowDown />} label="Pull" disabled split />
+        <ToolbarBtn icon={<IconArrowUp />} label="Push" disabled />
+        <ToolbarBtn icon={<IconBranch />} label="Branch" disabled />
+        <ToolbarBtn icon={<IconStashIn />} label="Stash" disabled />
+        <ToolbarBtn icon={<IconStashOut />} label="Pop" disabled />
+        <ToolbarBtn icon={<IconTerminal />} label="Terminal" disabled />
       </div>
 
       <div class="toolbar__actions">
-        <ToolbarBtn icon="⚙" label="Actions" disabled />
-        <ToolbarBtn icon="🔍" label="Search" disabled />
+        <ToolbarBtn icon={<IconGear />} label="Actions" disabled />
+        <ToolbarBtn icon={<IconSearch />} label="Search" disabled />
       </div>
     </div>
   );
 }
 
 function ToolbarBtn(props: {
-  icon: string;
+  icon: JSX.Element;
   label: string;
   disabled?: boolean;
   split?: boolean;
   onClick?: () => void;
 }) {
-  const classes = () => {
-    const base = "toolbar__btn";
-    return props.split ? `${base} toolbar__btn-split` : base;
-  };
   return (
-    <button class={classes()} type="button" disabled={props.disabled} onClick={props.onClick}>
+    <button
+      class="toolbar__btn"
+      classList={{ "toolbar__btn-split": props.split }}
+      type="button"
+      disabled={props.disabled}
+      onClick={props.onClick}
+    >
       <span class="toolbar__btn-icon">{props.icon}</span>
-      <span class="toolbar__btn-label">{props.label}</span>
-      <Show when={props.split}>
-        <span class="toolbar__btn-split-caret">▾</span>
-      </Show>
+      <span class="toolbar__btn-label">
+        {props.label}
+        <Show when={props.split}>
+          <span class="toolbar__btn-split-caret">
+            <IconChevronDown width="10" height="10" />
+          </span>
+        </Show>
+      </span>
     </button>
   );
 }

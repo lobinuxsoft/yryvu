@@ -160,8 +160,10 @@ button {
 
 .tabs__list {
   display: flex;
+  align-items: center;
   gap: 2px;
   flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -180,6 +182,7 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tab[data-active="true"] {
@@ -190,12 +193,9 @@ button {
 
 .tab:hover { color: var(--fg-0); }
 
-.tabs__trailing {
-  display: flex;
-  gap: 6px;
-  padding-left: 8px;
-  margin-left: auto;
-  border-left: 1px solid var(--bg-3);
+.tabs__new {
+  margin-left: 2px;
+  flex-shrink: 0;
 }
 
 /* ========================================================================
@@ -256,8 +256,8 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-width: 52px;
+  gap: 4px;
+  min-width: 56px;
   height: 48px;
   padding: 4px 8px;
   background: transparent;
@@ -269,22 +269,30 @@ button {
 .toolbar__btn:hover:not(:disabled) { background: var(--bg-2); color: var(--fg-0); }
 .toolbar__btn:disabled { color: var(--fg-3); cursor: not-allowed; }
 
-.toolbar__btn-icon { font-size: 16px; line-height: 1; }
-.toolbar__btn-label { font-size: 10px; letter-spacing: 0.02em; }
+.toolbar__btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  line-height: 1;
+}
 
-.toolbar__btn-split {
-  min-width: 68px;
-  padding-right: 4px;
-  position: relative;
+.toolbar__btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .toolbar__btn-split-caret {
-  position: absolute;
-  right: 2px;
-  bottom: 2px;
-  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
   color: var(--fg-3);
 }
+
+.toolbar__btn-split { min-width: 64px; }
 
 /* ========================================================================
    Left Sidebar
@@ -357,9 +365,24 @@ button {
   transition: transform 100ms;
   display: inline-block;
   width: 10px;
+  flex-shrink: 0;
 }
 
 .sidebar__section[data-expanded="true"] .sidebar__section-caret { transform: rotate(90deg); }
+
+.sidebar__section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-2);
+  flex-shrink: 0;
+}
+
+.sidebar__section-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .sidebar__section-count {
   margin-left: auto;
@@ -368,6 +391,7 @@ button {
   color: var(--fg-1);
   padding: 1px 6px;
   border-radius: 10px;
+  flex-shrink: 0;
 }
 
 .sidebar__section-add {
@@ -413,15 +437,41 @@ button {
 
 /* Collapsed sidebar icon rail */
 .sidebar[data-collapsed="true"] .sidebar__filter,
-.sidebar[data-collapsed="true"] .sidebar__section-header span:not(.sidebar__section-count),
+.sidebar[data-collapsed="true"] .sidebar__section-caret,
+.sidebar[data-collapsed="true"] .sidebar__section-title,
 .sidebar[data-collapsed="true"] .sidebar__section-body,
 .sidebar[data-collapsed="true"] .sidebar__section-add {
   display: none;
 }
 
-.sidebar[data-collapsed="true"] .sidebar__section-header {
+.sidebar[data-collapsed="true"] .sidebar__header span,
+.sidebar[data-collapsed="true"] .sidebar__header .sidebar__item-badge {
+  display: none;
+}
+
+.sidebar[data-collapsed="true"] .sidebar__header {
   justify-content: center;
-  padding: 10px 0;
+  padding: 6px 0;
+}
+
+.sidebar[data-collapsed="true"] .sidebar__section-header {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0;
+}
+
+.sidebar[data-collapsed="true"] .sidebar__section-icon {
+  color: var(--fg-1);
+}
+
+.sidebar[data-collapsed="true"] .sidebar__section-count {
+  margin-left: 0;
+  font-size: 9px;
+  padding: 0 5px;
+  min-width: 14px;
+  text-align: center;
 }
 
 /* ========================================================================

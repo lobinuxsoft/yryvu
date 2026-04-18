@@ -6,7 +6,7 @@ use graph_core::{GraphRow, LaneAssigner};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-use crate::backend::{BranchInfo, GitBackend};
+use crate::backend::{BranchInfo, GitBackend, MergeResult, MergeStrategy, RepoStateInfo};
 use crate::repo::GixBackend;
 
 #[derive(Debug, Clone, Serialize)]
@@ -109,6 +109,105 @@ pub async fn rename_branch(
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .rename_branch(&PathBuf::from(&repo_path), &old_name, &new_name)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn is_working_tree_dirty(repo_path: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .is_working_tree_dirty(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn checkout_branch(repo_path: String, name: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .checkout_branch(&PathBuf::from(&repo_path), &name)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn stash_push(
+    repo_path: String,
+    message: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stash_push(&PathBuf::from(&repo_path), message.as_deref())
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn stash_pop(repo_path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stash_pop(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn merge_branch(
+    repo_path: String,
+    source: String,
+    strategy: MergeStrategy,
+) -> Result<MergeResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .merge_branch(&PathBuf::from(&repo_path), &source, strategy)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn delete_remote_branch(
+    repo_path: String,
+    remote: String,
+    name: String,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .delete_remote_branch(&PathBuf::from(&repo_path), &remote, &name)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn abort_merge(repo_path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .abort_merge(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn repo_state(repo_path: String) -> Result<RepoStateInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .repo_state(&PathBuf::from(&repo_path))
             .map_err(|e| e.to_string())
     })
     .await

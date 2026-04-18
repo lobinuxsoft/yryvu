@@ -20,6 +20,14 @@ pub fn run() {
             chaja_bridge::commands::create_branch,
             chaja_bridge::commands::delete_local_branch,
             chaja_bridge::commands::rename_branch,
+            chaja_bridge::commands::is_working_tree_dirty,
+            chaja_bridge::commands::checkout_branch,
+            chaja_bridge::commands::stash_push,
+            chaja_bridge::commands::stash_pop,
+            chaja_bridge::commands::merge_branch,
+            chaja_bridge::commands::delete_remote_branch,
+            chaja_bridge::commands::abort_merge,
+            chaja_bridge::commands::repo_state,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

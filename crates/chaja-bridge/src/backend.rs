@@ -28,6 +28,18 @@ pub enum BackendError {
     BranchUnmerged { name: String },
     #[error("invalid branch name: '{name}'")]
     InvalidBranchName { name: String },
+    #[error("working tree has uncommitted changes")]
+    WorkingTreeDirty,
+    #[error("merge is not a fast-forward")]
+    NotFastForward,
+    #[error("merge produced conflicts in {paths:?}")]
+    MergeConflict { paths: Vec<String> },
+    #[error("remote '{name}' not found")]
+    RemoteNotFound { name: String },
+    #[error("push failed: {0}")]
+    PushFailed(String),
+    #[error("git operation failed: {0}")]
+    Git(#[source] anyhow::Error),
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -49,6 +61,38 @@ pub struct BranchInfo {
     pub upstream: Option<String>,
     pub ahead: u32,
     pub behind: u32,
+}
+
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum MergeStrategy {
+    /// Abort unless a fast-forward is possible.
+    FastForwardOnly,
+    /// Fast-forward when possible; otherwise create a merge commit.
+    FastForwardOrMerge,
+    /// Always create a merge commit, even when a fast-forward is possible.
+    NoFastForward,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum MergeResult {
+    AlreadyUpToDate,
+    FastForward { new_head: String },
+    Merged { new_head: String },
+    Conflict { paths: Vec<String> },
+}
+
+/// Current state of the repository, reported to the UI so non-clean states
+/// (merge / rebase / cherry-pick / …) can surface a persistent banner with
+/// an abort affordance.
+#[derive(Debug, Clone, Serialize)]
+pub struct RepoStateInfo {
+    /// One of: `clean` / `merge` / `rebase` / `cherry-pick` / `revert` /
+    /// `bisect` / `apply-mailbox`.
+    pub kind: String,
+    /// Paths with conflict markers. Empty unless the index has conflicts.
+    pub conflict_paths: Vec<String>,
 }
 
 /// Shared surface every Git backend must implement.
@@ -83,6 +127,36 @@ pub trait GitBackend: Send + Sync {
         old_name: &str,
         new_name: &str,
     ) -> Result<(), BackendError>;
+
+    fn is_working_tree_dirty(&self, repo_path: &Path) -> Result<bool, BackendError>;
+
+    fn checkout_branch(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    fn stash_push(
+        &self,
+        repo_path: &Path,
+        message: Option<&str>,
+    ) -> Result<(), BackendError>;
+
+    fn stash_pop(&self, repo_path: &Path) -> Result<(), BackendError>;
+
+    fn merge_branch(
+        &self,
+        repo_path: &Path,
+        source: &str,
+        strategy: MergeStrategy,
+    ) -> Result<MergeResult, BackendError>;
+
+    fn delete_remote_branch(
+        &self,
+        repo_path: &Path,
+        remote: &str,
+        name: &str,
+    ) -> Result<(), BackendError>;
+
+    fn abort_merge(&self, repo_path: &Path) -> Result<(), BackendError>;
+
+    fn repo_state(&self, repo_path: &Path) -> Result<RepoStateInfo, BackendError>;
 }
 
 pub use crate::repo::GixBackend;

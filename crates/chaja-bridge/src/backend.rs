@@ -132,11 +132,7 @@ pub trait GitBackend: Send + Sync {
 
     fn checkout_branch(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
 
-    fn stash_push(
-        &self,
-        repo_path: &Path,
-        message: Option<&str>,
-    ) -> Result<(), BackendError>;
+    fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError>;
 
     fn stash_pop(&self, repo_path: &Path) -> Result<(), BackendError>;
 

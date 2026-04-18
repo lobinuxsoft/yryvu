@@ -94,10 +94,7 @@ impl GitBackend for GixBackend {
             let mut reference = reference
                 .map_err(|e| BackendError::Branch(anyhow!("resolve local branch: {e}")))?;
             let full_name = reference.name().as_bstr().to_string();
-            let short = reference
-                .name()
-                .shorten()
-                .to_string();
+            let short = reference.name().shorten().to_string();
             let tip = reference
                 .peel_to_id_in_place()
                 .context("peel local branch tip")
@@ -107,8 +104,7 @@ impl GitBackend for GixBackend {
 
             let (upstream, ahead, behind) = match upstream_for(&repo, &short) {
                 Ok(Some((upstream_short, upstream_id))) => {
-                    let (a, b) =
-                        ahead_behind(&repo, tip.detach(), upstream_id).unwrap_or((0, 0));
+                    let (a, b) = ahead_behind(&repo, tip.detach(), upstream_id).unwrap_or((0, 0));
                     (Some(upstream_short), a, b)
                 }
                 _ => (None, 0, 0),
@@ -135,10 +131,7 @@ impl GitBackend for GixBackend {
             let mut reference = reference
                 .map_err(|e| BackendError::Branch(anyhow!("resolve remote branch: {e}")))?;
             let full_name = reference.name().as_bstr().to_string();
-            let short = reference
-                .name()
-                .shorten()
-                .to_string();
+            let short = reference.name().shorten().to_string();
             // Skip symbolic HEAD pointers like refs/remotes/origin/HEAD.
             if short.ends_with("/HEAD") {
                 continue;
@@ -159,9 +152,7 @@ impl GitBackend for GixBackend {
             });
         }
 
-        out.sort_by(|a, b| {
-            (a.kind_sort_key(), &a.name).cmp(&(b.kind_sort_key(), &b.name))
-        });
+        out.sort_by(|a, b| (a.kind_sort_key(), &a.name).cmp(&(b.kind_sort_key(), &b.name)));
         Ok(out)
     }
 
@@ -215,11 +206,11 @@ impl GitBackend for GixBackend {
         let repo = open_repo(repo_path)?;
         let full_name = format!("refs/heads/{name}");
 
-        let mut reference = repo
-            .find_reference(full_name.as_str())
-            .map_err(|_| BackendError::BranchNotFound {
-                name: name.to_string(),
-            })?;
+        let mut reference =
+            repo.find_reference(full_name.as_str())
+                .map_err(|_| BackendError::BranchNotFound {
+                    name: name.to_string(),
+                })?;
 
         // Refuse to delete the currently checked-out branch.
         if let Some(head) = repo.head_name().ok().flatten() {
@@ -267,11 +258,11 @@ impl GitBackend for GixBackend {
         let old_full = format!("refs/heads/{old_name}");
         let new_full = format!("refs/heads/{new_name}");
 
-        let mut reference = repo
-            .find_reference(old_full.as_str())
-            .map_err(|_| BackendError::BranchNotFound {
-                name: old_name.to_string(),
-            })?;
+        let mut reference =
+            repo.find_reference(old_full.as_str())
+                .map_err(|_| BackendError::BranchNotFound {
+                    name: old_name.to_string(),
+                })?;
 
         if repo.find_reference(new_full.as_str()).is_ok() {
             return Err(BackendError::BranchExists {
@@ -314,15 +305,12 @@ impl GitBackend for GixBackend {
         let repo = open_git2(repo_path)?;
         let full_name = format!("refs/heads/{name}");
 
-        repo.find_reference(&full_name).map_err(|_| {
-            BackendError::BranchNotFound {
+        repo.find_reference(&full_name)
+            .map_err(|_| BackendError::BranchNotFound {
                 name: name.to_string(),
-            }
-        })?;
+            })?;
 
-        let obj = repo
-            .revparse_single(&full_name)
-            .map_err(git2_err)?;
+        let obj = repo.revparse_single(&full_name).map_err(git2_err)?;
 
         // Default checkout is safe: it refuses when the working tree would lose
         // uncommitted changes. The UI is expected to call is_working_tree_dirty
@@ -332,11 +320,7 @@ impl GitBackend for GixBackend {
         Ok(())
     }
 
-    fn stash_push(
-        &self,
-        repo_path: &Path,
-        message: Option<&str>,
-    ) -> Result<(), BackendError> {
+    fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError> {
         let mut repo = open_git2(repo_path)?;
         let signature = repo.signature().map_err(git2_err)?;
         let flags = git2::StashFlags::DEFAULT | git2::StashFlags::INCLUDE_UNTRACKED;
@@ -367,16 +351,12 @@ impl GitBackend for GixBackend {
         let source_oid = source_obj.id();
 
         let head_ref = repo.head().map_err(git2_err)?;
-        let head_oid = head_ref.target().ok_or_else(|| {
-            BackendError::Git(anyhow::anyhow!("HEAD has no direct target"))
-        })?;
+        let head_oid = head_ref
+            .target()
+            .ok_or_else(|| BackendError::Git(anyhow::anyhow!("HEAD has no direct target")))?;
 
-        let annotated = repo
-            .find_annotated_commit(source_oid)
-            .map_err(git2_err)?;
-        let (analysis, _prefs) = repo
-            .merge_analysis(&[&annotated])
-            .map_err(git2_err)?;
+        let annotated = repo.find_annotated_commit(source_oid).map_err(git2_err)?;
+        let (analysis, _prefs) = repo.merge_analysis(&[&annotated]).map_err(git2_err)?;
 
         if analysis.is_up_to_date() {
             return Ok(MergeResult::AlreadyUpToDate);
@@ -389,12 +369,9 @@ impl GitBackend for GixBackend {
             MergeStrategy::FastForwardOnly | MergeStrategy::FastForwardOrMerge if can_ff => {
                 let head_ref_name = head_ref
                     .name()
-                    .ok_or_else(|| {
-                        BackendError::Git(anyhow::anyhow!("HEAD is not symbolic"))
-                    })?
+                    .ok_or_else(|| BackendError::Git(anyhow::anyhow!("HEAD is not symbolic")))?
                     .to_string();
-                let mut head_ref_mut =
-                    repo.find_reference(&head_ref_name).map_err(git2_err)?;
+                let mut head_ref_mut = repo.find_reference(&head_ref_name).map_err(git2_err)?;
                 head_ref_mut
                     .set_target(source_oid, "chaja: fast-forward")
                     .map_err(git2_err)?;
@@ -457,11 +434,11 @@ impl GitBackend for GixBackend {
         name: &str,
     ) -> Result<(), BackendError> {
         let repo = open_git2(repo_path)?;
-        let mut remote_obj = repo.find_remote(remote).map_err(|_| {
-            BackendError::RemoteNotFound {
-                name: remote.to_string(),
-            }
-        })?;
+        let mut remote_obj =
+            repo.find_remote(remote)
+                .map_err(|_| BackendError::RemoteNotFound {
+                    name: remote.to_string(),
+                })?;
 
         let refspec = format!(":refs/heads/{name}");
 
@@ -475,9 +452,7 @@ impl GitBackend for GixBackend {
             }
             if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
                 if let Ok(cfg) = git2::Config::open_default() {
-                    if let Ok(cred) =
-                        git2::Cred::credential_helper(&cfg, url, username_from_url)
-                    {
+                    if let Ok(cred) = git2::Cred::credential_helper(&cfg, url, username_from_url) {
                         return Ok(cred);
                     }
                 }
@@ -526,14 +501,16 @@ impl GitBackend for GixBackend {
             git2::RepositoryState::Clean => "clean",
             git2::RepositoryState::Merge => "merge",
             git2::RepositoryState::Revert | git2::RepositoryState::RevertSequence => "revert",
-            git2::RepositoryState::CherryPick
-            | git2::RepositoryState::CherryPickSequence => "cherry-pick",
+            git2::RepositoryState::CherryPick | git2::RepositoryState::CherryPickSequence => {
+                "cherry-pick"
+            }
             git2::RepositoryState::Bisect => "bisect",
             git2::RepositoryState::Rebase
             | git2::RepositoryState::RebaseInteractive
             | git2::RepositoryState::RebaseMerge => "rebase",
-            git2::RepositoryState::ApplyMailbox
-            | git2::RepositoryState::ApplyMailboxOrRebase => "apply-mailbox",
+            git2::RepositoryState::ApplyMailbox | git2::RepositoryState::ApplyMailboxOrRebase => {
+                "apply-mailbox"
+            }
         }
         .to_string();
 

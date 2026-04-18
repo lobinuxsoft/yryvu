@@ -89,11 +89,7 @@ pub async fn delete_local_branch(
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
-            .delete_local_branch(
-                &PathBuf::from(&repo_path),
-                &name,
-                force.unwrap_or(false),
-            )
+            .delete_local_branch(&PathBuf::from(&repo_path), &name, force.unwrap_or(false))
             .map_err(|e| e.to_string())
     })
     .await
@@ -138,10 +134,7 @@ pub async fn checkout_branch(repo_path: String, name: String) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub async fn stash_push(
-    repo_path: String,
-    message: Option<String>,
-) -> Result<(), String> {
+pub async fn stash_push(repo_path: String, message: Option<String>) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .stash_push(&PathBuf::from(&repo_path), message.as_deref())

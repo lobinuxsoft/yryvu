@@ -18,9 +18,19 @@ import {
 import { repoPath, setShowLeftPanel, showLeftPanel } from "../../state";
 import { ContextMenu, type ContextMenuItem } from "../ContextMenu";
 import { Dialog } from "../Dialog";
+import {
+  IconArchive,
+  IconBranch,
+  IconCircleDot,
+  IconCloud,
+  IconPullRequest,
+  IconTag,
+  IconUsers,
+} from "../Icons";
 
 interface SidebarSectionProps {
   title: string;
+  icon: JSX.Element;
   count?: number;
   initialExpanded?: boolean;
   addable?: boolean;
@@ -35,10 +45,12 @@ function SidebarSection(props: SidebarSectionProps) {
       <button
         class="sidebar__section-header"
         type="button"
+        title={props.title}
         onClick={() => setExpanded((v) => !v)}
       >
         <span class="sidebar__section-caret">›</span>
-        <span>{props.title}</span>
+        <span class="sidebar__section-icon">{props.icon}</span>
+        <span class="sidebar__section-title">{props.title}</span>
         <Show when={props.count !== undefined}>
           <span class="sidebar__section-count">{props.count}</span>
         </Show>
@@ -222,6 +234,7 @@ export function LeftSidebar() {
       <div class="sidebar__sections">
         <SidebarSection
           title="Local"
+          icon={<IconBranch />}
           count={locals().length}
           initialExpanded
           addable
@@ -263,7 +276,7 @@ export function LeftSidebar() {
           </Show>
         </SidebarSection>
 
-        <SidebarSection title="Remote" count={remotes().length}>
+        <SidebarSection title="Remote" icon={<IconCloud />} count={remotes().length}>
           <Show
             when={remotes().length > 0}
             fallback={<p class="sidebar__empty">No remote branches</p>}
@@ -281,19 +294,19 @@ export function LeftSidebar() {
           </Show>
         </SidebarSection>
 
-        <SidebarSection title="Cloud Patches" count={0}>
+        <SidebarSection title="Cloud Patches" icon={<IconArchive />} count={0}>
           <p class="sidebar__empty">—</p>
         </SidebarSection>
-        <SidebarSection title="Pull Requests" count={0} addable>
+        <SidebarSection title="Pull Requests" icon={<IconPullRequest />} count={0} addable>
           <p class="sidebar__empty">—</p>
         </SidebarSection>
-        <SidebarSection title="GitHub Issues" count={0}>
+        <SidebarSection title="GitHub Issues" icon={<IconCircleDot />} count={0}>
           <p class="sidebar__empty">—</p>
         </SidebarSection>
-        <SidebarSection title="Tags" count={0}>
+        <SidebarSection title="Tags" icon={<IconTag />} count={0}>
           <p class="sidebar__empty">—</p>
         </SidebarSection>
-        <SidebarSection title="Teams" count={0}>
+        <SidebarSection title="Teams" icon={<IconUsers />} count={0}>
           <p class="sidebar__empty">—</p>
         </SidebarSection>
       </div>

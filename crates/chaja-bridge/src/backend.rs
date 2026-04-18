@@ -88,6 +88,70 @@ pub enum MergeResult {
 /// Current state of the repository, reported to the UI so non-clean states
 /// (merge / rebase / cherry-pick / …) can surface a persistent banner with
 /// an abort affordance.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FileStatus {
+    Added,
+    Modified,
+    Deleted,
+    Renamed,
+    Copied,
+    TypeChange,
+    Unmodified,
+    Other,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineKind {
+    Context,
+    Added,
+    Removed,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DiffLine {
+    pub kind: LineKind,
+    pub content: String,
+    pub old_line_no: Option<u32>,
+    pub new_line_no: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DiffHunk {
+    pub old_start: u32,
+    pub old_count: u32,
+    pub new_start: u32,
+    pub new_count: u32,
+    pub header: String,
+    pub lines: Vec<DiffLine>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FileDiff {
+    pub path: String,
+    pub old_path: Option<String>,
+    pub status: FileStatus,
+    pub is_binary: bool,
+    pub truncated: bool,
+    pub old_size: u64,
+    pub new_size: u64,
+    pub additions: u32,
+    pub deletions: u32,
+    pub hunks: Vec<DiffHunk>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CommitDiff {
+    pub sha: String,
+    pub parent_sha: Option<String>,
+    pub files: Vec<FileDiff>,
+}
+
+/// Maximum total diff size Chajá will materialize per file. Anything larger is
+/// returned with `truncated = true` and empty `hunks`.
+pub const DIFF_MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
+
 #[derive(Debug, Clone, Serialize)]
 pub struct RepoStateInfo {
     /// One of: `clean` / `merge` / `rebase` / `cherry-pick` / `revert` /
@@ -157,6 +221,8 @@ pub trait GitBackend: Send + Sync {
     fn repo_state(&self, repo_path: &Path) -> Result<RepoStateInfo, BackendError>;
 
     fn fetch_prune(&self, repo_path: &Path, remote: Option<&str>) -> Result<(), BackendError>;
+
+    fn commit_diff(&self, repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError>;
 }
 
 pub use crate::repo::GixBackend;

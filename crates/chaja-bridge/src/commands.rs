@@ -6,7 +6,9 @@ use graph_core::{GraphRow, LaneAssigner};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-use crate::backend::{BranchInfo, GitBackend, MergeResult, MergeStrategy, RepoStateInfo};
+use crate::backend::{
+    BranchInfo, CommitDiff, GitBackend, MergeResult, MergeStrategy, RepoStateInfo,
+};
 use crate::repo::GixBackend;
 
 #[derive(Debug, Clone, Serialize)]
@@ -212,6 +214,17 @@ pub async fn fetch_prune(repo_path: String, remote: Option<String>) -> Result<()
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .fetch_prune(&PathBuf::from(&repo_path), remote.as_deref())
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn commit_diff(repo_path: String, sha: String) -> Result<CommitDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .commit_diff(&PathBuf::from(&repo_path), &sha)
             .map_err(|e| e.to_string())
     })
     .await

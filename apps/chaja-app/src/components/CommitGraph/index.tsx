@@ -3,6 +3,7 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 
 import { streamGraph, type GraphRow } from "../../ipc";
+import { selectedCommit, setSelectedCommit } from "../../state";
 import { CommitGraphRenderer } from "./renderer";
 import { computeVisible } from "./virtualize";
 
@@ -120,6 +121,7 @@ export function CommitGraph(props: CommitGraphProps) {
             {rows().map((r, i) => (
               <li
                 class="commit-graph__row"
+                data-selected={selectedCommit() === r.sha ? "true" : "false"}
                 style={{
                   position: "absolute",
                   top: `${i * ROW_HEIGHT}px`,
@@ -127,6 +129,7 @@ export function CommitGraph(props: CommitGraphProps) {
                   left: `${GRAPH_COLUMN_WIDTH}px`,
                   right: "0",
                 }}
+                onClick={() => setSelectedCommit(r.sha)}
               >
                 <span class="commit-graph__sha">{r.short_sha}</span>
                 <span class="commit-graph__summary">{r.summary}</span>

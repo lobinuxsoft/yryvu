@@ -2,6 +2,7 @@
 
 import { AppShell } from "./components/AppShell";
 import "./App.css";
+import "highlight.js/styles/github-dark.css";
 
 function App() {
   return <AppShell />;

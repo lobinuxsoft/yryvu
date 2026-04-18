@@ -1,13 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { Show } from "solid-js";
+import { createResource, Show } from "solid-js";
 
-import { selectedCommit } from "../../state";
+import { getCommitDiff, type CommitDiff } from "../../ipc";
+import { repoPath, selectedCommit } from "../../state";
+import { DiffView } from "../DiffView";
 
 export function RightPanel() {
-  // Dirty working dir detection is not yet wired — placeholder until a
-  // commands/working_dir call exists on the Rust side (post #29).
   const dirtyFileCount = () => 0;
+
+  const [diff] = createResource<CommitDiff | undefined, [string, string]>(
+    () => {
+      const p = repoPath();
+      const s = selectedCommit();
+      return p && s ? ([p, s] as [string, string]) : undefined;
+    },
+    async ([p, s]) => await getCommitDiff(p, s),
+  );
 
   return (
     <aside class="inspector">
@@ -29,10 +38,15 @@ export function RightPanel() {
         >
           {(sha) => (
             <>
-              <p class="inspector__empty">
-                Commit <code>{sha().slice(0, 7)}</code> — detail rendering arrives with #6 (diff viewer) and
-                follow-ups to this shell scaffold.
-              </p>
+              <div class="inspector__header">
+                <span class="inspector__header-label">commit</span>
+                <code class="inspector__header-sha">{sha().slice(0, 10)}</code>
+              </div>
+              <DiffView
+                diff={diff()}
+                loading={diff.loading}
+                error={diff.error ? String(diff.error) : undefined}
+              />
             </>
           )}
         </Show>

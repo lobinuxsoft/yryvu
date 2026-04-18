@@ -38,6 +38,8 @@ pub enum BackendError {
     RemoteNotFound { name: String },
     #[error("push failed: {0}")]
     PushFailed(String),
+    #[error("fetch failed: {0}")]
+    FetchFailed(String),
     #[error("git operation failed: {0}")]
     Git(#[source] anyhow::Error),
 }
@@ -153,6 +155,8 @@ pub trait GitBackend: Send + Sync {
     fn abort_merge(&self, repo_path: &Path) -> Result<(), BackendError>;
 
     fn repo_state(&self, repo_path: &Path) -> Result<RepoStateInfo, BackendError>;
+
+    fn fetch_prune(&self, repo_path: &Path, remote: Option<&str>) -> Result<(), BackendError>;
 }
 
 pub use crate::repo::GixBackend;

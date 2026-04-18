@@ -405,6 +405,30 @@ button {
 
 .sidebar__section-add:hover { background: var(--bg-4); color: var(--fg-0); }
 
+.sidebar__section-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--fg-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.sidebar__section-refresh:hover { background: var(--bg-4); color: var(--fg-0); }
+
+.sidebar__section-refresh[data-spinning="true"] {
+  animation: spin 0.8s linear infinite;
+  pointer-events: none;
+  color: var(--fg-1);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .sidebar__section-body {
   display: none;
   padding: 0 0 6px 0;

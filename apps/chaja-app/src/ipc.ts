@@ -140,6 +140,10 @@ export function getRepoState(repoPath: string): Promise<RepoStateInfo> {
   return invoke<RepoStateInfo>("repo_state", { repoPath });
 }
 
+export function fetchPrune(repoPath: string, remote?: string): Promise<void> {
+  return invoke<void>("fetch_prune", { repoPath, remote });
+}
+
 export function streamGraph(
   repoPath: string,
   onBatch: (rows: GraphRow[]) => void,

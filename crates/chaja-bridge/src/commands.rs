@@ -206,3 +206,14 @@ pub async fn repo_state(repo_path: String) -> Result<RepoStateInfo, String> {
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn fetch_prune(repo_path: String, remote: Option<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .fetch_prune(&PathBuf::from(&repo_path), remote.as_deref())
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

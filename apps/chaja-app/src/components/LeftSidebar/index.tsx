@@ -14,6 +14,7 @@ import {
   createBranch,
   deleteLocalBranch,
   deleteRemoteBranch,
+  fetchPrune,
   getRepoState,
   isWorkingTreeDirty,
   listBranches,
@@ -34,6 +35,7 @@ import {
   IconCircleDot,
   IconCloud,
   IconPullRequest,
+  IconRefresh,
   IconTag,
   IconUsers,
 } from "../Icons";
@@ -45,6 +47,8 @@ interface SidebarSectionProps {
   initialExpanded?: boolean;
   addable?: boolean;
   onAdd?: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
   children: JSX.Element;
 }
 
@@ -63,6 +67,22 @@ function SidebarSection(props: SidebarSectionProps) {
         <span class="sidebar__section-title">{props.title}</span>
         <Show when={props.count !== undefined}>
           <span class="sidebar__section-count">{props.count}</span>
+        </Show>
+        <Show when={props.onRefresh}>
+          <span
+            class="sidebar__section-refresh"
+            data-spinning={props.refreshing ? "true" : "false"}
+            role="button"
+            tabindex={0}
+            aria-label={`Refresh ${props.title}`}
+            title={`Refresh ${props.title}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!props.refreshing) props.onRefresh?.();
+            }}
+          >
+            <IconRefresh />
+          </span>
         </Show>
         <Show when={props.addable}>
           <span
@@ -116,9 +136,26 @@ export function LeftSidebar() {
   const [dialogNameInput, setDialogNameInput] = createSignal("");
   const [mergeStrategy, setMergeStrategy] =
     createSignal<MergeStrategy>("fast-forward-or-merge");
+  const [refreshingRemote, setRefreshingRemote] = createSignal(false);
 
   const [tick, setTick] = createSignal(0);
   const refresh = () => setTick((t) => t + 1);
+
+  async function refreshRemote() {
+    const path = repoPath();
+    if (!path || refreshingRemote()) return;
+    setRefreshingRemote(true);
+    try {
+      await fetchPrune(path);
+      refresh();
+    } catch (err) {
+      // Surface the error non-destructively via the dialog-error channel so the
+      // user sees it without blocking the UI. Typical failure is auth-related.
+      setDialogError(`Refresh failed: ${String(err)}`);
+    } finally {
+      setRefreshingRemote(false);
+    }
+  }
 
   const [branches] = createResource<BranchInfo[], [string, number]>(
     () => [repoPath() ?? "", tick()] as [string, number],
@@ -478,7 +515,13 @@ export function LeftSidebar() {
           </Show>
         </SidebarSection>
 
-        <SidebarSection title="Remote" icon={<IconCloud />} count={remotes().length}>
+        <SidebarSection
+          title="Remote"
+          icon={<IconCloud />}
+          count={remotes().length}
+          onRefresh={() => void refreshRemote()}
+          refreshing={refreshingRemote()}
+        >
           <Show
             when={remotes().length > 0}
             fallback={<p class="sidebar__empty">No remote branches</p>}

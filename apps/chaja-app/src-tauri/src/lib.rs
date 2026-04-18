@@ -28,6 +28,7 @@ pub fn run() {
             chaja_bridge::commands::delete_remote_branch,
             chaja_bridge::commands::abort_merge,
             chaja_bridge::commands::repo_state,
+            chaja_bridge::commands::fetch_prune,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

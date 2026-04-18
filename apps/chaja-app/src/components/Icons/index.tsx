@@ -233,3 +233,12 @@ export const IconOpenFolder = (p?: IconProps) =>
     </>,
     p,
   );
+
+export const IconRefresh = (p?: IconProps) =>
+  base(
+    <>
+      <path d="M13 4a5 5 0 1 0 1.3 5" />
+      <path d="M13 2v3h-3" />
+    </>,
+    p,
+  );

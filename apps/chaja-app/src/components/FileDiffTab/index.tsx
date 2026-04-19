@@ -30,13 +30,15 @@ async function loadDiff(
   return await getStagedDiff(repo, selection.path);
 }
 
+type DiffSource = [string, NonNullable<ReturnType<typeof selectedDiffFile>>, number];
+
 export function FileDiffTab() {
-  const [file] = createResource<FileDiff | undefined, [string, NonNullable<ReturnType<typeof selectedDiffFile>>, number]>(
-    () => {
+  const [file] = createResource<FileDiff | undefined, DiffSource>(
+    (): DiffSource | undefined => {
       const p = repoPath();
       const sel = selectedDiffFile();
       if (!p || !sel) return undefined;
-      return [p, sel, workingTreeNonce()] as const;
+      return [p, sel, workingTreeNonce()];
     },
     async ([p, sel]) => await loadDiff(p, sel)
   );

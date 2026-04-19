@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+//! Public IPC surface for the frontend. Re-exports each domain module so
+//! callers can keep `import { ... } from "../ipc"` without caring how the
+//! internals are organised.
+
+export * from "./branches";
+export * from "./commits";
+export * from "./diff";
+export * from "./merge";
+export * from "./remote";
+export * from "./worktree";

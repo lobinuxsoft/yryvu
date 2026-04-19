@@ -1,0 +1,97 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   Toolbar
+   ======================================================================== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 12px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+  height: var(--toolbar-height);
+}
+
+.toolbar__selector {
+  display: flex;
+  flex-direction: column;
+  font-size: 10px;
+  color: var(--fg-3);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+.toolbar__selector-value {
+  font-size: 13px;
+  color: var(--fg-0);
+  background: transparent;
+  border: 0;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar__selector-value:hover { background: var(--bg-2); }
+
+.toolbar__arrow {
+  color: var(--fg-3);
+  font-size: 14px;
+  padding: 0 2px;
+}
+
+.toolbar__spacer { flex: 1; }
+
+.toolbar__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.toolbar__btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 56px;
+  height: 48px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--fg-1);
+}
+
+.toolbar__btn:hover:not(:disabled) { background: var(--bg-2); color: var(--fg-0); }
+.toolbar__btn:disabled { color: var(--fg-3); cursor: not-allowed; }
+
+.toolbar__btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  line-height: 1;
+}
+
+.toolbar__btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.toolbar__btn-split-caret {
+  display: inline-flex;
+  align-items: center;
+  color: var(--fg-3);
+}
+
+.toolbar__btn-split { min-width: 64px; }

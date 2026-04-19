@@ -28,6 +28,7 @@ mod common;
 mod merge;
 mod remote;
 pub(crate) mod staging;
+mod tags;
 mod worktree;
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -78,6 +79,20 @@ impl GitBackend for GixBackend {
 
     fn checkout_branch(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
         worktree::checkout_branch(repo_path, name)
+    }
+
+    fn checkout_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError> {
+        worktree::checkout_commit(repo_path, sha)
+    }
+
+    fn create_tag(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        sha: &str,
+        message: Option<&str>,
+    ) -> Result<(), BackendError> {
+        tags::create_tag(repo_path, name, sha, message)
     }
 
     fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError> {

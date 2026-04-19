@@ -10,6 +10,7 @@ mod commits;
 mod merge;
 mod remote;
 mod staging;
+mod tags;
 mod worktree;
 
 pub use branches::*;
@@ -17,4 +18,5 @@ pub use commits::*;
 pub use merge::*;
 pub use remote::*;
 pub use staging::*;
+pub use tags::*;
 pub use worktree::*;

@@ -10,4 +10,5 @@ export * from "./diff";
 export * from "./merge";
 export * from "./remote";
 export * from "./staging";
+export * from "./tags";
 export * from "./worktree";

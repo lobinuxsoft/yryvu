@@ -13,6 +13,9 @@ import {
   setInspectorMode,
   setSelectedCommit,
 } from "../../state";
+import { ContextMenu } from "../ContextMenu";
+import { CommitDialogs } from "./CommitDialogs";
+import { createCommitOps } from "./useCommitOps";
 import { CommitGraphRenderer } from "./renderer";
 import { computeVisible } from "./virtualize";
 
@@ -30,6 +33,10 @@ export function CommitGraph(props: CommitGraphProps) {
   const [viewportH, setViewportH] = createSignal(0);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | undefined>(undefined);
+
+  const ops = createCommitOps({
+    copyText: (text) => navigator.clipboard.writeText(text),
+  });
 
   let canvas: HTMLCanvasElement | undefined;
   let scrollEl: HTMLDivElement | undefined;
@@ -186,6 +193,9 @@ export function CommitGraph(props: CommitGraphProps) {
                   right: "0",
                 }}
                 onClick={() => setSelectedCommit(r.sha)}
+                onContextMenu={(e) =>
+                  ops.openCommitContextMenu(e, r.sha, r.short_sha)
+                }
               >
                 <span class="commit-graph__sha">{r.short_sha}</span>
                 <span class="commit-graph__summary">{r.summary}</span>
@@ -195,6 +205,15 @@ export function CommitGraph(props: CommitGraphProps) {
           </ul>
         </div>
       </div>
+      <Show when={ops.menu()}>
+        <ContextMenu
+          x={ops.menu()!.x}
+          y={ops.menu()!.y}
+          items={ops.menu()!.items}
+          onClose={() => ops.setMenu(null)}
+        />
+      </Show>
+      <CommitDialogs ops={ops} />
     </div>
   );
 }

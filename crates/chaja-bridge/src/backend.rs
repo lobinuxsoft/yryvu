@@ -28,6 +28,12 @@ pub enum BackendError {
     BranchUnmerged { name: String },
     #[error("invalid branch name: '{name}'")]
     InvalidBranchName { name: String },
+    #[error("invalid tag name: '{name}'")]
+    InvalidTagName { name: String },
+    #[error("tag '{name}' already exists")]
+    TagExists { name: String },
+    #[error("commit '{sha}' not found")]
+    CommitNotFound { sha: String },
     #[error("working tree has uncommitted changes")]
     WorkingTreeDirty,
     #[error("merge is not a fast-forward")]
@@ -199,6 +205,22 @@ pub trait GitBackend: Send + Sync {
     fn is_working_tree_dirty(&self, repo_path: &Path) -> Result<bool, BackendError>;
 
     fn checkout_branch(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Detach HEAD to the given commit SHA. Caller is expected to prompt on a
+    /// dirty working tree beforehand; the default git2 checkout refuses to
+    /// overwrite uncommitted changes.
+    fn checkout_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError>;
+
+    /// Create a tag pointing at `sha`. When `message` is `Some`, a proper
+    /// annotated tag object is written; when `None`, a lightweight tag ref
+    /// is created instead.
+    fn create_tag(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        sha: &str,
+        message: Option<&str>,
+    ) -> Result<(), BackendError>;
 
     fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError>;
 

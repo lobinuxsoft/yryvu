@@ -133,7 +133,25 @@ pub(super) fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, Bac
 }
 
 pub(super) fn validate_branch_name(name: &str) -> Result<(), BackendError> {
-    if name.is_empty()
+    if is_invalid_ref_name(name) {
+        return Err(BackendError::InvalidBranchName {
+            name: name.to_string(),
+        });
+    }
+    Ok(())
+}
+
+pub(super) fn validate_tag_name(name: &str) -> Result<(), BackendError> {
+    if is_invalid_ref_name(name) {
+        return Err(BackendError::InvalidTagName {
+            name: name.to_string(),
+        });
+    }
+    Ok(())
+}
+
+fn is_invalid_ref_name(name: &str) -> bool {
+    name.is_empty()
         || name.starts_with('-')
         || name.contains("..")
         || name.contains(' ')
@@ -147,10 +165,4 @@ pub(super) fn validate_branch_name(name: &str) -> Result<(), BackendError> {
         || name.contains('\\')
         || name.ends_with('/')
         || name.ends_with(".lock")
-    {
-        return Err(BackendError::InvalidBranchName {
-            name: name.to_string(),
-        });
-    }
-    Ok(())
 }

@@ -64,3 +64,14 @@ pub async fn commit_diff(repo_path: String, sha: String) -> Result<CommitDiff, S
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn checkout_commit(repo_path: String, sha: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .checkout_commit(&PathBuf::from(&repo_path), &sha)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

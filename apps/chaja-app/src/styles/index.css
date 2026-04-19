@@ -1,0 +1,14 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+@import "./tokens.css";
+@import "./shell.css";
+@import "./tabs.css";
+@import "./toolbar.css";
+@import "./sidebar.css";
+@import "./inspector.css";
+@import "./diff.css";
+@import "./status-bar.css";
+@import "./cold-start.css";
+@import "./commit-graph.css";
+@import "./context-menu.css";
+@import "./dialog.css";

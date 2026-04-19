@@ -3,6 +3,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
+export function checkoutCommit(repoPath: string, sha: string): Promise<void> {
+  return invoke<void>("checkout_commit", { repoPath, sha });
+}
+
 export interface RefTag {
   name: string;
   kind: "Branch" | "RemoteBranch" | "Tag" | "Head";

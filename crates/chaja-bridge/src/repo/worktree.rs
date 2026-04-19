@@ -34,6 +34,24 @@ pub fn checkout_branch(repo_path: &Path, name: &str) -> Result<(), BackendError>
     Ok(())
 }
 
+pub fn checkout_commit(repo_path: &Path, sha: &str) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let oid = git2::Oid::from_str(sha).map_err(|_| BackendError::CommitNotFound {
+        sha: sha.to_string(),
+    })?;
+    let obj = repo
+        .find_object(oid, None)
+        .map_err(|_| BackendError::CommitNotFound {
+            sha: sha.to_string(),
+        })?;
+
+    // Safe checkout: git2 refuses to overwrite uncommitted changes. The UI is
+    // expected to call `is_working_tree_dirty` first and prompt the user.
+    repo.checkout_tree(&obj, None).map_err(git2_err)?;
+    repo.set_head_detached(oid).map_err(git2_err)?;
+    Ok(())
+}
+
 pub fn stash_push(repo_path: &Path, message: Option<&str>) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
     let signature = repo.signature().map_err(git2_err)?;

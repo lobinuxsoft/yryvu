@@ -19,13 +19,14 @@ use graph_core::Commit;
 
 use crate::backend::{
     BackendError, BranchInfo, CommitDiff, FileDiff, GitBackend, MergeResult, MergeStrategy,
-    RepoStateInfo, WorkingTreeStatus,
+    RepoStateInfo, ResetMode, WorkingTreeStatus,
 };
 
 mod branches;
 mod commits;
 mod common;
 mod merge;
+mod patches;
 mod remote;
 pub(crate) mod staging;
 mod tags;
@@ -93,6 +94,32 @@ impl GitBackend for GixBackend {
         message: Option<&str>,
     ) -> Result<(), BackendError> {
         tags::create_tag(repo_path, name, sha, message)
+    }
+
+    fn reset_to_commit(
+        &self,
+        repo_path: &Path,
+        sha: &str,
+        mode: ResetMode,
+    ) -> Result<(), BackendError> {
+        worktree::reset_to_commit(repo_path, sha, mode)
+    }
+
+    fn cherry_pick_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError> {
+        worktree::cherry_pick_commit(repo_path, sha)
+    }
+
+    fn revert_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError> {
+        worktree::revert_commit(repo_path, sha)
+    }
+
+    fn format_patch(
+        &self,
+        repo_path: &Path,
+        sha: &str,
+        out_dir: &Path,
+    ) -> Result<String, BackendError> {
+        patches::format_patch(repo_path, sha, out_dir)
     }
 
     fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError> {

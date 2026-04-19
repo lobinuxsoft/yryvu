@@ -549,6 +549,7 @@ name = "chaja-bridge"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "git2",
  "gix",
  "graph-core",

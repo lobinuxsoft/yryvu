@@ -2,6 +2,8 @@
 
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+
 import { streamGraph, type GraphRow } from "../../ipc";
 import {
   commitMessage,
@@ -36,6 +38,15 @@ export function CommitGraph(props: CommitGraphProps) {
 
   const ops = createCommitOps({
     copyText: (text) => navigator.clipboard.writeText(text),
+    pickSaveDir: async () => {
+      const selected = await openDialog({
+        directory: true,
+        multiple: false,
+        title: "Choose output directory for the patch",
+      });
+      if (!selected) return null;
+      return Array.isArray(selected) ? selected[0] ?? null : selected;
+    },
   });
 
   let canvas: HTMLCanvasElement | undefined;

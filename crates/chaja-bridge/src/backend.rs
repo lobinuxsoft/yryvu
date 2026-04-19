@@ -73,6 +73,18 @@ pub struct BranchInfo {
 
 #[derive(Debug, Clone, Copy, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub enum ResetMode {
+    /// Move HEAD (and branch tip) to the target; keep index and working tree.
+    Soft,
+    /// Move HEAD and reset the index to the target; keep working tree.
+    Mixed,
+    /// Move HEAD, reset index and force-checkout working tree to match target.
+    /// Destructive: uncommitted changes are lost.
+    Hard,
+}
+
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum MergeStrategy {
     /// Abort unless a fast-forward is possible.
     FastForwardOnly,
@@ -221,6 +233,32 @@ pub trait GitBackend: Send + Sync {
         sha: &str,
         message: Option<&str>,
     ) -> Result<(), BackendError>;
+
+    /// Reset the current branch tip to the given commit. `Hard` is destructive
+    /// — callers MUST confirm with the user before invoking it.
+    fn reset_to_commit(
+        &self,
+        repo_path: &Path,
+        sha: &str,
+        mode: ResetMode,
+    ) -> Result<(), BackendError>;
+
+    /// Apply the diff introduced by `sha` on top of HEAD as a new commit.
+    /// Leaves the repo in cherry-pick state with `MergeConflict` on conflicts.
+    fn cherry_pick_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError>;
+
+    /// Create an inverse commit that undoes `sha`. Leaves the repo in revert
+    /// state with `MergeConflict` on conflicts.
+    fn revert_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError>;
+
+    /// Emit a `git format-patch -1 <sha>` equivalent mbox-style `.patch` file
+    /// into `out_dir`. Returns the absolute path of the created file.
+    fn format_patch(
+        &self,
+        repo_path: &Path,
+        sha: &str,
+        out_dir: &Path,
+    ) -> Result<String, BackendError>;
 
     fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError>;
 

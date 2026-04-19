@@ -96,9 +96,10 @@ export const [workingTreeStatus] = createResource<
 );
 
 /// Draft commit message — two-way bound between the WIP row's input and the
-/// inspector staging panel. Issue #3 will layer amend/sign/templates on top.
+/// inspector staging panel.
 export const [commitMessage, setCommitMessage] = createSignal("");
 export const [commitDescription, setCommitDescription] = createSignal("");
+export const [amendEnabled, setAmendEnabled] = createSignal(false);
 
 export function fullCommitMessage(): string {
   const subject = commitMessage().trim();

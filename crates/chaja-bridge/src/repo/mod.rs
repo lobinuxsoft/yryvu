@@ -145,4 +145,12 @@ impl GitBackend for GixBackend {
     fn commit_staged(&self, repo_path: &Path, message: &str) -> Result<String, BackendError> {
         staging::commit_staged(repo_path, message)
     }
+
+    fn amend_commit(&self, repo_path: &Path, message: &str) -> Result<String, BackendError> {
+        staging::amend_commit(repo_path, message)
+    }
+
+    fn head_commit_message(&self, repo_path: &Path) -> Result<String, BackendError> {
+        staging::head_commit_message(repo_path)
+    }
 }

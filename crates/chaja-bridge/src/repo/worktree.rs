@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::backend::{BackendError, RepoStateInfo};
+use crate::backend::{BackendError, RepoStateInfo, ResetMode};
 
 use super::common::{git2_err, open_git2};
 
@@ -31,6 +31,124 @@ pub fn checkout_branch(repo_path: &Path, name: &str) -> Result<(), BackendError>
     // first and prompt the user.
     repo.checkout_tree(&obj, None).map_err(git2_err)?;
     repo.set_head(&full_name).map_err(git2_err)?;
+    Ok(())
+}
+
+pub fn reset_to_commit(repo_path: &Path, sha: &str, mode: ResetMode) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let oid = git2::Oid::from_str(sha).map_err(|_| BackendError::CommitNotFound {
+        sha: sha.to_string(),
+    })?;
+    let obj = repo
+        .find_object(oid, None)
+        .map_err(|_| BackendError::CommitNotFound {
+            sha: sha.to_string(),
+        })?;
+
+    let reset_type = match mode {
+        ResetMode::Soft => git2::ResetType::Soft,
+        ResetMode::Mixed => git2::ResetType::Mixed,
+        ResetMode::Hard => git2::ResetType::Hard,
+    };
+
+    repo.reset(&obj, reset_type, None).map_err(git2_err)?;
+    Ok(())
+}
+
+pub fn cherry_pick_commit(repo_path: &Path, sha: &str) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let oid = git2::Oid::from_str(sha).map_err(|_| BackendError::CommitNotFound {
+        sha: sha.to_string(),
+    })?;
+    let commit = repo
+        .find_commit(oid)
+        .map_err(|_| BackendError::CommitNotFound {
+            sha: sha.to_string(),
+        })?;
+
+    repo.cherrypick(&commit, None).map_err(git2_err)?;
+
+    // If the cherry-pick produced conflicts, git2 writes them to the index and
+    // leaves CHERRY_PICK_HEAD in place. Surface MergeConflict so the UI's
+    // StateBanner can pick it up and offer an abort.
+    let index = repo.index().map_err(git2_err)?;
+    if index.has_conflicts() {
+        let paths: Vec<String> = index
+            .conflicts()
+            .map_err(git2_err)?
+            .filter_map(|c| c.ok())
+            .filter_map(|c| c.our.or(c.their).or(c.ancestor))
+            .map(|e| String::from_utf8_lossy(&e.path).into_owned())
+            .collect();
+        return Err(BackendError::MergeConflict { paths });
+    }
+
+    // Clean apply — write the cherry-pick as a new commit on HEAD.
+    let tree_oid = repo
+        .index()
+        .map_err(git2_err)?
+        .write_tree()
+        .map_err(git2_err)?;
+    let tree = repo.find_tree(tree_oid).map_err(git2_err)?;
+    let head = repo.head().map_err(git2_err)?;
+    let parent_commit = head.peel_to_commit().map_err(git2_err)?;
+    let sig = repo.signature().map_err(git2_err)?;
+    repo.commit(
+        Some("HEAD"),
+        &commit.author(),
+        &sig,
+        commit.message().unwrap_or(""),
+        &tree,
+        &[&parent_commit],
+    )
+    .map_err(git2_err)?;
+    repo.cleanup_state().map_err(git2_err)?;
+    Ok(())
+}
+
+pub fn revert_commit(repo_path: &Path, sha: &str) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let oid = git2::Oid::from_str(sha).map_err(|_| BackendError::CommitNotFound {
+        sha: sha.to_string(),
+    })?;
+    let commit = repo
+        .find_commit(oid)
+        .map_err(|_| BackendError::CommitNotFound {
+            sha: sha.to_string(),
+        })?;
+
+    repo.revert(&commit, None).map_err(git2_err)?;
+
+    let index = repo.index().map_err(git2_err)?;
+    if index.has_conflicts() {
+        let paths: Vec<String> = index
+            .conflicts()
+            .map_err(git2_err)?
+            .filter_map(|c| c.ok())
+            .filter_map(|c| c.our.or(c.their).or(c.ancestor))
+            .map(|e| String::from_utf8_lossy(&e.path).into_owned())
+            .collect();
+        return Err(BackendError::MergeConflict { paths });
+    }
+
+    let tree_oid = repo
+        .index()
+        .map_err(git2_err)?
+        .write_tree()
+        .map_err(git2_err)?;
+    let tree = repo.find_tree(tree_oid).map_err(git2_err)?;
+    let head = repo.head().map_err(git2_err)?;
+    let parent_commit = head.peel_to_commit().map_err(git2_err)?;
+    let sig = repo.signature().map_err(git2_err)?;
+    let subject = commit
+        .summary()
+        .map(|s| format!("Revert \"{s}\""))
+        .unwrap_or_else(|| format!("Revert {}", &sha[..sha.len().min(7)]));
+    let body = format!("This reverts commit {sha}.");
+    let msg = format!("{subject}\n\n{body}\n");
+    repo.commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&parent_commit])
+        .map_err(git2_err)?;
+    repo.cleanup_state().map_err(git2_err)?;
     Ok(())
 }
 

@@ -7,6 +7,32 @@ export function checkoutCommit(repoPath: string, sha: string): Promise<void> {
   return invoke<void>("checkout_commit", { repoPath, sha });
 }
 
+export type ResetMode = "soft" | "mixed" | "hard";
+
+export function resetToCommit(
+  repoPath: string,
+  sha: string,
+  mode: ResetMode,
+): Promise<void> {
+  return invoke<void>("reset_to_commit", { repoPath, sha, mode });
+}
+
+export function cherryPickCommit(repoPath: string, sha: string): Promise<void> {
+  return invoke<void>("cherry_pick_commit", { repoPath, sha });
+}
+
+export function revertCommit(repoPath: string, sha: string): Promise<void> {
+  return invoke<void>("revert_commit", { repoPath, sha });
+}
+
+export function formatPatch(
+  repoPath: string,
+  sha: string,
+  outDir: string,
+): Promise<string> {
+  return invoke<string>("format_patch", { repoPath, sha, outDir });
+}
+
 export interface RefTag {
   name: string;
   kind: "Branch" | "RemoteBranch" | "Tag" | "Head";

@@ -4,10 +4,15 @@ import { createSignal } from "solid-js";
 
 import {
   checkoutCommit,
+  cherryPickCommit,
   createBranch,
   createTag,
+  formatPatch,
   isWorkingTreeDirty,
+  resetToCommit,
+  revertCommit,
   stashPush,
+  type ResetMode,
 } from "../../ipc";
 import { refreshBranches, refreshGraph, repoPath } from "../../state";
 import type { ContextMenuItem } from "../ContextMenu";
@@ -24,10 +29,13 @@ export type CommitDialogState =
   | { kind: "create-branch"; sha: string; shortSha: string }
   | { kind: "create-tag"; sha: string; shortSha: string; annotated: boolean }
   | { kind: "checkout-dirty"; sha: string; shortSha: string }
+  | { kind: "reset-hard-confirm"; sha: string; shortSha: string }
+  | { kind: "patch-saved"; path: string }
   | null;
 
 export interface CommitOpsDeps {
   copyText: (text: string) => Promise<void>;
+  pickSaveDir: () => Promise<string | null>;
 }
 
 export function createCommitOps(deps: CommitOpsDeps) {
@@ -143,6 +151,57 @@ export function createCommitOps(deps: CommitOpsDeps) {
     }
   }
 
+  async function doReset(sha: string, mode: ResetMode) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await resetToCommit(path, sha, mode);
+      closeDialog();
+      refreshGraph();
+      refreshBranches();
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
+  async function doCherryPick(sha: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await cherryPickCommit(path, sha);
+      refreshGraph();
+      refreshBranches();
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
+  async function doRevert(sha: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await revertCommit(path, sha);
+      refreshGraph();
+      refreshBranches();
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
+  async function doFormatPatch(sha: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      const dir = await deps.pickSaveDir();
+      if (!dir) return;
+      const written = await formatPatch(path, sha, dir);
+      setDialogError(null);
+      setDialog({ kind: "patch-saved", path: written });
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
   function openCommitContextMenu(e: MouseEvent, sha: string, shortSha: string) {
     e.preventDefault();
     const items: ContextMenuItem[] = [
@@ -164,6 +223,36 @@ export function createCommitOps(deps: CommitOpsDeps) {
         onSelect: () => openCreateTagDialog(sha, shortSha, true),
       },
       { type: "separator" },
+      {
+        label: "Reset current branch here (soft)",
+        onSelect: () => void doReset(sha, "soft"),
+      },
+      {
+        label: "Reset current branch here (mixed)",
+        onSelect: () => void doReset(sha, "mixed"),
+      },
+      {
+        label: "Reset current branch here (hard)…",
+        danger: true,
+        onSelect: () => {
+          setDialogError(null);
+          setDialog({ kind: "reset-hard-confirm", sha, shortSha });
+        },
+      },
+      { type: "separator" },
+      {
+        label: "Cherry-pick commit",
+        onSelect: () => void doCherryPick(sha),
+      },
+      {
+        label: "Revert commit",
+        onSelect: () => void doRevert(sha),
+      },
+      { type: "separator" },
+      {
+        label: "Create patch from commit…",
+        onSelect: () => void doFormatPatch(sha),
+      },
       {
         label: "Copy commit SHA",
         onSelect: () => void copySha(sha),
@@ -189,6 +278,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
     stashAndCheckout,
     submitCreateBranch,
     submitCreateTag,
+    doReset,
   };
 }
 

@@ -23,6 +23,16 @@ export function CommitDialogs(props: { ops: CommitOps }) {
       ? (ops.dialog() as { sha: string; shortSha: string })
       : undefined;
 
+  const resetHardState = () =>
+    ops.dialog()?.kind === "reset-hard-confirm"
+      ? (ops.dialog() as { sha: string; shortSha: string })
+      : undefined;
+
+  const patchSavedState = () =>
+    ops.dialog()?.kind === "patch-saved"
+      ? (ops.dialog() as { path: string })
+      : undefined;
+
   return (
     <>
       <Dialog
@@ -154,6 +164,80 @@ export function CommitDialogs(props: { ops: CommitOps }) {
         <Show when={ops.dialogError()}>
           <p class="dialog__error">{ops.dialogError()}</p>
         </Show>
+      </Dialog>
+
+      <Dialog
+        open={ops.dialog()?.kind === "reset-hard-confirm"}
+        title="Reset --hard — destructive"
+        onClose={ops.closeDialog}
+        footer={
+          <>
+            <button
+              class="dialog__btn"
+              type="button"
+              data-dismiss
+              onClick={ops.closeDialog}
+            >
+              Cancel
+            </button>
+            <button
+              class="dialog__btn dialog__btn--primary"
+              type="button"
+              onClick={() => {
+                const s = resetHardState();
+                if (s) void ops.doReset(s.sha, "hard");
+              }}
+            >
+              Reset --hard
+            </button>
+          </>
+        }
+      >
+        <p>
+          This will move the current branch tip to{" "}
+          <code>{resetHardState()?.shortSha}</code> and{" "}
+          <strong>discard all uncommitted changes</strong> in the working tree.
+        </p>
+        <p
+          style={{
+            color: "var(--fg-3)",
+            "font-size": "12px",
+            "margin-top": "8px",
+          }}
+        >
+          Commits that stop being reachable after the reset can still be
+          recovered via <code>git reflog</code>.
+        </p>
+        <Show when={ops.dialogError()}>
+          <p class="dialog__error">{ops.dialogError()}</p>
+        </Show>
+      </Dialog>
+
+      <Dialog
+        open={ops.dialog()?.kind === "patch-saved"}
+        title="Patch saved"
+        onClose={ops.closeDialog}
+        footer={
+          <button
+            class="dialog__btn dialog__btn--primary"
+            type="button"
+            onClick={ops.closeDialog}
+          >
+            OK
+          </button>
+        }
+      >
+        <p>Patch written to:</p>
+        <p
+          style={{
+            "margin-top": "8px",
+            "font-family": "var(--mono, monospace)",
+            "font-size": "12px",
+            "word-break": "break-all",
+          }}
+        >
+          <code>{patchSavedState()?.path}</code>
+        </p>
       </Dialog>
 
       <Dialog

@@ -6,7 +6,7 @@ use graph_core::{GraphRow, LaneAssigner};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-use crate::backend::{CommitDiff, GitBackend};
+use crate::backend::{CommitDiff, GitBackend, ResetMode};
 use crate::repo::GixBackend;
 
 #[derive(Debug, Clone, Serialize)]
@@ -70,6 +70,58 @@ pub async fn checkout_commit(repo_path: String, sha: String) -> Result<(), Strin
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .checkout_commit(&PathBuf::from(&repo_path), &sha)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn reset_to_commit(
+    repo_path: String,
+    sha: String,
+    mode: ResetMode,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .reset_to_commit(&PathBuf::from(&repo_path), &sha, mode)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn cherry_pick_commit(repo_path: String, sha: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .cherry_pick_commit(&PathBuf::from(&repo_path), &sha)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn revert_commit(repo_path: String, sha: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .revert_commit(&PathBuf::from(&repo_path), &sha)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn format_patch(
+    repo_path: String,
+    sha: String,
+    out_dir: String,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .format_patch(&PathBuf::from(&repo_path), &sha, &PathBuf::from(&out_dir))
             .map_err(|e| e.to_string())
     })
     .await

@@ -2,8 +2,14 @@
 
 import { createEffect, on, onCleanup, onMount, Show } from "solid-js";
 
-import { commitStaged, stageFiles, unstageFiles } from "../../ipc";
 import {
+  amendCommit,
+  commitStaged,
+  stageFiles,
+  unstageFiles,
+} from "../../ipc";
+import {
+  amendEnabled,
   dirtyFileCount,
   fullCommitMessage,
   inspectorMode,
@@ -11,6 +17,7 @@ import {
   refreshWorkingTree,
   repoPath,
   selectedCommit,
+  setAmendEnabled,
   setCommitDescription,
   setCommitMessage,
   setInspectorMode,
@@ -72,13 +79,18 @@ export function RightPanel() {
     const p = repoPath();
     const msg = fullCommitMessage();
     if (!p || !msg) return;
+    const amend = amendEnabled();
     let newSha: string;
     try {
-      newSha = await commitStaged(p, msg);
+      newSha = amend ? await amendCommit(p, msg) : await commitStaged(p, msg);
       setCommitMessage("");
       setCommitDescription("");
+      setAmendEnabled(false);
     } catch (err) {
-      console.error("commit_staged failed", err);
+      console.error(
+        amend ? "amend_commit failed" : "commit_staged failed",
+        err
+      );
       return;
     }
     refreshWorkingTree();

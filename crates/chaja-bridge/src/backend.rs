@@ -237,6 +237,10 @@ pub trait GitBackend: Send + Sync {
     fn diff_staged(&self, repo_path: &Path, path: &str) -> Result<FileDiff, BackendError>;
 
     fn commit_staged(&self, repo_path: &Path, message: &str) -> Result<String, BackendError>;
+
+    fn amend_commit(&self, repo_path: &Path, message: &str) -> Result<String, BackendError>;
+
+    fn head_commit_message(&self, repo_path: &Path) -> Result<String, BackendError>;
 }
 
 pub use crate::repo::GixBackend;

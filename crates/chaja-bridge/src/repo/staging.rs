@@ -189,6 +189,48 @@ pub fn commit_staged(repo_path: &Path, message: &str) -> Result<String, BackendE
     Ok(new_oid.to_string())
 }
 
+pub fn amend_commit(repo_path: &Path, message: &str) -> Result<String, BackendError> {
+    if message.trim().is_empty() {
+        return Err(BackendError::Git(anyhow::anyhow!(
+            "commit message cannot be empty"
+        )));
+    }
+
+    let repo = open_git2(repo_path)?;
+    let signature = repo.signature().map_err(git2_err)?;
+
+    let head = repo
+        .head()
+        .map_err(|_| BackendError::Git(anyhow::anyhow!("cannot amend: no HEAD commit")))?;
+    let head_commit = head.peel_to_commit().map_err(git2_err)?;
+
+    let mut index = repo.index().map_err(git2_err)?;
+    let tree_oid = index.write_tree().map_err(git2_err)?;
+    let tree = repo.find_tree(tree_oid).map_err(git2_err)?;
+
+    let new_oid = head_commit
+        .amend(
+            Some("HEAD"),
+            None,
+            Some(&signature),
+            None,
+            Some(message),
+            Some(&tree),
+        )
+        .map_err(git2_err)?;
+
+    Ok(new_oid.to_string())
+}
+
+pub fn head_commit_message(repo_path: &Path) -> Result<String, BackendError> {
+    let repo = open_git2(repo_path)?;
+    let head = repo
+        .head()
+        .map_err(|_| BackendError::Git(anyhow::anyhow!("no HEAD commit")))?;
+    let head_commit = head.peel_to_commit().map_err(git2_err)?;
+    Ok(head_commit.message().unwrap_or_default().to_string())
+}
+
 pub fn diff_unstaged(repo_path: &Path, path: &str) -> Result<FileDiff, BackendError> {
     let repo = open_git2(repo_path)?;
     let mut diff_opts = git2::DiffOptions::new();

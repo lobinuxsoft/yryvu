@@ -169,10 +169,54 @@
 }
 
 .staging__commit-form__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 11px;
   color: var(--fg-2);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.staging__commit-form__amend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  color: var(--fg-1);
+  cursor: pointer;
+}
+
+.staging__commit-form__amend input[type="checkbox"] {
+  accent-color: var(--info);
+}
+
+.staging__commit-form__template {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--fg-2);
+}
+
+.staging__commit-form__template-select {
+  flex: 1;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+.staging__commit-form__template-select:focus {
+  outline: none;
+  border-color: var(--info);
 }
 
 .staging__commit-form__field {
@@ -241,4 +285,12 @@
   background: var(--bg-3);
   color: var(--fg-3);
   cursor: not-allowed;
+}
+
+.staging__commit-form__submit[data-mode="amend"]:not(:disabled) {
+  background: var(--warning);
+}
+
+.staging__commit-form__submit[data-mode="amend"]:not(:disabled):hover {
+  background: color-mix(in srgb, var(--warning) 80%, white);
 }

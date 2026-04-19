@@ -19,7 +19,7 @@
 
 .shell__tabs       { grid-area: tabs; }
 .shell__toolbar    { grid-area: toolbar; }
-.shell__sidebar    { grid-area: sidebar; }
+.shell__sidebar    { grid-area: sidebar; min-height: 0; overflow: hidden; }
 .shell__main       { grid-area: main; overflow: hidden; position: relative; }
 .shell__inspector  { grid-area: inspector; min-height: 0; overflow: hidden; }
 .shell__statusbar  { grid-area: statusbar; }

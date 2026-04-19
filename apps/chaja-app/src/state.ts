@@ -40,6 +40,26 @@ export const [theme, setTheme] = persistedTheme();
 export const [repoPath, setRepoPath] = createSignal<string | undefined>(undefined);
 export const [selectedCommit, setSelectedCommit] = createSignal<string | undefined>(undefined);
 
+export type MainView = "graph" | "diff";
+export const [mainView, setMainView] = createSignal<MainView>("graph");
+
+export interface SelectedDiffFile {
+  sha: string;
+  path: string;
+}
+export const [selectedDiffFile, setSelectedDiffFile] =
+  createSignal<SelectedDiffFile | undefined>(undefined);
+
+export function openDiffTab(sha: string, path: string) {
+  setSelectedDiffFile({ sha, path });
+  setMainView("diff");
+}
+
+export function closeDiffTab() {
+  setSelectedDiffFile(undefined);
+  setMainView("graph");
+}
+
 export interface RecentRepo {
   path: string;
   name: string;

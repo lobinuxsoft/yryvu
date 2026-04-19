@@ -6,12 +6,14 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import { CommitGraph } from "../CommitGraph";
 import { ColdStart } from "../ColdStart";
+import { FileDiffTab } from "../FileDiffTab";
 import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
 import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { IconOpenFolder, IconPlus, IconStar } from "../Icons";
 import {
+  mainView,
   pushRecentRepo,
   repoPath,
   setRepoPath,
@@ -87,16 +89,21 @@ export function AppShell() {
 
       <div class="shell__main">
         <Show when={repoPath()} fallback={<ColdStart />}>
-          <div class="main">
-            <div class="main__graph-column-headers">
-              <span>Branch / Tag</span>
-              <span>Graph</span>
-              <span>Commit Message</span>
+          <Show
+            when={mainView() === "graph"}
+            fallback={<FileDiffTab />}
+          >
+            <div class="main">
+              <div class="main__graph-column-headers">
+                <span>Branch / Tag</span>
+                <span>Graph</span>
+                <span>Commit Message</span>
+              </div>
+              <div class="main__graph-host">
+                <CommitGraph repoPath={repoPath()!} />
+              </div>
             </div>
-            <div class="main__graph-host">
-              <CommitGraph repoPath={repoPath()!} />
-            </div>
-          </div>
+          </Show>
         </Show>
       </div>
 

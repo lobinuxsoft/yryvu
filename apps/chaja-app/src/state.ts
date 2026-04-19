@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createSignal, type Signal } from "solid-js";
+import { createMemo, createResource, createSignal, type Signal } from "solid-js";
+
+import { getWorkingTreeStatus, type WorkingTreeStatus } from "./ipc";
 
 const STORAGE_PREFIX = "chaja.";
 const STORAGE_RECENT_KEY = `${STORAGE_PREFIX}recentRepos`;
@@ -43,15 +45,24 @@ export const [selectedCommit, setSelectedCommit] = createSignal<string | undefin
 export type MainView = "graph" | "diff";
 export const [mainView, setMainView] = createSignal<MainView>("graph");
 
-export interface SelectedDiffFile {
-  sha: string;
-  path: string;
-}
-export const [selectedDiffFile, setSelectedDiffFile] =
-  createSignal<SelectedDiffFile | undefined>(undefined);
+export type SelectedDiffFile =
+  | { kind: "commit"; sha: string; path: string }
+  | { kind: "staging"; side: "unstaged" | "staged"; path: string };
+
+export const [selectedDiffFile, setSelectedDiffFile] = createSignal<
+  SelectedDiffFile | undefined
+>(undefined);
 
 export function openDiffTab(sha: string, path: string) {
-  setSelectedDiffFile({ sha, path });
+  setSelectedDiffFile({ kind: "commit", sha, path });
+  setMainView("diff");
+}
+
+export function openStagingDiffTab(
+  side: "unstaged" | "staged",
+  path: string
+) {
+  setSelectedDiffFile({ kind: "staging", side, path });
   setMainView("diff");
 }
 
@@ -59,6 +70,57 @@ export function closeDiffTab() {
   setSelectedDiffFile(undefined);
   setMainView("graph");
 }
+
+/// Inspector mode — "details" shows the selected commit; "staging" shows the
+/// Unstaged/Staged file lists. Toggled by the WIP banner's View Changes button.
+export type InspectorMode = "details" | "staging";
+export const [inspectorMode, setInspectorMode] =
+  createSignal<InspectorMode>("details");
+
+/// Bumped whenever a staging-mutating op completes, so resources watching
+/// working-tree status re-fetch.
+export const [workingTreeNonce, setWorkingTreeNonce] = createSignal(0);
+export function refreshWorkingTree() {
+  setWorkingTreeNonce((n) => n + 1);
+}
+
+export const [workingTreeStatus] = createResource<
+  WorkingTreeStatus | undefined,
+  [string, number]
+>(
+  () => {
+    const p = repoPath();
+    return p ? ([p, workingTreeNonce()] as [string, number]) : undefined;
+  },
+  async ([p]) => await getWorkingTreeStatus(p)
+);
+
+/// Draft commit message — two-way bound between the WIP row's input and the
+/// inspector staging panel. Issue #3 will layer amend/sign/templates on top.
+export const [commitMessage, setCommitMessage] = createSignal("");
+export const [commitDescription, setCommitDescription] = createSignal("");
+
+export function fullCommitMessage(): string {
+  const subject = commitMessage().trim();
+  const body = commitDescription().trim();
+  if (!subject) return "";
+  return body ? `${subject}\n\n${body}` : subject;
+}
+
+/// Bumped after any commit-creating op so CommitGraph re-streams.
+export const [graphNonce, setGraphNonce] = createSignal(0);
+export function refreshGraph() {
+  setGraphNonce((n) => n + 1);
+}
+
+export const dirtyFileCount = createMemo(() => {
+  const s = workingTreeStatus();
+  if (!s) return 0;
+  const paths = new Set<string>();
+  s.unstaged.forEach((c) => paths.add(c.path));
+  s.staged.forEach((c) => paths.add(c.path));
+  return paths.size;
+});
 
 export interface RecentRepo {
   path: string;

@@ -88,3 +88,99 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ========================================================================
+   WIP pseudo-row — pinned above the scrollable graph when the working tree
+   is dirty. Behaves visually like an extra graph row; its "lane" column
+   carries a dashed node aligned to HEAD's lane, and the message column
+   holds the draft commit summary input.
+   ======================================================================== */
+.commit-graph__wip-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  height: 26px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--info) 40%, var(--bg-3));
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+}
+
+.commit-graph__wip-row:hover .commit-graph__wip-lane,
+.commit-graph__wip-row[data-active="true"] .commit-graph__wip-lane {
+  background: color-mix(in srgb, var(--info) 28%, var(--bg-0));
+}
+
+.commit-graph__wip-lane {
+  position: relative;
+  height: 100%;
+  background: color-mix(in srgb, var(--info) 18%, var(--bg-0));
+  flex-shrink: 0;
+}
+
+.commit-graph__wip-node {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--info);
+  background: var(--bg-0);
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+/* Dashed connector dropping from the WIP node into the scroll area below,
+   landing on the HEAD commit node. The scroll area's first-row node sits at
+   y = rowHeight / 2 ≈ 12px below the top, so a 20px-tall connector reaches it. */
+.commit-graph__wip-node::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 0;
+  height: 20px;
+  border-left: 1.5px dashed var(--info);
+  transform: translateX(-50%);
+}
+
+.commit-graph__wip-input {
+  flex: 1;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  padding: 0 10px;
+  color: var(--fg-0);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  min-width: 0;
+}
+
+.commit-graph__wip-input::placeholder {
+  color: color-mix(in srgb, var(--info) 70%, var(--fg-3));
+}
+
+.commit-graph__wip-pencil {
+  color: var(--warning);
+  font-size: 12px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.commit-graph__wip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 0 6px;
+  height: 16px;
+  font-size: 10px;
+  background: var(--warning);
+  color: var(--bg-0);
+  border-radius: 10px;
+  font-weight: 700;
+  margin-right: 10px;
+  flex-shrink: 0;
+}

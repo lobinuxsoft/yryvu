@@ -9,4 +9,5 @@ export * from "./commits";
 export * from "./diff";
 export * from "./merge";
 export * from "./remote";
+export * from "./staging";
 export * from "./worktree";

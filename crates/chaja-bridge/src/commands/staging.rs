@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+use std::path::PathBuf;
+
+use crate::backend::{FileDiff, GitBackend, WorkingTreeStatus};
+use crate::repo::GixBackend;
+
+#[tauri::command]
+pub async fn working_tree_status(repo_path: String) -> Result<WorkingTreeStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .working_tree_status(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn stage_files(repo_path: String, paths: Vec<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stage_files(&PathBuf::from(&repo_path), &paths)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn unstage_files(repo_path: String, paths: Vec<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .unstage_files(&PathBuf::from(&repo_path), &paths)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn diff_unstaged(repo_path: String, path: String) -> Result<FileDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .diff_unstaged(&PathBuf::from(&repo_path), &path)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn diff_staged(repo_path: String, path: String) -> Result<FileDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .diff_staged(&PathBuf::from(&repo_path), &path)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn commit_staged(repo_path: String, message: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .commit_staged(&PathBuf::from(&repo_path), &message)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

@@ -3,7 +3,13 @@
 import { createResource, createSignal, For, Show } from "solid-js";
 
 import { listBranches, getRepoState, type BranchInfo, type RepoStateInfo } from "../../ipc";
-import { repoPath, setShowLeftPanel, showLeftPanel } from "../../state";
+import {
+  branchesNonce,
+  refreshBranches,
+  repoPath,
+  setShowLeftPanel,
+  showLeftPanel,
+} from "../../state";
 import { ContextMenu } from "../ContextMenu";
 import {
   IconArchive,
@@ -22,11 +28,9 @@ import { createBranchOps } from "./useBranchOps";
 
 export function LeftSidebar() {
   const [collapsed, setCollapsed] = createSignal(false);
-  const [tick, setTick] = createSignal(0);
-  const refresh = () => setTick((t) => t + 1);
 
   const [branches] = createResource<BranchInfo[], [string, number]>(
-    () => [repoPath() ?? "", tick()] as [string, number],
+    () => [repoPath() ?? "", branchesNonce()] as [string, number],
     async ([path]) => {
       if (!path) return [] as BranchInfo[];
       return await listBranches(path);
@@ -35,7 +39,7 @@ export function LeftSidebar() {
   );
 
   const [repoState] = createResource<RepoStateInfo, [string, number]>(
-    () => [repoPath() ?? "", tick()] as [string, number],
+    () => [repoPath() ?? "", branchesNonce()] as [string, number],
     async ([path]) => {
       if (!path) return { kind: "clean", conflict_paths: [] };
       return await getRepoState(path);
@@ -46,7 +50,7 @@ export function LeftSidebar() {
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
   const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
 
-  const ops = createBranchOps({ refresh });
+  const ops = createBranchOps({ refresh: refreshBranches });
 
   return (
     <aside class="sidebar" data-collapsed={collapsed() ? "true" : "false"}>

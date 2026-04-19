@@ -9,7 +9,7 @@ import {
   isWorkingTreeDirty,
   stashPush,
 } from "../../ipc";
-import { refreshGraph, repoPath } from "../../state";
+import { refreshBranches, refreshGraph, repoPath } from "../../state";
 import type { ContextMenuItem } from "../ContextMenu";
 
 export type CommitMenuState = {
@@ -89,6 +89,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
       await checkoutCommit(path, sha);
       closeDialog();
       refreshGraph();
+      refreshBranches();
     } catch (err) {
       setDialogError(String(err));
     }
@@ -102,6 +103,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
       await checkoutCommit(path, sha);
       closeDialog();
       refreshGraph();
+      refreshBranches();
     } catch (err) {
       setDialogError(String(err));
     }
@@ -117,6 +119,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
       await createBranch(path, name, state.sha);
       closeDialog();
       refreshGraph();
+      refreshBranches();
     } catch (err) {
       setDialogError(String(err));
     }
@@ -134,6 +137,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
       await createTag(path, name, state.sha, state.annotated ? message : null);
       closeDialog();
       refreshGraph();
+      refreshBranches();
     } catch (err) {
       setDialogError(String(err));
     }

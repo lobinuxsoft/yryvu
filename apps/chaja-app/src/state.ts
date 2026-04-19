@@ -114,6 +114,13 @@ export function refreshGraph() {
   setGraphNonce((n) => n + 1);
 }
 
+/// Bumped after any ref-mutating op (branch create/rename/delete, tag
+/// create, …) so the sidebar branch list and repo-state banner re-fetch.
+export const [branchesNonce, setBranchesNonce] = createSignal(0);
+export function refreshBranches() {
+  setBranchesNonce((n) => n + 1);
+}
+
 export const dirtyFileCount = createMemo(() => {
   const s = workingTreeStatus();
   if (!s) return 0;

@@ -112,43 +112,63 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-interface DiffFileBlockProps {
+export type DiffViewMode = "unified" | "split";
+
+export interface DiffFileBlockProps {
   file: FileDiff;
+  /**
+   * When true, skip the collapsible header and always show content.
+   * Used by `FileDiffTab` when a single file is rendered full-width in the
+   * main area — the tab supplies its own header (breadcrumb + close).
+   */
+  headless?: boolean;
+  alwaysExpanded?: boolean;
+  /**
+   * `unified` is the single-column view with +/- sigils (default, good for
+   * narrow panels). `split` is the side-by-side GitKraken-style view
+   * (old on the left, new on the right); better for wide surfaces.
+   */
+  viewMode?: DiffViewMode;
 }
 
-function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
+export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
   const [expanded, setExpanded] = createSignal(true);
+  const isOpen = () => props.alwaysExpanded || expanded();
   const status = () => statusLabel(props.file.status);
   const lang = () => detectLanguage(props.file.path);
 
   return (
     <div class="diff-file" data-status={props.file.status}>
-      <button
-        class="diff-file__header"
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <span class="diff-file__caret">{expanded() ? "▾" : "▸"}</span>
-        <span class="diff-file__status" data-tone={status().tone}>
-          {status().label}
-        </span>
-        <Show when={props.file.old_path}>
-          <span class="diff-file__old-path">{props.file.old_path} →</span>
-        </Show>
-        <span class="diff-file__path">{props.file.path}</span>
-        <Show when={props.file.additions > 0 || props.file.deletions > 0}>
-          <span class="diff-file__stats">
-            <Show when={props.file.additions > 0}>
-              <span class="diff-file__stats--add">+{props.file.additions}</span>
-            </Show>
-            <Show when={props.file.deletions > 0}>
-              <span class="diff-file__stats--del">-{props.file.deletions}</span>
-            </Show>
+      <Show when={!props.headless}>
+        <button
+          class="diff-file__header"
+          type="button"
+          onClick={() => !props.alwaysExpanded && setExpanded((v) => !v)}
+        >
+          <Show when={!props.alwaysExpanded}>
+            <span class="diff-file__caret">{expanded() ? "▾" : "▸"}</span>
+          </Show>
+          <span class="diff-file__status" data-tone={status().tone}>
+            {status().label}
           </span>
-        </Show>
-      </button>
+          <Show when={props.file.old_path}>
+            <span class="diff-file__old-path">{props.file.old_path} →</span>
+          </Show>
+          <span class="diff-file__path">{props.file.path}</span>
+          <Show when={props.file.additions > 0 || props.file.deletions > 0}>
+            <span class="diff-file__stats">
+              <Show when={props.file.additions > 0}>
+                <span class="diff-file__stats--add">+{props.file.additions}</span>
+              </Show>
+              <Show when={props.file.deletions > 0}>
+                <span class="diff-file__stats--del">-{props.file.deletions}</span>
+              </Show>
+            </span>
+          </Show>
+        </button>
+      </Show>
 
-      <Show when={expanded()}>
+      <Show when={isOpen()}>
         <Show when={props.file.is_binary}>
           <div class="diff-file__notice">
             Binary file — not shown. ({formatBytes(props.file.new_size || props.file.old_size)})
@@ -167,14 +187,28 @@ function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
             props.file.hunks.length > 0
           }
         >
-          <div class="diff-file__hunks">
+          <div
+            class="diff-file__hunks"
+            data-view-mode={props.viewMode ?? "unified"}
+          >
             <For each={props.file.hunks}>
               {(hunk) => (
                 <div class="diff-hunk">
                   <div class="diff-hunk__header">{hunk.header}</div>
-                  <For each={hunk.lines}>
-                    {(line) => <DiffLineRow line={line} language={lang()} />}
-                  </For>
+                  <Show
+                    when={props.viewMode === "split"}
+                    fallback={
+                      <For each={hunk.lines}>
+                        {(line) => <DiffLineRow line={line} language={lang()} />}
+                      </For>
+                    }
+                  >
+                    <For each={pairLines(hunk.lines)}>
+                      {(pair) => (
+                        <SplitLineRow pair={pair} language={lang()} />
+                      )}
+                    </For>
+                  </Show>
                 </div>
               )}
             </For>
@@ -210,6 +244,72 @@ function DiffLineRow(props: { line: DiffLine; language?: string }): JSX.Element 
         {props.line.kind === "added" ? "+" : props.line.kind === "removed" ? "-" : " "}
       </span>
       <span class="diff-line__content" innerHTML={html()} />
+    </div>
+  );
+}
+
+interface SplitPair {
+  left: DiffLine | null;
+  right: DiffLine | null;
+}
+
+/**
+ * Walk unified-diff lines and pair them into split-view rows.
+ * Context lines go to both columns. A block of N removed followed by M added
+ * is zipped: rows 1..min(N,M) pair them, rows beyond one side get `null` on
+ * the other. This matches the GitKraken side-by-side behaviour.
+ */
+function pairLines(lines: DiffLine[]): SplitPair[] {
+  const rows: SplitPair[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.kind === "context") {
+      rows.push({ left: line, right: line });
+      i++;
+      continue;
+    }
+    const removed: DiffLine[] = [];
+    const added: DiffLine[] = [];
+    while (i < lines.length && lines[i].kind === "removed") {
+      removed.push(lines[i]);
+      i++;
+    }
+    while (i < lines.length && lines[i].kind === "added") {
+      added.push(lines[i]);
+      i++;
+    }
+    const pairs = Math.max(removed.length, added.length);
+    for (let j = 0; j < pairs; j++) {
+      rows.push({
+        left: removed[j] ?? null,
+        right: added[j] ?? null,
+      });
+    }
+  }
+  return rows;
+}
+
+function SplitLineRow(props: {
+  pair: SplitPair;
+  language?: string;
+}): JSX.Element {
+  const leftHtml = () =>
+    props.pair.left ? highlightLine(props.pair.left.content, props.language) : "";
+  const rightHtml = () =>
+    props.pair.right ? highlightLine(props.pair.right.content, props.language) : "";
+  const leftKind = () => props.pair.left?.kind ?? "empty";
+  const rightKind = () => props.pair.right?.kind ?? "empty";
+  return (
+    <div class="diff-split-row">
+      <div class="diff-split-cell" data-kind={leftKind()}>
+        <span class="diff-line__no">{props.pair.left?.old_line_no ?? ""}</span>
+        <span class="diff-line__content" innerHTML={leftHtml()} />
+      </div>
+      <div class="diff-split-cell" data-kind={rightKind()}>
+        <span class="diff-line__no">{props.pair.right?.new_line_no ?? ""}</span>
+        <span class="diff-line__content" innerHTML={rightHtml()} />
+      </div>
     </div>
   );
 }

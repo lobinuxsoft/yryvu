@@ -1,155 +1,122 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createResource, For, Show } from "solid-js";
+import { createEffect, on, onCleanup, onMount, Show } from "solid-js";
 
-import { getCommitDiff, type CommitDiff, type FileDiff, type FileStatus } from "../../ipc";
+import { commitStaged, stageFiles, unstageFiles } from "../../ipc";
 import {
-  openDiffTab,
+  dirtyFileCount,
+  fullCommitMessage,
+  inspectorMode,
+  refreshGraph,
+  refreshWorkingTree,
   repoPath,
   selectedCommit,
-  selectedDiffFile,
+  setCommitDescription,
+  setCommitMessage,
+  setInspectorMode,
+  setSelectedCommit,
+  workingTreeStatus,
 } from "../../state";
-
-function statusTone(status: FileStatus): { label: string; tone: string } {
-  switch (status) {
-    case "added":
-      return { label: "A", tone: "added" };
-    case "modified":
-      return { label: "M", tone: "modified" };
-    case "deleted":
-      return { label: "D", tone: "deleted" };
-    case "renamed":
-      return { label: "R", tone: "renamed" };
-    case "copied":
-      return { label: "C", tone: "renamed" };
-    case "type-change":
-      return { label: "T", tone: "modified" };
-    default:
-      return { label: "·", tone: "modified" };
-  }
-}
+import { CommitDetails } from "./CommitDetails";
+import { StagingPanel } from "./StagingPanel";
 
 export function RightPanel() {
-  const dirtyFileCount = () => 0;
-
-  const [diff] = createResource<CommitDiff | undefined, [string, string]>(
-    () => {
-      const p = repoPath();
-      const s = selectedCommit();
-      return p && s ? ([p, s] as [string, string]) : undefined;
-    },
-    async ([p, s]) => await getCommitDiff(p, s),
+  // Leaving staging mode whenever the user picks a different commit keeps the
+  // inspector in sync with the graph selection.
+  createEffect(
+    on(
+      selectedCommit,
+      (sha) => {
+        if (sha) setInspectorMode("details");
+      },
+      { defer: true }
+    )
   );
 
-  const totals = () => {
-    const d = diff();
-    if (!d) return { add: 0, del: 0, files: 0 };
-    return d.files.reduce(
-      (acc, f) => ({
-        add: acc.add + f.additions,
-        del: acc.del + f.deletions,
-        files: acc.files + 1,
-      }),
-      { add: 0, del: 0, files: 0 },
-    );
-  };
+  // Refresh working-tree status whenever the window regains focus or becomes
+  // visible — covers the common flow where the user edits files in an external
+  // editor and alt-tabs back to Chajá.
+  onMount(() => {
+    const refresh = () => refreshWorkingTree();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    onCleanup(() => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    });
+  });
+
+  async function handleStage(paths: string[]) {
+    const p = repoPath();
+    if (!p || paths.length === 0) return;
+    try {
+      await stageFiles(p, paths);
+    } catch (err) {
+      console.error("stage_files failed", err);
+    }
+    refreshWorkingTree();
+  }
+
+  async function handleUnstage(paths: string[]) {
+    const p = repoPath();
+    if (!p || paths.length === 0) return;
+    try {
+      await unstageFiles(p, paths);
+    } catch (err) {
+      console.error("unstage_files failed", err);
+    }
+    refreshWorkingTree();
+  }
+
+  async function handleCommit() {
+    const p = repoPath();
+    const msg = fullCommitMessage();
+    if (!p || !msg) return;
+    let newSha: string;
+    try {
+      newSha = await commitStaged(p, msg);
+      setCommitMessage("");
+      setCommitDescription("");
+    } catch (err) {
+      console.error("commit_staged failed", err);
+      return;
+    }
+    refreshWorkingTree();
+    refreshGraph();
+    setSelectedCommit(newSha);
+    setInspectorMode("details");
+  }
 
   return (
     <aside class="inspector">
-      <Show when={dirtyFileCount() > 0}>
+      <Show when={dirtyFileCount() > 0 && inspectorMode() === "details"}>
         <div class="inspector__banner">
           <span>
             {dirtyFileCount()} file change{dirtyFileCount() === 1 ? "" : "s"} in working directory
           </span>
-          <button class="inspector__banner-action" type="button" disabled>
+          <button
+            class="inspector__banner-action"
+            type="button"
+            onClick={() => setInspectorMode("staging")}
+          >
             View Changes
           </button>
         </div>
       </Show>
 
       <div class="inspector__body">
-        <Show
-          when={selectedCommit()}
-          fallback={<p class="inspector__empty">Select a commit to see its details.</p>}
-        >
-          {(sha) => (
-            <>
-              <div class="inspector__header">
-                <span class="inspector__header-label">commit</span>
-                <code class="inspector__header-sha">{sha().slice(0, 10)}</code>
-              </div>
+        <Show when={inspectorMode() === "staging"}>
+          <StagingPanel
+            status={workingTreeStatus()}
+            onStage={handleStage}
+            onUnstage={handleUnstage}
+            onBack={() => setInspectorMode("details")}
+            onCommit={handleCommit}
+          />
+        </Show>
 
-              <Show when={diff.loading}>
-                <div class="inspector__status">Loading commit details…</div>
-              </Show>
-              <Show when={diff.error}>
-                <div class="inspector__error">{String(diff.error)}</div>
-              </Show>
-
-              <Show when={diff() && !diff.loading && !diff.error}>
-                <div class="inspector__summary">
-                  <span>
-                    {totals().files} file{totals().files === 1 ? "" : "s"} changed
-                  </span>
-                  <Show when={totals().add > 0 || totals().del > 0}>
-                    <span class="inspector__summary-stats">
-                      <Show when={totals().add > 0}>
-                        <span class="inspector__summary-stats--add">+{totals().add}</span>
-                      </Show>
-                      <Show when={totals().del > 0}>
-                        <span class="inspector__summary-stats--del">-{totals().del}</span>
-                      </Show>
-                    </span>
-                  </Show>
-                  <Show when={diff()!.parent_sha}>
-                    <span class="inspector__summary-parent">
-                      vs <code>{diff()!.parent_sha!.slice(0, 7)}</code>
-                    </span>
-                  </Show>
-                </div>
-
-                <ul class="changed-files">
-                  <For each={diff()!.files}>
-                    {(f: FileDiff) => {
-                      const s = statusTone(f.status);
-                      const isActive = () =>
-                        selectedDiffFile()?.sha === diff()!.sha &&
-                        selectedDiffFile()?.path === f.path;
-                      return (
-                        <li>
-                          <button
-                            class="changed-files__row"
-                            type="button"
-                            data-active={isActive() ? "true" : "false"}
-                            title={f.path}
-                            onClick={() => openDiffTab(diff()!.sha, f.path)}
-                          >
-                            <span class="changed-files__status" data-tone={s.tone}>
-                              {s.label}
-                            </span>
-                            <Show when={f.old_path}>
-                              <span class="changed-files__old">{f.old_path} →</span>
-                            </Show>
-                            <span class="changed-files__path">{f.path}</span>
-                            <Show when={f.additions > 0 || f.deletions > 0}>
-                              <span class="changed-files__stats">
-                                <Show when={f.additions > 0}>
-                                  <span class="changed-files__stats--add">+{f.additions}</span>
-                                </Show>
-                                <Show when={f.deletions > 0}>
-                                  <span class="changed-files__stats--del">-{f.deletions}</span>
-                                </Show>
-                              </span>
-                            </Show>
-                          </button>
-                        </li>
-                      );
-                    }}
-                  </For>
-                </ul>
-              </Show>
-            </>
-          )}
+        <Show when={inspectorMode() === "details"}>
+          <CommitDetails />
         </Show>
       </div>
     </aside>

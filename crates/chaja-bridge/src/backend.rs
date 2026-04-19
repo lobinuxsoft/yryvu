@@ -152,6 +152,8 @@ pub struct CommitDiff {
 /// returned with `truncated = true` and empty `hunks`.
 pub const DIFF_MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
 
+pub use crate::repo::staging::{WorkingTreeChange, WorkingTreeStatus};
+
 #[derive(Debug, Clone, Serialize)]
 pub struct RepoStateInfo {
     /// One of: `clean` / `merge` / `rebase` / `cherry-pick` / `revert` /
@@ -223,6 +225,18 @@ pub trait GitBackend: Send + Sync {
     fn fetch_prune(&self, repo_path: &Path, remote: Option<&str>) -> Result<(), BackendError>;
 
     fn commit_diff(&self, repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError>;
+
+    fn working_tree_status(&self, repo_path: &Path) -> Result<WorkingTreeStatus, BackendError>;
+
+    fn stage_files(&self, repo_path: &Path, paths: &[String]) -> Result<(), BackendError>;
+
+    fn unstage_files(&self, repo_path: &Path, paths: &[String]) -> Result<(), BackendError>;
+
+    fn diff_unstaged(&self, repo_path: &Path, path: &str) -> Result<FileDiff, BackendError>;
+
+    fn diff_staged(&self, repo_path: &Path, path: &str) -> Result<FileDiff, BackendError>;
+
+    fn commit_staged(&self, repo_path: &Path, message: &str) -> Result<String, BackendError>;
 }
 
 pub use crate::repo::GixBackend;

@@ -1,0 +1,244 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   Inspector staging mode — Unstaged/Staged sections with per-file actions.
+   ======================================================================== */
+.staging {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: -12px;
+  padding: 0;
+}
+
+.staging__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--bg-3);
+  background: var(--bg-1);
+  font-size: 12px;
+}
+
+.staging__back {
+  background: transparent;
+  border: 0;
+  color: var(--fg-2);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.staging__back:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
+.staging__heading {
+  color: var(--fg-1);
+}
+
+.staging__section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 6px 6px;
+}
+
+.staging__section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: var(--fg-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.staging__section-title {
+  font-weight: 600;
+}
+
+.staging__section-count {
+  font-size: 10px;
+  background: var(--bg-3);
+  color: var(--fg-1);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.staging__stage-all {
+  margin-left: auto;
+  background: var(--bg-accent);
+  color: var(--fg-0);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.staging__stage-all:hover {
+  background: var(--bg-accent-hover);
+}
+
+.staging__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.staging__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.staging__row:hover {
+  background: var(--bg-2);
+}
+
+.staging__row[data-active="true"] {
+  background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
+}
+
+.staging__row-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: transparent;
+  border: 0;
+  color: var(--fg-1);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.staging__row[data-active="true"] .staging__row-main {
+  color: var(--fg-0);
+}
+
+.staging__row-action {
+  background: transparent;
+  color: var(--fg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+
+.staging__row:hover .staging__row-action,
+.staging__row[data-active="true"] .staging__row-action {
+  opacity: 1;
+}
+
+.staging__row-action:hover {
+  background: var(--bg-accent);
+  color: var(--fg-0);
+  border-color: var(--bg-accent);
+}
+
+/* ========================================================================
+   Commit form — bottom of the staging panel.
+   ======================================================================== */
+.staging__commit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--bg-3);
+  background: var(--bg-1);
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+}
+
+.staging__commit-form__header {
+  font-size: 11px;
+  color: var(--fg-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.staging__commit-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--fg-2);
+}
+
+.staging__commit-form__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.staging__commit-form__counter {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-3);
+}
+
+.staging__commit-form__counter[data-overflow="true"] {
+  color: var(--danger);
+}
+
+.staging__commit-form__input,
+.staging__commit-form__textarea {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  outline: none;
+}
+
+.staging__commit-form__input:focus,
+.staging__commit-form__textarea:focus {
+  border-color: var(--info);
+}
+
+.staging__commit-form__textarea {
+  resize: vertical;
+  min-height: 50px;
+}
+
+.staging__commit-form__submit {
+  background: var(--success);
+  color: var(--bg-0);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.staging__commit-form__submit:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--success) 80%, white);
+}
+
+.staging__commit-form__submit:disabled {
+  background: var(--bg-3);
+  color: var(--fg-3);
+  cursor: not-allowed;
+}

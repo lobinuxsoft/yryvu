@@ -6,6 +6,7 @@
 @import "./toolbar.css";
 @import "./sidebar.css";
 @import "./inspector.css";
+@import "./staging.css";
 @import "./diff.css";
 @import "./status-bar.css";
 @import "./cold-start.css";

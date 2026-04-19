@@ -2,38 +2,70 @@
 
 import { createResource, Show } from "solid-js";
 
-import { getCommitDiff, type CommitDiff, type FileDiff } from "../../ipc";
-import { closeDiffTab, repoPath, selectedDiffFile } from "../../state";
+import {
+  getCommitDiff,
+  getStagedDiff,
+  getUnstagedDiff,
+  type FileDiff,
+} from "../../ipc";
+import {
+  closeDiffTab,
+  repoPath,
+  selectedDiffFile,
+  workingTreeNonce,
+} from "../../state";
 import { DiffFileBlock } from "../DiffView";
 
+async function loadDiff(
+  repo: string,
+  selection: NonNullable<ReturnType<typeof selectedDiffFile>>
+): Promise<FileDiff | undefined> {
+  if (selection.kind === "commit") {
+    const commit = await getCommitDiff(repo, selection.sha);
+    return commit.files.find((f) => f.path === selection.path);
+  }
+  if (selection.side === "unstaged") {
+    return await getUnstagedDiff(repo, selection.path);
+  }
+  return await getStagedDiff(repo, selection.path);
+}
+
 export function FileDiffTab() {
-  const [diff] = createResource<CommitDiff | undefined, [string, string]>(
+  const [file] = createResource<FileDiff | undefined, [string, NonNullable<ReturnType<typeof selectedDiffFile>>, number]>(
     () => {
       const p = repoPath();
-      const sdf = selectedDiffFile();
-      return p && sdf ? ([p, sdf.sha] as [string, string]) : undefined;
+      const sel = selectedDiffFile();
+      if (!p || !sel) return undefined;
+      return [p, sel, workingTreeNonce()] as const;
     },
-    async ([p, sha]) => await getCommitDiff(p, sha),
+    async ([p, sel]) => await loadDiff(p, sel)
   );
 
-  const targetPath = () => selectedDiffFile()?.path;
+  const selection = () => selectedDiffFile();
+  const targetPath = () => selection()?.path;
 
-  const file = (): FileDiff | undefined => {
-    const c = diff();
-    const path = targetPath();
-    if (!c || !path) return undefined;
-    return c.files.find((f) => f.path === path);
+  const subtitle = () => {
+    const sel = selection();
+    if (!sel) return null;
+    if (sel.kind === "commit") {
+      return (
+        <span class="file-diff-tab__commit">
+          in <code>{sel.sha.slice(0, 7)}</code>
+        </span>
+      );
+    }
+    return (
+      <span class="file-diff-tab__commit">
+        {sel.side === "unstaged" ? "unstaged" : "staged"}
+      </span>
+    );
   };
 
   return (
     <div class="file-diff-tab">
       <header class="file-diff-tab__header">
         <span class="file-diff-tab__path">{targetPath()}</span>
-        <Show when={diff()?.sha}>
-          <span class="file-diff-tab__commit">
-            in <code>{diff()!.sha.slice(0, 7)}</code>
-          </span>
-        </Show>
+        {subtitle()}
         <button
           class="file-diff-tab__close"
           type="button"
@@ -46,18 +78,18 @@ export function FileDiffTab() {
       </header>
 
       <div class="file-diff-tab__body">
-        <Show when={diff.loading}>
+        <Show when={file.loading}>
           <div class="file-diff-tab__status">Loading diff…</div>
         </Show>
-        <Show when={diff.error}>
-          <div class="file-diff-tab__error">{String(diff.error)}</div>
+        <Show when={file.error}>
+          <div class="file-diff-tab__error">{String(file.error)}</div>
         </Show>
-        <Show when={diff() && !diff.loading && !diff.error}>
+        <Show when={file() && !file.loading && !file.error}>
           <Show
             when={file()}
             fallback={
               <div class="file-diff-tab__status">
-                File <code>{targetPath()}</code> not found in the commit's diff.
+                No diff available for <code>{targetPath()}</code>.
               </div>
             }
           >

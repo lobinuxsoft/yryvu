@@ -3,7 +3,16 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 
 import { streamGraph, type GraphRow } from "../../ipc";
-import { selectedCommit, setSelectedCommit } from "../../state";
+import {
+  commitMessage,
+  dirtyFileCount,
+  graphNonce,
+  inspectorMode,
+  selectedCommit,
+  setCommitMessage,
+  setInspectorMode,
+  setSelectedCommit,
+} from "../../state";
 import { CommitGraphRenderer } from "./renderer";
 import { computeVisible } from "./virtualize";
 
@@ -62,7 +71,20 @@ export function CommitGraph(props: CommitGraphProps) {
     const ro = new ResizeObserver(() => applySize());
     ro.observe(scrollEl);
 
-    const handle = streamGraph(props.repoPath, (batch) => {
+    onCleanup(() => {
+      ro.disconnect();
+      cancelAnimationFrame(frame);
+    });
+  });
+
+  // (Re-)stream the commit graph whenever the repo path or graphNonce changes.
+  createEffect(() => {
+    const path = props.repoPath;
+    graphNonce();
+    setRows([]);
+    setLoading(true);
+    setError(undefined);
+    const handle = streamGraph(path, (batch) => {
       setRows((prev) => prev.concat(batch));
       scheduleDraw();
     });
@@ -72,12 +94,7 @@ export function CommitGraph(props: CommitGraphProps) {
         setLoading(false);
         setError(String(e));
       });
-
-    onCleanup(() => {
-      ro.disconnect();
-      cancelAnimationFrame(frame);
-      handle.stop();
-    });
+    onCleanup(() => handle.stop());
   });
 
   createEffect(() => {
@@ -99,6 +116,11 @@ export function CommitGraph(props: CommitGraphProps) {
 
   const totalHeight = () => rows().length * ROW_HEIGHT;
 
+  function openStaging() {
+    setSelectedCommit(undefined);
+    setInspectorMode("staging");
+  }
+
   return (
     <div class="commit-graph">
       <Show when={error()}>
@@ -106,6 +128,40 @@ export function CommitGraph(props: CommitGraphProps) {
       </Show>
       <Show when={loading()}>
         <div class="commit-graph__status">Loading…</div>
+      </Show>
+      <Show when={dirtyFileCount() > 0}>
+        <div
+          class="commit-graph__wip-row"
+          data-active={inspectorMode() === "staging" ? "true" : "false"}
+          onClick={() => openStaging()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openStaging();
+            }
+          }}
+          title="View working-directory changes"
+        >
+          <div class="commit-graph__wip-lane" style={{ width: `${GRAPH_COLUMN_WIDTH}px` }}>
+            <span
+              class="commit-graph__wip-node"
+              aria-hidden="true"
+              style={{ left: `${((rows()[0]?.lane ?? 0) + 1) * LANE_WIDTH}px` }}
+            />
+          </div>
+          <input
+            class="commit-graph__wip-input"
+            type="text"
+            placeholder="// WIP"
+            value={commitMessage()}
+            onInput={(e) => setCommitMessage(e.currentTarget.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <span class="commit-graph__wip-pencil" aria-hidden="true">✎</span>
+          <span class="commit-graph__wip-badge">{dirtyFileCount()}</span>
+        </div>
       </Show>
       <div
         class="commit-graph__scroll"

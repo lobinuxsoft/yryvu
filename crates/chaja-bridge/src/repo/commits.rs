@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use graph_core::{Commit, RefTag};
 
 use crate::backend::{BackendError, CommitDiff};
@@ -14,13 +14,13 @@ pub fn walk_commits(
 ) -> Result<Box<dyn Iterator<Item = Result<Commit, BackendError>> + Send>, BackendError> {
     let repo = open_repo(repo_path)?;
 
-    let head_id = repo
-        .head_id()
-        .context("resolve HEAD")
-        .map_err(BackendError::Revwalk)?;
+    let tips = collect_ref_tips(&repo)?;
+    if tips.is_empty() {
+        return Ok(Box::new(std::iter::empty()));
+    }
 
     let walk = repo
-        .rev_walk(Some(head_id))
+        .rev_walk(tips)
         .sorting(gix::revision::walk::Sorting::ByCommitTime(
             gix::traverse::commit::simple::CommitTimeOrder::NewestFirst,
         ))
@@ -107,4 +107,73 @@ pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendErr
         parent_sha,
         files,
     })
+}
+
+fn collect_ref_tips(repo: &gix::Repository) -> Result<Vec<gix::ObjectId>, BackendError> {
+    let platform = repo
+        .references()
+        .context("open references platform")
+        .map_err(BackendError::Revwalk)?;
+
+    let mut tips: Vec<gix::ObjectId> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    let push_peeled = |reference: gix::Reference<'_>,
+                           tips: &mut Vec<gix::ObjectId>,
+                           seen: &mut std::collections::HashSet<gix::ObjectId>|
+     -> Result<(), BackendError> {
+        let mut reference = reference;
+        let id = reference
+            .peel_to_id_in_place()
+            .context("peel ref tip")
+            .map_err(BackendError::Revwalk)?
+            .detach();
+        if seen.insert(id) {
+            tips.push(id);
+        }
+        Ok(())
+    };
+
+    for reference in platform
+        .local_branches()
+        .context("iterate local branches")
+        .map_err(BackendError::Revwalk)?
+    {
+        let reference = reference
+            .map_err(|e| BackendError::Revwalk(anyhow!("resolve local branch: {e}")))?;
+        push_peeled(reference, &mut tips, &mut seen)?;
+    }
+
+    for reference in platform
+        .remote_branches()
+        .context("iterate remote branches")
+        .map_err(BackendError::Revwalk)?
+    {
+        let reference = reference
+            .map_err(|e| BackendError::Revwalk(anyhow!("resolve remote branch: {e}")))?;
+        // Skip symbolic HEAD pointers like refs/remotes/origin/HEAD.
+        if reference.name().shorten().to_string().ends_with("/HEAD") {
+            continue;
+        }
+        push_peeled(reference, &mut tips, &mut seen)?;
+    }
+
+    for reference in platform
+        .tags()
+        .context("iterate tags")
+        .map_err(BackendError::Revwalk)?
+    {
+        let reference =
+            reference.map_err(|e| BackendError::Revwalk(anyhow!("resolve tag: {e}")))?;
+        push_peeled(reference, &mut tips, &mut seen)?;
+    }
+
+    // Fallback: detached HEAD with no matching branch ref.
+    if tips.is_empty() {
+        if let Ok(head_id) = repo.head_id() {
+            tips.push(head_id.detach());
+        }
+    }
+
+    Ok(tips)
 }

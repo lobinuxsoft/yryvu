@@ -32,6 +32,10 @@ pub struct Commit {
 }
 
 /// Output row ready for the renderer.
+///
+/// `parent_lanes` and `parent_shas` are aligned: index `i` in both refers to the
+/// same parent commit. `parent_shas` lets the renderer look up the parent's
+/// actual row rather than assuming it is the immediately-next row.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GraphRow {
@@ -42,6 +46,7 @@ pub struct GraphRow {
     pub author_date: i64,
     pub lane: u16,
     pub parent_lanes: Vec<u16>,
+    pub parent_shas: Vec<String>,
     pub color_idx: u16,
     pub refs: Vec<RefTag>,
     pub is_merge: bool,

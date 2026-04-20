@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 use std::path::Path;
 
 use anyhow::{anyhow, Context};
@@ -19,6 +21,11 @@ pub fn walk_commits(
         return Ok(Box::new(std::iter::empty()));
     }
 
+    // gix's ByCommitTime sort is not strictly topological — with tied timestamps
+    // across multiple seeded tips the root can land anywhere in the output.
+    // Collect eagerly, then re-sort via Kahn's algorithm with committer_time as
+    // tiebreaker. This guarantees children appear before their parents (invariant
+    // required by the lane assigner).
     let walk = repo
         .rev_walk(tips)
         .sorting(gix::revision::walk::Sorting::ByCommitTime(
@@ -28,9 +35,7 @@ pub fn walk_commits(
         .context("start revwalk")
         .map_err(BackendError::Revwalk)?;
 
-    // Collect eagerly for a first cut. Streaming via Tauri events happens at the
-    // commands layer — this iterator feeds into the lane assigner synchronously.
-    let mut commits = Vec::new();
+    let mut commits: HashMap<String, Commit> = HashMap::new();
     for info in walk {
         let info = info.map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
         let gix_commit = repo
@@ -51,18 +56,97 @@ pub fn walk_commits(
 
         let author_line = format!("{} <{}>", author.name, author.email);
         let summary = message.summary().to_string();
+        let sha = info.id.to_string();
 
-        commits.push(Ok(Commit {
-            sha: info.id.to_string(),
-            parents,
-            summary,
-            author: author_line,
-            author_date: time.seconds,
-            refs: Vec::<RefTag>::new(),
-        }));
+        commits.insert(
+            sha.clone(),
+            Commit {
+                sha,
+                parents,
+                summary,
+                author: author_line,
+                author_date: time.seconds,
+                refs: Vec::<RefTag>::new(),
+            },
+        );
     }
 
-    Ok(Box::new(commits.into_iter()))
+    let sorted = topo_sort_children_first(commits);
+    Ok(Box::new(sorted.into_iter().map(Ok)))
+}
+
+/// Kahn topological sort that emits children before parents. Ties (commits
+/// whose in-degree reaches zero simultaneously) are broken by committer_time
+/// descending, matching the visual order of `git log --topo-order --date-order`.
+fn topo_sort_children_first(mut commits: HashMap<String, Commit>) -> Vec<Commit> {
+    // In-degree = number of commits in our set that reference this commit as parent.
+    // Leaves (ref tips reachable only from above) start at 0.
+    let mut in_degree: HashMap<String, usize> = commits.keys().map(|k| (k.clone(), 0)).collect();
+    for commit in commits.values() {
+        for parent in &commit.parents {
+            if let Some(entry) = in_degree.get_mut(parent) {
+                *entry += 1;
+            }
+        }
+    }
+
+    let mut heap: BinaryHeap<TopoEntry> = BinaryHeap::new();
+    for (sha, deg) in &in_degree {
+        if *deg == 0 {
+            if let Some(commit) = commits.get(sha) {
+                heap.push(TopoEntry {
+                    time: commit.author_date,
+                    sha: sha.clone(),
+                });
+            }
+        }
+    }
+
+    let mut out = Vec::with_capacity(commits.len());
+    while let Some(entry) = heap.pop() {
+        let commit = match commits.remove(&entry.sha) {
+            Some(c) => c,
+            None => continue,
+        };
+        for parent in &commit.parents {
+            if let Some(deg) = in_degree.get_mut(parent) {
+                *deg -= 1;
+                if *deg == 0 {
+                    if let Some(parent_commit) = commits.get(parent) {
+                        heap.push(TopoEntry {
+                            time: parent_commit.author_date,
+                            sha: parent.clone(),
+                        });
+                    }
+                }
+            }
+        }
+        out.push(commit);
+    }
+
+    out
+}
+
+#[derive(PartialEq, Eq)]
+struct TopoEntry {
+    time: i64,
+    sha: String,
+}
+
+impl Ord for TopoEntry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Max-heap on time so newer commits are emitted first among tied-ready
+        // leaves. SHA breaks perfect ties deterministically.
+        self.time
+            .cmp(&other.time)
+            .then_with(|| other.sha.cmp(&self.sha))
+    }
+}
+
+impl PartialOrd for TopoEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError> {

@@ -142,8 +142,16 @@ export class CommitGraphRenderer {
    * Upload the rows currently in the visible window + margin and issue a draw.
    * `firstRow` is the absolute index of `rows[0]` in the full graph (so we can
    * position nodes relative to the scrollTop passed in).
+   *
+   * `shaToRow` is the full sha→absRow map built from all streamed rows, used
+   * to anchor edges to their actual parent row regardless of topological gaps.
    */
-  draw(rows: GraphRow[], firstRow: number, scrollTop: number) {
+  draw(
+    rows: GraphRow[],
+    firstRow: number,
+    scrollTop: number,
+    shaToRow: Map<string, number>,
+  ) {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     if (rows.length === 0) return;
 
@@ -170,10 +178,17 @@ export class CommitGraphRenderer {
       centers[i * 2 + 1] = cy;
       colors[i] = row.color_idx;
 
-      row.parent_lanes.forEach((parentLane) => {
+      row.parent_lanes.forEach((parentLane, pi) => {
         const px = (parentLane + 1) * laneWidth * dpr;
-        const py = (absRow + 1.5) * rowHeight * dpr - scrollTopPx;
         if (parentLane === row.lane) {
+          // Same-lane continuation: long straight stroke to the parent's real
+          // row. This forms the continuous "pipe" for the lane even when the
+          // parent lives several rows below the child.
+          const parentSha = row.parent_shas[pi];
+          const parentAbsRow = parentSha !== undefined
+            ? shaToRow.get(parentSha) ?? absRow + 1
+            : absRow + 1;
+          const py = (parentAbsRow + 0.5) * rowHeight * dpr - scrollTopPx;
           this.pushStraightQuad(
             edgePositions,
             edgeColors,
@@ -186,6 +201,10 @@ export class CommitGraphRenderer {
             row.color_idx,
           );
         } else {
+          // Cross-lane transition: short curve that peels off to the adjacent
+          // row on the parent's lane. The rest of the distance to the parent's
+          // actual row is covered by the target lane's own same-lane pipe.
+          const py = (absRow + 1.5) * rowHeight * dpr - scrollTopPx;
           this.pushBezierStrip(
             edgePositions,
             edgeColors,

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
 
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
@@ -121,13 +121,20 @@ export function CommitGraph(props: CommitGraphProps) {
     scheduleDraw();
   });
 
+  const shaToRow = createMemo(() => {
+    const map = new Map<string, number>();
+    const list = rows();
+    for (let i = 0; i < list.length; i++) map.set(list[i].sha, i);
+    return map;
+  });
+
   function scheduleDraw() {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
       if (!renderer) return;
       const range = computeVisible(scrollTop(), viewportH(), ROW_HEIGHT, rows().length);
       const slice = rows().slice(range.start, range.end);
-      renderer.draw(slice, range.start, scrollTop());
+      renderer.draw(slice, range.start, scrollTop(), shaToRow());
     });
   }
 

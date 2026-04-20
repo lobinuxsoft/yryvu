@@ -23,7 +23,6 @@ import { computeVisible } from "./virtualize";
 
 const ROW_HEIGHT = 24;
 const LANE_WIDTH = 14;
-const GRAPH_COLUMN_WIDTH = 220;
 
 export interface CommitGraphProps {
   repoPath: string;
@@ -73,11 +72,10 @@ export function CommitGraph(props: CommitGraphProps) {
     // pass; without this the canvas stays at 0×0 until a user-driven resize.
     const applySize = () => {
       if (!canvas || !scrollEl || !renderer) return;
-      const w = GRAPH_COLUMN_WIDTH;
+      const w = Math.floor(canvas.getBoundingClientRect().width);
       const rect = scrollEl.getBoundingClientRect();
       const h = Math.max(scrollEl.clientHeight, Math.floor(rect.height));
-      if (h === 0) return;
-      canvas.style.width = `${w}px`;
+      if (h === 0 || w === 0) return;
       canvas.style.height = `${h}px`;
       renderer.resize(w, h);
       setViewportH(h);
@@ -88,6 +86,7 @@ export function CommitGraph(props: CommitGraphProps) {
     requestAnimationFrame(applySize);
     const ro = new ResizeObserver(() => applySize());
     ro.observe(scrollEl);
+    ro.observe(canvas);
 
     onCleanup(() => {
       ro.disconnect();
@@ -162,23 +161,26 @@ export function CommitGraph(props: CommitGraphProps) {
           }}
           title="View working-directory changes"
         >
-          <div class="commit-graph__wip-lane" style={{ width: `${GRAPH_COLUMN_WIDTH}px` }}>
+          <div class="commit-graph__wip-col-branch" aria-hidden="true" />
+          <div class="commit-graph__wip-lane">
             <span
               class="commit-graph__wip-node"
               aria-hidden="true"
               style={{ left: `${((rows()[0]?.lane ?? 0) + 1) * LANE_WIDTH}px` }}
             />
           </div>
-          <input
-            class="commit-graph__wip-input"
-            type="text"
-            placeholder="// WIP"
-            value={commitMessage()}
-            onInput={(e) => setCommitMessage(e.currentTarget.value)}
-            onClick={(e) => e.stopPropagation()}
-          />
-          <span class="commit-graph__wip-pencil" aria-hidden="true">✎</span>
-          <span class="commit-graph__wip-badge">{dirtyFileCount()}</span>
+          <div class="commit-graph__wip-message">
+            <input
+              class="commit-graph__wip-input"
+              type="text"
+              placeholder="// WIP"
+              value={commitMessage()}
+              onInput={(e) => setCommitMessage(e.currentTarget.value)}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <span class="commit-graph__wip-pencil" aria-hidden="true">✎</span>
+            <span class="commit-graph__wip-badge">{dirtyFileCount()}</span>
+          </div>
         </div>
       </Show>
       <div
@@ -186,22 +188,22 @@ export function CommitGraph(props: CommitGraphProps) {
         ref={(el) => (scrollEl = el)}
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
       >
-        <div class="commit-graph__spacer" style={{ height: `${totalHeight()}px` }}>
-          <canvas
-            class="commit-graph__canvas"
-            ref={(el) => (canvas = el)}
-          />
-          <ul class="commit-graph__list" style={{ "margin-left": `${GRAPH_COLUMN_WIDTH}px` }}>
+        <div class="commit-graph__grid" style={{ height: `${totalHeight()}px` }}>
+          <div class="commit-graph__col-branch" aria-hidden="true" />
+          <div class="commit-graph__col-graph">
+            <canvas
+              class="commit-graph__canvas"
+              ref={(el) => (canvas = el)}
+            />
+          </div>
+          <ul class="commit-graph__col-messages">
             {rows().map((r, i) => (
               <li
                 class="commit-graph__row"
                 data-selected={selectedCommit() === r.sha ? "true" : "false"}
                 style={{
-                  position: "absolute",
                   top: `${i * ROW_HEIGHT}px`,
                   height: `${ROW_HEIGHT}px`,
-                  left: `${GRAPH_COLUMN_WIDTH}px`,
-                  right: "0",
                 }}
                 onClick={() => setSelectedCommit(r.sha)}
                 onContextMenu={(e) =>

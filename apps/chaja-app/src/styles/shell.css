@@ -38,11 +38,20 @@
   background: var(--bg-0);
 }
 
+/* Column layout shared between the header row and the CommitGraph body
+   (kept in CSS vars so both stay in sync). */
+.main {
+  --graph-col-branch: 180px;
+  --graph-col-graph: 240px;
+  --graph-col-gap: 8px;
+  --graph-col-padding: 12px;
+}
+
 .main__graph-column-headers {
   display: grid;
-  grid-template-columns: 180px 240px 1fr;
-  gap: 8px;
-  padding: 6px 12px;
+  grid-template-columns: var(--graph-col-branch) var(--graph-col-graph) 1fr;
+  gap: var(--graph-col-gap);
+  padding: 6px var(--graph-col-padding);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;

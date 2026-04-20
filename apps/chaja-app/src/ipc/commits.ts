@@ -46,6 +46,7 @@ export interface GraphRow {
   author_date: number;
   lane: number;
   parent_lanes: number[];
+  parent_shas: string[];
   color_idx: number;
   refs: RefTag[];
   is_merge: boolean;

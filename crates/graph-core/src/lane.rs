@@ -61,6 +61,7 @@ impl LaneAssigner {
             author_date: commit.author_date,
             lane: lane as u16,
             parent_lanes,
+            parent_shas: commit.parents,
             color_idx,
             refs: commit.refs,
             is_merge,

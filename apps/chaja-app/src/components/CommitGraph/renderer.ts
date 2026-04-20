@@ -8,14 +8,18 @@ import { PALETTE, PALETTE_SIZE } from "./palette";
 export interface RendererOptions {
   rowHeight: number;
   laneWidth: number;
-  nodeRadius: number;
+  gutter: number;
+  commitRadius: number;
+  mergeRadius: number;
   edgeThickness: number;
 }
 
 const DEFAULTS: RendererOptions = {
-  rowHeight: 24,
-  laneWidth: 14,
-  nodeRadius: 5,
+  rowHeight: 28,
+  laneWidth: 22,
+  gutter: 28,
+  commitRadius: 11,
+  mergeRadius: 6,
   edgeThickness: 2,
 };
 
@@ -25,22 +29,24 @@ precision highp float;
 in vec2 a_quad;          // -1..1 quad
 in vec2 a_center_px;     // pixel position of the node
 in float a_color_idx;    // palette index
+in float a_radius;       // radius in device pixels
 
 uniform vec2 u_viewport;
-uniform float u_radius;
 uniform vec3 u_palette[${PALETTE_SIZE}];
 
 out vec2 v_local;
 out vec3 v_color;
+out float v_radius;
 
 void main() {
-  vec2 offset_px = a_quad * (u_radius + 1.5);
+  vec2 offset_px = a_quad * (a_radius + 1.5);
   vec2 pos_px = a_center_px + offset_px;
   vec2 clip = (pos_px / u_viewport) * 2.0 - 1.0;
   clip.y = -clip.y;
   gl_Position = vec4(clip, 0.0, 1.0);
-  v_local = a_quad * (u_radius + 1.5);
+  v_local = offset_px;
   v_color = u_palette[int(a_color_idx)];
+  v_radius = a_radius;
 }
 `;
 
@@ -49,11 +55,11 @@ precision highp float;
 
 in vec2 v_local;
 in vec3 v_color;
-uniform float u_radius;
+in float v_radius;
 out vec4 frag_color;
 
 void main() {
-  float d = length(v_local) - u_radius;
+  float d = length(v_local) - v_radius;
   float alpha = 1.0 - smoothstep(-1.0, 1.0, d);
   if (alpha < 0.01) discard;
   frag_color = vec4(v_color, alpha);
@@ -155,14 +161,19 @@ export class CommitGraphRenderer {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     if (rows.length === 0) return;
 
-    const { rowHeight, laneWidth, nodeRadius, edgeThickness } = this.options;
+    const { rowHeight, laneWidth, gutter, commitRadius, mergeRadius, edgeThickness } =
+      this.options;
     const dpr = this.renderer.dpr;
     const viewport = [this.viewportSize[0] * dpr, this.viewportSize[1] * dpr] as const;
     const scrollTopPx = scrollTop * dpr;
 
+    const laneCenterX = (lane: number) =>
+      (gutter + lane * laneWidth + laneWidth / 2) * dpr;
+
     const nodeCount = rows.length;
     const centers = new Float32Array(nodeCount * 2);
     const colors = new Float32Array(nodeCount);
+    const radii = new Float32Array(nodeCount);
 
     const edgePositions: number[] = [];
     const edgeColors: number[] = [];
@@ -172,14 +183,15 @@ export class CommitGraphRenderer {
 
     rows.forEach((row, i) => {
       const absRow = firstRow + i;
-      const cx = (row.lane + 1) * laneWidth * dpr;
+      const cx = laneCenterX(row.lane);
       const cy = (absRow + 0.5) * rowHeight * dpr - scrollTopPx;
       centers[i * 2] = cx;
       centers[i * 2 + 1] = cy;
       colors[i] = row.color_idx;
+      radii[i] = (row.is_merge ? mergeRadius : commitRadius) * dpr;
 
       row.parent_lanes.forEach((parentLane, pi) => {
-        const px = (parentLane + 1) * laneWidth * dpr;
+        const px = laneCenterX(parentLane);
         if (parentLane === row.lane) {
           // Same-lane continuation: long straight stroke to the parent's real
           // row. This forms the continuous "pipe" for the lane even when the
@@ -228,21 +240,22 @@ export class CommitGraphRenderer {
       viewport,
       halfStrokePx,
     );
-    this.drawNodes(centers, colors, viewport, nodeRadius * dpr);
+    this.drawNodes(centers, colors, radii, viewport);
   }
 
   private nodeProgram: WebGLProgram | null = null;
-  private nodeLocs: { a_quad: number; a_center: number; a_color: number; u_viewport: WebGLUniformLocation | null; u_radius: WebGLUniformLocation | null; u_palette: WebGLUniformLocation | null } | null = null;
+  private nodeLocs: { a_quad: number; a_center: number; a_color: number; a_radius: number; u_viewport: WebGLUniformLocation | null; u_palette: WebGLUniformLocation | null } | null = null;
   private nodeQuadBuf: WebGLBuffer | null = null;
   private nodeCenterBuf: WebGLBuffer | null = null;
   private nodeColorBuf: WebGLBuffer | null = null;
+  private nodeRadiusBuf: WebGLBuffer | null = null;
   private nodeVAO: WebGLVertexArrayObject | null = null;
 
   private drawNodes(
     centers: Float32Array,
     colors: Float32Array,
+    radii: Float32Array,
     viewport: readonly [number, number],
-    radiusPx: number,
   ) {
     const gl = this.gl as WebGL2RenderingContext;
 
@@ -274,8 +287,8 @@ export class CommitGraphRenderer {
         a_quad: gl.getAttribLocation(prog, "a_quad"),
         a_center: gl.getAttribLocation(prog, "a_center_px"),
         a_color: gl.getAttribLocation(prog, "a_color_idx"),
+        a_radius: gl.getAttribLocation(prog, "a_radius"),
         u_viewport: gl.getUniformLocation(prog, "u_viewport"),
-        u_radius: gl.getUniformLocation(prog, "u_radius"),
         u_palette: gl.getUniformLocation(prog, "u_palette[0]"),
       };
 
@@ -285,6 +298,7 @@ export class CommitGraphRenderer {
       gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
       this.nodeCenterBuf = gl.createBuffer();
       this.nodeColorBuf = gl.createBuffer();
+      this.nodeRadiusBuf = gl.createBuffer();
       this.nodeVAO = gl.createVertexArray();
 
       gl.bindVertexArray(this.nodeVAO);
@@ -300,6 +314,10 @@ export class CommitGraphRenderer {
       gl.enableVertexAttribArray(this.nodeLocs.a_color);
       gl.vertexAttribPointer(this.nodeLocs.a_color, 1, gl.FLOAT, false, 0, 0);
       gl.vertexAttribDivisor(this.nodeLocs.a_color, 1);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.nodeRadiusBuf);
+      gl.enableVertexAttribArray(this.nodeLocs.a_radius);
+      gl.vertexAttribPointer(this.nodeLocs.a_radius, 1, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribDivisor(this.nodeLocs.a_radius, 1);
       gl.bindVertexArray(null);
     }
 
@@ -309,9 +327,10 @@ export class CommitGraphRenderer {
     gl.bufferData(gl.ARRAY_BUFFER, centers, gl.DYNAMIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.nodeColorBuf);
     gl.bufferData(gl.ARRAY_BUFFER, colors, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.nodeRadiusBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, radii, gl.DYNAMIC_DRAW);
 
     gl.uniform2f(this.nodeLocs!.u_viewport, viewport[0], viewport[1]);
-    gl.uniform1f(this.nodeLocs!.u_radius, radiusPx);
     gl.uniform3fv(this.nodeLocs!.u_palette, PALETTE);
 
     gl.enable(gl.BLEND);

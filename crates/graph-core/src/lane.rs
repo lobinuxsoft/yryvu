@@ -2,7 +2,6 @@
 
 use thiserror::Error;
 
-use crate::color::color_idx_for;
 use crate::row::{Commit, GraphRow};
 
 #[derive(Debug, Error)]
@@ -14,7 +13,6 @@ pub enum LaneError {
 #[derive(Debug, Clone)]
 struct Slot {
     expecting: String,
-    color_idx: u16,
 }
 
 /// Stateful lane assigner. Call [`LaneAssigner::assign`] once per commit in reverse
@@ -42,10 +40,7 @@ impl LaneAssigner {
 
     pub fn assign(&mut self, commit: Commit) -> GraphRow {
         let lane = self.claim_lane_for(&commit.sha);
-        let color_idx = self.slots[lane]
-            .as_ref()
-            .map(|s| s.color_idx)
-            .unwrap_or_else(|| color_idx_for(&commit.sha, self.palette_size));
+        let color_idx = (lane as u16) % self.palette_size;
 
         let is_merge = commit.parents.len() > 1;
         let parent_lanes = self.place_parents(lane, &commit.parents);
@@ -72,8 +67,7 @@ impl LaneAssigner {
         if let Some(idx) = self.find_lane_expecting(sha) {
             return idx;
         }
-        let color_idx = color_idx_for(sha, self.palette_size);
-        self.claim_free_or_append(sha.to_string(), color_idx)
+        self.claim_free_or_append(sha.to_string())
     }
 
     fn find_lane_expecting(&self, sha: &str) -> Option<usize> {
@@ -82,18 +76,12 @@ impl LaneAssigner {
             .position(|s| s.as_ref().is_some_and(|slot| slot.expecting == sha))
     }
 
-    fn claim_free_or_append(&mut self, expecting: String, color_idx: u16) -> usize {
+    fn claim_free_or_append(&mut self, expecting: String) -> usize {
         if let Some(idx) = self.slots.iter().position(Option::is_none) {
-            self.slots[idx] = Some(Slot {
-                expecting,
-                color_idx,
-            });
+            self.slots[idx] = Some(Slot { expecting });
             idx
         } else {
-            self.slots.push(Some(Slot {
-                expecting,
-                color_idx,
-            }));
+            self.slots.push(Some(Slot { expecting }));
             self.slots.len() - 1
         }
     }
@@ -114,13 +102,8 @@ impl LaneAssigner {
                 lanes.push(existing as u16);
             }
             _ => {
-                let color_idx = self.slots[current_lane]
-                    .as_ref()
-                    .map(|s| s.color_idx)
-                    .unwrap_or_else(|| color_idx_for(first, self.palette_size));
                 self.slots[current_lane] = Some(Slot {
                     expecting: first.clone(),
-                    color_idx,
                 });
                 lanes.push(current_lane as u16);
             }
@@ -130,8 +113,7 @@ impl LaneAssigner {
             let lane = if let Some(idx) = self.find_lane_expecting(parent) {
                 idx
             } else {
-                let color_idx = color_idx_for(parent, self.palette_size);
-                self.claim_free_or_append(parent.clone(), color_idx)
+                self.claim_free_or_append(parent.clone())
             };
             lanes.push(lane as u16);
         }

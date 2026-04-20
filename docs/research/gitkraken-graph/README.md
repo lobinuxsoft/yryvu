@@ -51,6 +51,17 @@ Two research rounds: see file order below.
 | [11-virtualization.md](11-virtualization.md) | react-virtualized, overscan=0, row recycling, lazy load at 1400 px | 3 |
 | [12-drawing-pipeline.md](12-drawing-pipeline.md) | React component tree, className caches `Bd`/`Gd`, memoization | 3 |
 | [13-interactions.md](13-interactions.md) | Selection, keyboard nav, context menu, search (MiniSearch), density, tooltips | 3 |
+| [14-edge-path-formulas.md](14-edge-path-formulas.md) | Exact SVG `M`/`H`/`V`/`A` sequences per edge transition class | 4 |
+| [15-refs-loading-invalidation.md](15-refs-loading-invalidation.md) | Refs pipeline, `chokidar` watcher, debounced 250 ms, optimistic+verify | 4 |
+| [16-node-overlays.md](16-node-overlays.md) | Avatar, conflict, PR-state, tag star, selection ring, hover halo, animations | 4 |
+| [17-drag-drop-refs.md](17-drag-drop-refs.md) | Native HTML5 drag-and-drop on graph refs (not react-dnd), `GitMergeStrategy` post-drop menu | 4 |
+| [18-conflict-resolver.md](18-conflict-resolver.md) | Monaco DiffEditor 3-pane, `diff3ByPath` state, AI assist, external mergetool integration | 4 |
+| [19-interactive-rebase.md](19-interactive-rebase.md) | `PendingInteractiveRebasePanel`, custom GIT_SEQUENCE_EDITOR sidecar, conflict handoff | 4 |
+| [20-stash-management.md](20-stash-management.md) | `gkGit.stash*` ops, apply-vs-pop default, auto-stash for rebase/checkout, GitFlow integration | 4 |
+| [21-remote-operations.md](21-remote-operations.md) | Push/pull/fetch sagas, force-push two-step confirm, auto-fetch with backoff, frecency multi-remote picker | 4 |
+| [22-auth-flows.md](22-auth-flows.md) | OAuth + PAT vault per profile, SSH keys + passphrase cache, GCM integration, lazy callback model | 4 |
+| [23-command-palette.md](23-command-palette.md) | Domain-scoped fuzzy finder (no command runner), two-axis frecency, scoped hotkey registry | 4 |
+| [24-theme-system.md](24-theme-system.md) | Flat dictionary → CSS custom properties, live reload, profile-scoped, custom themes deprecated | 4 |
 
 ## Chajá implementation status (2026-04-20)
 

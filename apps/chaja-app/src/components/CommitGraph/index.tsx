@@ -21,8 +21,9 @@ import { createCommitOps } from "./useCommitOps";
 import { CommitGraphRenderer } from "./renderer";
 import { computeVisible } from "./virtualize";
 
-const ROW_HEIGHT = 24;
-const LANE_WIDTH = 14;
+const ROW_HEIGHT = 28;
+const LANE_WIDTH = 22;
+const GUTTER = 28;
 
 export interface CommitGraphProps {
   repoPath: string;
@@ -59,7 +60,9 @@ export function CommitGraph(props: CommitGraphProps) {
       renderer = new CommitGraphRenderer(canvas, {
         rowHeight: ROW_HEIGHT,
         laneWidth: LANE_WIDTH,
-        nodeRadius: 5,
+        gutter: GUTTER,
+        commitRadius: 11,
+        mergeRadius: 6,
         edgeThickness: 2,
       });
     } catch (e) {
@@ -173,7 +176,9 @@ export function CommitGraph(props: CommitGraphProps) {
             <span
               class="commit-graph__wip-node"
               aria-hidden="true"
-              style={{ left: `${((rows()[0]?.lane ?? 0) + 1) * LANE_WIDTH}px` }}
+              style={{
+                left: `${GUTTER + (rows()[0]?.lane ?? 0) * LANE_WIDTH + LANE_WIDTH / 2}px`,
+              }}
             />
           </div>
           <div class="commit-graph__wip-message">

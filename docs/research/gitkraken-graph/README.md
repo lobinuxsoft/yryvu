@@ -47,6 +47,10 @@ Two research rounds: see file order below.
 | [07-wip-row.md](07-wip-row.md) | Working-tree pseudo-row styling and dashed connector | 2 |
 | [08-hover-dim.md](08-hover-dim.md) | Ref-hover dim with precomputed childRefs | 2 |
 | [09-color-palette.md](09-color-palette.md) | 10-color CSS-var palette with modulo rotation | 2 |
+| [10-column-resize-reorder.md](10-column-resize-reorder.md) | Column resize handles, drag-and-drop reorder, persistence | 3 |
+| [11-virtualization.md](11-virtualization.md) | react-virtualized, overscan=0, row recycling, lazy load at 1400 px | 3 |
+| [12-drawing-pipeline.md](12-drawing-pipeline.md) | React component tree, className caches `Bd`/`Gd`, memoization | 3 |
+| [13-interactions.md](13-interactions.md) | Selection, keyboard nav, context menu, search (MiniSearch), density, tooltips | 3 |
 
 ## Chajá implementation status (2026-04-20)
 

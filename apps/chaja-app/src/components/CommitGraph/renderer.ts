@@ -65,25 +65,38 @@ precision highp float;
 
 in vec2 a_pos_px;
 in float a_color_idx;
+in float a_dist;
 
 uniform vec2 u_viewport;
 uniform vec3 u_palette[${PALETTE_SIZE}];
 
 out vec3 v_color;
+out float v_dist;
 
 void main() {
   vec2 clip = (a_pos_px / u_viewport) * 2.0 - 1.0;
   clip.y = -clip.y;
   gl_Position = vec4(clip, 0.0, 1.0);
   v_color = u_palette[int(a_color_idx)];
+  v_dist = a_dist;
 }
 `;
 
 const EDGE_FRAG = /* glsl */ `#version 300 es
 precision highp float;
+
 in vec3 v_color;
+in float v_dist;
+
+uniform float u_stroke_half;
+
 out vec4 frag_color;
-void main() { frag_color = vec4(v_color, 0.85); }
+
+void main() {
+  float alpha = 1.0 - smoothstep(u_stroke_half - 1.0, u_stroke_half + 1.0, abs(v_dist));
+  if (alpha < 0.01) discard;
+  frag_color = vec4(v_color, alpha * 0.95);
+}
 `;
 
 type OGLGL = Renderer["gl"];
@@ -143,8 +156,11 @@ export class CommitGraphRenderer {
     const centers = new Float32Array(nodeCount * 2);
     const colors = new Float32Array(nodeCount);
 
-    const edgeSegments: number[] = [];
+    const edgePositions: number[] = [];
     const edgeColors: number[] = [];
+    const edgeDists: number[] = [];
+    const halfStrokePx = (edgeThickness * dpr) / 2;
+    const halfWidthPx = halfStrokePx + 1.5; // stroke half + AA feather
 
     rows.forEach((row, i) => {
       const absRow = firstRow + i;
@@ -157,20 +173,42 @@ export class CommitGraphRenderer {
       row.parent_lanes.forEach((parentLane) => {
         const px = (parentLane + 1) * laneWidth * dpr;
         const py = (absRow + 1.5) * rowHeight * dpr - scrollTopPx;
-        this.pushEdgeQuad(
-          edgeSegments,
-          edgeColors,
-          cx,
-          cy,
-          px,
-          py,
-          edgeThickness * dpr,
-          row.color_idx,
-        );
+        if (parentLane === row.lane) {
+          this.pushStraightQuad(
+            edgePositions,
+            edgeColors,
+            edgeDists,
+            cx,
+            cy,
+            px,
+            py,
+            halfWidthPx,
+            row.color_idx,
+          );
+        } else {
+          this.pushBezierStrip(
+            edgePositions,
+            edgeColors,
+            edgeDists,
+            cx,
+            cy,
+            px,
+            py,
+            rowHeight * dpr,
+            halfWidthPx,
+            row.color_idx,
+          );
+        }
       });
     });
 
-    this.drawEdges(new Float32Array(edgeSegments), new Float32Array(edgeColors), viewport);
+    this.drawEdges(
+      new Float32Array(edgePositions),
+      new Float32Array(edgeColors),
+      new Float32Array(edgeDists),
+      viewport,
+      halfStrokePx,
+    );
     this.drawNodes(centers, colors, viewport, nodeRadius * dpr);
   }
 
@@ -266,16 +304,19 @@ export class CommitGraphRenderer {
   }
 
   private drawEdges(
-    segments: Float32Array,
+    positions: Float32Array,
     colors: Float32Array,
+    dists: Float32Array,
     viewport: readonly [number, number],
+    strokeHalf: number,
   ) {
-    if (segments.length === 0) return;
+    if (positions.length === 0) return;
     const gl: OGLGL = this.gl;
 
     const geometry = new Geometry(gl, {
-      a_pos_px: { size: 2, data: segments },
+      a_pos_px: { size: 2, data: positions },
       a_color_idx: { size: 1, data: colors },
+      a_dist: { size: 1, data: dists },
     });
 
     const program = new Program(gl, {
@@ -284,6 +325,7 @@ export class CommitGraphRenderer {
       uniforms: {
         u_viewport: { value: [viewport[0], viewport[1]] },
         u_palette: { value: PALETTE },
+        u_stroke_half: { value: strokeHalf },
       },
       transparent: true,
       cullFace: false,
@@ -293,28 +335,89 @@ export class CommitGraphRenderer {
     this.renderer.render({ scene: this.edgeMesh, clear: false });
   }
 
-  private pushEdgeQuad(
-    segments: number[],
+  private pushStraightQuad(
+    positions: number[],
     colors: number[],
+    dists: number[],
     ax: number,
     ay: number,
     bx: number,
     by: number,
-    thickness: number,
+    halfW: number,
     colorIdx: number,
   ) {
     const dx = bx - ax;
     const dy = by - ay;
     const len = Math.hypot(dx, dy) || 1;
-    const nx = (-dy / len) * (thickness / 2);
-    const ny = (dx / len) * (thickness / 2);
+    const nx = (-dy / len) * halfW;
+    const ny = (dx / len) * halfW;
 
-    const p0 = [ax + nx, ay + ny];
-    const p1 = [ax - nx, ay - ny];
-    const p2 = [bx + nx, by + ny];
-    const p3 = [bx - nx, by - ny];
+    const lA = [ax + nx, ay + ny];
+    const rA = [ax - nx, ay - ny];
+    const lB = [bx + nx, by + ny];
+    const rB = [bx - nx, by - ny];
 
-    segments.push(...p0, ...p1, ...p2, ...p2, ...p1, ...p3);
+    positions.push(...lA, ...rA, ...lB, ...lB, ...rA, ...rB);
     for (let i = 0; i < 6; i++) colors.push(colorIdx);
+    dists.push(halfW, -halfW, halfW, halfW, -halfW, -halfW);
+  }
+
+  private pushBezierStrip(
+    positions: number[],
+    colors: number[],
+    dists: number[],
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    rowHeightPx: number,
+    halfW: number,
+    colorIdx: number,
+  ) {
+    const SEGMENTS = 14;
+    const p0x = ax;
+    const p0y = ay;
+    const p3x = bx;
+    const p3y = by;
+    // Vertical tangents: control points sit rowHeight/2 above/below the anchors.
+    const p1x = p0x;
+    const p1y = p0y + rowHeightPx * 0.5;
+    const p2x = p3x;
+    const p2y = p3y - rowHeightPx * 0.5;
+
+    // Pre-sample left/right offset points once so each segment shares vertices
+    // with its neighbors (miter-joined via analytic tangent — curvature is low
+    // enough that miter spikes are not a concern at SEGMENTS=14).
+    const lxs = new Float64Array(SEGMENTS + 1);
+    const lys = new Float64Array(SEGMENTS + 1);
+    const rxs = new Float64Array(SEGMENTS + 1);
+    const rys = new Float64Array(SEGMENTS + 1);
+    for (let i = 0; i <= SEGMENTS; i++) {
+      const t = i / SEGMENTS;
+      const omt = 1 - t;
+      // Cubic Bézier position.
+      const bx_ = omt * omt * omt * p0x + 3 * omt * omt * t * p1x + 3 * omt * t * t * p2x + t * t * t * p3x;
+      const by_ = omt * omt * omt * p0y + 3 * omt * omt * t * p1y + 3 * omt * t * t * p2y + t * t * t * p3y;
+      // Analytic tangent dB/dt.
+      const tx = 3 * omt * omt * (p1x - p0x) + 6 * omt * t * (p2x - p1x) + 3 * t * t * (p3x - p2x);
+      const ty = 3 * omt * omt * (p1y - p0y) + 6 * omt * t * (p2y - p1y) + 3 * t * t * (p3y - p2y);
+      const tlen = Math.hypot(tx, ty) || 1;
+      const nx = (-ty / tlen) * halfW;
+      const ny = (tx / tlen) * halfW;
+      lxs[i] = bx_ + nx;
+      lys[i] = by_ + ny;
+      rxs[i] = bx_ - nx;
+      rys[i] = by_ - ny;
+    }
+
+    for (let i = 0; i < SEGMENTS; i++) {
+      const lA = [lxs[i], lys[i]];
+      const rA = [rxs[i], rys[i]];
+      const lB = [lxs[i + 1], lys[i + 1]];
+      const rB = [rxs[i + 1], rys[i + 1]];
+      positions.push(...lA, ...rA, ...lB, ...lB, ...rA, ...rB);
+      for (let k = 0; k < 6; k++) colors.push(colorIdx);
+      dists.push(halfW, -halfW, halfW, halfW, -halfW, -halfW);
+    }
   }
 }

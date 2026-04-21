@@ -2,15 +2,16 @@
 
 mod common;
 
+use std::collections::HashSet;
+
 use common::commit;
-use graph_core::LaneAssigner;
+use graph_core::layout_commits;
 
 #[test]
 fn linear_history_stays_on_lane_zero() {
     let commits = vec![commit("a", &["b"]), commit("b", &["c"]), commit("c", &[])];
 
-    let mut assigner = LaneAssigner::new(32).unwrap();
-    let rows: Vec<_> = commits.into_iter().map(|c| assigner.assign(c)).collect();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert_eq!(rows[0].lane, 0);
     assert_eq!(rows[0].parent_lanes, vec![0]);

@@ -2,12 +2,20 @@
 
 //! Pure-Rust commit graph lane assignment for chaja.
 //!
-//! The [`LaneAssigner`] takes commits in reverse-chronological / reverse-topological
-//! order and emits a [`GraphRow`] per commit with lane, parent-lane, and color-index
-//! information ready for rendering.
+//! The public entry point is [`layout_commits`], which takes a topologically
+//! ordered commit slice (children before parents) together with an optional
+//! set of pinned shas and emits one [`GraphRow`] per commit ready for
+//! rendering.
 
 mod lane;
+mod pinning;
 mod row;
 
-pub use lane::{LaneAssigner, LaneError};
+use std::collections::HashSet;
+
+pub use lane::{layout_commits, LaneAssigner, LaneError};
+pub use pinning::build_pinned_set;
 pub use row::{Commit, GraphRow, RefKind, RefTag};
+
+/// Convenience alias for the pinned-sha set handed to [`layout_commits`].
+pub type PinnedShas = HashSet<String>;

@@ -23,7 +23,7 @@ use crate::backend::{
 };
 
 mod branches;
-mod commits;
+pub(crate) mod commits;
 mod common;
 mod merge;
 mod patches;

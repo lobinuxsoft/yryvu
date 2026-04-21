@@ -220,11 +220,15 @@ impl Default for LaneAssigner {
 
 /// Layout a topologically-ordered commit slice into rendered rows.
 ///
-/// Runs two passes: the first runs the [`LaneAssigner`] streaming algorithm
-/// to resolve each commit's final column, and the second fills in
-/// `parent_lanes` using the finalized sha → lane map. Two passes are needed
-/// because column stealing can change a parent's column *after* its child
-/// has already been assigned.
+/// Runs three passes:
+///
+/// 1. [`LaneAssigner`] streaming algorithm resolves each commit's final column.
+/// 2. `parent_lanes` is filled in using the finalized sha → lane map — stealing
+///    can change a parent's column *after* its child was assigned, so this
+///    pass can't be folded into the first.
+/// 3. [`crate::populate_child_refs`] propagates ref names bottom-up through
+///    the topology so hover-dim (issue #54) can evaluate membership in O(1)
+///    without walking the DAG on every hover event.
 pub fn layout_commits(
     commits: Vec<Commit>,
     palette_size: u16,
@@ -244,7 +248,7 @@ pub fn layout_commits(
         commits_and_lanes.push((commit, lane));
     }
 
-    Ok(commits_and_lanes
+    let mut rows: Vec<GraphRow> = commits_and_lanes
         .into_iter()
         .map(|(commit, lane)| {
             let parent_lanes: Vec<u16> = commit
@@ -267,7 +271,11 @@ pub fn layout_commits(
                 color_idx,
                 refs: commit.refs,
                 is_merge,
+                child_refs: crate::ChildRefs::default(),
             }
         })
-        .collect())
+        .collect();
+
+    crate::populate_child_refs(&mut rows);
+    Ok(rows)
 }

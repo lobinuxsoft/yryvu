@@ -2,11 +2,12 @@
 
 use std::path::PathBuf;
 
-use graph_core::{GraphRow, LaneAssigner};
+use graph_core::{build_pinned_set, layout_commits, Commit, GraphRow};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::backend::{CommitDiff, GitBackend, ResetMode};
+use crate::repo::commits::pick_pinned_head_for_path;
 use crate::repo::GixBackend;
 
 #[derive(Debug, Clone, Serialize)]
@@ -29,13 +30,18 @@ pub async fn stream_graph(
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let backend = GixBackend;
         let walk = backend.walk_commits(&path).map_err(|e| e.to_string())?;
+        let commits: Vec<Commit> = walk
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
 
-        let mut assigner = LaneAssigner::new(32).map_err(|e| e.to_string())?;
-        let mut buffer = Vec::with_capacity(batch_size);
+        let pinned_tip = pick_pinned_head_for_path(&path);
+        let pinned_shas = build_pinned_set(&commits, pinned_tip.as_deref());
 
-        for maybe_commit in walk {
-            let commit = maybe_commit.map_err(|e| e.to_string())?;
-            buffer.push(assigner.assign(commit));
+        let rows = layout_commits(commits, 32, pinned_shas).map_err(|e| e.to_string())?;
+
+        let mut buffer: Vec<GraphRow> = Vec::with_capacity(batch_size);
+        for row in rows {
+            buffer.push(row);
             if buffer.len() >= batch_size {
                 flush(&app, &mut buffer, false).map_err(|e| e.to_string())?;
             }

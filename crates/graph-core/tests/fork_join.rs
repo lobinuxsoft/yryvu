@@ -2,8 +2,10 @@
 
 mod common;
 
+use std::collections::HashSet;
+
 use common::commit;
-use graph_core::LaneAssigner;
+use graph_core::layout_commits;
 
 /// A fork-and-join diamond:
 ///
@@ -23,8 +25,7 @@ fn fork_join_merges_back_into_single_lane() {
         commit("p", &[]),
     ];
 
-    let mut assigner = LaneAssigner::new(32).unwrap();
-    let rows: Vec<_> = commits.into_iter().map(|c| assigner.assign(c)).collect();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert_eq!(rows[0].lane, 0, "merge commit on lane 0");
     assert_eq!(rows[0].parent_lanes, vec![0, 1]);

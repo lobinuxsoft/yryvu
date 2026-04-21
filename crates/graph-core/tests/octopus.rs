@@ -2,8 +2,10 @@
 
 mod common;
 
+use std::collections::HashSet;
+
 use common::commit;
-use graph_core::LaneAssigner;
+use graph_core::layout_commits;
 
 /// Octopus merge: one commit with three parents, all sharing a common ancestor.
 #[test]
@@ -16,8 +18,7 @@ fn octopus_merge_allocates_three_lanes_then_collapses() {
         commit("z", &[]),
     ];
 
-    let mut assigner = LaneAssigner::new(32).unwrap();
-    let rows: Vec<_> = commits.into_iter().map(|c| assigner.assign(c)).collect();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert!(rows[0].is_merge);
     assert_eq!(rows[0].parent_lanes, vec![0, 1, 2]);

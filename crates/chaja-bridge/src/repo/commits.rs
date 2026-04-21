@@ -193,6 +193,56 @@ pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendErr
     })
 }
 
+/// Pick an automatic pin target for the graph trunk.
+///
+/// Mirrors Chajá's proposed auto-pin fallback from
+/// `docs/research/gitkraken-graph/05-trunk-pinning.md`:
+///
+/// 1. `refs/remotes/origin/HEAD` peeled — the remote's default branch.
+/// 2. Local `HEAD` if attached to a named branch.
+/// 3. First local branch matching `main`, `master`, `development`, `trunk`.
+///
+/// Returns `None` when the repo has no candidate (empty repo, detached HEAD
+/// with no obvious default). In that case the caller should feed an empty
+/// `HashSet` into the lane allocator, which collapses to pure leftmost-free.
+pub fn pick_pinned_head_for_path(repo_path: &Path) -> Option<String> {
+    let repo = super::common::open_repo(repo_path).ok()?;
+    pick_pinned_head(&repo)
+}
+
+pub fn pick_pinned_head(repo: &gix::Repository) -> Option<String> {
+    if let Some(id) = peel_ref(repo, "refs/remotes/origin/HEAD") {
+        return Some(id);
+    }
+
+    if let Ok(Some(head_name)) = repo.head_name() {
+        let name = head_name.as_bstr().to_string();
+        if let Some(id) = peel_ref(repo, &name) {
+            return Some(id);
+        }
+    }
+
+    const TRUNK_CANDIDATES: &[&str] = &[
+        "refs/heads/main",
+        "refs/heads/master",
+        "refs/heads/development",
+        "refs/heads/trunk",
+    ];
+    for candidate in TRUNK_CANDIDATES {
+        if let Some(id) = peel_ref(repo, candidate) {
+            return Some(id);
+        }
+    }
+
+    None
+}
+
+fn peel_ref(repo: &gix::Repository, full_name: &str) -> Option<String> {
+    let mut reference = repo.find_reference(full_name).ok()?;
+    let id = reference.peel_to_id_in_place().ok()?.detach();
+    Some(id.to_string())
+}
+
 fn collect_ref_tips(repo: &gix::Repository) -> Result<Vec<gix::ObjectId>, BackendError> {
     let platform = repo
         .references()

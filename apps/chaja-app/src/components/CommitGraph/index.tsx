@@ -203,6 +203,7 @@ export function CommitGraph(props: CommitGraphProps) {
                 style={{
                   top: `${i * ROW_HEIGHT}px`,
                   height: `${ROW_HEIGHT}px`,
+                  "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                 }}
                 onMouseEnter={() => setHoveredCommit(r.sha)}
                 onMouseLeave={() => {
@@ -249,6 +250,7 @@ export function CommitGraph(props: CommitGraphProps) {
                 style={{
                   top: `${i * ROW_HEIGHT}px`,
                   height: `${ROW_HEIGHT}px`,
+                  "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                 }}
                 onClick={() => setSelectedCommit(r.sha)}
                 onMouseEnter={() => setHoveredCommit(r.sha)}
@@ -256,10 +258,36 @@ export function CommitGraph(props: CommitGraphProps) {
                   if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
                 }}
               >
+                {/* Lane-color tint band (#128) — GitKraken's
+                    `BackgroundStreak` + `.commit-bg-color` rule. A 10 %
+                    wash of the lane color anchored to the right edge of
+                    the GRAPH cell and extending leftward UP TO (but not
+                    past) the commit circle. When the row is selected,
+                    the tint jumps to 50 %. Painted BEFORE the SVG so
+                    edges/nodes layer on top. */}
+                <span
+                  class="commit-graph__row-tint"
+                  aria-hidden="true"
+                  style={{
+                    left: `${GUTTER + r.lane * LANE_WIDTH + LANE_WIDTH / 2}px`,
+                  }}
+                />
                 <CommitRowGraph
                   row={r}
                   edges={edgeStates()[i] ?? new Map()}
                   hostingService={hostingService()}
+                />
+                {/* Row-height lane-color streak (#128) — ports GitKraken's
+                    `color-strip`. A thin vertical bar at the right edge
+                    of the GRAPH cell at full lane opacity. Sits ON TOP of
+                    the tint band so the right edge reads as a crisp
+                    lane-colored boundary rather than a soft fade. */}
+                <span
+                  class="commit-graph__lane-streak"
+                  aria-hidden="true"
+                  style={{
+                    "background-color": `var(--column-${r.color_idx % 10}-color)`,
+                  }}
                 />
               </li>
             ))}
@@ -279,6 +307,7 @@ export function CommitGraph(props: CommitGraphProps) {
                 style={{
                   top: `${i * ROW_HEIGHT}px`,
                   height: `${ROW_HEIGHT}px`,
+                  "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                 }}
                 onClick={() => setSelectedCommit(r.sha)}
                 onMouseEnter={() => setHoveredCommit(r.sha)}

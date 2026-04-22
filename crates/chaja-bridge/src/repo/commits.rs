@@ -21,11 +21,6 @@ pub fn walk_commits(
         return Ok(Box::new(std::iter::empty()));
     }
 
-    // gix's ByCommitTime sort is not strictly topological — with tied timestamps
-    // across multiple seeded tips the root can land anywhere in the output.
-    // Collect eagerly, then re-sort via Kahn's algorithm with committer_time as
-    // tiebreaker. This guarantees children appear before their parents (invariant
-    // required by the lane assigner).
     let walk = repo
         .rev_walk(scan.tips.clone())
         .sorting(gix::revision::walk::Sorting::ByCommitTime(
@@ -74,16 +69,36 @@ pub fn walk_commits(
         );
     }
 
-    let sorted = topo_sort_children_first(commits);
+    // `seed_order`: the sequence of unique SHAs appearing in `scan.tips` in
+    // the order `collect_ref_tips` added them (alphabetical by ref name per
+    // `platform.local_branches()` / remote_branches / tags). This matches
+    // `git log --date-order`'s insertion-order tie-break for commits sharing
+    // the same committer-time — essential when testbeds / imported repos
+    // have mass-identical timestamps.
+    let mut seed_order: Vec<String> = Vec::with_capacity(scan.tips.len());
+    let mut seen_seed: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for tip in &scan.tips {
+        let sha = tip.to_string();
+        if seen_seed.insert(sha.clone()) {
+            seed_order.push(sha);
+        }
+    }
+
+    let sorted = topo_sort_children_first(commits, &seed_order);
     Ok(Box::new(sorted.into_iter().map(Ok)))
 }
 
-/// Kahn topological sort that emits children before parents. Ties (commits
-/// whose in-degree reaches zero simultaneously) are broken by committer_time
-/// descending, matching the visual order of `git log --topo-order --date-order`.
-fn topo_sort_children_first(mut commits: HashMap<String, Commit>) -> Vec<Commit> {
-    // In-degree = number of commits in our set that reference this commit as parent.
-    // Leaves (ref tips reachable only from above) start at 0.
+/// Kahn topological sort that emits children before parents. Primary sort
+/// key: committer-time descending. Tie-break: **insertion order** — seeds
+/// get positions in the order `scan.tips` supplies them (alphabetical by
+/// ref name), commits that become ready dynamically get the next
+/// monotonically-increasing position. Matches `git log --date-order`'s
+/// observed behaviour on repos with tied commit timestamps.
+fn topo_sort_children_first(
+    mut commits: HashMap<String, Commit>,
+    seed_order: &[String],
+) -> Vec<Commit> {
+    // In-degree = number of loaded commits that reference this one as parent.
     let mut in_degree: HashMap<String, usize> = commits.keys().map(|k| (k.clone(), 0)).collect();
     for commit in commits.values() {
         for parent in &commit.parents {
@@ -93,12 +108,23 @@ fn topo_sort_children_first(mut commits: HashMap<String, Commit>) -> Vec<Commit>
         }
     }
 
+    // Position counter — advances every time a commit enters the heap so
+    // earlier arrivals win the tie-break on equal committer-time.
+    let mut position_counter: u64 = 0;
+    let mut position: HashMap<String, u64> = HashMap::with_capacity(commits.len());
+
     let mut heap: BinaryHeap<TopoEntry> = BinaryHeap::new();
-    for (sha, deg) in &in_degree {
-        if *deg == 0 {
-            if let Some(commit) = commits.get(sha) {
+    // Seed the heap in `seed_order` so tied tips pop in ref-alphabetical
+    // order (the order `collect_ref_tips` produced them).
+    for sha in seed_order {
+        if let Some(commit) = commits.get(sha) {
+            if in_degree.get(sha).copied().unwrap_or(usize::MAX) == 0 {
+                let pos = position_counter;
+                position_counter += 1;
+                position.insert(sha.clone(), pos);
                 heap.push(TopoEntry {
                     time: commit.author_date,
+                    position: pos,
                     sha: sha.clone(),
                 });
             }
@@ -116,8 +142,12 @@ fn topo_sort_children_first(mut commits: HashMap<String, Commit>) -> Vec<Commit>
                 *deg -= 1;
                 if *deg == 0 {
                     if let Some(parent_commit) = commits.get(parent) {
+                        let pos = position_counter;
+                        position_counter += 1;
+                        position.insert(parent.clone(), pos);
                         heap.push(TopoEntry {
                             time: parent_commit.author_date,
+                            position: pos,
                             sha: parent.clone(),
                         });
                     }
@@ -133,15 +163,19 @@ fn topo_sort_children_first(mut commits: HashMap<String, Commit>) -> Vec<Commit>
 #[derive(PartialEq, Eq)]
 struct TopoEntry {
     time: i64,
+    position: u64,
     sha: String,
 }
 
 impl Ord for TopoEntry {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Max-heap on time so newer commits are emitted first among tied-ready
-        // leaves. SHA breaks perfect ties deterministically.
+        // Max-heap: primary committer-time desc (bigger time = pops first),
+        // secondary position asc (lower position = pops first among ties).
+        // Inverting position comparison to `other.position.cmp(&self.position)`
+        // converts asc-priority to max-heap semantics.
         self.time
             .cmp(&other.time)
+            .then_with(|| other.position.cmp(&self.position))
             .then_with(|| other.sha.cmp(&self.sha))
     }
 }
@@ -198,31 +232,45 @@ pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendErr
 
 /// Pick an automatic pin target for the graph trunk.
 ///
-/// Mirrors Chajá's proposed auto-pin fallback from
-/// `docs/research/gitkraken-graph/05-trunk-pinning.md`:
+/// GitKraken pins the currently-checked-out branch as the trunk spine —
+/// that's the commit line the user is actively working on, and the one
+/// that stays column 0 across the whole graph. Fall through only when
+/// the repo has no local HEAD attached (detached / fresh clone).
 ///
-/// 1. `refs/remotes/origin/HEAD` peeled — the remote's default branch.
-/// 2. Local `HEAD` if attached to a named branch.
-/// 3. First local branch matching `main`, `master`, `development`, `trunk`.
+/// Resolution order:
 ///
-/// Returns `None` when the repo has no candidate (empty repo, detached HEAD
-/// with no obvious default). In that case the caller should feed an empty
-/// `HashSet` into the lane allocator, which collapses to pure leftmost-free.
+/// 1. **Local `HEAD` if attached** to a named branch — mirrors GK's
+///    behaviour of pinning the current branch.
+/// 2. `refs/remotes/origin/HEAD` peeled — fallback for detached HEAD,
+///    uses the remote's declared default branch.
+/// 3. First local branch matching `main`, `master`, `development`, or
+///    `trunk` — last-ditch fallback when neither HEAD source is usable.
+///
+/// Previously step 1 was the remote HEAD, which broke for repos where
+/// `origin/HEAD` points to a stale or empty branch (e.g. `main` that
+/// still holds only the initial commit while all work landed on
+/// `development`). The pinned set would end up as a single-commit chain
+/// and the actual development spine would render on lane 1+ instead of
+/// lane 0.
+///
+/// Returns `None` when none of the candidates resolve — in that case
+/// the caller should feed an empty `HashSet` into the lane allocator,
+/// which collapses to pure leftmost-free.
 pub fn pick_pinned_head_for_path(repo_path: &Path) -> Option<String> {
     let repo = super::common::open_repo(repo_path).ok()?;
     pick_pinned_head(&repo)
 }
 
 pub fn pick_pinned_head(repo: &gix::Repository) -> Option<String> {
-    if let Some(id) = peel_ref(repo, "refs/remotes/origin/HEAD") {
-        return Some(id);
-    }
-
     if let Ok(Some(head_name)) = repo.head_name() {
         let name = head_name.as_bstr().to_string();
         if let Some(id) = peel_ref(repo, &name) {
             return Some(id);
         }
+    }
+
+    if let Some(id) = peel_ref(repo, "refs/remotes/origin/HEAD") {
+        return Some(id);
     }
 
     const TRUNK_CANDIDATES: &[&str] = &[
@@ -272,8 +320,8 @@ fn collect_ref_tips(repo: &gix::Repository) -> Result<RefScan, BackendError> {
         .context("iterate local branches")
         .map_err(BackendError::Revwalk)?
     {
-        let mut reference = reference
-            .map_err(|e| BackendError::Revwalk(anyhow!("resolve local branch: {e}")))?;
+        let mut reference =
+            reference.map_err(|e| BackendError::Revwalk(anyhow!("resolve local branch: {e}")))?;
         let short = reference.name().shorten().to_string();
         let id = reference
             .peel_to_id_in_place()
@@ -294,8 +342,8 @@ fn collect_ref_tips(repo: &gix::Repository) -> Result<RefScan, BackendError> {
         .context("iterate remote branches")
         .map_err(BackendError::Revwalk)?
     {
-        let mut reference = reference
-            .map_err(|e| BackendError::Revwalk(anyhow!("resolve remote branch: {e}")))?;
+        let mut reference =
+            reference.map_err(|e| BackendError::Revwalk(anyhow!("resolve remote branch: {e}")))?;
         let short = reference.name().shorten().to_string();
         // Skip symbolic HEAD pointers like refs/remotes/origin/HEAD — they
         // duplicate the branch they alias.

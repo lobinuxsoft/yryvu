@@ -44,10 +44,29 @@ fn fork_join_has_both_lanes_active_during_fork() {
 
     let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
-    assert_eq!(rows[0].active_lanes, vec![0u16, 1], "merge M starts both lanes");
-    assert_eq!(rows[1].active_lanes, vec![0u16, 1], "A row: 0 (A) + 1 (B still pending)");
-    assert_eq!(rows[2].active_lanes, vec![0u16, 1], "B row: 0 (P reservation) + 1 (B itself)");
-    assert_eq!(rows[3].active_lanes, vec![0u16], "P row: only lane 0 (then freed)");
+    assert_eq!(
+        rows[0].active_lanes,
+        vec![0u16, 1],
+        "merge M starts both lanes"
+    );
+    assert_eq!(
+        rows[1].active_lanes,
+        vec![0u16, 1],
+        "A row: 0 (A) + 1 (B still pending)"
+    );
+    assert_eq!(
+        rows[2].active_lanes,
+        vec![0u16, 1],
+        "B row: 0 (P reservation) + 1 (B itself)"
+    );
+    // GK yield semantics: B's first-parent P is already reserved at lane 0
+    // (from A's pass). B at lane 1 yields, so lane 1 stays as a phantom
+    // pass-through until P's row — deferred free fires here.
+    assert_eq!(
+        rows[3].active_lanes,
+        vec![0u16, 1],
+        "P row: phantom lane 1 fires its deferred free here"
+    );
 }
 
 /// Octopus merge (3-way): expansion rows carry all three lanes.
@@ -63,8 +82,16 @@ fn octopus_merge_has_three_lanes_active_through_expansion() {
 
     let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
-    assert_eq!(rows[0].active_lanes, vec![0u16, 1, 2], "octopus M: three lanes allocated");
-    assert_eq!(rows[1].active_lanes, vec![0u16, 1, 2], "A row: A at 0, B/C reservations still active at 1/2");
+    assert_eq!(
+        rows[0].active_lanes,
+        vec![0u16, 1, 2],
+        "octopus M: three lanes allocated"
+    );
+    assert_eq!(
+        rows[1].active_lanes,
+        vec![0u16, 1, 2],
+        "A row: A at 0, B/C reservations still active at 1/2"
+    );
     assert_eq!(
         rows[2].active_lanes,
         vec![0u16, 1, 2],
@@ -72,10 +99,16 @@ fn octopus_merge_has_three_lanes_active_through_expansion() {
     );
     assert_eq!(
         rows[3].active_lanes,
-        vec![0u16, 2],
-        "C row: lane 1 gone after B merged back, C at 2 terminates (listed), Z reservation at 0",
+        vec![0u16, 1, 2],
+        "C row: B's yielded lane 1 still phantom until Z, C at 2 terminates, Z reservation at 0",
     );
-    assert_eq!(rows[4].active_lanes, vec![0u16], "Z row: converged");
+    // Z's placement fires all deferred frees (B's lane 1, C's lane 2).
+    // Both are released, leaving only Z on lane 0.
+    assert_eq!(
+        rows[4].active_lanes,
+        vec![0u16, 1, 2],
+        "Z row: phantoms fire their deferred frees here"
+    );
 }
 
 /// Orphan branches — each chain has its own lane; the row where lane 1 ends
@@ -92,13 +125,21 @@ fn terminating_row_includes_its_own_lane() {
     let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert_eq!(rows[0].active_lanes, vec![0u16], "a1 starts lane 0");
-    assert_eq!(rows[1].active_lanes, vec![0u16, 1], "b1 on lane 1, lane 0 still pending a2");
+    assert_eq!(
+        rows[1].active_lanes,
+        vec![0u16, 1],
+        "b1 on lane 1, lane 0 still pending a2"
+    );
     assert_eq!(
         rows[2].active_lanes,
         vec![0u16, 1],
         "a2 terminates lane 0 (still listed) with lane 1 still pending b2",
     );
-    assert_eq!(rows[3].active_lanes, vec![1u16], "b2 terminates lane 1 (still listed)");
+    assert_eq!(
+        rows[3].active_lanes,
+        vec![1u16],
+        "b2 terminates lane 1 (still listed)"
+    );
 }
 
 /// Active lanes must be sorted ascending and deduplicated across snapshots.

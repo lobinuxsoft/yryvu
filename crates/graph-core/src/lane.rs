@@ -31,6 +31,11 @@ pub struct LaneAssigner {
     pending_frees: HashMap<String, Vec<usize>>,
     pinned_shas: HashSet<String>,
     merge_children: HashSet<String>,
+    /// High-watermark of lane indices ever handed out. Kept for diagnostic
+    /// use — the leftmost-free allocator doesn't read it during normal
+    /// placement, but it advances on every extension so callers can gauge
+    /// the max column width the graph reached.
+    next_fresh_lane: usize,
 }
 
 impl LaneAssigner {
@@ -45,6 +50,7 @@ impl LaneAssigner {
             pending_frees: HashMap::new(),
             pinned_shas,
             merge_children: HashSet::new(),
+            next_fresh_lane: 0,
         }
     }
 
@@ -112,6 +118,14 @@ impl LaneAssigner {
             return 0;
         }
 
+        // No ref-tip override — verified by tracing GitKraken's actual
+        // `getColumns` function in `@gitkraken/gitkraken-components`
+        // (bundle @300719): ref tips go through the same reservation
+        // lookup and `eg()` leftmost-free path as any other commit. An
+        // earlier implementation of this file force-allocated fresh
+        // lanes for ref tips, which matches nobody's behaviour and
+        // caused the feat-ff chain to land on lane 9 when lane 1 was
+        // already reserved for it by HEAD's extra-parent pass.
         if let Some(col) = self.reservations.remove(sha) {
             self.ensure_column(col);
             self.columns_used[col] = true;
@@ -122,18 +136,35 @@ impl LaneAssigner {
     }
 
     fn alloc_column(&mut self) -> usize {
+        // Leftmost-free allocator: scan `columns_used` from `start` and take
+        // the first free slot. Append only if every slot up to the current
+        // tail is occupied.
+        //
+        // Matches GitKraken's observed behaviour — when a branch's column
+        // retires, later ref tips can slot into it rather than pushing the
+        // graph wider. Keeps horizontal density tight (5–6 lanes for a repo
+        // that would otherwise spread across 9+ with a monotonic allocator).
+        //
+        // `next_fresh_lane` is retained as an upper watermark so the
+        // allocator doesn't walk further right than it ever has, but the
+        // primary pick is the leftmost-free index.
         let start = if self.trunk_pin_active() { 1 } else { 0 };
-        for (idx, used) in self.columns_used.iter_mut().enumerate().skip(start) {
-            if !*used {
-                *used = true;
+        let len = self.columns_used.len();
+        for idx in start..len {
+            if !self.columns_used[idx] {
+                self.columns_used[idx] = true;
+                if idx + 1 > self.next_fresh_lane {
+                    self.next_fresh_lane = idx + 1;
+                }
                 return idx;
             }
         }
-        while self.columns_used.len() < start {
-            self.columns_used.push(false);
-        }
-        self.columns_used.push(true);
-        self.columns_used.len() - 1
+        // No retired slot available — extend by one.
+        let idx = len.max(start);
+        self.ensure_column(idx);
+        self.columns_used[idx] = true;
+        self.next_fresh_lane = idx + 1;
+        idx
     }
 
     fn ensure_column(&mut self, idx: usize) {
@@ -160,7 +191,15 @@ impl LaneAssigner {
                 self.columns_used[0] = true;
                 self.reservations.insert(parent_sha.clone(), 0);
                 if i == 0 && current_lane != 0 {
-                    self.columns_used[current_lane] = false;
+                    // Defer freeing the child's lane until the pinned
+                    // parent row is reached — otherwise the pass-through
+                    // vertical in the child's column is invisible across
+                    // the intermediate rows, which breaks the per-row SVG
+                    // renderer's continuous-pipe assumption.
+                    self.pending_frees
+                        .entry(parent_sha.to_string())
+                        .or_default()
+                        .push(current_lane);
                 }
                 continue;
             }
@@ -177,36 +216,46 @@ impl LaneAssigner {
         let existing = self.reservations.get(parent_sha).copied();
 
         match existing {
-            Some(existing_col) if existing_col < current_lane => {
-                // Parent already lives in an older (leftward) lane — merge back.
-                // Our column ends here; parent continues at the existing column.
-                self.columns_used[current_lane] = false;
+            Some(existing_col) if existing_col == current_lane => {
+                // Exact match — no action. Reservation already correct.
             }
-            Some(existing_col) if existing_col > current_lane => {
-                // Parent's reservation is rightward. Try to steal it leftward.
+            Some(existing_col) => {
+                // Parent's reservation lives in a different column. Decide
+                // between stealing (moving the reservation leftward) and
+                // yielding (keeping our column alive as a phantom pass-through
+                // until the parent's row, then releasing it).
+                //
+                // Port of GitKraken's `getColumns` stealing branch at bundle
+                // offset ~301000: steal only if `existing > current_lane`
+                // (we're leftward of the reservation) AND the parent doesn't
+                // already have a merge child claiming the slot. Otherwise
+                // yield — push `current_lane` into `pending_frees[parent]`
+                // so the retire is deferred to the parent's placement.
+                //
+                // Critical for visual fidelity: yielding with deferred free
+                // produces the "phantom vertical ending at parent's row"
+                // that GK shows when multiple sibling branches converge on
+                // a shared parent. Immediate free (the previous behaviour)
+                // cut those verticals short.
                 let parent_has_merge_child = self.merge_children.contains(parent_sha);
-                if parent_has_merge_child {
-                    // Can't steal: a merge child already owns the parent at existing_col.
-                    // Our column continues as a phantom until the parent arrives,
-                    // then it's released via pending_frees.
-                    self.pending_frees
-                        .entry(parent_sha.to_string())
-                        .or_default()
-                        .push(current_lane);
-                } else {
-                    // Steal: move parent's reservation to our (leftward) column,
-                    // queue existing_col for release when the parent is reached.
+                let can_steal = existing_col > current_lane && !parent_has_merge_child;
+                if can_steal {
                     self.reservations
                         .insert(parent_sha.to_string(), current_lane);
                     self.pending_frees
                         .entry(parent_sha.to_string())
                         .or_default()
                         .push(existing_col);
+                } else {
+                    self.pending_frees
+                        .entry(parent_sha.to_string())
+                        .or_default()
+                        .push(current_lane);
                 }
             }
-            _ => {
-                // No existing reservation, or it coincides with current_lane.
-                // First-parent naturally continues our column.
+            None => {
+                // No existing reservation — first-parent naturally continues
+                // our column.
                 self.reservations
                     .insert(parent_sha.to_string(), current_lane);
             }
@@ -258,8 +307,7 @@ pub fn layout_commits(
     }
 
     let mut assigner = LaneAssigner::with_pinned(pinned_shas);
-    let mut commits_lanes_actives: Vec<(Commit, u16, Vec<u16>)> =
-        Vec::with_capacity(commits.len());
+    let mut commits_lanes_actives: Vec<(Commit, u16, Vec<u16>)> = Vec::with_capacity(commits.len());
     let mut sha_to_lane: HashMap<String, u16> = HashMap::with_capacity(commits.len());
 
     for commit in commits {

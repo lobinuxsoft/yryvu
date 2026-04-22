@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
 
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
@@ -18,13 +18,37 @@ import {
 import { ContextMenu } from "../ContextMenu";
 import { CommitDialogs } from "./CommitDialogs";
 import { createCommitOps } from "./useCommitOps";
-import { CommitGraphRenderer } from "./renderer";
 import { RefPillGroup } from "./RefPills";
-import { computeVisible } from "./virtualize";
+import {
+  CommitRowGraph,
+  GUTTER,
+  LANE_WIDTH,
+  ROW_HEIGHT,
+} from "./RowRenderer";
+import { buildEdgeStates } from "./edgeStates";
 
-const ROW_HEIGHT = 28;
-const LANE_WIDTH = 22;
-const GUTTER = 28;
+/**
+ * Module-level className cache (Bd pattern from doc 12 — row wrapper).
+ * Keyed by `type + isHovering + isSelected` concatenation. Solid's reactivity
+ * is granular enough to avoid needing this strictly, but adopting matches
+ * GitKraken's render hot-path optimization for 1:1 parity.
+ */
+const rowWrapperClassCache = new Map<string, string>();
+function rowWrapperClass(
+  type: "commit" | "merge" | "wip",
+  isHovering: boolean,
+  isSelected: boolean,
+): string {
+  const key = `${type}|${isHovering ? 1 : 0}|${isSelected ? 1 : 0}`;
+  let cls = rowWrapperClassCache.get(key);
+  if (cls) return cls;
+  const parts = ["graph-row-wrapper", `graph-row-wrapper--${type}`];
+  if (isHovering) parts.push("is-hovering");
+  if (isSelected) parts.push("is-selected");
+  cls = parts.join(" ");
+  rowWrapperClassCache.set(key, cls);
+  return cls;
+}
 
 export interface CommitGraphProps {
   repoPath: string;
@@ -32,8 +56,9 @@ export interface CommitGraphProps {
 
 export function CommitGraph(props: CommitGraphProps) {
   const [rows, setRows] = createSignal<GraphRow[]>([]);
-  const [scrollTop, setScrollTop] = createSignal(0);
-  const [viewportH, setViewportH] = createSignal(0);
+  const [hoveredCommit, setHoveredCommit] = createSignal<string | undefined>(
+    undefined,
+  );
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | undefined>(undefined);
 
@@ -50,54 +75,6 @@ export function CommitGraph(props: CommitGraphProps) {
     },
   });
 
-  let canvas: HTMLCanvasElement | undefined;
-  let scrollEl: HTMLDivElement | undefined;
-  let renderer: CommitGraphRenderer | undefined;
-  let frame = 0;
-
-  onMount(() => {
-    if (!canvas || !scrollEl) return;
-    try {
-      renderer = new CommitGraphRenderer(canvas, {
-        rowHeight: ROW_HEIGHT,
-        laneWidth: LANE_WIDTH,
-        gutter: GUTTER,
-        commitRadius: 11,
-        mergeRadius: 6,
-        edgeThickness: 2,
-      });
-    } catch (e) {
-      setError(`Renderer init failed: ${String(e)}`);
-      return;
-    }
-
-    // Force an initial resize synchronously + on the next frame. The WebKit
-    // WebView sometimes reports `clientHeight === 0` during the first mount
-    // pass; without this the canvas stays at 0×0 until a user-driven resize.
-    const applySize = () => {
-      if (!canvas || !scrollEl || !renderer) return;
-      const w = Math.floor(canvas.getBoundingClientRect().width);
-      const rect = scrollEl.getBoundingClientRect();
-      const h = Math.max(scrollEl.clientHeight, Math.floor(rect.height));
-      if (h === 0 || w === 0) return;
-      canvas.style.height = `${h}px`;
-      renderer.resize(w, h);
-      setViewportH(h);
-      scheduleDraw();
-    };
-
-    applySize();
-    requestAnimationFrame(applySize);
-    const ro = new ResizeObserver(() => applySize());
-    ro.observe(scrollEl);
-    ro.observe(canvas);
-
-    onCleanup(() => {
-      ro.disconnect();
-      cancelAnimationFrame(frame);
-    });
-  });
-
   // (Re-)stream the commit graph whenever the repo path or graphNonce changes.
   createEffect(() => {
     const path = props.repoPath;
@@ -107,7 +84,6 @@ export function CommitGraph(props: CommitGraphProps) {
     setError(undefined);
     const handle = streamGraph(path, (batch) => {
       setRows((prev) => prev.concat(batch));
-      scheduleDraw();
     });
     handle.promise
       .then(() => setLoading(false))
@@ -118,31 +94,22 @@ export function CommitGraph(props: CommitGraphProps) {
     onCleanup(() => handle.stop());
   });
 
-  createEffect(() => {
-    rows();
-    scrollTop();
-    viewportH();
-    scheduleDraw();
-  });
-
-  const shaToRow = createMemo(() => {
-    const map = new Map<string, number>();
-    const list = rows();
-    for (let i = 0; i < list.length; i++) map.set(list[i].sha, i);
-    return map;
-  });
-
-  function scheduleDraw() {
-    cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(() => {
-      if (!renderer) return;
-      const range = computeVisible(scrollTop(), viewportH(), ROW_HEIGHT, rows().length);
-      const slice = rows().slice(range.start, range.end);
-      renderer.draw(slice, range.start, scrollTop(), shaToRow());
-    });
-  }
-
   const totalHeight = () => rows().length * ROW_HEIGHT;
+  // HEAD row's lane is needed for the WIP dashed node alignment — pick the
+  // topmost row's lane (newest commit = HEAD).
+  const headLane = createMemo(() => rows()[0]?.lane ?? 0);
+  const wipNodeX = () => GUTTER + headLane() * LANE_WIDTH + LANE_WIDTH / 2;
+
+  /**
+   * Per-row edges dict — literal port of GitKraken's
+   * `getFinalEdgeStateForGraphAndRow` pipeline. Each row gets a
+   * `Map<column, {starting?, passThrough?, ending?}>` that the renderer
+   * iterates to dispatch one of three drawing primitives per column.
+   *
+   * Built in one pass over `rows()` so it's O(n·k) total; consumed by
+   * index-based lookup when rendering each row.
+   */
+  const edgeStates = createMemo(() => buildEdgeStates(rows()));
 
   function openStaging() {
     setSelectedCommit(undefined);
@@ -177,9 +144,7 @@ export function CommitGraph(props: CommitGraphProps) {
             <span
               class="commit-graph__wip-node"
               aria-hidden="true"
-              style={{
-                left: `${GUTTER + (rows()[0]?.lane ?? 0) * LANE_WIDTH + LANE_WIDTH / 2}px`,
-              }}
+              style={{ left: `${wipNodeX()}px` }}
             />
           </div>
           <div class="commit-graph__wip-message">
@@ -196,42 +161,74 @@ export function CommitGraph(props: CommitGraphProps) {
           </div>
         </div>
       </Show>
-      <div
-        class="commit-graph__scroll"
-        ref={(el) => (scrollEl = el)}
-        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
-      >
+      <div class="commit-graph__scroll">
         <div class="commit-graph__grid" style={{ height: `${totalHeight()}px` }}>
           <ul class="commit-graph__col-branch">
             {rows().map((r, i) => (
               <li
-                class="commit-graph__branch-row"
+                class={rowWrapperClass(
+                  r.is_merge ? "merge" : "commit",
+                  hoveredCommit() === r.sha,
+                  selectedCommit() === r.sha,
+                )}
                 data-selected={selectedCommit() === r.sha ? "true" : "false"}
                 style={{
                   top: `${i * ROW_HEIGHT}px`,
                   height: `${ROW_HEIGHT}px`,
+                }}
+                onMouseEnter={() => setHoveredCommit(r.sha)}
+                onMouseLeave={() => {
+                  if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
                 }}
               >
                 <RefPillGroup refs={r.refs} />
               </li>
             ))}
           </ul>
-          <div class="commit-graph__col-graph">
-            <canvas
-              class="commit-graph__canvas"
-              ref={(el) => (canvas = el)}
-            />
-          </div>
-          <ul class="commit-graph__col-messages">
+          <ul class="commit-graph__col-graph">
             {rows().map((r, i) => (
               <li
-                class="commit-graph__row"
+                class={rowWrapperClass(
+                  r.is_merge ? "merge" : "commit",
+                  hoveredCommit() === r.sha,
+                  selectedCommit() === r.sha,
+                )}
                 data-selected={selectedCommit() === r.sha ? "true" : "false"}
                 style={{
                   top: `${i * ROW_HEIGHT}px`,
                   height: `${ROW_HEIGHT}px`,
                 }}
                 onClick={() => setSelectedCommit(r.sha)}
+                onMouseEnter={() => setHoveredCommit(r.sha)}
+                onMouseLeave={() => {
+                  if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
+                }}
+              >
+                <CommitRowGraph
+                  row={r}
+                  edges={edgeStates()[i] ?? new Map()}
+                />
+              </li>
+            ))}
+          </ul>
+          <ul class="commit-graph__col-messages">
+            {rows().map((r, i) => (
+              <li
+                class={rowWrapperClass(
+                  r.is_merge ? "merge" : "commit",
+                  hoveredCommit() === r.sha,
+                  selectedCommit() === r.sha,
+                )}
+                data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                style={{
+                  top: `${i * ROW_HEIGHT}px`,
+                  height: `${ROW_HEIGHT}px`,
+                }}
+                onClick={() => setSelectedCommit(r.sha)}
+                onMouseEnter={() => setHoveredCommit(r.sha)}
+                onMouseLeave={() => {
+                  if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
+                }}
                 onContextMenu={(e) =>
                   ops.openCommitContextMenu(e, r.sha, r.short_sha)
                 }

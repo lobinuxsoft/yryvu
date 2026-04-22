@@ -120,9 +120,17 @@ export function CommitGraph(props: CommitGraphProps) {
   });
 
   const totalHeight = () => rows().length * ROW_HEIGHT;
-  // HEAD row's lane is needed for the WIP dashed node alignment — pick the
-  // topmost row's lane (newest commit = HEAD).
-  const headLane = createMemo(() => rows()[0]?.lane ?? 0);
+  // HEAD row drives the WIP pseudo-row: its lane pins the dashed node
+  // horizontally, its color tints the connector + borders, and its
+  // `kind: "Head"` ref surfaces the current branch name for the
+  // placeholder label. Assumes `rows()[0]` is HEAD (topmost ordering),
+  // which the current commit-walker guarantees.
+  const headRow = createMemo(() => rows()[0]);
+  const headLane = createMemo(() => headRow()?.lane ?? 0);
+  const headColorIdx = createMemo(() => (headRow()?.color_idx ?? 0) % 10);
+  const headBranchName = createMemo(
+    () => headRow()?.refs.find((r) => r.kind === "Head")?.name,
+  );
   const wipNodeX = () => GUTTER + headLane() * LANE_WIDTH + LANE_WIDTH / 2;
 
   /**
@@ -149,10 +157,18 @@ export function CommitGraph(props: CommitGraphProps) {
       <Show when={loading()}>
         <div class="commit-graph__status">Loading…</div>
       </Show>
-      <Show when={dirtyFileCount() > 0}>
+      {/* WIP pseudo-row (#129) — always visible as HEAD's anchor, even
+          on a clean working tree. The `+N` badge is the sole dirty-state
+          signal; in GitKraken this is the ChangesBar widget, but a chip
+          carries the same information more compactly. Node + connector
+          borders inherit the HEAD lane color from `--wip-lane-color`. */}
+      <Show when={rows().length > 0}>
         <div
           class="commit-graph__wip-row"
           data-active={inspectorMode() === "staging" ? "true" : "false"}
+          style={{
+            "--wip-lane-color": `var(--column-${headColorIdx()}-color)`,
+          }}
           onClick={() => openStaging()}
           role="button"
           tabIndex={0}
@@ -166,6 +182,17 @@ export function CommitGraph(props: CommitGraphProps) {
         >
           <div class="commit-graph__wip-col-branch" aria-hidden="true" />
           <div class="commit-graph__wip-lane">
+            {/* Tint band — same treatment as `.commit-graph__row-tint`
+                on real commits: lane-color wash that starts at the WIP
+                node's centerX and extends to the right edge of the
+                GRAPH cell, sized to the node diameter. Keeps the
+                colored region confined to "past" the node instead of
+                bleeding across the whole lane column. */}
+            <span
+              class="commit-graph__wip-tint"
+              aria-hidden="true"
+              style={{ left: `${wipNodeX()}px` }}
+            />
             <span
               class="commit-graph__wip-node"
               aria-hidden="true"
@@ -176,13 +203,18 @@ export function CommitGraph(props: CommitGraphProps) {
             <input
               class="commit-graph__wip-input"
               type="text"
-              placeholder="// WIP"
+              placeholder={
+                headBranchName()
+                  ? `WIP on ${headBranchName()}`
+                  : "WIP"
+              }
               value={commitMessage()}
               onInput={(e) => setCommitMessage(e.currentTarget.value)}
               onClick={(e) => e.stopPropagation()}
             />
-            <span class="commit-graph__wip-pencil" aria-hidden="true">✎</span>
-            <span class="commit-graph__wip-badge">{dirtyFileCount()}</span>
+            <Show when={dirtyFileCount() > 0}>
+              <span class="commit-graph__wip-badge">+{dirtyFileCount()}</span>
+            </Show>
           </div>
         </div>
       </Show>

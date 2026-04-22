@@ -40,7 +40,7 @@
 
 import { createSignal, For, Show } from "solid-js";
 
-import type { GraphRow } from "../../ipc";
+import type { GraphRow, HostingService } from "../../ipc";
 import type { RowEdges } from "./edgeStates";
 
 /**
@@ -126,6 +126,13 @@ function arcPath(
 export interface CommitRowGraphProps {
   row: GraphRow;
   edges: RowEdges;
+  /**
+   * Hosting service of the repo's primary remote, passed down from
+   * `CommitGraph`. Drives provider-native avatar source selection in
+   * `<CommitAvatar>` — `"github"` uses GitHub's CDN email endpoint,
+   * anything else falls back to Gravatar.
+   */
+  hostingService: HostingService;
 }
 
 /**
@@ -150,6 +157,7 @@ function CommitAvatar(props: {
   authorEmail: string;
   authorInitials: string;
   gravatarHash: string;
+  hostingService: HostingService;
 }) {
   const cached = avatarStatusByEmail.get(props.authorEmail);
   // `loaded` flips to true on the image element's `load` event. The image
@@ -159,24 +167,39 @@ function CommitAvatar(props: {
   // `onerror` which fires inconsistently across engines / Tauri's WebView.
   const [loaded, setLoaded] = createSignal(cached === false);
   // Resolve the avatar URL, preferring provider-native sources where the
-  // email identifies the user unambiguously:
+  // repo's hosting service identifies a CDN that resolves email → avatar
+  // without API auth. Direct port of GitKraken's `getAvatarFromEmail`
+  // (app bundle offset 1508073):
   //
-  // 1. **GitHub noreply** — `<id>+<username>@users.noreply.github.com` or
-  //    `<username>@users.noreply.github.com` (legacy). Extract the
-  //    username and hit `https://github.com/<user>.png?size=N` which
-  //    redirects to the real avatar on `avatars.githubusercontent.com`.
-  //    No auth / API quota — works as long as the username is public.
-  // 2. **Gravatar** — derived from the pre-hashed email. `d=404` so
-  //    Gravatar returns 404 when no avatar is registered, letting the
-  //    image's load/error pair land on the initials fallback cleanly
-  //    instead of loading Gravatar's default mystery-man.
+  // 1. **GitHub CDN** (`hostingService === "github"`) — hit
+  //    `https://avatars.githubusercontent.com/u/e?email=<email>&s=N`.
+  //    This is a CDN endpoint (NOT the API), no auth required, no rate
+  //    limit, and GitHub resolves the email against its internal user
+  //    database. If no user matches, it returns an identicon (not a 404)
+  //    so the initials fallback won't trigger — acceptable: we show an
+  //    identicon instead of a letter badge, same as GK.
+  // 2. **GitHub noreply email** (any hosting service) — `[id+]user@users
+  //    .noreply.github.com`. Extract the username, hit
+  //    `https://github.com/<user>.png?size=N` which redirects to the
+  //    real avatar. Works even when the repo's main remote isn't
+  //    GitHub (e.g., mirrored to GitLab but commits still use GitHub
+  //    noreply emails).
+  // 3. **Gravatar** — the hash is pre-computed server-side. `d=404`
+  //    forces Gravatar to 404 on missing avatars so the initials
+  //    fallback shows instead of the default mystery-man.
   const avatarUrl = () => {
     const size = props.radius * 4;
-    const m = /^(?:\d+\+)?([^@\s]+)@users\.noreply\.github\.com$/i.exec(
-      props.authorEmail,
-    );
-    if (m && m[1]) {
-      return `https://github.com/${m[1]}.png?size=${size}`;
+    if (props.hostingService === "github") {
+      return `https://avatars.githubusercontent.com/u/e?email=${encodeURIComponent(
+        props.authorEmail,
+      )}&s=${size}`;
+    }
+    const noreply =
+      /^(?:\d+\+)?([^@\s]+)@users\.noreply\.github\.com$/i.exec(
+        props.authorEmail,
+      );
+    if (noreply && noreply[1]) {
+      return `https://github.com/${noreply[1]}.png?size=${size}`;
     }
     return `https://gravatar.com/avatar/${props.gravatarHash}?s=${size}&d=404`;
   };
@@ -460,6 +483,7 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
           authorEmail={props.row.author_email}
           authorInitials={props.row.author_initials}
           gravatarHash={props.row.gravatar_hash}
+          hostingService={props.hostingService}
         />
       </Show>
     </svg>

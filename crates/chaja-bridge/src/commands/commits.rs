@@ -8,6 +8,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::backend::{CommitDiff, GitBackend, ResetMode};
 use crate::repo::commits::pick_pinned_head_for_path;
+use crate::repo::hosting::detect_hosting_service;
 use crate::repo::GixBackend;
 
 #[derive(Debug, Clone, Serialize)]
@@ -129,6 +130,23 @@ pub async fn format_patch(
         GixBackend
             .format_patch(&PathBuf::from(&repo_path), &sha, &PathBuf::from(&out_dir))
             .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Classify the repo's primary remote into a hosting-service tag used by
+/// the frontend to pick a provider-native avatar source (GitHub's CDN
+/// email→avatar endpoint, GitLab's user API, Gravatar fallback, …).
+///
+/// Returns one of `"github" | "gitlab" | "bitbucket" | "gitea" | "unknown"`.
+/// Never fails — bare repos / zero-remote repos / opaque self-hosted URLs
+/// all collapse to `"unknown"` and the frontend falls back to Gravatar.
+#[tauri::command]
+pub async fn get_hosting_service(repo_path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = PathBuf::from(&repo_path);
+        Ok::<_, String>(detect_hosting_service(&path).as_str().to_string())
     })
     .await
     .map_err(|e| e.to_string())?

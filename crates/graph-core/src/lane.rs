@@ -53,6 +53,22 @@ impl LaneAssigner {
         self.columns_used.len()
     }
 
+    /// Lane indices currently carrying an active edge.
+    ///
+    /// Returned sorted ascending. Used by [`layout_commits`] to snapshot
+    /// `columns_used` before and after each [`place`] call — the union of the
+    /// two snapshots plus the commit's own lane is the set of lanes with a
+    /// vertical segment through the row (see [`crate::GraphRow::active_lanes`]).
+    ///
+    /// [`place`]: Self::place
+    pub fn active_lane_indices(&self) -> Vec<u16> {
+        self.columns_used
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &used)| if used { Some(i as u16) } else { None })
+            .collect()
+    }
+
     fn trunk_pin_active(&self) -> bool {
         !self.pinned_shas.is_empty()
     }
@@ -222,7 +238,10 @@ impl Default for LaneAssigner {
 ///
 /// Runs three passes:
 ///
-/// 1. [`LaneAssigner`] streaming algorithm resolves each commit's final column.
+/// 1. [`LaneAssigner`] streaming algorithm resolves each commit's final column,
+///    snapshotting `columns_used` before and after each `place()` call to build
+///    the per-row `active_lanes` set (lanes crossing the row, required by the
+///    per-row edge renderer from issue #81).
 /// 2. `parent_lanes` is filled in using the finalized sha → lane map — stealing
 ///    can change a parent's column *after* its child was assigned, so this
 ///    pass can't be folded into the first.
@@ -239,18 +258,29 @@ pub fn layout_commits(
     }
 
     let mut assigner = LaneAssigner::with_pinned(pinned_shas);
-    let mut commits_and_lanes: Vec<(Commit, u16)> = Vec::with_capacity(commits.len());
+    let mut commits_lanes_actives: Vec<(Commit, u16, Vec<u16>)> =
+        Vec::with_capacity(commits.len());
     let mut sha_to_lane: HashMap<String, u16> = HashMap::with_capacity(commits.len());
 
     for commit in commits {
+        let before = assigner.active_lane_indices();
         let lane = assigner.place(&commit);
+        let after = assigner.active_lane_indices();
+
+        // Union before ∪ after ∪ {lane}, sorted ascending, deduplicated.
+        let mut active: Vec<u16> = before;
+        active.extend(after);
+        active.push(lane);
+        active.sort_unstable();
+        active.dedup();
+
         sha_to_lane.insert(commit.sha.clone(), lane);
-        commits_and_lanes.push((commit, lane));
+        commits_lanes_actives.push((commit, lane, active));
     }
 
-    let mut rows: Vec<GraphRow> = commits_and_lanes
+    let mut rows: Vec<GraphRow> = commits_lanes_actives
         .into_iter()
-        .map(|(commit, lane)| {
+        .map(|(commit, lane, active_lanes)| {
             let parent_lanes: Vec<u16> = commit
                 .parents
                 .iter()
@@ -272,6 +302,7 @@ pub fn layout_commits(
                 refs: commit.refs,
                 is_merge,
                 child_refs: crate::ChildRefs::default(),
+                active_lanes,
             }
         })
         .collect();

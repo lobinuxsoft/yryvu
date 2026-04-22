@@ -71,4 +71,15 @@ pub struct GraphRow {
     /// consumers). Populated post-layout via [`crate::populate_child_refs`].
     #[cfg_attr(feature = "serde", serde(default))]
     pub child_refs: ChildRefs,
+    /// Lane indices that carry a visual edge through this row (sorted
+    /// ascending, deduplicated). The per-row renderer uses this to draw a
+    /// vertical pipe segment confined to the row's height at each listed lane.
+    ///
+    /// Includes the commit's own lane, any lane carrying an edge coming down
+    /// from earlier rows (pre-place snapshot), and any lane reserved for a
+    /// parent below (post-place snapshot). Union of both snapshots guarantees
+    /// coverage of lane-terminating rows where a lane ends precisely at this
+    /// row (merge-back, parent-less leaf, steal deferred free).
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub active_lanes: Vec<u16>,
 }

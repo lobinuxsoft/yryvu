@@ -170,61 +170,40 @@ export function CommitGraph(props: CommitGraphProps) {
 
   /* ========================================================================
      Row virtualization (#141) — only mount rows visible in the viewport plus
-     a small overscan. GitKraken uses react-virtualized `Grid` with
-     `overscanRowCount: 0`; for Solid we pick a modest overscan so fast
-     scroll doesn't pop-in (doc 11 recommendation).
+     a small overscan.
 
-     Zone layout (doc 11): BRANCH/TAG, GRAPH, and MESSAGE each live in
-     their own scroll container, with vertical scrollTop synchronized
-     by JS. This is what lets the GRAPH column host an INTERNAL
-     horizontal scrollbar pinned to its own viewport bottom — otherwise
-     a single outer scroll would place the horizontal scrollbar
-     thousands of pixels below the visible area.
+     Scroll architecture: the MESSAGE zone is the single source of truth
+     for vertical scroll. BRANCH/TAG and GRAPH zones have
+     `overflow-y: hidden` and their inner UL is repositioned with
+     `transform: translateY(-scrollTop)`. Wheel events on the silent
+     zones forward their `deltaY` to messagesScroll.
+
+     Why not sync 3 scrollTops: setting `scrollTop` on sibling elements
+     on every wheel tick triggers layout thrashing and visible lag.
+     Translating two ULs via GPU-accelerated transform is faster and —
+     critically — makes the "phantom" vertical scrollbar in the GRAPH
+     zone impossible (it has no scroll of its own, so there's nothing
+     to render).
      ======================================================================== */
   const OVERSCAN_ROWS = 8;
-  let branchScroll: HTMLDivElement | undefined;
-  let graphScroll: HTMLDivElement | undefined;
   let messagesScroll: HTMLDivElement | undefined;
-  let syncing = false;
   const [scrollTop, setScrollTop] = createSignal(0);
   const [viewportHeight, setViewportHeight] = createSignal(0);
 
-  function syncScrollFrom(e: Event) {
-    if (syncing) return;
-    syncing = true;
-    const src = e.currentTarget as HTMLElement;
-    const st = src.scrollTop;
-    setScrollTop(st);
-    if (branchScroll && branchScroll !== src && branchScroll.scrollTop !== st) {
-      branchScroll.scrollTop = st;
-    }
-    if (graphScroll && graphScroll !== src && graphScroll.scrollTop !== st) {
-      graphScroll.scrollTop = st;
-    }
-    if (
-      messagesScroll &&
-      messagesScroll !== src &&
-      messagesScroll.scrollTop !== st
-    ) {
-      messagesScroll.scrollTop = st;
-    }
-    queueMicrotask(() => {
-      syncing = false;
-    });
+  function forwardWheel(e: WheelEvent) {
+    if (!messagesScroll || e.deltaY === 0) return;
+    messagesScroll.scrollTop += e.deltaY;
   }
 
   onMount(() => {
-    // Pick any zone as the viewport measurement anchor — they all have the
-    // same height in the flex row.
-    const anchor = graphScroll ?? branchScroll ?? messagesScroll;
-    if (!anchor) return;
-    setViewportHeight(anchor.clientHeight);
+    if (!messagesScroll) return;
+    setViewportHeight(messagesScroll.clientHeight);
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setViewportHeight(entry.contentRect.height);
       }
     });
-    ro.observe(anchor);
+    ro.observe(messagesScroll);
     onCleanup(() => ro.disconnect());
   });
 
@@ -351,12 +330,14 @@ export function CommitGraph(props: CommitGraphProps) {
       <div class="commit-graph__zones">
         <div
           class="commit-graph__zone commit-graph__zone--branch"
-          ref={branchScroll}
-          onScroll={syncScrollFrom}
+          onWheel={forwardWheel}
         >
           <ul
             class="commit-graph__col-branch"
-            style={{ height: `${totalHeight()}px` }}
+            style={{
+              height: `${totalHeight()}px`,
+              transform: `translateY(-${scrollTop()}px)`,
+            }}
           >
             <For each={visibleRows()}>
               {(r, i) => {
@@ -409,70 +390,99 @@ export function CommitGraph(props: CommitGraphProps) {
         </div>
         <div
           class="commit-graph__zone commit-graph__zone--graph"
-          ref={graphScroll}
-          onScroll={syncScrollFrom}
+          onWheel={forwardWheel}
         >
-          <ul
-            class="commit-graph__col-graph"
-            style={{
-              height: `${totalHeight()}px`,
-              width: `${graphContentWidth()}px`,
-            }}
-          >
-            <For each={visibleRows()}>
-              {(r, i) => {
-                const globalIndex = () => visibleRange().start + i();
-                return (
-                  <li
-                    class={rowWrapperClass(
-                      r.is_merge ? "merge" : "commit",
-                      hoveredCommit() === r.sha,
-                      selectedCommit() === r.sha,
-                    )}
-                    classList={{
-                      "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
-                    }}
-                    data-selected={selectedCommit() === r.sha ? "true" : "false"}
-                    style={{
-                      top: `${globalIndex() * ROW_HEIGHT}px`,
-                      height: `${ROW_HEIGHT}px`,
-                      "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
-                    }}
-                    onClick={() => setSelectedCommit(r.sha)}
-                    onMouseEnter={() => setHoveredCommit(r.sha)}
-                    onMouseLeave={() => {
-                      if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
-                    }}
-                  >
-                    <span
-                      class="commit-graph__row-tint"
-                      aria-hidden="true"
-                      style={{
-                        left: `${GUTTER + r.lane * LANE_WIDTH + LANE_WIDTH / 2}px`,
+          {/* Horizontal scroll container — nested inside the zone so the
+              right-edge streaks overlay (below) can be absolute-positioned
+              against the ZONE's viewport, not against the scrollable
+              content. Ports GitKraken's `RightGutter` pattern (doc 11 /
+              `left: scrollLeft + commitZoneWidth - width`). */}
+          <div class="commit-graph__col-graph-hscroll">
+            <ul
+              class="commit-graph__col-graph"
+              style={{
+                height: `${totalHeight()}px`,
+                width: `${graphContentWidth()}px`,
+                transform: `translateY(-${scrollTop()}px)`,
+              }}
+            >
+              <For each={visibleRows()}>
+                {(r, i) => {
+                  const globalIndex = () => visibleRange().start + i();
+                  return (
+                    <li
+                      class={rowWrapperClass(
+                        r.is_merge ? "merge" : "commit",
+                        hoveredCommit() === r.sha,
+                        selectedCommit() === r.sha,
+                      )}
+                      classList={{
+                        "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
                       }}
-                    />
-                    <CommitRowGraph
-                      row={r}
-                      edges={edgeStates()[globalIndex()] ?? new Map()}
-                      hostingService={hostingService()}
-                    />
+                      data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                      style={{
+                        top: `${globalIndex() * ROW_HEIGHT}px`,
+                        height: `${ROW_HEIGHT}px`,
+                        "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                      }}
+                      onClick={() => setSelectedCommit(r.sha)}
+                      onMouseEnter={() => setHoveredCommit(r.sha)}
+                      onMouseLeave={() => {
+                        if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
+                      }}
+                    >
+                      <span
+                        class="commit-graph__row-tint"
+                        aria-hidden="true"
+                        style={{
+                          left: `${GUTTER + r.lane * LANE_WIDTH + LANE_WIDTH / 2}px`,
+                        }}
+                      />
+                      <CommitRowGraph
+                        row={r}
+                        edges={edgeStates()[globalIndex()] ?? new Map()}
+                        hostingService={hostingService()}
+                      />
+                    </li>
+                  );
+                }}
+              </For>
+            </ul>
+          </div>
+          {/* Streaks overlay — absolute at the zone's right edge,
+              OUTSIDE the horizontal scroll container so it stays pinned
+              to the viewport during horizontal scroll. Each per-row
+              streak mirrors the row's lane color (ports GK's
+              `color-strip` from `GutterBackgroundStreak`). */}
+          <div class="commit-graph__col-graph-streaks" aria-hidden="true">
+            <div
+              class="commit-graph__col-graph-streaks-inner"
+              style={{
+                height: `${totalHeight()}px`,
+                transform: `translateY(-${scrollTop()}px)`,
+              }}
+            >
+              <For each={visibleRows()}>
+                {(r, i) => {
+                  const globalIndex = () => visibleRange().start + i();
+                  return (
                     <span
                       class="commit-graph__lane-streak"
-                      aria-hidden="true"
                       style={{
+                        top: `${globalIndex() * ROW_HEIGHT + (ROW_HEIGHT - 22) / 2}px`,
                         "background-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
                     />
-                  </li>
-                );
-              }}
-            </For>
-          </ul>
+                  );
+                }}
+              </For>
+            </div>
+          </div>
         </div>
         <div
           class="commit-graph__zone commit-graph__zone--messages"
           ref={messagesScroll}
-          onScroll={syncScrollFrom}
+          onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
         >
           <ul
             class="commit-graph__col-messages"

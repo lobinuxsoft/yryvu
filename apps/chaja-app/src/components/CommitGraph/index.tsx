@@ -210,6 +210,27 @@ export function CommitGraph(props: CommitGraphProps) {
                 }}
               >
                 <RefPillGroup refs={r.refs} />
+                {/* Connector line (#127) — fills the gap between the last
+                    pill and the right edge of the BRANCH/TAG cell, tinted
+                    with the row's lane color. Anchors each pill cluster
+                    visually to its commit. The line continues inside the
+                    GRAPH column's SVG up to the commit circle. HEAD rows
+                    get a 2-px variant as a "you are here" cue, matching
+                    GitKraken's thicker stroke on the checked-out branch. */}
+                <Show when={r.refs.length > 0}>
+                  <span
+                    class="ref-connector"
+                    classList={{
+                      "ref-connector--head": r.refs.some(
+                        (ref) => ref.kind === "Head",
+                      ),
+                    }}
+                    aria-hidden="true"
+                    style={{
+                      "background-color": `var(--column-${r.color_idx % 10}-color)`,
+                    }}
+                  />
+                </Show>
               </li>
             ))}
           </ul>

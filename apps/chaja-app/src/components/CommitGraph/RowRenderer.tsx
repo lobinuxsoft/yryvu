@@ -413,6 +413,13 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
   const radius = () =>
     props.row.is_merge ? MERGE_RADIUS : COMMIT_RADIUS;
   const commitColor = () => laneColor(props.row.color_idx);
+  // HEAD rows get a 2-px ref-connector; every other row stays at 1 px.
+  // GitKraken highlights the checked-out branch the same way — the
+  // connector doubles as a subtle "you are here" cue. Detected via the
+  // synthetic `Head` ref the backend emits alongside the local branch
+  // whose commit is HEAD.
+  const isHeadRow = () => props.row.refs.some((r) => r.kind === "Head");
+  const hasRefs = () => props.row.refs.length > 0;
 
   const sortedEdges = () => {
     const entries: [number, import("./edgeStates").RowEdgeCell][] = [];
@@ -438,6 +445,22 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
       height={ROW_HEIGHT}
       aria-hidden="true"
     >
+      {/* Ref-pill → commit connector (#127). Horizontal line from the SVG's
+          left edge to just before the commit circle, at midY. The span in
+          the BRANCH/TAG column handles the portion to the left of this
+          SVG; together they span from the last pill all the way into the
+          node. Painted BEFORE the edge dispatch so any passThrough/ending
+          edges crossing at midY layer on top (matches GK's render order). */}
+      <Show when={hasRefs()}>
+        <line
+          x1={0}
+          y1={midY}
+          x2={laneCenterX(props.row.lane) - radius()}
+          y2={midY}
+          stroke={commitColor()}
+          stroke-width={isHeadRow() ? 2 : 1}
+        />
+      </Show>
       {/* Per-column dispatch — exact GK loop: starting, then passThrough,
           then ending at each column. Column ascending so layering is
           deterministic across rows. */}

@@ -34,7 +34,10 @@
 .commit-graph__grid {
   display: grid;
   grid-template-columns: var(--graph-col-branch) var(--graph-col-graph) 1fr;
-  gap: var(--graph-col-gap);
+  /* No column-gap: the ref-pill → commit connector (#127) needs to cross
+     the BRANCH/TAG → GRAPH boundary uninterrupted. Space before the
+     commit-message column is restored via its own padding-left below. */
+  gap: 0;
   padding: 0 var(--graph-col-padding);
   position: relative;
 }
@@ -54,6 +57,27 @@
   padding-left: 3px;
   /* No overflow:hidden — pills handle their own truncation and the
      +N popover needs to escape the row's vertical bounds. */
+}
+
+/* Pill → commit connector line (#127). A 1-px line in the row's lane
+   color, anchored to the right edge of the BRANCH/TAG cell. `flex: 1`
+   lets it absorb the whitespace between the last pill and the cell's
+   right edge; `align-self: center` pins it to the row's midY so it
+   visually extends into the commit circle sitting in the adjacent
+   GRAPH column. HEAD row uses a 2-px variant — matches GitKraken's
+   thicker stroke on the checked-out branch (the inner SVG line in
+   `RowRenderer` bumps its stroke-width in lockstep). */
+.ref-connector {
+  flex: 1;
+  align-self: center;
+  height: 1px;
+  min-height: 1px;
+  min-width: 0;
+}
+
+.ref-connector--head {
+  height: 2px;
+  min-height: 2px;
 }
 
 /* ========================================================================
@@ -211,6 +235,7 @@
 
 .commit-graph__col-messages .graph-row-wrapper {
   gap: 12px;
+  padding-left: var(--graph-col-gap);
 }
 
 .graph-row-wrapper.is-hovering {
@@ -269,7 +294,9 @@
 .commit-graph__wip-row {
   display: grid;
   grid-template-columns: var(--graph-col-branch) var(--graph-col-graph) 1fr;
-  gap: var(--graph-col-gap);
+  /* Keep the grid flush — matches the main graph grid so the WIP row's
+     lane column aligns pixel-perfect with the HEAD commit below. */
+  gap: 0;
   padding: 0 var(--graph-col-padding);
   align-items: center;
   width: 100%;
@@ -290,6 +317,7 @@
   gap: 0;
   min-width: 0;
   height: 100%;
+  padding-left: var(--graph-col-gap);
 }
 
 .commit-graph__wip-row:hover .commit-graph__wip-lane,

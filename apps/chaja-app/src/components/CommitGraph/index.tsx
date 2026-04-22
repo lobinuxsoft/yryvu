@@ -19,6 +19,7 @@ import { ContextMenu } from "../ContextMenu";
 import { CommitDialogs } from "./CommitDialogs";
 import { createCommitOps } from "./useCommitOps";
 import { CommitGraphRenderer } from "./renderer";
+import { RefPillGroup } from "./RefPills";
 import { computeVisible } from "./virtualize";
 
 const ROW_HEIGHT = 28;
@@ -201,7 +202,20 @@ export function CommitGraph(props: CommitGraphProps) {
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
       >
         <div class="commit-graph__grid" style={{ height: `${totalHeight()}px` }}>
-          <div class="commit-graph__col-branch" aria-hidden="true" />
+          <ul class="commit-graph__col-branch">
+            {rows().map((r, i) => (
+              <li
+                class="commit-graph__branch-row"
+                data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                style={{
+                  top: `${i * ROW_HEIGHT}px`,
+                  height: `${ROW_HEIGHT}px`,
+                }}
+              >
+                <RefPillGroup refs={r.refs} />
+              </li>
+            ))}
+          </ul>
           <div class="commit-graph__col-graph">
             <canvas
               class="commit-graph__canvas"

@@ -38,6 +38,18 @@ export interface RefTag {
   kind: "Branch" | "RemoteBranch" | "Tag" | "Head";
 }
 
+/**
+ * Mirror of the Rust `graph_core::ChildRefs` — refs reachable from this
+ * commit's strict descendants, bucketed by kind. Populated via the
+ * `populate_child_refs` pass in `layout_commits`. Rust-side `HashSet<String>`
+ * serializes as a JSON array, so these land as `string[]` here.
+ */
+export interface ChildRefs {
+  heads: string[];
+  remotes: string[];
+  tags: string[];
+}
+
 export interface GraphRow {
   sha: string;
   short_sha: string;
@@ -50,6 +62,7 @@ export interface GraphRow {
   color_idx: number;
   refs: RefTag[];
   is_merge: boolean;
+  child_refs: ChildRefs;
 }
 
 interface GraphBatch {

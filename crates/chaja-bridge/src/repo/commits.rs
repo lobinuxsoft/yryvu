@@ -232,31 +232,45 @@ pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendErr
 
 /// Pick an automatic pin target for the graph trunk.
 ///
-/// Mirrors Chajá's proposed auto-pin fallback from
-/// `docs/research/gitkraken-graph/05-trunk-pinning.md`:
+/// GitKraken pins the currently-checked-out branch as the trunk spine —
+/// that's the commit line the user is actively working on, and the one
+/// that stays column 0 across the whole graph. Fall through only when
+/// the repo has no local HEAD attached (detached / fresh clone).
 ///
-/// 1. `refs/remotes/origin/HEAD` peeled — the remote's default branch.
-/// 2. Local `HEAD` if attached to a named branch.
-/// 3. First local branch matching `main`, `master`, `development`, `trunk`.
+/// Resolution order:
 ///
-/// Returns `None` when the repo has no candidate (empty repo, detached HEAD
-/// with no obvious default). In that case the caller should feed an empty
-/// `HashSet` into the lane allocator, which collapses to pure leftmost-free.
+/// 1. **Local `HEAD` if attached** to a named branch — mirrors GK's
+///    behaviour of pinning the current branch.
+/// 2. `refs/remotes/origin/HEAD` peeled — fallback for detached HEAD,
+///    uses the remote's declared default branch.
+/// 3. First local branch matching `main`, `master`, `development`, or
+///    `trunk` — last-ditch fallback when neither HEAD source is usable.
+///
+/// Previously step 1 was the remote HEAD, which broke for repos where
+/// `origin/HEAD` points to a stale or empty branch (e.g. `main` that
+/// still holds only the initial commit while all work landed on
+/// `development`). The pinned set would end up as a single-commit chain
+/// and the actual development spine would render on lane 1+ instead of
+/// lane 0.
+///
+/// Returns `None` when none of the candidates resolve — in that case
+/// the caller should feed an empty `HashSet` into the lane allocator,
+/// which collapses to pure leftmost-free.
 pub fn pick_pinned_head_for_path(repo_path: &Path) -> Option<String> {
     let repo = super::common::open_repo(repo_path).ok()?;
     pick_pinned_head(&repo)
 }
 
 pub fn pick_pinned_head(repo: &gix::Repository) -> Option<String> {
-    if let Some(id) = peel_ref(repo, "refs/remotes/origin/HEAD") {
-        return Some(id);
-    }
-
     if let Ok(Some(head_name)) = repo.head_name() {
         let name = head_name.as_bstr().to_string();
         if let Some(id) = peel_ref(repo, &name) {
             return Some(id);
         }
+    }
+
+    if let Some(id) = peel_ref(repo, "refs/remotes/origin/HEAD") {
+        return Some(id);
     }
 
     const TRUNK_CANDIDATES: &[&str] = &[

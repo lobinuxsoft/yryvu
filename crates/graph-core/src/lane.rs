@@ -216,36 +216,47 @@ impl LaneAssigner {
         let existing = self.reservations.get(parent_sha).copied();
 
         match existing {
-            Some(existing_col) if existing_col < current_lane => {
-                // Parent already lives in an older (leftward) lane — merge back.
-                // Our column ends here; parent continues at the existing column.
-                self.columns_used[current_lane] = false;
+            Some(existing_col) if existing_col == current_lane => {
+                // Exact match — no action. Reservation already correct.
             }
-            Some(existing_col) if existing_col > current_lane => {
-                // Parent's reservation is rightward. Try to steal it leftward.
+            Some(existing_col) => {
+                // Parent's reservation lives in a different column. Decide
+                // between stealing (moving the reservation leftward) and
+                // yielding (keeping our column alive as a phantom pass-through
+                // until the parent's row, then releasing it).
+                //
+                // Port of GitKraken's `getColumns` stealing branch at bundle
+                // offset ~301000: steal only if `existing > current_lane`
+                // (we're leftward of the reservation) AND the parent doesn't
+                // already have a merge child claiming the slot. Otherwise
+                // yield — push `current_lane` into `pending_frees[parent]`
+                // so the retire is deferred to the parent's placement.
+                //
+                // Critical for visual fidelity: yielding with deferred free
+                // produces the "phantom vertical ending at parent's row"
+                // that GK shows when multiple sibling branches converge on
+                // a shared parent. Immediate free (the previous behaviour)
+                // cut those verticals short.
                 let parent_has_merge_child = self.merge_children.contains(parent_sha);
-                if parent_has_merge_child {
-                    // Can't steal: a merge child already owns the parent at existing_col.
-                    // Our column continues as a phantom until the parent arrives,
-                    // then it's released via pending_frees.
-                    self.pending_frees
-                        .entry(parent_sha.to_string())
-                        .or_default()
-                        .push(current_lane);
-                } else {
-                    // Steal: move parent's reservation to our (leftward) column,
-                    // queue existing_col for release when the parent is reached.
+                let can_steal =
+                    existing_col > current_lane && !parent_has_merge_child;
+                if can_steal {
                     self.reservations
                         .insert(parent_sha.to_string(), current_lane);
                     self.pending_frees
                         .entry(parent_sha.to_string())
                         .or_default()
                         .push(existing_col);
+                } else {
+                    self.pending_frees
+                        .entry(parent_sha.to_string())
+                        .or_default()
+                        .push(current_lane);
                 }
             }
-            _ => {
-                // No existing reservation, or it coincides with current_lane.
-                // First-parent naturally continues our column.
+            None => {
+                // No existing reservation — first-parent naturally continues
+                // our column.
                 self.reservations
                     .insert(parent_sha.to_string(), current_lane);
             }

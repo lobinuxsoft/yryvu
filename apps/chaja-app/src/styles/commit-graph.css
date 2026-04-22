@@ -24,22 +24,78 @@
   font-size: 12px;
 }
 
-.commit-graph__scroll {
+/* ========================================================================
+   Zone-based layout (#141 follow-up) — 3 independent scroll containers
+   with JS-synchronized vertical scrollTop (ported from GitKraken's
+   per-zone `Grid` setup, doc 11). Splitting into zones lets the GRAPH
+   zone host its own HORIZONTAL scrollbar pinned to ITS viewport bottom
+   — the previous single-scroll layout placed the horizontal scrollbar
+   thousands of pixels below the visible area.
+   ======================================================================== */
+.commit-graph__zones {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  padding: 0 var(--graph-col-padding);
+  overflow: hidden;
   position: relative;
 }
 
-.commit-graph__grid {
-  display: grid;
-  grid-template-columns: var(--graph-col-branch) var(--graph-col-graph) 1fr;
-  /* No column-gap: the ref-pill → commit connector (#127) needs to cross
-     the BRANCH/TAG → GRAPH boundary uninterrupted. Space before the
-     commit-message column is restored via its own padding-left below. */
-  gap: 0;
-  padding: 0 var(--graph-col-padding);
+.commit-graph__zone {
   position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.commit-graph__zone--branch {
+  width: var(--graph-col-branch);
+  flex-shrink: 0;
+}
+
+.commit-graph__zone--graph {
+  width: var(--graph-col-graph);
+  flex-shrink: 0;
+  /* Horizontal scrollbar lives on the GRAPH zone only. Overflow-x:auto
+     + the UL's inline `width: graphContentWidth` makes the bar appear
+     at the bottom of the zone's viewport — the whole point of the
+     zone split. */
+  overflow-x: auto;
+}
+
+.commit-graph__zone--messages {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Scrollbar styling — BRANCH/TAG and GRAPH hide their vertical bars
+   (sync'd with MESSAGE which keeps the native one as the canonical
+   vertical scroll UI). GRAPH additionally styles its horizontal bar
+   to match GitKraken's `scrollbar-inner` aesthetic. */
+.commit-graph__zone--branch {
+  scrollbar-width: none;
+}
+.commit-graph__zone--branch::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.commit-graph__zone--graph::-webkit-scrollbar:vertical {
+  width: 0;
+}
+.commit-graph__zone--graph::-webkit-scrollbar:horizontal {
+  height: 10px;
+}
+.commit-graph__zone--graph::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+.commit-graph__zone--graph::-webkit-scrollbar-thumb {
+  background-color: var(--bg-3);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.commit-graph__zone--graph::-webkit-scrollbar-thumb:hover {
+  background-color: var(--fg-3);
 }
 
 .commit-graph__col-branch {
@@ -201,7 +257,6 @@
   padding: 0;
   position: relative;
   min-width: 0;
-  overflow-x: hidden;
 }
 
 /* Lane-color tint band (#128) — GitKraken's `BackgroundStreak` +

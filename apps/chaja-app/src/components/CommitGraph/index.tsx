@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
@@ -32,7 +40,7 @@ import {
   LANE_WIDTH,
   ROW_HEIGHT,
 } from "./RowRenderer";
-import { buildEdgeStates } from "./edgeStates";
+import { createIncrementalEdgeStates } from "./edgeStates";
 
 /**
  * Module-level className cache (Bd pattern from doc 12 — row wrapper).
@@ -120,6 +128,33 @@ export function CommitGraph(props: CommitGraphProps) {
   });
 
   const totalHeight = () => rows().length * ROW_HEIGHT;
+
+  /* ========================================================================
+     Graph-column intrinsic width (#141 follow-up) — when the repo fans out
+     beyond the GRAPH cell's viewport width, lanes disappear off the right
+     edge. GitKraken solves this by letting the commitZone be the only
+     zone without a `maximumWidth`: the column renders at its natural
+     `numGraphColumns * columnWidth` and the container scrolls horizontally
+     when it exceeds the cell. We get the same effect by sizing an inner
+     wrapper to the natural content width and putting `overflow-x: auto`
+     on the cell.
+
+     `maxLane` walks rows + parent_lanes only (O(n·k)). Pass-through edges
+     never visit a lane that didn't start as a `row.lane` or `parent_lane`
+     somewhere in the walk, so this upper-bounds the active-lane set
+     correctly without touching edgeStates. */
+  const maxLane = createMemo(() => {
+    let max = 0;
+    const all = rows();
+    for (const r of all) {
+      if (r.lane > max) max = r.lane;
+      for (const pl of r.parent_lanes) if (pl > max) max = pl;
+    }
+    return max;
+  });
+  const graphContentWidth = createMemo(
+    () => GUTTER + (maxLane() + 1) * LANE_WIDTH + 8,
+  );
   // HEAD row drives the WIP pseudo-row: its lane pins the dashed node
   // horizontally, its color tints the connector + borders, and its
   // `kind: "Head"` ref surfaces the current branch name for the
@@ -133,16 +168,111 @@ export function CommitGraph(props: CommitGraphProps) {
   );
   const wipNodeX = () => GUTTER + headLane() * LANE_WIDTH + LANE_WIDTH / 2;
 
+  /* ========================================================================
+     Row virtualization (#141) — only mount rows visible in the viewport plus
+     a small overscan. GitKraken uses react-virtualized `Grid` with
+     `overscanRowCount: 0`; for Solid we pick a modest overscan so fast
+     scroll doesn't pop-in (doc 11 recommendation).
+
+     Zone layout (doc 11): BRANCH/TAG, GRAPH, and MESSAGE each live in
+     their own scroll container, with vertical scrollTop synchronized
+     by JS. This is what lets the GRAPH column host an INTERNAL
+     horizontal scrollbar pinned to its own viewport bottom — otherwise
+     a single outer scroll would place the horizontal scrollbar
+     thousands of pixels below the visible area.
+     ======================================================================== */
+  const OVERSCAN_ROWS = 8;
+  let branchScroll: HTMLDivElement | undefined;
+  let graphScroll: HTMLDivElement | undefined;
+  let messagesScroll: HTMLDivElement | undefined;
+  let syncing = false;
+  const [scrollTop, setScrollTop] = createSignal(0);
+  const [viewportHeight, setViewportHeight] = createSignal(0);
+
+  function syncScrollFrom(e: Event) {
+    if (syncing) return;
+    syncing = true;
+    const src = e.currentTarget as HTMLElement;
+    const st = src.scrollTop;
+    setScrollTop(st);
+    if (branchScroll && branchScroll !== src && branchScroll.scrollTop !== st) {
+      branchScroll.scrollTop = st;
+    }
+    if (graphScroll && graphScroll !== src && graphScroll.scrollTop !== st) {
+      graphScroll.scrollTop = st;
+    }
+    if (
+      messagesScroll &&
+      messagesScroll !== src &&
+      messagesScroll.scrollTop !== st
+    ) {
+      messagesScroll.scrollTop = st;
+    }
+    queueMicrotask(() => {
+      syncing = false;
+    });
+  }
+
+  onMount(() => {
+    // Pick any zone as the viewport measurement anchor — they all have the
+    // same height in the flex row.
+    const anchor = graphScroll ?? branchScroll ?? messagesScroll;
+    if (!anchor) return;
+    setViewportHeight(anchor.clientHeight);
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setViewportHeight(entry.contentRect.height);
+      }
+    });
+    ro.observe(anchor);
+    onCleanup(() => ro.disconnect());
+  });
+
+  const visibleRange = createMemo(() => {
+    const total = rows().length;
+    const vh = viewportHeight();
+    if (total === 0 || vh === 0) return { start: 0, end: 0 };
+    const st = scrollTop();
+    const start = Math.max(0, Math.floor(st / ROW_HEIGHT) - OVERSCAN_ROWS);
+    const end = Math.min(
+      total,
+      Math.ceil((st + vh) / ROW_HEIGHT) + OVERSCAN_ROWS,
+    );
+    return { start, end };
+  });
+
+  // Sliced row view. Returns references into `rows()` so <For>'s keyed
+  // reconciliation matches items by identity — rows that stay in the
+  // window during scroll don't remount, only their `top` offset updates.
+  const visibleRows = createMemo(() => {
+    const { start, end } = visibleRange();
+    return rows().slice(start, end);
+  });
+
   /**
    * Per-row edges dict — literal port of GitKraken's
    * `getFinalEdgeStateForGraphAndRow` pipeline. Each row gets a
    * `Map<column, {starting?, passThrough?, ending?}>` that the renderer
    * iterates to dispatch one of three drawing primitives per column.
    *
-   * Built in one pass over `rows()` so it's O(n·k) total; consumed by
-   * index-based lookup when rendering each row.
+   * Incremental (#141): the builder closure caches the running result
+   * array + last `prev` Map. Each `rows()` change only processes the
+   * delta beyond the previous length — turns the per-batch O(N) full
+   * recompute into O(batch_size), preventing O(N²) total on large
+   * streams that bricked the event loop.
+   *
+   * Backed by a `{ equals: false }` signal because the incremental
+   * builder mutates a stable result array in place, so reference
+   * equality alone wouldn't fire downstream updates. The effect runs
+   * on every `rows()` change and pushes the new (same-ref) array.
    */
-  const edgeStates = createMemo(() => buildEdgeStates(rows()));
+  const incrementalBuilder = createIncrementalEdgeStates();
+  const [edgeStates, setEdgeStates] = createSignal(incrementalBuilder([]), {
+    equals: false,
+  });
+  createEffect(() => {
+    setEdgeStates(incrementalBuilder(rows()));
+  });
 
   function openStaging() {
     setSelectedCommit(undefined);
@@ -218,143 +348,171 @@ export function CommitGraph(props: CommitGraphProps) {
           </div>
         </div>
       </Show>
-      <div class="commit-graph__scroll">
-        <div class="commit-graph__grid" style={{ height: `${totalHeight()}px` }}>
-          <ul class="commit-graph__col-branch">
-            {rows().map((r, i) => (
-              <li
-                class={rowWrapperClass(
-                  r.is_merge ? "merge" : "commit",
-                  hoveredCommit() === r.sha,
-                  selectedCommit() === r.sha,
-                )}
-                classList={{
-                  "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
-                }}
-                data-selected={selectedCommit() === r.sha ? "true" : "false"}
-                style={{
-                  top: `${i * ROW_HEIGHT}px`,
-                  height: `${ROW_HEIGHT}px`,
-                  "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
-                }}
-                onMouseEnter={() => setHoveredCommit(r.sha)}
-                onMouseLeave={() => {
-                  if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
-                }}
-              >
-                <RefPillGroup refs={r.refs} />
-                {/* Connector line (#127) — fills the gap between the last
-                    pill and the right edge of the BRANCH/TAG cell, tinted
-                    with the row's lane color. Anchors each pill cluster
-                    visually to its commit. The line continues inside the
-                    GRAPH column's SVG up to the commit circle. HEAD rows
-                    get a 2-px variant as a "you are here" cue, matching
-                    GitKraken's thicker stroke on the checked-out branch. */}
-                <Show when={r.refs.length > 0}>
-                  <span
-                    class="ref-connector"
+      <div class="commit-graph__zones">
+        <div
+          class="commit-graph__zone commit-graph__zone--branch"
+          ref={branchScroll}
+          onScroll={syncScrollFrom}
+        >
+          <ul
+            class="commit-graph__col-branch"
+            style={{ height: `${totalHeight()}px` }}
+          >
+            <For each={visibleRows()}>
+              {(r, i) => {
+                const globalIndex = () => visibleRange().start + i();
+                return (
+                  <li
+                    class={rowWrapperClass(
+                      r.is_merge ? "merge" : "commit",
+                      hoveredCommit() === r.sha,
+                      selectedCommit() === r.sha,
+                    )}
                     classList={{
-                      "ref-connector--head": r.refs.some(
-                        (ref) => ref.kind === "Head",
-                      ),
+                      "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
                     }}
-                    aria-hidden="true"
+                    data-selected={selectedCommit() === r.sha ? "true" : "false"}
                     style={{
-                      "background-color": `var(--column-${r.color_idx % 10}-color)`,
+                      top: `${globalIndex() * ROW_HEIGHT}px`,
+                      height: `${ROW_HEIGHT}px`,
+                      "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                     }}
-                  />
-                </Show>
-              </li>
-            ))}
+                    onMouseEnter={() => setHoveredCommit(r.sha)}
+                    onMouseLeave={() => {
+                      if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
+                    }}
+                  >
+                    <RefPillGroup refs={r.refs} />
+                    {/* Connector line (#127) — fills the gap between the
+                        last pill and the right edge of the BRANCH/TAG
+                        cell, tinted with the row's lane color. HEAD rows
+                        get a 2-px variant as a "you are here" cue. */}
+                    <Show when={r.refs.length > 0}>
+                      <span
+                        class="ref-connector"
+                        classList={{
+                          "ref-connector--head": r.refs.some(
+                            (ref) => ref.kind === "Head",
+                          ),
+                        }}
+                        aria-hidden="true"
+                        style={{
+                          "background-color": `var(--column-${r.color_idx % 10}-color)`,
+                        }}
+                      />
+                    </Show>
+                  </li>
+                );
+              }}
+            </For>
           </ul>
-          <ul class="commit-graph__col-graph">
-            {rows().map((r, i) => (
-              <li
-                class={rowWrapperClass(
-                  r.is_merge ? "merge" : "commit",
-                  hoveredCommit() === r.sha,
-                  selectedCommit() === r.sha,
-                )}
-                classList={{
-                  "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
-                }}
-                data-selected={selectedCommit() === r.sha ? "true" : "false"}
-                style={{
-                  top: `${i * ROW_HEIGHT}px`,
-                  height: `${ROW_HEIGHT}px`,
-                  "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
-                }}
-                onClick={() => setSelectedCommit(r.sha)}
-                onMouseEnter={() => setHoveredCommit(r.sha)}
-                onMouseLeave={() => {
-                  if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
-                }}
-              >
-                {/* Lane-color tint band (#128) — GitKraken's
-                    `BackgroundStreak` + `.commit-bg-color` rule. A 10 %
-                    wash of the lane color anchored to the right edge of
-                    the GRAPH cell and extending leftward UP TO (but not
-                    past) the commit circle. When the row is selected,
-                    the tint jumps to 50 %. Painted BEFORE the SVG so
-                    edges/nodes layer on top. */}
-                <span
-                  class="commit-graph__row-tint"
-                  aria-hidden="true"
-                  style={{
-                    left: `${GUTTER + r.lane * LANE_WIDTH + LANE_WIDTH / 2}px`,
-                  }}
-                />
-                <CommitRowGraph
-                  row={r}
-                  edges={edgeStates()[i] ?? new Map()}
-                  hostingService={hostingService()}
-                />
-                {/* Row-height lane-color streak (#128) — ports GitKraken's
-                    `color-strip`. A thin vertical bar at the right edge
-                    of the GRAPH cell at full lane opacity. Sits ON TOP of
-                    the tint band so the right edge reads as a crisp
-                    lane-colored boundary rather than a soft fade. */}
-                <span
-                  class="commit-graph__lane-streak"
-                  aria-hidden="true"
-                  style={{
-                    "background-color": `var(--column-${r.color_idx % 10}-color)`,
-                  }}
-                />
-              </li>
-            ))}
+        </div>
+        <div
+          class="commit-graph__zone commit-graph__zone--graph"
+          ref={graphScroll}
+          onScroll={syncScrollFrom}
+        >
+          <ul
+            class="commit-graph__col-graph"
+            style={{
+              height: `${totalHeight()}px`,
+              width: `${graphContentWidth()}px`,
+            }}
+          >
+            <For each={visibleRows()}>
+              {(r, i) => {
+                const globalIndex = () => visibleRange().start + i();
+                return (
+                  <li
+                    class={rowWrapperClass(
+                      r.is_merge ? "merge" : "commit",
+                      hoveredCommit() === r.sha,
+                      selectedCommit() === r.sha,
+                    )}
+                    classList={{
+                      "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                    }}
+                    data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                    style={{
+                      top: `${globalIndex() * ROW_HEIGHT}px`,
+                      height: `${ROW_HEIGHT}px`,
+                      "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                    }}
+                    onClick={() => setSelectedCommit(r.sha)}
+                    onMouseEnter={() => setHoveredCommit(r.sha)}
+                    onMouseLeave={() => {
+                      if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
+                    }}
+                  >
+                    <span
+                      class="commit-graph__row-tint"
+                      aria-hidden="true"
+                      style={{
+                        left: `${GUTTER + r.lane * LANE_WIDTH + LANE_WIDTH / 2}px`,
+                      }}
+                    />
+                    <CommitRowGraph
+                      row={r}
+                      edges={edgeStates()[globalIndex()] ?? new Map()}
+                      hostingService={hostingService()}
+                    />
+                    <span
+                      class="commit-graph__lane-streak"
+                      aria-hidden="true"
+                      style={{
+                        "background-color": `var(--column-${r.color_idx % 10}-color)`,
+                      }}
+                    />
+                  </li>
+                );
+              }}
+            </For>
           </ul>
-          <ul class="commit-graph__col-messages">
-            {rows().map((r, i) => (
-              <li
-                class={rowWrapperClass(
-                  r.is_merge ? "merge" : "commit",
-                  hoveredCommit() === r.sha,
-                  selectedCommit() === r.sha,
-                )}
-                classList={{
-                  "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
-                }}
-                data-selected={selectedCommit() === r.sha ? "true" : "false"}
-                style={{
-                  top: `${i * ROW_HEIGHT}px`,
-                  height: `${ROW_HEIGHT}px`,
-                  "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
-                }}
-                onClick={() => setSelectedCommit(r.sha)}
-                onMouseEnter={() => setHoveredCommit(r.sha)}
-                onMouseLeave={() => {
-                  if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
-                }}
-                onContextMenu={(e) =>
-                  ops.openCommitContextMenu(e, r.sha, r.short_sha)
-                }
-              >
-                <span class="commit-graph__sha">{r.short_sha}</span>
-                <span class="commit-graph__summary">{r.summary}</span>
-                <span class="commit-graph__author">{r.author_name}</span>
-              </li>
-            ))}
+        </div>
+        <div
+          class="commit-graph__zone commit-graph__zone--messages"
+          ref={messagesScroll}
+          onScroll={syncScrollFrom}
+        >
+          <ul
+            class="commit-graph__col-messages"
+            style={{ height: `${totalHeight()}px` }}
+          >
+            <For each={visibleRows()}>
+              {(r, i) => {
+                const globalIndex = () => visibleRange().start + i();
+                return (
+                  <li
+                    class={rowWrapperClass(
+                      r.is_merge ? "merge" : "commit",
+                      hoveredCommit() === r.sha,
+                      selectedCommit() === r.sha,
+                    )}
+                    classList={{
+                      "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                    }}
+                    data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                    style={{
+                      top: `${globalIndex() * ROW_HEIGHT}px`,
+                      height: `${ROW_HEIGHT}px`,
+                      "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                    }}
+                    onClick={() => setSelectedCommit(r.sha)}
+                    onMouseEnter={() => setHoveredCommit(r.sha)}
+                    onMouseLeave={() => {
+                      if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
+                    }}
+                    onContextMenu={(e) =>
+                      ops.openCommitContextMenu(e, r.sha, r.short_sha)
+                    }
+                  >
+                    <span class="commit-graph__sha">{r.short_sha}</span>
+                    <span class="commit-graph__summary">{r.summary}</span>
+                    <span class="commit-graph__author">{r.author_name}</span>
+                  </li>
+                );
+              }}
+            </For>
           </ul>
         </div>
       </div>

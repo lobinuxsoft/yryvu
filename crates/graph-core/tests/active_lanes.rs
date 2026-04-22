@@ -17,7 +17,7 @@ fn linear_chain_has_only_lane_zero_active() {
         commit("c3", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
 
     for (i, row) in rows.iter().enumerate() {
         assert_eq!(row.active_lanes, vec![0u16], "row {i}: only lane 0 active");
@@ -42,7 +42,7 @@ fn fork_join_has_both_lanes_active_during_fork() {
         commit("p", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
 
     assert_eq!(rows[0].active_lanes, vec![0u16, 1], "merge M starts both lanes");
     assert_eq!(rows[1].active_lanes, vec![0u16, 1], "A row: 0 (A) + 1 (B still pending)");
@@ -61,7 +61,7 @@ fn octopus_merge_has_three_lanes_active_through_expansion() {
         commit("z", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
 
     assert_eq!(rows[0].active_lanes, vec![0u16, 1, 2], "octopus M: three lanes allocated");
     assert_eq!(rows[1].active_lanes, vec![0u16, 1, 2], "A row: A at 0, B/C reservations still active at 1/2");
@@ -89,7 +89,7 @@ fn terminating_row_includes_its_own_lane() {
         commit("b2", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
 
     assert_eq!(rows[0].active_lanes, vec![0u16], "a1 starts lane 0");
     assert_eq!(rows[1].active_lanes, vec![0u16, 1], "b1 on lane 1, lane 0 still pending a2");
@@ -111,7 +111,7 @@ fn active_lanes_are_sorted_and_deduplicated() {
         commit("p", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
 
     for row in &rows {
         let mut expected = row.active_lanes.clone();

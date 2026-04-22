@@ -11,7 +11,7 @@ use graph_core::layout_commits;
 fn linear_history_stays_on_lane_zero() {
     let commits = vec![commit("a", &["b"]), commit("b", &["c"]), commit("c", &[])];
 
-    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
 
     assert_eq!(rows[0].lane, 0);
     assert_eq!(rows[0].parent_lanes, vec![0]);

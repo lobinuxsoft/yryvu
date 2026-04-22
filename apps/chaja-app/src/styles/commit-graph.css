@@ -47,20 +47,13 @@
   min-width: 0;
 }
 
-.commit-graph__branch-row {
-  position: absolute;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
+/* Branch/tag column scope — left-align pills with 3px gap from the edge
+   (matches GitKraken's getRefNodePositionOrDefault → LEFT default). */
+.commit-graph__col-branch .graph-row-wrapper {
   justify-content: flex-start;
   padding-left: 3px;
   /* No overflow:hidden — pills handle their own truncation and the
      +N popover needs to escape the row's vertical bounds. */
-}
-
-.commit-graph__branch-row[data-selected="true"] {
-  background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
 }
 
 /* ========================================================================
@@ -176,8 +169,12 @@
 }
 
 .commit-graph__col-graph {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   position: relative;
   min-width: 0;
+  overflow-x: hidden;
 }
 
 .commit-graph__col-messages {
@@ -188,32 +185,43 @@
   min-width: 0;
 }
 
-.commit-graph__canvas {
+/* ========================================================================
+   Per-row SVG renderer (#81 — 1:1 port of GitKraken's per-row edge drawing
+   per doc 02 + doc 12). Replaces the previous WebGL canvas.
+   ======================================================================== */
+.graph-row__svg {
   display: block;
-  pointer-events: none;
-  position: sticky;
-  top: 0;
-  width: 100%;
+  overflow: visible;
 }
 
-.commit-graph__row {
+/* ========================================================================
+   Row wrapper (Bd pattern per doc 12) — the positioning + state-class
+   scaffold shared by all three graph columns (branch / graph / message).
+   className cache lives in index.tsx rowWrapperClass().
+   ======================================================================== */
+.graph-row-wrapper {
   position: absolute;
   left: 0;
   right: 0;
   display: flex;
-  gap: 12px;
   align-items: center;
   font-size: 12px;
   color: var(--fg-1);
 }
 
-.commit-graph__row:hover { background: var(--bg-2); }
+.commit-graph__col-messages .graph-row-wrapper {
+  gap: 12px;
+}
 
-.commit-graph__row[data-selected="true"] {
+.graph-row-wrapper.is-hovering {
+  background: var(--bg-2);
+}
+
+.graph-row-wrapper.is-selected {
   background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
   color: var(--fg-0);
 }
-.commit-graph__row[data-selected="true"] .commit-graph__sha {
+.graph-row-wrapper.is-selected .commit-graph__sha {
   color: var(--fg-1);
 }
 

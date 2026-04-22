@@ -345,10 +345,12 @@
 }
 
 /* ========================================================================
-   WIP pseudo-row — pinned above the scrollable graph when the working tree
-   is dirty. Behaves visually like an extra graph row; its "lane" column
-   carries a dashed node aligned to HEAD's lane, and the message column
-   holds the draft commit summary input.
+   WIP pseudo-row (#129) — pinned above the scrollable graph, always
+   visible as the anchor of HEAD's lane. Borders + tint derive from
+   `--wip-lane-color` (set inline from the HEAD row's palette index) so
+   the WIP decoration stays visually consistent with the commit graph
+   below regardless of which branch is checked out. Matches GitKraken's
+   `.node.work-dir-changes` rule (`border: 2px dotted var(--graph-color-N)`).
    ======================================================================== */
 .commit-graph__wip-row {
   display: grid;
@@ -360,7 +362,8 @@
   align-items: center;
   width: 100%;
   height: 26px;
-  border-bottom: 1px dashed color-mix(in srgb, var(--info) 40%, var(--bg-3));
+  border-bottom: 1px dashed
+    color-mix(in srgb, var(--wip-lane-color, var(--info)) 35%, var(--bg-3));
   background: transparent;
   cursor: pointer;
   user-select: none;
@@ -373,85 +376,123 @@
 .commit-graph__wip-message {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 8px;
   min-width: 0;
   height: 100%;
   padding-left: var(--graph-col-gap);
 }
 
-.commit-graph__wip-row:hover .commit-graph__wip-lane,
-.commit-graph__wip-row[data-active="true"] .commit-graph__wip-lane {
-  background: color-mix(in srgb, var(--info) 28%, var(--bg-0));
-}
-
 .commit-graph__wip-lane {
   position: relative;
   height: 100%;
-  background: color-mix(in srgb, var(--info) 18%, var(--bg-0));
 }
 
+/* Tint band (#129) — mirrors `.commit-graph__row-tint` from real commit
+   rows. Pinned to the right edge of the GRAPH cell, extending left to
+   the WIP node's centerX (set inline as `left`), sized to the node
+   diameter and vertically centered. Reads as a halo trailing off the
+   dashed node rather than a full-lane wash. */
+.commit-graph__wip-tint {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  height: 22px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  background-color: color-mix(
+    in srgb,
+    var(--wip-lane-color, var(--info)) 14%,
+    transparent
+  );
+}
+
+.commit-graph__wip-row:hover .commit-graph__wip-tint,
+.commit-graph__wip-row[data-active="true"] .commit-graph__wip-tint {
+  background-color: color-mix(
+    in srgb,
+    var(--wip-lane-color, var(--info)) 28%,
+    transparent
+  );
+}
+
+/* WIP node — 2 px dotted circle in the HEAD lane's color, matching
+   GitKraken's `.node.work-dir-changes` rule. Larger radius (11 px =
+   COMMIT_RADIUS) than the old decorative 10×10, so it matches the
+   diameter of a real commit node exactly. */
 .commit-graph__wip-node {
   position: absolute;
   top: 50%;
-  width: 10px;
-  height: 10px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  border: 1.5px dashed var(--info);
+  border: 2px dotted var(--wip-lane-color, var(--info));
   background: var(--bg-0);
   transform: translate(-50%, -50%);
   z-index: 2;
 }
 
-/* Dashed connector dropping from the WIP node into the scroll area below,
-   landing on the HEAD commit node. The scroll area's first-row node sits at
-   y = rowHeight / 2 ≈ 12px below the top, so a 20px-tall connector reaches it. */
+/* Vertical connector dropping from the WIP node into the scroll area
+   below, landing on the HEAD commit circle. Same dotted 2-px stroke as
+   the node border so the two read as one continuous stroke. The WIP
+   row is 26 px tall and the first real row's commit center sits at
+   y = ROW_HEIGHT/2 = 14 px from its top — total drop ≈ 24 px. */
 .commit-graph__wip-node::after {
   content: "";
   position: absolute;
   left: 50%;
-  top: 100%;
+  top: calc(100% + 2px);
   width: 0;
-  height: 20px;
-  border-left: 1.5px dashed var(--info);
-  transform: translateX(-50%);
+  height: 16px;
+  border-left: 2px dotted var(--wip-lane-color, var(--info));
+  transform: translateX(-1px);
 }
 
+/* WIP input (#129) — ports GitKraken's `.gk-text-input` look: dark
+   semi-transparent background, near-invisible hairline border, focus
+   ring in the HEAD lane color. Max-width leaves room for the `+N`
+   badge + 75 px of right margin, matching `.work-dir-input`
+   (`max-width: calc(100% - 75px); min-width: 100px`). */
 .commit-graph__wip-input {
-  flex: 1;
-  height: 100%;
-  background: transparent;
-  border: 0;
+  flex: 0 1 auto;
+  max-width: calc(100% - 75px);
+  min-width: 100px;
+  height: 22px;
+  padding: 0 8px;
+  background-color: color-mix(in srgb, black 25%, transparent);
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  border-radius: 3px;
   outline: 0;
-  padding: 0 10px;
   color: var(--fg-0);
   font-family: var(--font-mono);
   font-size: 12px;
-  min-width: 0;
+}
+
+.commit-graph__wip-input:focus {
+  border-color: color-mix(
+    in srgb,
+    var(--wip-lane-color, var(--info)) 70%,
+    transparent
+  );
 }
 
 .commit-graph__wip-input::placeholder {
-  color: color-mix(in srgb, var(--info) 70%, var(--fg-3));
+  color: color-mix(in srgb, white 40%, transparent);
 }
 
-.commit-graph__wip-pencil {
-  color: var(--warning);
-  font-size: 12px;
-  margin-right: 6px;
-  flex-shrink: 0;
-}
-
+/* `+N` file-count chip — GitKraken uses a green (success) chip that
+   reads immediately as "additions pending". The `+` prefix keeps it
+   visually distinct from number-only counts elsewhere in the UI. */
 .commit-graph__wip-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
+  min-width: 22px;
   padding: 0 6px;
-  height: 16px;
-  font-size: 10px;
-  background: var(--warning);
+  height: 18px;
+  font-size: 11px;
+  background: color-mix(in srgb, var(--success) 85%, transparent);
   color: var(--bg-0);
-  border-radius: 10px;
-  font-weight: 700;
-  margin-right: 10px;
+  border-radius: 3px;
+  font-weight: 600;
   flex-shrink: 0;
 }

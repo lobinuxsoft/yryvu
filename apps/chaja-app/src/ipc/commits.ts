@@ -63,6 +63,14 @@ export interface GraphRow {
   refs: RefTag[];
   is_merge: boolean;
   child_refs: ChildRefs;
+  /**
+   * Lane indices carrying a visual edge through this row (sorted ascending,
+   * deduplicated). Populated in graph-core via pre+post snapshots of
+   * `columns_used` around each `place()` call. Consumed by the per-row
+   * renderer (#81) to emit a vertical pipe segment per listed lane confined
+   * to the row's height.
+   */
+  active_lanes: number[];
 }
 
 interface GraphBatch {

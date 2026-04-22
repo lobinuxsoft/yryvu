@@ -235,7 +235,7 @@ export function CommitGraph(props: CommitGraphProps) {
               >
                 <span class="commit-graph__sha">{r.short_sha}</span>
                 <span class="commit-graph__summary">{r.summary}</span>
-                <span class="commit-graph__author">{r.author}</span>
+                <span class="commit-graph__author">{r.author_name}</span>
               </li>
             ))}
           </ul>

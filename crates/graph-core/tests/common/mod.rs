@@ -7,7 +7,8 @@ pub fn commit(sha: &str, parents: &[&str]) -> Commit {
         sha: sha.to_string(),
         parents: parents.iter().map(|s| s.to_string()).collect(),
         summary: format!("commit {sha}"),
-        author: "test <t@t>".to_string(),
+        author_name: "test".to_string(),
+        author_email: "t@t".to_string(),
         author_date: 0,
         refs: Vec::new(),
     }

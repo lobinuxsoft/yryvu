@@ -50,7 +50,8 @@ pub fn walk_commits(
 
         let parents: Vec<String> = gix_commit.parent_ids().map(|id| id.to_string()).collect();
 
-        let author_line = format!("{} <{}>", author.name, author.email);
+        let author_name = author.name.to_string();
+        let author_email = author.email.to_string();
         let summary = message.summary().to_string();
         let sha = info.id.to_string();
 
@@ -62,7 +63,8 @@ pub fn walk_commits(
                 sha,
                 parents,
                 summary,
-                author: author_line,
+                author_name,
+                author_email,
                 author_date: time.seconds,
                 refs,
             },

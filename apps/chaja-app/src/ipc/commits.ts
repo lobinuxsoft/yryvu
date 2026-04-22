@@ -54,7 +54,26 @@ export interface GraphRow {
   sha: string;
   short_sha: string;
   summary: string;
-  author: string;
+  /**
+   * Author's display name only (no email). For the old `"Name <email>"` form
+   * the backend used to send, compose via `${author_name} <${author_email}>`.
+   */
+  author_name: string;
+  /** Author email, lowercase-trimmed by the backend via gix. */
+  author_email: string;
+  /**
+   * Two-character initials fallback for the avatar badge, pre-computed in
+   * `graph-core::author_initials`. Uppercased.
+   */
+  author_initials: string;
+  /**
+   * Lowercase hex MD5 of the trimmed-lowercased email — the Gravatar URL
+   * fragment. Compose the full URL via
+   * `https://gravatar.com/avatar/${gravatar_hash}?s=36&d=404`. `d=404` so
+   * Gravatar returns 404 (instead of its default placeholder) when no
+   * avatar is registered, letting the frontend fall back cleanly.
+   */
+  gravatar_hash: string;
   author_date: number;
   lane: number;
   parent_lanes: number[];

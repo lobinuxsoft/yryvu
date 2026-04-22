@@ -38,10 +38,34 @@
  * `arcEndpoint` / `arcPath` below.
  */
 
-import { For, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 
 import type { GraphRow } from "../../ipc";
 import type { RowEdges } from "./edgeStates";
+
+/**
+ * Per-email cache of avatar load results. Prevents reissuing network
+ * requests for emails that already 404'd on Gravatar (there's no point
+ * trying again within a session — Gravatar caches aggressively and a
+ * missing avatar on page 1 stays missing on page 40). Bound to an
+ * upper ceiling so long-history repos don't leak; simple FIFO eviction
+ * is sufficient — ordering within the cache doesn't matter for
+ * correctness.
+ *
+ * `true`  → we've seen a 404 / network error for this email
+ * `false` → we've successfully loaded the avatar
+ * absent  → not tried yet (render optimistically, cache the outcome)
+ */
+const AVATAR_CACHE_CAP = 512;
+const avatarStatusByEmail = new Map<string, boolean>();
+function rememberAvatarStatus(email: string, failed: boolean) {
+  if (avatarStatusByEmail.size >= AVATAR_CACHE_CAP && !avatarStatusByEmail.has(email)) {
+    // Evict the oldest insertion (Map iteration preserves insertion order in JS).
+    const firstKey = avatarStatusByEmail.keys().next().value;
+    if (firstKey !== undefined) avatarStatusByEmail.delete(firstKey);
+  }
+  avatarStatusByEmail.set(email, failed);
+}
 
 const ROW_HEIGHT = 28;
 const LANE_WIDTH = 22;
@@ -102,6 +126,129 @@ function arcPath(
 export interface CommitRowGraphProps {
   row: GraphRow;
   edges: RowEdges;
+}
+
+/**
+ * Author avatar overlay for a non-merge commit node. Renders a lane-color
+ * backdrop + circular-clipped `<image>` over the commit circle. On image
+ * load failure (404 / offline / blocked) falls back to a two-letter
+ * initials badge with the lane's color as background, matching
+ * GitKraken's `getDefaultAvatar` fallback.
+ *
+ * - Gravatar URL composed from the pre-hashed email (`row.gravatar_hash`).
+ *   `d=404` forces Gravatar to 404 when no avatar is registered, so the
+ *   onerror path runs instead of getting the default "mystery man" image.
+ * - Per-email result cached across all rows (see `avatarStatusByEmail`)
+ *   — a second commit by the same author reuses the previous outcome
+ *   and skips the image fetch entirely when it already failed.
+ */
+function CommitAvatar(props: {
+  cx: number;
+  cy: number;
+  radius: number;
+  colorIdx: number;
+  authorEmail: string;
+  authorInitials: string;
+  gravatarHash: string;
+}) {
+  const cached = avatarStatusByEmail.get(props.authorEmail);
+  // `loaded` flips to true on the image element's `load` event. The image
+  // starts at opacity 0; if it loads successfully we swap to opacity 1
+  // (tapping over the text initials). If it fails — 404, offline, blocked —
+  // opacity stays 0 forever and the text stays visible. This sidesteps SVG
+  // `onerror` which fires inconsistently across engines / Tauri's WebView.
+  const [loaded, setLoaded] = createSignal(cached === false);
+  // Resolve the avatar URL, preferring provider-native sources where the
+  // email identifies the user unambiguously:
+  //
+  // 1. **GitHub noreply** — `<id>+<username>@users.noreply.github.com` or
+  //    `<username>@users.noreply.github.com` (legacy). Extract the
+  //    username and hit `https://github.com/<user>.png?size=N` which
+  //    redirects to the real avatar on `avatars.githubusercontent.com`.
+  //    No auth / API quota — works as long as the username is public.
+  // 2. **Gravatar** — derived from the pre-hashed email. `d=404` so
+  //    Gravatar returns 404 when no avatar is registered, letting the
+  //    image's load/error pair land on the initials fallback cleanly
+  //    instead of loading Gravatar's default mystery-man.
+  const avatarUrl = () => {
+    const size = props.radius * 4;
+    const m = /^(?:\d+\+)?([^@\s]+)@users\.noreply\.github\.com$/i.exec(
+      props.authorEmail,
+    );
+    if (m && m[1]) {
+      return `https://github.com/${m[1]}.png?size=${size}`;
+    }
+    return `https://gravatar.com/avatar/${props.gravatarHash}?s=${size}&d=404`;
+  };
+  const bgColor = () => laneColor(props.colorIdx);
+  const fontSize = () => `${Math.round(props.radius * 0.95)}px`;
+  // Suppress the network request altogether for emails whose avatar
+  // already 404'd earlier in the session — saves a useless round-trip.
+  const shouldTryImage = () => cached !== true;
+  // Two concentric rings separate the avatar from the lane-color backdrop
+  // so an avatar whose dominant hue matches the lane doesn't dissolve into
+  // it (GitKraken doc 16 reference — visible as a 1-px dark frame around
+  // every avatar in their graph). Outer lane-color ring is 1 px wide,
+  // inner dark ring is 1 px, avatar is inset by 2 px total from the commit
+  // circle's radius.
+  const innerRingRadius = () => Math.max(props.radius - 1, 0);
+  const avatarRadius = () => Math.max(props.radius - 2, 0);
+  return (
+    <>
+      {/* Outer lane-color disc — forms the 1-px lane-color frame around
+          the avatar. */}
+      <circle cx={props.cx} cy={props.cy} r={props.radius} fill={bgColor()} />
+      {/* Dark separator ring — 1 px, app background colour. Keeps the
+          avatar legible when its dominant hue is close to the lane tint
+          (the darker gap gives the eye an edge to latch onto). */}
+      <circle
+        cx={props.cx}
+        cy={props.cy}
+        r={innerRingRadius()}
+        fill="var(--bg-0)"
+      />
+      {/* Initials text painted unconditionally. The image (below) overlays
+          it when loaded; otherwise this shows through as the fallback. */}
+      <text
+        x={props.cx}
+        y={props.cy}
+        font-size={fontSize()}
+        font-weight="600"
+        text-anchor="middle"
+        dominant-baseline="central"
+        fill="#fff"
+        style={{ "user-select": "none", "pointer-events": "none" }}
+      >
+        {props.authorInitials}
+      </text>
+      <Show when={shouldTryImage()}>
+        <image
+          href={avatarUrl()}
+          x={props.cx - avatarRadius()}
+          y={props.cy - avatarRadius()}
+          width={avatarRadius() * 2}
+          height={avatarRadius() * 2}
+          preserveAspectRatio="xMidYMid slice"
+          style={{
+            opacity: loaded() ? 1 : 0,
+            transition: "opacity 120ms ease-out",
+            // CSS clip-path with percentages — relative to the image's
+            // own bounding box. Works across every SVG2 renderer; avoids
+            // the SVG-attribute `clip-path: circle(Npx at ...)` form
+            // which older WebKit treats as invalid syntax.
+            "clip-path": "circle(50% at 50% 50%)",
+          }}
+          on:load={() => {
+            rememberAvatarStatus(props.authorEmail, false);
+            setLoaded(true);
+          }}
+          on:error={() => {
+            rememberAvatarStatus(props.authorEmail, true);
+          }}
+        />
+      </Show>
+    </>
+  );
 }
 
 /**
@@ -287,14 +434,34 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
         )}
       </For>
 
-      {/* Commit circle — painted last so it sits atop any horizontal
-          that reaches into its column at midY. */}
-      <circle
-        cx={laneCenterX(props.row.lane)}
-        cy={midY}
-        r={radius()}
-        fill={commitColor()}
-      />
+      {/* Commit node — painted last so it sits atop any horizontal that
+          reaches into its column at midY.
+          - Merges: a plain lane-color disc at the smaller merge radius.
+            GitKraken's product decision is to skip the avatar on merge
+            commits (doc 16 / bundle `GraphAvatar` props).
+          - Regular commits: lane-color backdrop + Gravatar image with
+            initials fallback, via `CommitAvatar`. */}
+      <Show
+        when={!props.row.is_merge}
+        fallback={
+          <circle
+            cx={laneCenterX(props.row.lane)}
+            cy={midY}
+            r={radius()}
+            fill={commitColor()}
+          />
+        }
+      >
+        <CommitAvatar
+          cx={laneCenterX(props.row.lane)}
+          cy={midY}
+          radius={radius()}
+          colorIdx={props.row.color_idx}
+          authorEmail={props.row.author_email}
+          authorInitials={props.row.author_initials}
+          gravatarHash={props.row.gravatar_hash}
+        />
+      </Show>
     </svg>
   );
 }

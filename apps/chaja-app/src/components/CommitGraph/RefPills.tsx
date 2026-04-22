@@ -29,6 +29,24 @@ import {
   IconTag,
 } from "../Icons";
 import type { RefTag } from "../../ipc/commits";
+import { clearHoveredRef, setHoveredRef } from "../../state";
+
+/**
+ * Map a ref-tag `kind` (backend enum) to the `HoveredRef.kind` channel used
+ * by the hover-dim pass. The backend splits remote branches and tags into
+ * their own buckets; the dim test indexes by these three buckets.
+ */
+function hoveredKindFor(kind: RefTag["kind"]): "head" | "remote" | "tag" {
+  switch (kind) {
+    case "Head":
+    case "Branch":
+      return "head";
+    case "RemoteBranch":
+      return "remote";
+    case "Tag":
+      return "tag";
+  }
+}
 
 /**
  * Type priority for ordering within a row — higher sorts first.
@@ -98,11 +116,25 @@ function PillIcon(props: { kind: RefTag["kind"] }) {
 }
 
 function RefPill(props: { tag: RefTag; active?: boolean }) {
+  // Hover / focus on a pill → register it as the hovered ref so the graph
+  // dims non-ancestors. Uses `head` bucket for local branches AND the
+  // HEAD ref itself (backend treats local-branch and head as the same
+  // namespace in `child_refs.heads`).
+  const enter = () =>
+    setHoveredRef({
+      kind: hoveredKindFor(props.tag.kind),
+      name: props.tag.name,
+    });
   return (
     <span
       class={pillClass(props.tag.kind)}
       classList={{ "is-active": props.active }}
       title={props.tag.name}
+      tabIndex={0}
+      onMouseEnter={enter}
+      onMouseLeave={clearHoveredRef}
+      onFocus={enter}
+      onBlur={clearHoveredRef}
     >
       <PillIcon kind={props.tag.kind} />
       <span class="ref-pill__name">{props.tag.name}</span>

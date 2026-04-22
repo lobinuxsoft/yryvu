@@ -121,6 +121,28 @@ export function refreshBranches() {
   setBranchesNonce((n) => n + 1);
 }
 
+/// The ref the cursor is hovering (either a pill in the graph's BRANCH/TAG
+/// column or a row in the sidebar). Drives the graph's hover-dim effect
+/// (#54) — commits that aren't ancestors of the hovered ref fade to a low
+/// opacity, so the user can see at a glance which commits "belong to"
+/// that branch/tag.
+///
+/// Matches GitKraken's `isMissingHoveredRefGroup` selector (doc 08 / bundle
+/// `Gd` row wrapper): the membership test uses the row's own refs first,
+/// then falls back to the pre-computed `child_refs` propagated bottom-up
+/// by `graph-core::populate_child_refs`.
+export type HoveredRefKind = "head" | "remote" | "tag";
+export interface HoveredRef {
+  kind: HoveredRefKind;
+  name: string;
+}
+export const [hoveredRef, setHoveredRef] = createSignal<HoveredRef | undefined>(
+  undefined,
+);
+export function clearHoveredRef() {
+  setHoveredRef(undefined);
+}
+
 export const dirtyFileCount = createMemo(() => {
   const s = workingTreeStatus();
   if (!s) return 0;

@@ -64,20 +64,23 @@
    lets it absorb the whitespace between the last pill and the cell's
    right edge; `align-self: center` pins it to the row's midY so it
    visually extends into the commit circle sitting in the adjacent
-   GRAPH column. HEAD row uses a 2-px variant — matches GitKraken's
-   thicker stroke on the checked-out branch (the inner SVG line in
-   `RowRenderer` bumps its stroke-width in lockstep). */
+   GRAPH column. Non-HEAD rows fade to 0.25 opacity — matches
+   GitKraken's `.ref-line` default (`opacity: .25`); HEAD row uses
+   full opacity + 2 px to match `.ref-line.is-active`. Equivalent
+   stroke-opacity is applied on the inner SVG line in `RowRenderer`. */
 .ref-connector {
   flex: 1;
   align-self: center;
   height: 1px;
   min-height: 1px;
   min-width: 0;
+  opacity: 0.25;
 }
 
 .ref-connector--head {
   height: 2px;
   min-height: 2px;
+  opacity: 1;
 }
 
 /* ========================================================================
@@ -201,12 +204,64 @@
   overflow-x: hidden;
 }
 
+/* Lane-color tint band (#128) — GitKraken's `BackgroundStreak` +
+   `.commit-bg-color` rule. A low-opacity wash covering only the stretch
+   of the GRAPH cell from the commit circle rightward to the MESSAGE
+   boundary. `left` is set inline to `GUTTER + lane*LANE_WIDTH +
+   LANE_WIDTH/2` (the commit node's centerX) so the tint reads as a
+   trailing halo off the circle. Default 10 % opacity; jumps to 50 %
+   when the row is selected, echoing GK's
+   `.column-N.is-selected .commit-bg-color` variant. */
+/* Both the tint band and the streak are vertically centered and sized
+   to the commit node's diameter (22 px = COMMIT_RADIUS * 2), not the
+   full row height. Reads as a halo emitted from the circle rather than
+   a banner across the whole row. */
+.commit-graph__col-graph .commit-graph__row-tint {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  height: 22px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  background-color: color-mix(
+    in srgb,
+    var(--row-lane-color, transparent) 10%,
+    transparent
+  );
+}
+
+.graph-row-wrapper.is-selected .commit-graph__row-tint {
+  background-color: color-mix(
+    in srgb,
+    var(--row-lane-color, transparent) 50%,
+    transparent
+  );
+}
+
+.commit-graph__col-graph .commit-graph__lane-streak {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 4px;
+  height: 22px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+
 .commit-graph__col-messages {
   list-style: none;
   margin: 0;
   padding: 0;
   position: relative;
   min-width: 0;
+  /* RightGutter divider (#128) — 1-px hairline + subtle inward shadow
+     marks the GRAPH → MESSAGE boundary, pairing with the per-row
+     lane-color streak on the GRAPH side. Applied here (not on
+     .col-graph) so the shadow has somewhere to fall without clipping
+     against the streak itself. */
+  border-left: 1px solid var(--bg-3);
+  box-shadow: inset 2px 0 4px -2px color-mix(in srgb, black 35%, transparent);
 }
 
 /* ========================================================================
@@ -242,6 +297,10 @@
   background: var(--bg-2);
 }
 
+/* Selected row — neutral theme color across BRANCH/TAG + GRAPH +
+   MESSAGE, mirroring GitKraken's `graph-row.is-selected` rule
+   (`background-color: var(--selected-row)`). The GRAPH column's lane
+   tint jumps to 50 % on top of this via `.commit-graph__row-tint`. */
 .graph-row-wrapper.is-selected {
   background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
   color: var(--fg-0);

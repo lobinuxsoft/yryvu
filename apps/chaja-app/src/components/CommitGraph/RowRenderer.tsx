@@ -450,7 +450,10 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
           the BRANCH/TAG column handles the portion to the left of this
           SVG; together they span from the last pill all the way into the
           node. Painted BEFORE the edge dispatch so any passThrough/ending
-          edges crossing at midY layer on top (matches GK's render order). */}
+          edges crossing at midY layer on top (matches GK's render order).
+          Non-HEAD rows drop to opacity 0.25 (GitKraken's `.ref-line`
+          default) so only the checked-out branch's connector reads at
+          full strength. */}
       <Show when={hasRefs()}>
         <line
           x1={0}
@@ -459,6 +462,7 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
           y2={midY}
           stroke={commitColor()}
           stroke-width={isHeadRow() ? 2 : 1}
+          stroke-opacity={isHeadRow() ? 1 : 0.25}
         />
       </Show>
       {/* Per-column dispatch — exact GK loop: starting, then passThrough,

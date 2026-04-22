@@ -25,7 +25,7 @@ fn fork_join_merges_back_into_single_lane() {
         commit("p", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert_eq!(rows[0].lane, 0, "merge commit on lane 0");
     assert_eq!(rows[0].parent_lanes, vec![0, 1]);

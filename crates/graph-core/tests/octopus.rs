@@ -18,7 +18,7 @@ fn octopus_merge_allocates_three_lanes_then_collapses() {
         commit("z", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert!(rows[0].is_merge);
     assert_eq!(rows[0].parent_lanes, vec![0, 1, 2]);

@@ -35,7 +35,7 @@ fn linear_chain_propagates_branch_to_ancestors_only() {
         commit("R", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert!(
         rows[0].child_refs.heads.is_empty(),
@@ -75,7 +75,7 @@ fn merge_unions_both_branches_into_common_ancestor() {
         commit("R", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert!(
         rows[0].child_refs.heads.is_empty(),
@@ -124,7 +124,7 @@ fn ref_kinds_route_to_correct_buckets() {
         commit("root", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     // The tip row's own refs are in `refs`, not `child_refs`.
     assert!(rows[0].child_refs.heads.is_empty());
@@ -166,7 +166,7 @@ fn multiple_refs_on_one_row_all_propagate() {
         commit("root", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert_eq!(
         rows[1].child_refs.heads,
@@ -179,7 +179,7 @@ fn multiple_refs_on_one_row_all_propagate() {
 /// Empty commit list short-circuits cleanly.
 #[test]
 fn empty_commits_produces_empty_rows() {
-    let rows = layout_commits(Vec::new(), 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(Vec::new(), 32, HashSet::new()).unwrap();
     assert!(rows.is_empty());
 }
 
@@ -207,7 +207,7 @@ fn orphan_branches_do_not_cross_contaminate() {
         commit("b2", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     // a2 only sees chain-a.
     assert_eq!(rows[2].child_refs.heads, head("chain-a"));

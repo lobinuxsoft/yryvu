@@ -21,11 +21,6 @@ pub fn walk_commits(
         return Ok(Box::new(std::iter::empty()));
     }
 
-    // gix's ByCommitTime sort is not strictly topological — with tied timestamps
-    // across multiple seeded tips the root can land anywhere in the output.
-    // Collect eagerly, then re-sort via Kahn's algorithm with committer_time as
-    // tiebreaker. This guarantees children appear before their parents (invariant
-    // required by the lane assigner).
     let walk = repo
         .rev_walk(scan.tips.clone())
         .sorting(gix::revision::walk::Sorting::ByCommitTime(
@@ -74,16 +69,36 @@ pub fn walk_commits(
         );
     }
 
-    let sorted = topo_sort_children_first(commits);
+    // `seed_order`: the sequence of unique SHAs appearing in `scan.tips` in
+    // the order `collect_ref_tips` added them (alphabetical by ref name per
+    // `platform.local_branches()` / remote_branches / tags). This matches
+    // `git log --date-order`'s insertion-order tie-break for commits sharing
+    // the same committer-time — essential when testbeds / imported repos
+    // have mass-identical timestamps.
+    let mut seed_order: Vec<String> = Vec::with_capacity(scan.tips.len());
+    let mut seen_seed: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for tip in &scan.tips {
+        let sha = tip.to_string();
+        if seen_seed.insert(sha.clone()) {
+            seed_order.push(sha);
+        }
+    }
+
+    let sorted = topo_sort_children_first(commits, &seed_order);
     Ok(Box::new(sorted.into_iter().map(Ok)))
 }
 
-/// Kahn topological sort that emits children before parents. Ties (commits
-/// whose in-degree reaches zero simultaneously) are broken by committer_time
-/// descending, matching the visual order of `git log --topo-order --date-order`.
-fn topo_sort_children_first(mut commits: HashMap<String, Commit>) -> Vec<Commit> {
-    // In-degree = number of commits in our set that reference this commit as parent.
-    // Leaves (ref tips reachable only from above) start at 0.
+/// Kahn topological sort that emits children before parents. Primary sort
+/// key: committer-time descending. Tie-break: **insertion order** — seeds
+/// get positions in the order `scan.tips` supplies them (alphabetical by
+/// ref name), commits that become ready dynamically get the next
+/// monotonically-increasing position. Matches `git log --date-order`'s
+/// observed behaviour on repos with tied commit timestamps.
+fn topo_sort_children_first(
+    mut commits: HashMap<String, Commit>,
+    seed_order: &[String],
+) -> Vec<Commit> {
+    // In-degree = number of loaded commits that reference this one as parent.
     let mut in_degree: HashMap<String, usize> = commits.keys().map(|k| (k.clone(), 0)).collect();
     for commit in commits.values() {
         for parent in &commit.parents {
@@ -93,12 +108,23 @@ fn topo_sort_children_first(mut commits: HashMap<String, Commit>) -> Vec<Commit>
         }
     }
 
+    // Position counter — advances every time a commit enters the heap so
+    // earlier arrivals win the tie-break on equal committer-time.
+    let mut position_counter: u64 = 0;
+    let mut position: HashMap<String, u64> = HashMap::with_capacity(commits.len());
+
     let mut heap: BinaryHeap<TopoEntry> = BinaryHeap::new();
-    for (sha, deg) in &in_degree {
-        if *deg == 0 {
-            if let Some(commit) = commits.get(sha) {
+    // Seed the heap in `seed_order` so tied tips pop in ref-alphabetical
+    // order (the order `collect_ref_tips` produced them).
+    for sha in seed_order {
+        if let Some(commit) = commits.get(sha) {
+            if in_degree.get(sha).copied().unwrap_or(usize::MAX) == 0 {
+                let pos = position_counter;
+                position_counter += 1;
+                position.insert(sha.clone(), pos);
                 heap.push(TopoEntry {
                     time: commit.author_date,
+                    position: pos,
                     sha: sha.clone(),
                 });
             }
@@ -116,8 +142,12 @@ fn topo_sort_children_first(mut commits: HashMap<String, Commit>) -> Vec<Commit>
                 *deg -= 1;
                 if *deg == 0 {
                     if let Some(parent_commit) = commits.get(parent) {
+                        let pos = position_counter;
+                        position_counter += 1;
+                        position.insert(parent.clone(), pos);
                         heap.push(TopoEntry {
                             time: parent_commit.author_date,
+                            position: pos,
                             sha: parent.clone(),
                         });
                     }
@@ -133,15 +163,19 @@ fn topo_sort_children_first(mut commits: HashMap<String, Commit>) -> Vec<Commit>
 #[derive(PartialEq, Eq)]
 struct TopoEntry {
     time: i64,
+    position: u64,
     sha: String,
 }
 
 impl Ord for TopoEntry {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Max-heap on time so newer commits are emitted first among tied-ready
-        // leaves. SHA breaks perfect ties deterministically.
+        // Max-heap: primary committer-time desc (bigger time = pops first),
+        // secondary position asc (lower position = pops first among ties).
+        // Inverting position comparison to `other.position.cmp(&self.position)`
+        // converts asc-priority to max-heap semantics.
         self.time
             .cmp(&other.time)
+            .then_with(|| other.position.cmp(&self.position))
             .then_with(|| other.sha.cmp(&self.sha))
     }
 }

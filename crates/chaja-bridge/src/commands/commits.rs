@@ -37,17 +37,7 @@ pub async fn stream_graph(
         let pinned_tip = pick_pinned_head_for_path(&path);
         let pinned_shas = build_pinned_set(&commits, pinned_tip.as_deref());
 
-        // Ref tips = every commit whose walk-produced `refs` list is non-empty.
-        // The lane allocator uses this set to force a fresh lane per branch
-        // tip (overriding inherited reservations), producing GitKraken's
-        // "each branch owns its own column" layout.
-        let ref_tip_shas: std::collections::HashSet<String> = commits
-            .iter()
-            .filter(|c| !c.refs.is_empty())
-            .map(|c| c.sha.clone())
-            .collect();
-
-        let rows = layout_commits(commits, 32, pinned_shas, ref_tip_shas)
+        let rows = layout_commits(commits, 32, pinned_shas)
             .map_err(|e| e.to_string())?;
 
         let mut buffer: Vec<GraphRow> = Vec::with_capacity(batch_size);

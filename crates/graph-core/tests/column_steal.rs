@@ -37,7 +37,7 @@ fn parent_is_stolen_leftward_when_no_merge_child_claims_it() {
         commit("p", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert_eq!(rows[0].lane, 0, "m on lane 0");
     assert_eq!(rows[0].parent_lanes, vec![0, 1]);
@@ -85,7 +85,7 @@ fn steal_is_blocked_when_parent_already_has_merge_child() {
         commit("p", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert_eq!(rows[0].lane, 0, "m1 on lane 0");
     assert_eq!(rows[0].parent_lanes, vec![0, 1]);

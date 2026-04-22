@@ -30,41 +30,25 @@ pub struct LaneAssigner {
     reservations: HashMap<String, usize>,
     pending_frees: HashMap<String, Vec<usize>>,
     pinned_shas: HashSet<String>,
-    /// Ref-tip shas — each commit that carries any ref (branch / remote / tag /
-    /// HEAD) is in this set. When such a commit is reached AND already has an
-    /// inherited reservation from a prior child, the reservation is discarded
-    /// and a fresh lane is allocated instead. Matches GitKraken's observed
-    /// behaviour of assigning each branch its own column end-to-end.
-    ref_tip_shas: HashSet<String>,
     merge_children: HashSet<String>,
-    /// Monotonically-increasing lane counter. Allocations never reuse a lane
-    /// once it's been issued, even after the lane is freed — GitKraken retires
-    /// empty columns rather than reclaiming them, producing the "branches
-    /// don't swap columns" visual that's core to its graph identity.
+    /// High-watermark of lane indices ever handed out. Kept for diagnostic
+    /// use — the leftmost-free allocator doesn't read it during normal
+    /// placement, but it advances on every extension so callers can gauge
+    /// the max column width the graph reached.
     next_fresh_lane: usize,
 }
 
 impl LaneAssigner {
     pub fn new() -> Self {
-        Self::with_config(HashSet::new(), HashSet::new())
+        Self::with_pinned(HashSet::new())
     }
 
-    /// Back-compat constructor — keeps existing call sites working without a
-    /// ref-tip set (treating every commit as non-ref-tip).
     pub fn with_pinned(pinned_shas: HashSet<String>) -> Self {
-        Self::with_config(pinned_shas, HashSet::new())
-    }
-
-    pub fn with_config(
-        pinned_shas: HashSet<String>,
-        ref_tip_shas: HashSet<String>,
-    ) -> Self {
         Self {
             columns_used: Vec::with_capacity(16),
             reservations: HashMap::new(),
             pending_frees: HashMap::new(),
             pinned_shas,
-            ref_tip_shas,
             merge_children: HashSet::new(),
             next_fresh_lane: 0,
         }
@@ -134,21 +118,14 @@ impl LaneAssigner {
             return 0;
         }
 
-        // Ref-tip override: if this commit carries a ref AND has inherited a
-        // reservation from a prior child's parent slot, drop the reservation,
-        // retire that lane, and hand out a fresh one. This is what produces
-        // GitKraken's "each branch owns its own column" layout — without the
-        // override a chain of ref tips (e.g. `disposable-1 → disposable-2 →
-        // disposable-3`) all inherit the same column from the first tip.
-        if self.ref_tip_shas.contains(sha) {
-            if let Some(old_col) = self.reservations.remove(sha) {
-                if let Some(slot) = self.columns_used.get_mut(old_col) {
-                    *slot = false;
-                }
-            }
-            return self.alloc_column();
-        }
-
+        // No ref-tip override — verified by tracing GitKraken's actual
+        // `getColumns` function in `@gitkraken/gitkraken-components`
+        // (bundle @300719): ref tips go through the same reservation
+        // lookup and `eg()` leftmost-free path as any other commit. An
+        // earlier implementation of this file force-allocated fresh
+        // lanes for ref tips, which matches nobody's behaviour and
+        // caused the feat-ff chain to land on lane 9 when lane 1 was
+        // already reserved for it by HEAD's extra-parent pass.
         if let Some(col) = self.reservations.remove(sha) {
             self.ensure_column(col);
             self.columns_used[col] = true;
@@ -159,15 +136,34 @@ impl LaneAssigner {
     }
 
     fn alloc_column(&mut self) -> usize {
-        // Never-reuse allocator: always hand out a fresh (monotonically
-        // increasing) lane index. Previously-freed lanes stay retired — this
-        // matches GitKraken's observed behaviour where branches don't swap
-        // columns even after a chain terminates.
+        // Leftmost-free allocator: scan `columns_used` from `start` and take
+        // the first free slot. Append only if every slot up to the current
+        // tail is occupied.
+        //
+        // Matches GitKraken's observed behaviour — when a branch's column
+        // retires, later ref tips can slot into it rather than pushing the
+        // graph wider. Keeps horizontal density tight (5–6 lanes for a repo
+        // that would otherwise spread across 9+ with a monotonic allocator).
+        //
+        // `next_fresh_lane` is retained as an upper watermark so the
+        // allocator doesn't walk further right than it ever has, but the
+        // primary pick is the leftmost-free index.
         let start = if self.trunk_pin_active() { 1 } else { 0 };
-        let idx = self.next_fresh_lane.max(start);
-        self.next_fresh_lane = idx + 1;
+        let len = self.columns_used.len();
+        for idx in start..len {
+            if !self.columns_used[idx] {
+                self.columns_used[idx] = true;
+                if idx + 1 > self.next_fresh_lane {
+                    self.next_fresh_lane = idx + 1;
+                }
+                return idx;
+            }
+        }
+        // No retired slot available — extend by one.
+        let idx = len.max(start);
         self.ensure_column(idx);
         self.columns_used[idx] = true;
+        self.next_fresh_lane = idx + 1;
         idx
     }
 
@@ -295,13 +291,12 @@ pub fn layout_commits(
     commits: Vec<Commit>,
     palette_size: u16,
     pinned_shas: HashSet<String>,
-    ref_tip_shas: HashSet<String>,
 ) -> Result<Vec<GraphRow>, LaneError> {
     if palette_size == 0 {
         return Err(LaneError::EmptyPalette);
     }
 
-    let mut assigner = LaneAssigner::with_config(pinned_shas, ref_tip_shas);
+    let mut assigner = LaneAssigner::with_pinned(pinned_shas);
     let mut commits_lanes_actives: Vec<(Commit, u16, Vec<u16>)> =
         Vec::with_capacity(commits.len());
     let mut sha_to_lane: HashMap<String, u16> = HashMap::with_capacity(commits.len());

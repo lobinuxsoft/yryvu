@@ -24,7 +24,7 @@ fn pinned_chain_reserves_column_zero_even_when_loaded_after_other_branches() {
         HashSet::from(["m".into(), "n".into(), "o".into()]),
     );
 
-    let rows = layout_commits(commits, 32, pinned, HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, pinned).unwrap();
 
     assert_eq!(rows[0].lane, 1, "orphan loaded first pushed out of column 0");
     assert_eq!(rows[1].lane, 0, "pinned tip lands on column 0");
@@ -32,11 +32,11 @@ fn pinned_chain_reserves_column_zero_even_when_loaded_after_other_branches() {
     assert_eq!(rows[3].lane, 0, "pinned root still on column 0");
 }
 
-/// Without a pinned set, the unreserved-commit path still uses the
-/// never-reuse allocator — the orphan leaf takes lane 0 and retires it;
-/// the next chain gets a fresh lane 1 even though lane 0 is now empty.
+/// Without a pinned set, the leftmost-free allocator reclaims retired
+/// lanes. An orphan leaf takes lane 0 and retires it; the next chain can
+/// then slot back into lane 0 without spreading out horizontally.
 #[test]
-fn unpinned_walk_allocates_fresh_lanes_without_reuse() {
+fn unpinned_walk_reuses_retired_lanes_leftmost_first() {
     let commits = vec![
         commit("x", &[]),
         commit("m", &["n"]),
@@ -44,15 +44,15 @@ fn unpinned_walk_allocates_fresh_lanes_without_reuse() {
         commit("o", &[]),
     ];
 
-    let rows = layout_commits(commits, 32, HashSet::new(), HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert_eq!(rows[0].lane, 0, "orphan x takes lane 0 and retires it");
     assert_eq!(
-        rows[1].lane, 1,
-        "m starts a fresh chain on lane 1 — no reuse of retired lane 0",
+        rows[1].lane, 0,
+        "m reuses retired lane 0 (leftmost-free)",
     );
-    assert_eq!(rows[2].lane, 1, "n inherits m's lane");
-    assert_eq!(rows[3].lane, 1, "o inherits n's lane");
+    assert_eq!(rows[2].lane, 0, "n inherits m's lane");
+    assert_eq!(rows[3].lane, 0, "o inherits n's lane");
 }
 
 /// A merge whose *extra* parent is on the pinned chain routes the extra
@@ -70,7 +70,7 @@ fn merge_extra_parent_on_pinned_chain_lands_in_column_zero() {
     let pinned = build_pinned_set(&commits, Some("t"));
     assert_eq!(pinned, HashSet::from(["t".into(), "u".into()]));
 
-    let rows = layout_commits(commits, 32, pinned, HashSet::new()).unwrap();
+    let rows = layout_commits(commits, 32, pinned).unwrap();
 
     assert_eq!(rows[0].lane, 1, "merge not on trunk — lane 1 with pin active");
     assert_eq!(

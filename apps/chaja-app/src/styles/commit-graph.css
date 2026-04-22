@@ -225,6 +225,18 @@
   color: var(--fg-1);
 }
 
+/* Hover-dim (#54): when a ref is being hovered in the pill or the sidebar,
+   every row that isn't reachable from that ref fades to 35 % opacity.
+   Transition is fast enough to feel immediate but soft-edged so the change
+   doesn't strobe when the mouse sweeps across a column of pills. */
+.graph-row-wrapper.is-dimmed {
+  opacity: 0.35;
+  transition: opacity 80ms ease-out;
+}
+.graph-row-wrapper:not(.is-dimmed) {
+  transition: opacity 80ms ease-out;
+}
+
 .commit-graph__sha {
   font-family: var(--font-mono);
   color: var(--fg-2);

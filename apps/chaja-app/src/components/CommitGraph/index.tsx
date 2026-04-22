@@ -14,12 +14,14 @@ import {
   commitMessage,
   dirtyFileCount,
   graphNonce,
+  hoveredRef,
   inspectorMode,
   selectedCommit,
   setCommitMessage,
   setInspectorMode,
   setSelectedCommit,
 } from "../../state";
+import { isRowMemberOfHoveredRef } from "./hoverDim";
 import { ContextMenu } from "../ContextMenu";
 import { CommitDialogs } from "./CommitDialogs";
 import { createCommitOps } from "./useCommitOps";
@@ -194,6 +196,9 @@ export function CommitGraph(props: CommitGraphProps) {
                   hoveredCommit() === r.sha,
                   selectedCommit() === r.sha,
                 )}
+                classList={{
+                  "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                }}
                 data-selected={selectedCommit() === r.sha ? "true" : "false"}
                 style={{
                   top: `${i * ROW_HEIGHT}px`,
@@ -216,6 +221,9 @@ export function CommitGraph(props: CommitGraphProps) {
                   hoveredCommit() === r.sha,
                   selectedCommit() === r.sha,
                 )}
+                classList={{
+                  "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                }}
                 data-selected={selectedCommit() === r.sha ? "true" : "false"}
                 style={{
                   top: `${i * ROW_HEIGHT}px`,
@@ -243,6 +251,9 @@ export function CommitGraph(props: CommitGraphProps) {
                   hoveredCommit() === r.sha,
                   selectedCommit() === r.sha,
                 )}
+                classList={{
+                  "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                }}
                 data-selected={selectedCommit() === r.sha ? "true" : "false"}
                 style={{
                   top: `${i * ROW_HEIGHT}px`,

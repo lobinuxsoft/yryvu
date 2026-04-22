@@ -25,6 +25,7 @@ use crate::backend::{
 mod branches;
 pub(crate) mod commits;
 mod common;
+pub(crate) mod hosting;
 mod merge;
 mod patches;
 mod remote;

@@ -4,7 +4,12 @@ import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-j
 
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
-import { streamGraph, type GraphRow } from "../../ipc";
+import {
+  getHostingService,
+  streamGraph,
+  type GraphRow,
+  type HostingService,
+} from "../../ipc";
 import {
   commitMessage,
   dirtyFileCount,
@@ -61,6 +66,14 @@ export function CommitGraph(props: CommitGraphProps) {
   );
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | undefined>(undefined);
+  /**
+   * Provider tag for the repo's primary remote. Re-queried whenever the
+   * repo path changes. Drives avatar URL resolution per row — `"github"`
+   * routes through the GitHub CDN's email endpoint (no API auth needed),
+   * anything else falls back to Gravatar.
+   */
+  const [hostingService, setHostingService] =
+    createSignal<HostingService>("unknown");
 
   const ops = createCommitOps({
     copyText: (text) => navigator.clipboard.writeText(text),
@@ -92,6 +105,16 @@ export function CommitGraph(props: CommitGraphProps) {
         setError(String(e));
       });
     onCleanup(() => handle.stop());
+  });
+
+  // Detect the hosting-service tag once per repo path change. One-shot
+  // query — the remote doesn't change while the graph is being rendered.
+  createEffect(() => {
+    const path = props.repoPath;
+    setHostingService("unknown");
+    getHostingService(path)
+      .then(setHostingService)
+      .catch(() => setHostingService("unknown"));
   });
 
   const totalHeight = () => rows().length * ROW_HEIGHT;
@@ -207,6 +230,7 @@ export function CommitGraph(props: CommitGraphProps) {
                 <CommitRowGraph
                   row={r}
                   edges={edgeStates()[i] ?? new Map()}
+                  hostingService={hostingService()}
                 />
               </li>
             ))}
@@ -235,7 +259,7 @@ export function CommitGraph(props: CommitGraphProps) {
               >
                 <span class="commit-graph__sha">{r.short_sha}</span>
                 <span class="commit-graph__summary">{r.summary}</span>
-                <span class="commit-graph__author">{r.author}</span>
+                <span class="commit-graph__author">{r.author_name}</span>
               </li>
             ))}
           </ul>

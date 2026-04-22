@@ -11,6 +11,7 @@ rust-version.workspace = true
 [dependencies]
 serde = { workspace = true, optional = true }
 thiserror.workspace = true
+md-5 = { workspace = true }
 
 [features]
 default = ["serde"]

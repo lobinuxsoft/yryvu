@@ -337,11 +337,16 @@ pub fn layout_commits(
             let is_merge = commit.parents.len() > 1;
             let color_idx = lane % palette_size;
             let short_sha = commit.sha.chars().take(7).collect();
+            let author_initials = crate::author_initials(&commit.author_name, &commit.author_email);
+            let gravatar_hash = crate::gravatar_hash(&commit.author_email);
             GraphRow {
                 sha: commit.sha,
                 short_sha,
                 summary: commit.summary,
-                author: commit.author,
+                author_name: commit.author_name,
+                author_email: commit.author_email,
+                author_initials,
+                gravatar_hash,
                 author_date: commit.author_date,
                 lane,
                 parent_lanes,

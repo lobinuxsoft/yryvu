@@ -44,6 +44,7 @@ pub fn run() {
             chaja_bridge::commands::commit_staged,
             chaja_bridge::commands::amend_commit,
             chaja_bridge::commands::head_commit_message,
+            chaja_bridge::commands::get_hosting_service,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

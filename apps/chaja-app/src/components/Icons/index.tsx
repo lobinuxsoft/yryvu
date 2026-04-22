@@ -29,6 +29,12 @@ function base(children: JSX.Element, extra?: IconProps): JSX.Element {
   );
 }
 
+export const IconCheck = (p?: IconProps) =>
+  base(
+    <path d="M3.5 8.5L7 12l5.5-7" />,
+    p,
+  );
+
 export const IconBranch = (p?: IconProps) =>
   base(
     <>

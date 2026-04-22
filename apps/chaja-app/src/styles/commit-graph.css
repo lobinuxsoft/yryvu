@@ -40,7 +40,139 @@
 }
 
 .commit-graph__col-branch {
-  /* Reserved for ref pills (#55). Empty for now. */
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  min-width: 0;
+}
+
+.commit-graph__branch-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 3px;
+  /* No overflow:hidden — pills handle their own truncation and the
+     +N popover needs to escape the row's vertical bounds. */
+}
+
+.commit-graph__branch-row[data-selected="true"] {
+  background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
+}
+
+/* ========================================================================
+   Ref pills (#55 — 1:1 port of GitKraken's ref-node per doc 06)
+   ======================================================================== */
+.ref-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  position: relative;
+}
+
+.ref-pill {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
+  background: var(--bg-2);
+  color: var(--fg-1);
+  max-width: 140px;
+  overflow: hidden;
+}
+
+.ref-pill__icon {
+  flex-shrink: 0;
+}
+
+.ref-pill__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Type-color variants — GitHub status palette conventions, not lane colors.
+   Doc 06 explicitly discards lane tinting as a chajá-specific deviation. */
+.ref-pill--head {
+  background: color-mix(in srgb, #3fb950 20%, var(--bg-2));
+  color: #3fb950;
+  border-color: color-mix(in srgb, #3fb950 40%, transparent);
+  font-weight: 600;
+}
+
+.ref-pill--branch {
+  background: color-mix(in srgb, #2f81f7 18%, var(--bg-2));
+  color: #58a6ff;
+  border-color: color-mix(in srgb, #2f81f7 35%, transparent);
+}
+
+.ref-pill--remote {
+  background: color-mix(in srgb, #8957e5 18%, var(--bg-2));
+  color: #b57fff;
+  border-color: color-mix(in srgb, #8957e5 35%, transparent);
+}
+
+.ref-pill--tag {
+  background: color-mix(in srgb, #d29922 18%, var(--bg-2));
+  color: #e3b341;
+  border-color: color-mix(in srgb, #d29922 35%, transparent);
+}
+
+/* Overflow `+N` chip */
+.ref-node__overflow {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--fg-1);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ref-node__overflow:hover {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+
+.ref-node__overflow.is-active {
+  border-color: color-mix(in srgb, #3fb950 40%, transparent);
+  color: #3fb950;
+}
+
+.ref-node__popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px color-mix(in srgb, black 40%, transparent);
+  z-index: 10;
+  min-width: 160px;
+}
+
+.ref-node__popover .ref-pill {
+  max-width: 200px;
 }
 
 .commit-graph__col-graph {

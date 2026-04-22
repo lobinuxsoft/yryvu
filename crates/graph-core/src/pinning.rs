@@ -22,8 +22,7 @@ pub fn build_pinned_set(commits: &[Commit], pinned_tip: Option<&str>) -> HashSet
         return HashSet::new();
     };
 
-    let by_sha: HashMap<&str, &Commit> =
-        commits.iter().map(|c| (c.sha.as_str(), c)).collect();
+    let by_sha: HashMap<&str, &Commit> = commits.iter().map(|c| (c.sha.as_str(), c)).collect();
     if !by_sha.contains_key(tip) {
         return HashSet::new();
     }

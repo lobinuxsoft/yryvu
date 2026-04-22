@@ -37,8 +37,7 @@ pub async fn stream_graph(
         let pinned_tip = pick_pinned_head_for_path(&path);
         let pinned_shas = build_pinned_set(&commits, pinned_tip.as_deref());
 
-        let rows = layout_commits(commits, 32, pinned_shas)
-            .map_err(|e| e.to_string())?;
+        let rows = layout_commits(commits, 32, pinned_shas).map_err(|e| e.to_string())?;
 
         let mut buffer: Vec<GraphRow> = Vec::with_capacity(batch_size);
         for row in rows {

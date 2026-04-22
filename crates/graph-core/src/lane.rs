@@ -238,8 +238,7 @@ impl LaneAssigner {
                 // a shared parent. Immediate free (the previous behaviour)
                 // cut those verticals short.
                 let parent_has_merge_child = self.merge_children.contains(parent_sha);
-                let can_steal =
-                    existing_col > current_lane && !parent_has_merge_child;
+                let can_steal = existing_col > current_lane && !parent_has_merge_child;
                 if can_steal {
                     self.reservations
                         .insert(parent_sha.to_string(), current_lane);
@@ -308,8 +307,7 @@ pub fn layout_commits(
     }
 
     let mut assigner = LaneAssigner::with_pinned(pinned_shas);
-    let mut commits_lanes_actives: Vec<(Commit, u16, Vec<u16>)> =
-        Vec::with_capacity(commits.len());
+    let mut commits_lanes_actives: Vec<(Commit, u16, Vec<u16>)> = Vec::with_capacity(commits.len());
     let mut sha_to_lane: HashMap<String, u16> = HashMap::with_capacity(commits.len());
 
     for commit in commits {

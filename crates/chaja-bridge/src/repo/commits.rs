@@ -320,8 +320,8 @@ fn collect_ref_tips(repo: &gix::Repository) -> Result<RefScan, BackendError> {
         .context("iterate local branches")
         .map_err(BackendError::Revwalk)?
     {
-        let mut reference = reference
-            .map_err(|e| BackendError::Revwalk(anyhow!("resolve local branch: {e}")))?;
+        let mut reference =
+            reference.map_err(|e| BackendError::Revwalk(anyhow!("resolve local branch: {e}")))?;
         let short = reference.name().shorten().to_string();
         let id = reference
             .peel_to_id_in_place()
@@ -342,8 +342,8 @@ fn collect_ref_tips(repo: &gix::Repository) -> Result<RefScan, BackendError> {
         .context("iterate remote branches")
         .map_err(BackendError::Revwalk)?
     {
-        let mut reference = reference
-            .map_err(|e| BackendError::Revwalk(anyhow!("resolve remote branch: {e}")))?;
+        let mut reference =
+            reference.map_err(|e| BackendError::Revwalk(anyhow!("resolve remote branch: {e}")))?;
         let short = reference.name().shorten().to_string();
         // Skip symbolic HEAD pointers like refs/remotes/origin/HEAD — they
         // duplicate the branch they alias.

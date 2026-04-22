@@ -19,14 +19,14 @@ fn pinned_chain_reserves_column_zero_even_when_loaded_after_other_branches() {
     ];
 
     let pinned = build_pinned_set(&commits, Some("m"));
-    assert_eq!(
-        pinned,
-        HashSet::from(["m".into(), "n".into(), "o".into()]),
-    );
+    assert_eq!(pinned, HashSet::from(["m".into(), "n".into(), "o".into()]),);
 
     let rows = layout_commits(commits, 32, pinned).unwrap();
 
-    assert_eq!(rows[0].lane, 1, "orphan loaded first pushed out of column 0");
+    assert_eq!(
+        rows[0].lane, 1,
+        "orphan loaded first pushed out of column 0"
+    );
     assert_eq!(rows[1].lane, 0, "pinned tip lands on column 0");
     assert_eq!(rows[2].lane, 0, "pinned first-parent continues on column 0");
     assert_eq!(rows[3].lane, 0, "pinned root still on column 0");
@@ -47,10 +47,7 @@ fn unpinned_walk_reuses_retired_lanes_leftmost_first() {
     let rows = layout_commits(commits, 32, HashSet::new()).unwrap();
 
     assert_eq!(rows[0].lane, 0, "orphan x takes lane 0 and retires it");
-    assert_eq!(
-        rows[1].lane, 0,
-        "m reuses retired lane 0 (leftmost-free)",
-    );
+    assert_eq!(rows[1].lane, 0, "m reuses retired lane 0 (leftmost-free)",);
     assert_eq!(rows[2].lane, 0, "n inherits m's lane");
     assert_eq!(rows[3].lane, 0, "o inherits n's lane");
 }
@@ -72,7 +69,10 @@ fn merge_extra_parent_on_pinned_chain_lands_in_column_zero() {
 
     let rows = layout_commits(commits, 32, pinned).unwrap();
 
-    assert_eq!(rows[0].lane, 1, "merge not on trunk — lane 1 with pin active");
+    assert_eq!(
+        rows[0].lane, 1,
+        "merge not on trunk — lane 1 with pin active"
+    );
     assert_eq!(
         rows[0].parent_lanes,
         vec![1, 0],

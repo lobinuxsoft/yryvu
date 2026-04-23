@@ -170,7 +170,7 @@ pub struct CommitDiff {
 /// returned with `truncated = true` and empty `hunks`.
 pub const DIFF_MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
 
-pub use crate::repo::staging::{WorkingTreeChange, WorkingTreeStatus};
+pub use crate::repo::staging::{CommitOptions, WorkingTreeChange, WorkingTreeStatus};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RepoStateInfo {
@@ -301,6 +301,36 @@ pub trait GitBackend: Send + Sync {
     fn amend_commit(&self, repo_path: &Path, message: &str) -> Result<String, BackendError>;
 
     fn head_commit_message(&self, repo_path: &Path) -> Result<String, BackendError>;
+
+    /// Stage every unstaged change (mods + deletes + untracked) in one shot.
+    /// Returns the paths that were staged.
+    fn stage_all(&self, repo_path: &Path) -> Result<Vec<String>, BackendError>;
+
+    /// Reset every staged entry back to HEAD. Returns the paths that were
+    /// unstaged.
+    fn unstage_all(&self, repo_path: &Path) -> Result<Vec<String>, BackendError>;
+
+    /// Destructively revert workdir changes for `paths` — tracked paths
+    /// snap back to HEAD, untracked files are removed. The index is not
+    /// touched.
+    fn discard_paths(&self, repo_path: &Path, paths: &[String]) -> Result<(), BackendError>;
+
+    /// Write a commit (or amend HEAD) from the bundled options. Returns the
+    /// new commit SHA.
+    fn create_commit(
+        &self,
+        repo_path: &Path,
+        opts: &CommitOptions,
+    ) -> Result<String, BackendError>;
+
+    /// Commit then push current branch to its upstream (creating one at
+    /// `origin/<branch>` when absent). Returns the new commit SHA; the
+    /// commit survives a push failure.
+    fn commit_and_push(
+        &self,
+        repo_path: &Path,
+        opts: &CommitOptions,
+    ) -> Result<String, BackendError>;
 }
 
 pub use crate::repo::GixBackend;

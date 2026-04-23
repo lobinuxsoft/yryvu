@@ -18,8 +18,8 @@ use std::path::Path;
 use graph_core::Commit;
 
 use crate::backend::{
-    BackendError, BranchInfo, CommitDiff, FileDiff, GitBackend, MergeResult, MergeStrategy,
-    RepoStateInfo, ResetMode, WorkingTreeStatus,
+    BackendError, BranchInfo, CommitDiff, CommitOptions, FileDiff, GitBackend, MergeResult,
+    MergeStrategy, RepoStateInfo, ResetMode, WorkingTreeStatus,
 };
 
 mod branches;
@@ -195,5 +195,33 @@ impl GitBackend for GixBackend {
 
     fn head_commit_message(&self, repo_path: &Path) -> Result<String, BackendError> {
         staging::head_commit_message(repo_path)
+    }
+
+    fn stage_all(&self, repo_path: &Path) -> Result<Vec<String>, BackendError> {
+        staging::stage_all(repo_path)
+    }
+
+    fn unstage_all(&self, repo_path: &Path) -> Result<Vec<String>, BackendError> {
+        staging::unstage_all(repo_path)
+    }
+
+    fn discard_paths(&self, repo_path: &Path, paths: &[String]) -> Result<(), BackendError> {
+        staging::discard_paths(repo_path, paths)
+    }
+
+    fn create_commit(
+        &self,
+        repo_path: &Path,
+        opts: &CommitOptions,
+    ) -> Result<String, BackendError> {
+        staging::create_commit(repo_path, opts)
+    }
+
+    fn commit_and_push(
+        &self,
+        repo_path: &Path,
+        opts: &CommitOptions,
+    ) -> Result<String, BackendError> {
+        staging::commit_and_push(repo_path, opts)
     }
 }

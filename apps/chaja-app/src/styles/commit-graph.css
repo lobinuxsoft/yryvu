@@ -421,46 +421,55 @@
 }
 
 /* ========================================================================
-   WIP pseudo-row (#129) — pinned above the scrollable graph, always
-   visible as the anchor of HEAD's lane. Borders + tint derive from
-   `--wip-lane-color` (set inline from the HEAD row's palette index) so
-   the WIP decoration stays visually consistent with the commit graph
-   below regardless of which branch is checked out. Matches GitKraken's
-   `.node.work-dir-changes` rule (`border: 2px dotted var(--graph-color-N)`).
+   WIP pseudo-row — matches GitKraken exactly (research doc 07 + bundle
+   `getCommitOrderWithWipNode`). The WIP is NOT a sibling floating above
+   the zones: it is a regular row at index 0 of each zone's virtualized
+   list when `dirtyFileCount > 0`. We render it as three separate
+   `<li>`s — one per zone — so each inherits its zone's scroll
+   coordinate system (the GRAPH cell lives inside the horizontal-scroll
+   wrapper, so the node follows horizontal pan; all three follow the
+   shared vertical scroll via the UL's `translateY`).
+   Borders + tint derive from `--wip-lane-color` (set inline from the
+   HEAD row's palette index). Matches GK's `.node.work-dir-changes`
+   rule (`border: 2px dotted var(--graph-color-N)`).
    ======================================================================== */
-.commit-graph__wip-row {
-  display: grid;
-  grid-template-columns: var(--graph-col-branch) var(--graph-col-graph) 1fr;
-  /* Keep the grid flush — matches the main graph grid so the WIP row's
-     lane column aligns pixel-perfect with the HEAD commit below. */
-  gap: 0;
-  padding: 0 var(--graph-col-padding);
-  align-items: center;
-  width: 100%;
-  height: 26px;
-  border-bottom: 1px dashed
-    color-mix(in srgb, var(--wip-lane-color, var(--info)) 35%, var(--bg-3));
-  background: transparent;
+.commit-graph__wip-cell {
+  /* Same positioning contract as `.graph-row-wrapper` (above) — each
+     cell claims its full zone width and its vertical slot via `top` +
+     `height`. The parent UL's `translateY(-scrollTop)` takes care of
+     scroll. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
   cursor: pointer;
   user-select: none;
 }
 
-.commit-graph__wip-col-branch {
-  height: 100%;
+.commit-graph__wip-cell:hover,
+.commit-graph__wip-cell[data-active="true"] {
+  background: var(--bg-2);
 }
 
-.commit-graph__wip-message {
+/* GRAPH cell — holds the dashed node + tint within the same
+   `commit-graph__col-graph` content width so the node's lane X
+   coordinate matches HEAD's lane X exactly under horizontal scroll. */
+.commit-graph__wip-cell--graph {
+  /* Nothing specific — children are absolute-positioned at `left:
+     wipNodeX()`, same as real commits. */
+}
+
+/* MESSAGES cell — flex row: input + badge, same left-padding as the
+   regular message column to keep the baseline aligned with commit
+   summaries below. */
+.commit-graph__wip-cell--messages {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
-  height: 100%;
   padding-left: var(--graph-col-gap);
-}
-
-.commit-graph__wip-lane {
-  position: relative;
-  height: 100%;
+  min-width: 0;
 }
 
 /* Tint band (#129) — mirrors `.commit-graph__row-tint` from real commit
@@ -482,8 +491,8 @@
   );
 }
 
-.commit-graph__wip-row:hover .commit-graph__wip-tint,
-.commit-graph__wip-row[data-active="true"] .commit-graph__wip-tint {
+.commit-graph__wip-cell--graph:hover .commit-graph__wip-tint,
+.commit-graph__wip-cell--graph[data-active="true"] .commit-graph__wip-tint {
   background-color: color-mix(
     in srgb,
     var(--wip-lane-color, var(--info)) 28%,

@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::backend::{FileDiff, GitBackend, WorkingTreeStatus};
+use crate::backend::{CommitOptions, FileDiff, GitBackend, WorkingTreeStatus};
 use crate::repo::GixBackend;
 
 #[tauri::command]
@@ -87,6 +87,67 @@ pub async fn head_commit_message(repo_path: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .head_commit_message(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn stage_all(repo_path: String) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stage_all(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn unstage_all(repo_path: String) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .unstage_all(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn discard_paths(repo_path: String, paths: Vec<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .discard_paths(&PathBuf::from(&repo_path), &paths)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn create_commit(
+    repo_path: String,
+    options: CommitOptions,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .create_commit(&PathBuf::from(&repo_path), &options)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn commit_and_push(
+    repo_path: String,
+    options: CommitOptions,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .commit_and_push(&PathBuf::from(&repo_path), &options)
             .map_err(|e| e.to_string())
     })
     .await

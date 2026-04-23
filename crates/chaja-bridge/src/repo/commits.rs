@@ -41,9 +41,10 @@ pub fn walk_commits(
         let author = gix_commit
             .author()
             .map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
-        let time = gix_commit
-            .time()
-            .map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
+        // Committer is optional: malformed / ancient commits may lack it. The
+        // frontend right-panel renders the committer block only when this is
+        // `Some` AND differs from the author (bundle guard confirmed 2026-04-23).
+        let committer = gix_commit.committer().ok();
         let message = gix_commit
             .message()
             .map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
@@ -52,10 +53,30 @@ pub fn walk_commits(
 
         let author_name = author.name.to_string();
         let author_email = author.email.to_string();
+        // `gix_commit.time()` returns the *committer* time per gix docs — the
+        // previous code aliased it as `author_date`, which silently worked for
+        // author==committer commits but drifted on cherry-picks / rebases /
+        // PR-merges. Split the two timestamps now that both flow to the right-panel.
+        let author_date = author.time.seconds;
         let summary = message.summary().to_string();
+        // Raw body, no trailer stripping — GitKraken renders the full body
+        // including `Co-Authored-By:` lines (frontend parses trailers separately).
+        let body = message
+            .body
+            .map(|b| b.to_string())
+            .unwrap_or_default();
         let sha = info.id.to_string();
 
         let refs = refs_by_oid.remove(&info.id).unwrap_or_default();
+
+        let (committer_name, committer_email, committer_date) = match committer {
+            Some(c) => (
+                Some(c.name.to_string()),
+                Some(c.email.to_string()),
+                Some(c.time.seconds),
+            ),
+            None => (None, None, None),
+        };
 
         commits.insert(
             sha.clone(),
@@ -63,9 +84,13 @@ pub fn walk_commits(
                 sha,
                 parents,
                 summary,
+                body,
                 author_name,
                 author_email,
-                author_date: time.seconds,
+                author_date,
+                committer_name,
+                committer_email,
+                committer_date,
                 refs,
             },
         );

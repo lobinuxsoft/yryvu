@@ -37,14 +37,30 @@ pub struct RefTag {
 
 /// Input commit — caller is responsible for providing commits in reverse-topological order
 /// (children before parents).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Commit {
     pub sha: String,
     pub parents: Vec<String>,
+    /// First line of the commit message. Consumers rendering the full message
+    /// should concatenate `summary` + (blank line) + `body` when `body` is
+    /// non-empty; the inspector right-panel renders them as separate elements
+    /// matching GitKraken (`<p>` subject, `<pre>` body).
     pub summary: String,
+    /// Message body — everything after the subject line, with the separating
+    /// blank line trimmed. Raw content (no trailer stripping) to match
+    /// GitKraken's render pipeline which emojify-only transforms the body.
+    pub body: String,
     pub author_name: String,
     pub author_email: String,
     pub author_date: i64,
+    /// Committer name when the commit has a distinct committer from the author
+    /// (e.g. cherry-picked, rebased, PR-merged commits). `None` when the gix
+    /// backend can't decode committer info; in practice present for all
+    /// well-formed commits. Frontend gates the committer block on both this
+    /// being `Some` AND differing from `author_name`/`author_email`.
+    pub committer_name: Option<String>,
+    pub committer_email: Option<String>,
+    pub committer_date: Option<i64>,
     pub refs: Vec<RefTag>,
 }
 
@@ -62,12 +78,17 @@ impl Commit {
 /// `parent_lanes` and `parent_shas` are aligned: index `i` in both refers to the
 /// same parent commit. `parent_shas` lets the renderer look up the parent's
 /// actual row rather than assuming it is the immediately-next row.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GraphRow {
     pub sha: String,
     pub short_sha: String,
     pub summary: String,
+    /// Commit message body (no trailer stripping). Empty string when the
+    /// commit has only a subject line. Serialized always — fixtures generated
+    /// before this field was added tolerate the serde default via `#[serde(default)]`.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub body: String,
     pub author_name: String,
     pub author_email: String,
     /// Two-character badge rendered as a fallback when no avatar image loads.
@@ -80,6 +101,25 @@ pub struct GraphRow {
     /// email without repeating the hash.
     pub gravatar_hash: String,
     pub author_date: i64,
+    /// Committer identity, populated when the commit has a distinct committer
+    /// from the author. The inspector right-panel renders the committer block
+    /// only when both conditions hold: `committer_*` is `Some` AND at least one
+    /// of name/email differs from the author. Matches the GitKraken bundle
+    /// guard `!committerInfo || (email===authorEmail && name===authorName)`.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub committer_name: Option<String>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub committer_email: Option<String>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub committer_date: Option<i64>,
+    /// Pre-computed initials + gravatar hash for the committer. `None` when
+    /// there is no committer info; identical to the author values when the
+    /// committer matches the author (frontend still renders at most one block
+    /// per the guard above).
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub committer_initials: Option<String>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub committer_gravatar_hash: Option<String>,
     pub lane: u16,
     pub parent_lanes: Vec<u16>,
     pub parent_shas: Vec<String>,
@@ -158,6 +198,31 @@ pub fn author_initials(name: &str, email: &str) -> String {
     }
 }
 
+/// Split a full commit message into `(subject, body)`.
+///
+/// Subject is everything up to the first newline (`\n` or `\r`); body is
+/// everything after, with leading newline characters trimmed so the two
+/// forms `"subj\n\nbody"` and `"subj\nbody"` both produce body `"body"`.
+///
+/// Matches the GitKraken render pipeline (`03-message-section.md`):
+/// char-by-char iteration, first delimiter wins, no regex. The blank-line
+/// separator convention is git's canonical format (`git show --format='%s%n%n%b'`).
+/// Trailing whitespace on the body is preserved — consumers decide whether
+/// to trim.
+///
+/// Empty input returns `("", "")`. Subject-only input (no newline) returns
+/// `(input, "")`. Body is never `None`; the empty string covers both cases.
+pub fn split_message(full: &str) -> (String, String) {
+    match full.find(['\n', '\r']) {
+        Some(idx) => {
+            let subject = full[..idx].to_string();
+            let body = full[idx..].trim_start_matches(['\n', '\r']).to_string();
+            (subject, body)
+        }
+        None => (full.to_string(), String::new()),
+    }
+}
+
 /// Lowercase-hex MD5 of the trimmed-lowercased email, as Gravatar expects.
 /// Returns a 32-char hex string (stable across callers so avatars can be
 /// keyed by email without re-hashing per render).
@@ -224,5 +289,58 @@ mod tests {
         let a = gravatar_hash("test@example.com");
         let b = gravatar_hash("  TEST@EXAMPLE.COM  ");
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn split_message_subject_only() {
+        let (s, b) = split_message("feat: add thing");
+        assert_eq!(s, "feat: add thing");
+        assert_eq!(b, "");
+    }
+
+    #[test]
+    fn split_message_with_blank_line_separator() {
+        let (s, b) = split_message("feat: add thing\n\nLong description\nSecond line");
+        assert_eq!(s, "feat: add thing");
+        assert_eq!(b, "Long description\nSecond line");
+    }
+
+    #[test]
+    fn split_message_without_blank_line_separator() {
+        // Pathological: commit without the canonical blank-line separator.
+        // Body collapses to whatever comes after the first newline.
+        let (s, b) = split_message("subject\nbody");
+        assert_eq!(s, "subject");
+        assert_eq!(b, "body");
+    }
+
+    #[test]
+    fn split_message_crlf_separator() {
+        let (s, b) = split_message("subject\r\n\r\nbody");
+        assert_eq!(s, "subject");
+        assert_eq!(b, "body");
+    }
+
+    #[test]
+    fn split_message_empty_input() {
+        let (s, b) = split_message("");
+        assert_eq!(s, "");
+        assert_eq!(b, "");
+    }
+
+    #[test]
+    fn split_message_preserves_body_trailing_whitespace() {
+        let (s, b) = split_message("subj\n\nbody\n");
+        assert_eq!(s, "subj");
+        assert_eq!(b, "body\n");
+    }
+
+    #[test]
+    fn commit_default_has_empty_message_fields() {
+        let c = Commit::default();
+        assert_eq!(c.body, "");
+        assert!(c.committer_name.is_none());
+        assert!(c.committer_email.is_none());
+        assert!(c.committer_date.is_none());
     }
 }

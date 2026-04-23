@@ -75,6 +75,14 @@ export interface GraphRow {
   short_sha: string;
   summary: string;
   /**
+   * Commit message body — everything after the subject line with leading
+   * blank-line separators trimmed. Empty string when the commit has only a
+   * subject. Raw content (trailers included) to match GitKraken's render,
+   * which emojify-only transforms the body and parses trailers client-side
+   * for the co-authors list.
+   */
+  body: string;
+  /**
    * Author's display name only (no email). For the old `"Name <email>"` form
    * the backend used to send, compose via `${author_name} <${author_email}>`.
    */
@@ -95,6 +103,25 @@ export interface GraphRow {
    */
   gravatar_hash: string;
   author_date: number;
+  /**
+   * Committer identity. Populated when the commit has committer metadata
+   * (virtually always); `null` only on malformed / ancient commits the gix
+   * backend couldn't decode. The right-panel commit block renders the
+   * committer row only when both conditions hold: `committer_*` is non-null
+   * AND differs from `author_name`/`author_email`. Mirrors the GitKraken
+   * bundle guard `!committerInfo || (email===author && name===author)`.
+   */
+  committer_name: string | null;
+  committer_email: string | null;
+  committer_date: number | null;
+  /**
+   * Pre-computed initials + gravatar hash for the committer, same shape as
+   * the author equivalents. `null` when committer metadata is absent.
+   * Identical to the author values when committer matches author — frontend
+   * still renders at most one block per the guard above.
+   */
+  committer_initials: string | null;
+  committer_gravatar_hash: string | null;
   lane: number;
   parent_lanes: number[];
   parent_shas: string[];

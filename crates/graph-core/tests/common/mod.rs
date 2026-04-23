@@ -10,6 +10,6 @@ pub fn commit(sha: &str, parents: &[&str]) -> Commit {
         author_name: "test".to_string(),
         author_email: "t@t".to_string(),
         author_date: 0,
-        refs: Vec::new(),
+        ..Default::default()
     }
 }

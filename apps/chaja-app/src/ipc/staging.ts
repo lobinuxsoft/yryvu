@@ -60,3 +60,46 @@ export function amendCommit(
 export function getHeadCommitMessage(repoPath: string): Promise<string> {
   return invoke<string>("head_commit_message", { repoPath });
 }
+
+export function stageAll(repoPath: string): Promise<string[]> {
+  return invoke<string[]>("stage_all", { repoPath });
+}
+
+export function unstageAll(repoPath: string): Promise<string[]> {
+  return invoke<string[]>("unstage_all", { repoPath });
+}
+
+/// Destructively revert unstaged changes. Tracked paths snap back to HEAD;
+/// untracked files are deleted from disk. Caller must confirm with the user
+/// beforehand — there is no undo.
+export function discardPaths(
+  repoPath: string,
+  paths: string[]
+): Promise<void> {
+  return invoke<void>("discard_paths", { repoPath, paths });
+}
+
+/// Options bundle mirroring the backend `CommitOptions` (serde camelCase).
+/// `skipHooks` is a no-op on the git2 backend — kept for API parity.
+/// `gpgSign=true` currently errors with `NotImplemented`.
+export interface CommitOptions {
+  summary: string;
+  description?: string;
+  amend?: boolean;
+  skipHooks?: boolean;
+  gpgSign?: boolean;
+}
+
+export function createCommit(
+  repoPath: string,
+  options: CommitOptions
+): Promise<string> {
+  return invoke<string>("create_commit", { repoPath, options });
+}
+
+export function commitAndPush(
+  repoPath: string,
+  options: CommitOptions
+): Promise<string> {
+  return invoke<string>("commit_and_push", { repoPath, options });
+}

@@ -3,16 +3,22 @@
 import { createEffect, on, onCleanup, onMount, Show } from "solid-js";
 
 import {
-  amendCommit,
-  commitStaged,
+  commitAndPush,
+  createCommit,
+  discardPaths,
+  stageAll,
   stageFiles,
+  unstageAll,
   unstageFiles,
+  type CommitOptions,
 } from "../../ipc";
 import {
   amendEnabled,
+  commitDescription,
+  commitMessage,
   dirtyFileCount,
-  fullCommitMessage,
   inspectorMode,
+  refreshBranches,
   refreshGraph,
   refreshWorkingTree,
   repoPath,
@@ -22,10 +28,11 @@ import {
   setCommitMessage,
   setInspectorMode,
   setSelectedCommit,
+  skipHooksEnabled,
   workingTreeStatus,
 } from "../../state";
 import { CommitDetails } from "./CommitDetails";
-import { StagingPanel } from "./StagingPanel";
+import { CommitPanel } from "./CommitPanel";
 
 export function RightPanel() {
   // Leaving staging mode whenever the user picks a different commit keeps the
@@ -75,26 +82,102 @@ export function RightPanel() {
     refreshWorkingTree();
   }
 
-  async function handleCommit() {
+  async function handleStageAll() {
     const p = repoPath();
-    const msg = fullCommitMessage();
-    if (!p || !msg) return;
-    const amend = amendEnabled();
-    let newSha: string;
+    if (!p) return;
     try {
-      newSha = amend ? await amendCommit(p, msg) : await commitStaged(p, msg);
-      setCommitMessage("");
-      setCommitDescription("");
-      setAmendEnabled(false);
+      await stageAll(p);
     } catch (err) {
-      console.error(
-        amend ? "amend_commit failed" : "commit_staged failed",
-        err
-      );
-      return;
+      console.error("stage_all failed", err);
     }
     refreshWorkingTree();
+  }
+
+  async function handleUnstageAll() {
+    const p = repoPath();
+    if (!p) return;
+    try {
+      await unstageAll(p);
+    } catch (err) {
+      console.error("unstage_all failed", err);
+    }
+    refreshWorkingTree();
+  }
+
+  async function handleDiscard(paths: string[]) {
+    const p = repoPath();
+    if (!p || paths.length === 0) return;
+    // Destructive: confirm before calling backend. native confirm is
+    // ugly but it's what we have until a proper dialog lands.
+    const label =
+      paths.length === 1
+        ? `Discard changes to "${paths[0]}"?\n\nThis reverts the file to HEAD and cannot be undone.`
+        : `Discard changes to ${paths.length} files?\n\nThis reverts them to HEAD and cannot be undone.`;
+    if (!window.confirm(label)) return;
+    try {
+      await discardPaths(p, paths);
+    } catch (err) {
+      console.error("discard_paths failed", err);
+    }
+    refreshWorkingTree();
+  }
+
+  function pendingCommitOptions(): CommitOptions {
+    return {
+      summary: commitMessage(),
+      description: commitDescription(),
+      amend: amendEnabled(),
+      skipHooks: skipHooksEnabled(),
+    };
+  }
+
+  function clearPendingMessage() {
+    setCommitMessage("");
+    setCommitDescription("");
+    setAmendEnabled(false);
+  }
+
+  async function handleCommit() {
+    const p = repoPath();
+    const opts = pendingCommitOptions();
+    if (!p || !opts.summary.trim()) return;
+    let newSha: string;
+    try {
+      newSha = await createCommit(p, opts);
+    } catch (err) {
+      console.error("create_commit failed", err);
+      return;
+    }
+    clearPendingMessage();
+    refreshWorkingTree();
     refreshGraph();
+    refreshBranches();
+    setSelectedCommit(newSha);
+    setInspectorMode("details");
+  }
+
+  async function handleCommitAndPush() {
+    const p = repoPath();
+    const opts = pendingCommitOptions();
+    if (!p || !opts.summary.trim()) return;
+    let newSha: string;
+    try {
+      newSha = await commitAndPush(p, opts);
+    } catch (err) {
+      // The commit itself may have succeeded even if the push didn't —
+      // tell the user so they can retry push alone instead of rewriting
+      // their message.
+      console.error("commit_and_push failed", err);
+      alert(`Commit and Push failed:\n${String(err)}\n\nIf the commit went through, your working tree is already updated; you can retry the push separately.`);
+      refreshWorkingTree();
+      refreshGraph();
+      refreshBranches();
+      return;
+    }
+    clearPendingMessage();
+    refreshWorkingTree();
+    refreshGraph();
+    refreshBranches();
     setSelectedCommit(newSha);
     setInspectorMode("details");
   }
@@ -118,12 +201,16 @@ export function RightPanel() {
 
       <div class="inspector__body">
         <Show when={inspectorMode() === "staging"}>
-          <StagingPanel
+          <CommitPanel
             status={workingTreeStatus()}
             onStage={handleStage}
             onUnstage={handleUnstage}
+            onDiscard={handleDiscard}
+            onStageAll={handleStageAll}
+            onUnstageAll={handleUnstageAll}
             onBack={() => setInspectorMode("details")}
             onCommit={handleCommit}
+            onCommitAndPush={handleCommitAndPush}
           />
         </Show>
 

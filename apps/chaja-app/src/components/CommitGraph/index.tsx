@@ -19,6 +19,7 @@ import {
   type HostingService,
 } from "../../ipc";
 import {
+  amendEnabled,
   commitMessage,
   dirtyFileCount,
   graphNonce,
@@ -127,7 +128,15 @@ export function CommitGraph(props: CommitGraphProps) {
       .catch(() => setHostingService("unknown"));
   });
 
-  const totalHeight = () => rows().length * ROW_HEIGHT;
+  // When the working tree is dirty, GK reserves the top slot of the
+  // commit list (index 0) for the WIP pseudo-node — see research doc 07
+  // and `getCommitOrderWithWipNode = compact(concat(wip, order))` in the
+  // GK bundle. That means the WIP scrolls with the list; it is NOT
+  // sticky. We model this by shifting every real commit's `top` down by
+  // `wipShift()` pixels and rendering the WIP row absolute-positioned
+  // inside the same scroll-synced coordinate system.
+  const wipShift = () => (dirtyFileCount() > 0 ? ROW_HEIGHT : 0);
+  const totalHeight = () => rows().length * ROW_HEIGHT + wipShift();
 
   /* ========================================================================
      Graph-column intrinsic width (#141 follow-up) — when the repo fans out
@@ -254,6 +263,12 @@ export function CommitGraph(props: CommitGraphProps) {
   });
 
   function openStaging() {
+    // Guard: no point entering the commit panel with a clean tree unless
+    // the user is composing an amend (reword of HEAD). Clicking the WIP
+    // row on a clean repo used to drop users into an empty panel with
+    // all-zero counts, which read as "there are uncommitted changes"
+    // just because the UI was visible.
+    if (dirtyFileCount() === 0 && !amendEnabled()) return;
     setSelectedCommit(undefined);
     setInspectorMode("staging");
   }
@@ -266,67 +281,15 @@ export function CommitGraph(props: CommitGraphProps) {
       <Show when={loading()}>
         <div class="commit-graph__status">Loading…</div>
       </Show>
-      {/* WIP pseudo-row (#129) — always visible as HEAD's anchor, even
-          on a clean working tree. The `+N` badge is the sole dirty-state
-          signal; in GitKraken this is the ChangesBar widget, but a chip
-          carries the same information more compactly. Node + connector
-          borders inherit the HEAD lane color from `--wip-lane-color`. */}
-      <Show when={rows().length > 0}>
-        <div
-          class="commit-graph__wip-row"
-          data-active={inspectorMode() === "staging" ? "true" : "false"}
-          style={{
-            "--wip-lane-color": `var(--column-${headColorIdx()}-color)`,
-          }}
-          onClick={() => openStaging()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              openStaging();
-            }
-          }}
-          title="View working-directory changes"
-        >
-          <div class="commit-graph__wip-col-branch" aria-hidden="true" />
-          <div class="commit-graph__wip-lane">
-            {/* Tint band — same treatment as `.commit-graph__row-tint`
-                on real commits: lane-color wash that starts at the WIP
-                node's centerX and extends to the right edge of the
-                GRAPH cell, sized to the node diameter. Keeps the
-                colored region confined to "past" the node instead of
-                bleeding across the whole lane column. */}
-            <span
-              class="commit-graph__wip-tint"
-              aria-hidden="true"
-              style={{ left: `${wipNodeX()}px` }}
-            />
-            <span
-              class="commit-graph__wip-node"
-              aria-hidden="true"
-              style={{ left: `${wipNodeX()}px` }}
-            />
-          </div>
-          <div class="commit-graph__wip-message">
-            <input
-              class="commit-graph__wip-input"
-              type="text"
-              placeholder={
-                headBranchName()
-                  ? `WIP on ${headBranchName()}`
-                  : "WIP"
-              }
-              value={commitMessage()}
-              onInput={(e) => setCommitMessage(e.currentTarget.value)}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <Show when={dirtyFileCount() > 0}>
-              <span class="commit-graph__wip-badge">+{dirtyFileCount()}</span>
-            </Show>
-          </div>
-        </div>
-      </Show>
+      {/* WIP pseudo-row — ports GitKraken's architecture exactly: the
+          WIP is NOT a sibling floating above the zones; it is a regular
+          cell at row 0 inside each zone's Grid. GK's `cellRenderer`
+          branches on `type === workDirType` (`ba.bY` in the bundle) and
+          renders per-zone content. We mirror that by injecting a `<li>`
+          at the top of each zone's `<ul>` when `dirtyFileCount > 0`.
+          That way each cell inherits its zone's scroll coordinate
+          system — the GRAPH cell lives inside the horizontal scroll
+          wrapper, so the node follows horizontal pan too. */}
       <div class="commit-graph__zones">
         <div
           class="commit-graph__zone commit-graph__zone--branch"
@@ -339,6 +302,23 @@ export function CommitGraph(props: CommitGraphProps) {
               transform: `translateY(-${scrollTop()}px)`,
             }}
           >
+            <Show when={dirtyFileCount() > 0}>
+              <li
+                class="commit-graph__wip-cell commit-graph__wip-cell--branch"
+                data-active={inspectorMode() === "staging" ? "true" : "false"}
+                style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
+                onClick={() => openStaging()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openStaging();
+                  }
+                }}
+                title="View working-directory changes"
+              />
+            </Show>
             <For each={visibleRows()}>
               {(r, i) => {
                 const globalIndex = () => visibleRange().start + i();
@@ -354,7 +334,7 @@ export function CommitGraph(props: CommitGraphProps) {
                     }}
                     data-selected={selectedCommit() === r.sha ? "true" : "false"}
                     style={{
-                      top: `${globalIndex() * ROW_HEIGHT}px`,
+                      top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
                       height: `${ROW_HEIGHT}px`,
                       "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                     }}
@@ -406,6 +386,30 @@ export function CommitGraph(props: CommitGraphProps) {
                 transform: `translateY(-${scrollTop()}px)`,
               }}
             >
+              <Show when={dirtyFileCount() > 0}>
+                <li
+                  class="commit-graph__wip-cell commit-graph__wip-cell--graph"
+                  data-active={inspectorMode() === "staging" ? "true" : "false"}
+                  style={{
+                    top: "0px",
+                    height: `${ROW_HEIGHT}px`,
+                    "--wip-lane-color": `var(--column-${headColorIdx()}-color)`,
+                  }}
+                  onClick={() => openStaging()}
+                  title="View working-directory changes"
+                >
+                  <span
+                    class="commit-graph__wip-tint"
+                    aria-hidden="true"
+                    style={{ left: `${wipNodeX()}px` }}
+                  />
+                  <span
+                    class="commit-graph__wip-node"
+                    aria-hidden="true"
+                    style={{ left: `${wipNodeX()}px` }}
+                  />
+                </li>
+              </Show>
               <For each={visibleRows()}>
                 {(r, i) => {
                   const globalIndex = () => visibleRange().start + i();
@@ -421,7 +425,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       }}
                       data-selected={selectedCommit() === r.sha ? "true" : "false"}
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT}px`,
+                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
@@ -469,7 +473,7 @@ export function CommitGraph(props: CommitGraphProps) {
                     <span
                       class="commit-graph__lane-streak"
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + (ROW_HEIGHT - 22) / 2}px`,
+                        top: `${globalIndex() * ROW_HEIGHT + (ROW_HEIGHT - 22) / 2 + wipShift()}px`,
                         "background-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
                     />
@@ -488,6 +492,29 @@ export function CommitGraph(props: CommitGraphProps) {
             class="commit-graph__col-messages"
             style={{ height: `${totalHeight()}px` }}
           >
+            <Show when={dirtyFileCount() > 0}>
+              <li
+                class="commit-graph__wip-cell commit-graph__wip-cell--messages"
+                data-active={inspectorMode() === "staging" ? "true" : "false"}
+                style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
+                onClick={() => openStaging()}
+                title="View working-directory changes"
+              >
+                <input
+                  class="commit-graph__wip-input"
+                  type="text"
+                  placeholder={
+                    headBranchName()
+                      ? `WIP on ${headBranchName()}`
+                      : "WIP"
+                  }
+                  value={commitMessage()}
+                  onInput={(e) => setCommitMessage(e.currentTarget.value)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span class="commit-graph__wip-badge">+{dirtyFileCount()}</span>
+              </li>
+            </Show>
             <For each={visibleRows()}>
               {(r, i) => {
                 const globalIndex = () => visibleRange().start + i();
@@ -503,7 +530,7 @@ export function CommitGraph(props: CommitGraphProps) {
                     }}
                     data-selected={selectedCommit() === r.sha ? "true" : "false"}
                     style={{
-                      top: `${globalIndex() * ROW_HEIGHT}px`,
+                      top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
                       height: `${ROW_HEIGHT}px`,
                       "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                     }}

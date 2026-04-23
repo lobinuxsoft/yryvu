@@ -139,6 +139,41 @@ export interface GraphRow {
   active_lanes: number[];
 }
 
+/**
+ * Commit metadata powering the right-panel inspector (issue #112). Resolved
+ * fresh from the repo via `commit_details` — not reused from a cached
+ * `GraphRow` — so the inspector still works for commits outside the
+ * current stream window.
+ */
+export interface CommitDetail {
+  sha: string;
+  /**
+   * 6-character SHA prefix, matching GitKraken's inspector. `GraphRow.short_sha`
+   * still uses 7 chars for graph-row consumers.
+   */
+  short_sha: string;
+  parent_shas: string[];
+  summary: string;
+  body: string;
+  author_name: string;
+  author_email: string;
+  author_date: number;
+  author_initials: string;
+  gravatar_hash: string;
+  committer_name: string | null;
+  committer_email: string | null;
+  committer_date: number | null;
+  committer_initials: string | null;
+  committer_gravatar_hash: string | null;
+}
+
+export function getCommitDetails(
+  repoPath: string,
+  sha: string,
+): Promise<CommitDetail> {
+  return invoke<CommitDetail>("commit_details", { repoPath, sha });
+}
+
 interface GraphBatch {
   rows: GraphRow[];
   done: boolean;

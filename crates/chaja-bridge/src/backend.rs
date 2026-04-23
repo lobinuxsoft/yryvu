@@ -166,6 +166,36 @@ pub struct CommitDiff {
     pub files: Vec<FileDiff>,
 }
 
+/// Full commit metadata surfaced to the right-panel inspector.
+///
+/// Mirrors the fields `graph_core::Commit` emits plus pre-computed badge
+/// values — `graph_core::GraphRow` carries the same data for the rows
+/// currently in the stream, but the inspector can also be asked about
+/// commits outside the current window (e.g. via URL deep-link), so this
+/// command resolves the sha fresh against the repo rather than reading
+/// from a cached row.
+#[derive(Debug, Clone, Serialize)]
+pub struct CommitDetail {
+    pub sha: String,
+    /// 6-character prefix per GitKraken's inspector (`docs/research/gitkraken-right-panel/02-commit-header.md`).
+    /// `GraphRow.short_sha` stays at 7 chars for graph-row consumers that
+    /// predate this struct.
+    pub short_sha: String,
+    pub parent_shas: Vec<String>,
+    pub summary: String,
+    pub body: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub author_date: i64,
+    pub author_initials: String,
+    pub gravatar_hash: String,
+    pub committer_name: Option<String>,
+    pub committer_email: Option<String>,
+    pub committer_date: Option<i64>,
+    pub committer_initials: Option<String>,
+    pub committer_gravatar_hash: Option<String>,
+}
+
 /// Maximum total diff size Chajá will materialize per file. Anything larger is
 /// returned with `truncated = true` and empty `hunks`.
 pub const DIFF_MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;

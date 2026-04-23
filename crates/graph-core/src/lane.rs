@@ -339,15 +339,33 @@ pub fn layout_commits(
             let short_sha = commit.sha.chars().take(7).collect();
             let author_initials = crate::author_initials(&commit.author_name, &commit.author_email);
             let gravatar_hash = crate::gravatar_hash(&commit.author_email);
+            // Pre-compute committer badge + gravatar when committer info exists.
+            // Uses the committer's own email for gravatar (not the author's) so
+            // cherry-picked / rebased commits show the committer's face in the
+            // right-panel block — matches GitKraken's behaviour per doc 04.
+            let committer_initials = match (&commit.committer_name, &commit.committer_email) {
+                (Some(name), Some(email)) => Some(crate::author_initials(name, email)),
+                _ => None,
+            };
+            let committer_gravatar_hash = commit
+                .committer_email
+                .as_deref()
+                .map(crate::gravatar_hash);
             GraphRow {
                 sha: commit.sha,
                 short_sha,
                 summary: commit.summary,
+                body: commit.body,
                 author_name: commit.author_name,
                 author_email: commit.author_email,
                 author_initials,
                 gravatar_hash,
                 author_date: commit.author_date,
+                committer_name: commit.committer_name,
+                committer_email: commit.committer_email,
+                committer_date: commit.committer_date,
+                committer_initials,
+                committer_gravatar_hash,
                 lane,
                 parent_lanes,
                 parent_shas: commit.parents,

@@ -18,7 +18,7 @@ fn synth_linear(n: usize) -> Vec<Commit> {
             author_name: "t".into(),
             author_email: "t@t".into(),
             author_date: i as i64,
-            refs: Vec::new(),
+            ..Default::default()
         })
         .collect()
 }
@@ -42,7 +42,7 @@ fn synth_braid(n: usize) -> Vec<Commit> {
             author_name: "t".into(),
             author_email: "t@t".into(),
             author_date: i as i64,
-            refs: Vec::new(),
+            ..Default::default()
         });
     }
     out

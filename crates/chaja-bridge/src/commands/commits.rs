@@ -6,8 +6,8 @@ use graph_core::{build_pinned_set, layout_commits, Commit, GraphRow};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-use crate::backend::{CommitDiff, GitBackend, ResetMode};
-use crate::repo::commits::pick_pinned_head_for_path;
+use crate::backend::{CommitDetail, CommitDiff, GitBackend, ResetMode};
+use crate::repo::commits::{commit_details as commit_details_impl, pick_pinned_head_for_path};
 use crate::repo::hosting::detect_hosting_service;
 use crate::repo::GixBackend;
 
@@ -67,6 +67,19 @@ pub async fn commit_diff(repo_path: String, sha: String) -> Result<CommitDiff, S
         GixBackend
             .commit_diff(&PathBuf::from(&repo_path), &sha)
             .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Resolve full commit metadata for the right-panel inspector (message, body,
+/// author, committer, timestamps, initials, gravatar hashes). Uses the gix
+/// backend directly — no trait indirection since git2 fallback is not needed
+/// for read-only metadata lookup.
+#[tauri::command]
+pub async fn commit_details(repo_path: String, sha: String) -> Result<CommitDetail, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        commit_details_impl(&PathBuf::from(&repo_path), &sha).map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?

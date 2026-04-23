@@ -7,7 +7,7 @@ use std::path::Path;
 use anyhow::{anyhow, Context};
 use graph_core::{Commit, RefKind, RefTag};
 
-use crate::backend::{BackendError, CommitDiff};
+use crate::backend::{BackendError, CommitDetail, CommitDiff};
 
 use super::common::{diff_to_file_diffs, git2_err, open_git2, open_repo};
 
@@ -41,9 +41,10 @@ pub fn walk_commits(
         let author = gix_commit
             .author()
             .map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
-        let time = gix_commit
-            .time()
-            .map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
+        // Committer is optional: malformed / ancient commits may lack it. The
+        // frontend right-panel renders the committer block only when this is
+        // `Some` AND differs from the author (bundle guard confirmed 2026-04-23).
+        let committer = gix_commit.committer().ok();
         let message = gix_commit
             .message()
             .map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
@@ -52,10 +53,30 @@ pub fn walk_commits(
 
         let author_name = author.name.to_string();
         let author_email = author.email.to_string();
+        // `gix_commit.time()` returns the *committer* time per gix docs — the
+        // previous code aliased it as `author_date`, which silently worked for
+        // author==committer commits but drifted on cherry-picks / rebases /
+        // PR-merges. Split the two timestamps now that both flow to the right-panel.
+        let author_date = author.time.seconds;
         let summary = message.summary().to_string();
+        // Raw body, no trailer stripping — GitKraken renders the full body
+        // including `Co-Authored-By:` lines (frontend parses trailers separately).
+        let body = message
+            .body
+            .map(|b| b.to_string())
+            .unwrap_or_default();
         let sha = info.id.to_string();
 
         let refs = refs_by_oid.remove(&info.id).unwrap_or_default();
+
+        let (committer_name, committer_email, committer_date) = match committer {
+            Some(c) => (
+                Some(c.name.to_string()),
+                Some(c.email.to_string()),
+                Some(c.time.seconds),
+            ),
+            None => (None, None, None),
+        };
 
         commits.insert(
             sha.clone(),
@@ -63,9 +84,13 @@ pub fn walk_commits(
                 sha,
                 parents,
                 summary,
+                body,
                 author_name,
                 author_email,
-                author_date: time.seconds,
+                author_date,
+                committer_name,
+                committer_email,
+                committer_date,
                 refs,
             },
         );
@@ -229,6 +254,86 @@ pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendErr
         sha: sha.to_string(),
         parent_sha,
         files,
+    })
+}
+
+/// Resolve full metadata for a single commit.
+///
+/// Powers the right-panel inspector (issue #112). Reads the commit object
+/// fresh from the repo rather than from a cached `GraphRow` so the inspector
+/// still resolves when the commit is outside the current stream window.
+pub fn commit_details(repo_path: &Path, sha: &str) -> Result<CommitDetail, BackendError> {
+    let repo = open_repo(repo_path)?;
+    let oid = gix::ObjectId::from_hex(sha.as_bytes())
+        .map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
+    let gix_commit = repo
+        .find_commit(oid)
+        .map_err(|_| BackendError::CommitNotFound {
+            sha: sha.to_string(),
+        })?;
+
+    let author = gix_commit
+        .author()
+        .map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
+    let committer = gix_commit.committer().ok();
+    let message = gix_commit
+        .message()
+        .map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
+
+    let parent_shas: Vec<String> = gix_commit.parent_ids().map(|id| id.to_string()).collect();
+
+    let author_name = author.name.to_string();
+    let author_email = author.email.to_string();
+    let author_date = author.time.seconds;
+    let summary = message.summary().to_string();
+    let body = message
+        .body
+        .map(|b| b.to_string())
+        .unwrap_or_default();
+    let author_initials = graph_core::author_initials(&author_name, &author_email);
+    let gravatar_hash = graph_core::gravatar_hash(&author_email);
+
+    let (
+        committer_name,
+        committer_email,
+        committer_date,
+        committer_initials,
+        committer_gravatar_hash,
+    ) = match committer {
+        Some(c) => {
+            let name = c.name.to_string();
+            let email = c.email.to_string();
+            let initials = graph_core::author_initials(&name, &email);
+            let hash = graph_core::gravatar_hash(&email);
+            (
+                Some(name),
+                Some(email),
+                Some(c.time.seconds),
+                Some(initials),
+                Some(hash),
+            )
+        }
+        None => (None, None, None, None, None),
+    };
+
+    let short_sha: String = sha.chars().take(6).collect();
+
+    Ok(CommitDetail {
+        sha: sha.to_string(),
+        short_sha,
+        parent_shas,
+        summary,
+        body,
+        author_name,
+        author_email,
+        author_date,
+        author_initials,
+        gravatar_hash,
+        committer_name,
+        committer_email,
+        committer_date,
+        committer_initials,
+        committer_gravatar_hash,
     })
 }
 

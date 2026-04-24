@@ -1,0 +1,144 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   FileList widget — issue #61, 1:1 port of GitKraken's RightPanel file list.
+   Dimensions grepped from the render bundle: FILE_NODE_HEIGHT=32,
+   TREE_VIEW_LEVEL_INDENT=15, FILE_NODE_CONTENTS_PADDING_LEFT=10,
+   FILE_NODE_CONTENTS_DIRECTORY_PADDING_LEFT=3.
+   Shares `.changed-files__*` status / path / stats classes with the pre-#61
+   inspector, so visual anatomy stays identical across rows.
+   ======================================================================== */
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.file-list__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--bg-2);
+}
+
+.file-list__toolbar-modes {
+  display: inline-flex;
+  border: 1px solid var(--bg-2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.file-list__mode {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 3px 8px;
+  color: var(--fg-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.file-list__mode[data-active="true"] {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
+.file-list__mode:hover:not([data-active="true"]) {
+  background: color-mix(in srgb, var(--bg-2) 50%, transparent);
+}
+
+.file-list__expand-toggle {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--bg-2);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  color: var(--fg-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.file-list__expand-toggle:hover:not(:disabled) {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
+.file-list__expand-toggle:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.file-list__filter {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-0);
+  border: 1px solid var(--bg-2);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  color: var(--fg-1);
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.file-list__filter::placeholder { color: var(--fg-3); }
+
+.file-list__filter:focus {
+  outline: none;
+  border-color: var(--info);
+}
+
+.file-list__items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-list__items > li { display: contents; }
+
+.file-list__row,
+.file-list__dir {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  color: var(--fg-1);
+  font-size: 12px;
+  cursor: pointer;
+  padding-right: 6px;
+}
+
+.file-list__row:hover,
+.file-list__dir:hover { background: var(--bg-2); }
+
+.file-list__row[data-active="true"] {
+  background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
+  color: var(--fg-0);
+}
+
+.file-list__dir-chevron {
+  display: inline-block;
+  width: 12px;
+  transition: transform 120ms ease;
+  color: var(--fg-3);
+  flex-shrink: 0;
+}
+
+.file-list__dir-chevron[data-collapsed="false"] {
+  transform: rotate(90deg);
+}
+
+.file-list__dir-name {
+  font-family: var(--font-mono);
+  color: var(--fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

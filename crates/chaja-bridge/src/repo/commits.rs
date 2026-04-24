@@ -61,10 +61,7 @@ pub fn walk_commits(
         let summary = message.summary().to_string();
         // Raw body, no trailer stripping — GitKraken renders the full body
         // including `Co-Authored-By:` lines (frontend parses trailers separately).
-        let body = message
-            .body
-            .map(|b| b.to_string())
-            .unwrap_or_default();
+        let body = message.body.map(|b| b.to_string()).unwrap_or_default();
         let sha = info.id.to_string();
 
         let refs = refs_by_oid.remove(&info.id).unwrap_or_default();
@@ -286,10 +283,7 @@ pub fn commit_details(repo_path: &Path, sha: &str) -> Result<CommitDetail, Backe
     let author_email = author.email.to_string();
     let author_date = author.time.seconds;
     let summary = message.summary().to_string();
-    let body = message
-        .body
-        .map(|b| b.to_string())
-        .unwrap_or_default();
+    let body = message.body.map(|b| b.to_string()).unwrap_or_default();
     let author_initials = graph_core::author_initials(&author_name, &author_email);
     let gravatar_hash = graph_core::gravatar_hash(&author_email);
 

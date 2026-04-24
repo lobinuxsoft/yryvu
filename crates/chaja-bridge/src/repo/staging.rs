@@ -237,9 +237,8 @@ fn compose_message(summary: &str, description: &str) -> Option<String> {
 /// `gix::Repository::commit_as()` once gix-index gains a `write_tree`
 /// equivalent.
 pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, BackendError> {
-    let message = compose_message(&opts.summary, &opts.description).ok_or_else(|| {
-        BackendError::Git(anyhow::anyhow!("commit message cannot be empty"))
-    })?;
+    let message = compose_message(&opts.summary, &opts.description)
+        .ok_or_else(|| BackendError::Git(anyhow::anyhow!("commit message cannot be empty")))?;
 
     if opts.gpg_sign {
         return Err(BackendError::NotImplemented("gpg commit signing"));
@@ -385,8 +384,7 @@ pub fn discard_paths(repo_path: &Path, paths: &[String]) -> Result<(), BackendEr
     let mut tracked_to_checkout: Vec<String> = Vec::new();
     let mut untracked_to_remove: Vec<String> = Vec::new();
 
-    let requested: std::collections::HashSet<&str> =
-        paths.iter().map(String::as_str).collect();
+    let requested: std::collections::HashSet<&str> = paths.iter().map(String::as_str).collect();
 
     for entry in statuses.iter() {
         let path = match entry.path() {
@@ -443,10 +441,7 @@ pub fn discard_paths(repo_path: &Path, paths: &[String]) -> Result<(), BackendEr
 ///
 /// BACKEND: git2 (transitively) — see `create_commit` and
 /// `push_current_branch` for individual migration blockers.
-pub fn commit_and_push(
-    repo_path: &Path,
-    opts: &CommitOptions,
-) -> Result<String, BackendError> {
+pub fn commit_and_push(repo_path: &Path, opts: &CommitOptions) -> Result<String, BackendError> {
     let new_sha = create_commit(repo_path, opts)?;
     super::remote::push_current_branch(repo_path)?;
     Ok(new_sha)

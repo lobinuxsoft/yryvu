@@ -347,10 +347,8 @@ pub fn layout_commits(
                 (Some(name), Some(email)) => Some(crate::author_initials(name, email)),
                 _ => None,
             };
-            let committer_gravatar_hash = commit
-                .committer_email
-                .as_deref()
-                .map(crate::gravatar_hash);
+            let committer_gravatar_hash =
+                commit.committer_email.as_deref().map(crate::gravatar_hash);
             GraphRow {
                 sha: commit.sha,
                 short_sha,

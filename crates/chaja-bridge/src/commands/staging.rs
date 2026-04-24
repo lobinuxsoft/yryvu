@@ -127,10 +127,7 @@ pub async fn discard_paths(repo_path: String, paths: Vec<String>) -> Result<(), 
 }
 
 #[tauri::command]
-pub async fn create_commit(
-    repo_path: String,
-    options: CommitOptions,
-) -> Result<String, String> {
+pub async fn create_commit(repo_path: String, options: CommitOptions) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .create_commit(&PathBuf::from(&repo_path), &options)
@@ -141,10 +138,7 @@ pub async fn create_commit(
 }
 
 #[tauri::command]
-pub async fn commit_and_push(
-    repo_path: String,
-    options: CommitOptions,
-) -> Result<String, String> {
+pub async fn commit_and_push(repo_path: String, options: CommitOptions) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .commit_and_push(&PathBuf::from(&repo_path), &options)

@@ -111,13 +111,11 @@ pub fn push_current_branch(repo_path: &Path) -> Result<(), BackendError> {
                 })?
                 .to_string();
             // Split `refs/remotes/<remote>/<branch>` into remote + branch.
-            let without_prefix = upstream_full
-                .strip_prefix("refs/remotes/")
-                .ok_or_else(|| {
-                    BackendError::Git(anyhow::anyhow!(
-                        "unexpected upstream ref shape: {upstream_full}"
-                    ))
-                })?;
+            let without_prefix = upstream_full.strip_prefix("refs/remotes/").ok_or_else(|| {
+                BackendError::Git(anyhow::anyhow!(
+                    "unexpected upstream ref shape: {upstream_full}"
+                ))
+            })?;
             let slash = without_prefix.find('/').ok_or_else(|| {
                 BackendError::Git(anyhow::anyhow!(
                     "unexpected upstream ref shape: {upstream_full}"

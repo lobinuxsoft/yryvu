@@ -347,11 +347,8 @@ pub trait GitBackend: Send + Sync {
 
     /// Write a commit (or amend HEAD) from the bundled options. Returns the
     /// new commit SHA.
-    fn create_commit(
-        &self,
-        repo_path: &Path,
-        opts: &CommitOptions,
-    ) -> Result<String, BackendError>;
+    fn create_commit(&self, repo_path: &Path, opts: &CommitOptions)
+        -> Result<String, BackendError>;
 
     /// Commit then push current branch to its upstream (creating one at
     /// `origin/<branch>` when absent). Returns the new commit SHA; the

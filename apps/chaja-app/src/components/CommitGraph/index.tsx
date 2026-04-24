@@ -164,6 +164,36 @@ export function CommitGraph(props: CommitGraphProps) {
   const graphContentWidth = createMemo(
     () => GUTTER + (maxLane() + 1) * LANE_WIDTH + 8,
   );
+
+  // Size the GRAPH zone to its content — avoids the black gutter on
+  // narrow-lane repos (only 1-3 lanes used of a 240 px slot) and gives
+  // wide graphs room to breathe without horizontal scroll. Clamped so
+  // the header label "Graph" always has a reasonable min and so a huge
+  // lane count doesn't shove the message column off-screen.
+  //
+  // Written as a CSS custom property on `.main` so both the header row
+  // and the zone pick it up via the same inheritance chain.
+  let rootEl: HTMLDivElement | undefined;
+  const [winWidth, setWinWidth] = createSignal(
+    typeof window !== "undefined" ? window.innerWidth : 1920,
+  );
+  onMount(() => {
+    const main = rootEl?.closest(".main") as HTMLElement | null;
+    if (!main) return;
+    const onResize = () => setWinWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    createEffect(() => {
+      const clamped = Math.max(
+        80,
+        Math.min(graphContentWidth() + 4, Math.round(winWidth() * 0.4)),
+      );
+      main.style.setProperty("--graph-col-graph", `${clamped}px`);
+    });
+    onCleanup(() => {
+      window.removeEventListener("resize", onResize);
+      main.style.removeProperty("--graph-col-graph");
+    });
+  });
   // HEAD row drives the WIP pseudo-row: its lane pins the dashed node
   // horizontally, its color tints the connector + borders, and its
   // `kind: "Head"` ref surfaces the current branch name for the
@@ -274,7 +304,7 @@ export function CommitGraph(props: CommitGraphProps) {
   }
 
   return (
-    <div class="commit-graph">
+    <div class="commit-graph" ref={rootEl}>
       <Show when={error()}>
         <div class="commit-graph__error">Error: {error()}</div>
       </Show>

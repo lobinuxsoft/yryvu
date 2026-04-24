@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createResource, For, Show } from "solid-js";
+import { createMemo, createResource, Show } from "solid-js";
 
+import { FileList } from "../../FileList";
 import {
   getCommitDetails,
   getCommitDiff,
   getHostingService,
   type CommitDetail,
   type CommitDiff,
-  type FileDiff,
   type HostingService,
 } from "../../../ipc";
 import {
@@ -18,7 +18,6 @@ import {
   selectedDiffFile,
   setSelectedCommit,
 } from "../../../state";
-import { statusTone } from "../statusTone";
 import { AuthorBlock } from "./AuthorBlock";
 import { HeaderBlock } from "./HeaderBlock";
 import { MessageBlock } from "./MessageBlock";
@@ -59,6 +58,17 @@ export function CommitDetails() {
     () => repoPath(),
     async (p) => await getHostingService(p),
   );
+
+  // Active file accessor — a createMemo so Solid's JSX attribute wrapping
+  // stays reactive. Passing an IIFE here (`activeFilePath={(() => {...})()}`)
+  // evaluates once at mount and never updates, which breaks selection
+  // highlight.
+  const activeFilePath = createMemo<string | undefined>(() => {
+    const sel = selectedDiffFile();
+    const d = diff();
+    if (!d || !sel || sel.kind !== "commit" || sel.sha !== d.sha) return undefined;
+    return sel.path;
+  });
 
   const totals = () => {
     const d = diff();
@@ -138,54 +148,14 @@ export function CommitDetails() {
           </Show>
         </div>
 
-        <ul class="changed-files">
-          <For each={diff()!.files}>
-            {(f: FileDiff) => {
-              const s = statusTone(f.status);
-              const isActive = () => {
-                const sel = selectedDiffFile();
-                return (
-                  sel?.kind === "commit" &&
-                  sel.sha === diff()!.sha &&
-                  sel.path === f.path
-                );
-              };
-              return (
-                <li>
-                  <button
-                    class="changed-files__row"
-                    type="button"
-                    data-active={isActive() ? "true" : "false"}
-                    title={f.path}
-                    onClick={() => openDiffTab(diff()!.sha, f.path)}
-                  >
-                    <span class="changed-files__status" data-tone={s.tone}>
-                      {s.label}
-                    </span>
-                    <Show when={f.old_path}>
-                      <span class="changed-files__old">{f.old_path} →</span>
-                    </Show>
-                    <span class="changed-files__path">{f.path}</span>
-                    <Show when={f.additions > 0 || f.deletions > 0}>
-                      <span class="changed-files__stats">
-                        <Show when={f.additions > 0}>
-                          <span class="changed-files__stats--add">
-                            +{f.additions}
-                          </span>
-                        </Show>
-                        <Show when={f.deletions > 0}>
-                          <span class="changed-files__stats--del">
-                            -{f.deletions}
-                          </span>
-                        </Show>
-                      </span>
-                    </Show>
-                  </button>
-                </li>
-              );
-            }}
-          </For>
-        </ul>
+        <FileList
+          repoId={repoPath() ?? ""}
+          revKey={diff()!.sha}
+          listType="committed"
+          files={diff()!.files}
+          activeFilePath={activeFilePath()}
+          onSelectFile={(path) => openDiffTab(diff()!.sha, path)}
+        />
       </Show>
     </Show>
   );

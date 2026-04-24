@@ -7,6 +7,7 @@
 @import "./sidebar.css";
 @import "./inspector.css";
 @import "./commit-panel.css";
+@import "./file-list.css";
 @import "./diff.css";
 @import "./status-bar.css";
 @import "./cold-start.css";

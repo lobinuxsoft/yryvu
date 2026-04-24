@@ -1,0 +1,146 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { createEffect, createMemo, For, on } from "solid-js";
+
+import type { FileDiff } from "../../ipc/diff";
+import { FileListToolbar } from "./FileListToolbar";
+import { Row } from "./Row";
+import {
+  collapseAllDirs,
+  displayTree,
+  expandAllDirs,
+  filterQuery,
+  forceFileVisible,
+  isDirCollapsed,
+  isFileForcedVisible,
+  resetRevState,
+  toggleDirCollapsed,
+} from "./store";
+import {
+  ancestorPathsForMatches,
+  buildTreeFromPaths,
+  collectDirPaths,
+  fileMatchesFilter,
+  flattenFlat,
+  flattenTree,
+  type FlatRow,
+} from "./treeBuild";
+
+/// `listType` mirrors GitKraken's `listTypes` enum. Only `committed` is
+/// wired today — `staged` / `unstaged` come with future working-dir port.
+export type FileListType = "committed" | "staged" | "unstaged";
+
+export interface FileListProps {
+  repoId: string;
+  /// Cache key: commit SHA for `committed`, the listType name itself for
+  /// working-tree variants. Changing this resets per-revision ephemeral
+  /// state (collapsed dirs, forced-visible files).
+  revKey: string;
+  listType: FileListType;
+  files: FileDiff[];
+  activeFilePath: string | undefined;
+  onSelectFile: (path: string) => void;
+}
+
+/// 1:1 port of GitKraken's RightPanel file-list widget.
+///
+/// Perf-critical pieces, mirrored from the bundle:
+///   - **Object-map insert** for the dir tree (`_insertPathIntoTree` uses
+///     `Map<name, node>` per level — O(depth) per file vs O(depth·siblings)
+///     with naive array `.find()`).
+///   - **Pre-flattened render list** via `flattenTree` / `flattenFlat`
+///     (GK's `getFlattenedViewFromFileTree`) — a single flat `<For>`
+///     instead of recursive components.
+///   - **Memoized tree** rebuilt only when `props.files` reference changes.
+///
+/// Virtualization (react-virtualized `Grid` with `overscanRowCount:10` in
+/// GK) is **not** wired here — the inspector body owns the vertical scroll
+/// for the whole column, so the file list can't bound its own viewport
+/// without restructuring the surrounding layout. Follow-up issue.
+export function FileList(props: FileListProps) {
+  const isTree = () => displayTree(props.repoId);
+  const filter = () => filterQuery(props.repoId);
+
+  // Drop collapsed-dir / forced-visible state whenever the rev or display
+  // mode changes — `TreeViewAtShaReset` semantics. Keyed by
+  // `(repoId, revKey, isTree)` so opposite-mode state never leaks in.
+  createEffect(
+    on(
+      () => [props.revKey, isTree()] as const,
+      ([rev, tree]) => resetRevState(props.repoId, rev, tree),
+      { defer: true },
+    ),
+  );
+
+  // Keep the current selection visible past the filter — equivalent of
+  // `TreeViewFileForcedVisible`.
+  createEffect(() => {
+    const path = props.activeFilePath;
+    if (!path) return;
+    forceFileVisible(props.repoId, props.revKey, isTree(), path);
+  });
+
+  const isFileVisible = (path: string): boolean => {
+    if (fileMatchesFilter(path, filter())) return true;
+    return isFileForcedVisible(props.repoId, props.revKey, isTree(), path);
+  };
+
+  // Dirs that contain at least one filter-matching descendant — expanded
+  // regardless of the per-dir collapsed state.
+  const autoExpandedDirs = createMemo(() =>
+    ancestorPathsForMatches(props.files, filter()),
+  );
+
+  const isDirExpanded = (dirPath: string): boolean => {
+    if (autoExpandedDirs().has(dirPath)) return true;
+    return !isDirCollapsed(props.repoId, props.revKey, isTree(), dirPath);
+  };
+
+  // Tree is memoized on `props.files` — rebuilt once per diff response.
+  const tree = createMemo(() => buildTreeFromPaths(props.files));
+  const allDirPaths = createMemo(() => collectDirPaths(tree()));
+
+  // Flattened visible rows — 1:1 with GK's `makeGetFlattenedViewFromTreeView`.
+  const rows = createMemo<FlatRow[]>(() => {
+    if (isTree()) return flattenTree(tree(), isDirExpanded, isFileVisible);
+    return flattenFlat(props.files, isFileVisible);
+  });
+
+  const onClick = (row: FlatRow) => {
+    if (row.kind === "file") {
+      props.onSelectFile(row.path);
+    } else {
+      toggleDirCollapsed(props.repoId, props.revKey, isTree(), row.path);
+    }
+  };
+
+  return (
+    <div class="file-list">
+      <FileListToolbar
+        repoId={props.repoId}
+        onExpandAll={() => expandAllDirs(props.repoId, props.revKey, isTree())}
+        onCollapseAll={() =>
+          collapseAllDirs(props.repoId, props.revKey, isTree(), allDirPaths())
+        }
+      />
+      <ul class="file-list__items">
+        <For each={rows()}>
+          {(row) => (
+            <li>
+              <Row
+                row={row}
+                active={
+                  row.kind === "file" && props.activeFilePath === row.path
+                }
+                isExpanded={
+                  row.kind === "dir" ? isDirExpanded(row.path) : false
+                }
+                onClick={() => onClick(row)}
+              />
+            </li>
+          )}
+        </For>
+      </ul>
+    </div>
+  );
+}

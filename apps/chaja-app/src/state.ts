@@ -62,7 +62,32 @@ function persistedTheme(): Signal<Theme> {
 
 export const [theme, setTheme] = persistedTheme();
 
-export const [repoPath, setRepoPath] = createSignal<string | undefined>(undefined);
+const [repoPath, setRepoPathRaw] = createSignal<string | undefined>(undefined);
+export { repoPath };
+
+/// Swap the active repository. Clears every per-repo ephemeral signal
+/// (selection, hovered ref, inspector mode, draft commit message,
+/// amend, …) so stale state from the previous repo doesn't leak — the
+/// classic repro was clicking commits after a switch and nothing
+/// responding because `selectedCommit` still pointed at a SHA that
+/// didn't exist in the new repo, which in turn pinned the WIP
+/// calculations and inspector resources on ghost data.
+///
+/// Must live near the bottom of the signal declarations because it
+/// writes into several setters declared below. Exported as a function so
+/// call sites stay stable.
+export function setRepoPath(next: string | undefined): void {
+  const prev = repoPath();
+  setRepoPathRaw(next);
+  if (prev === next) return;
+  setSelectedCommit(undefined);
+  setSelectedDiffFile(undefined);
+  setHoveredRef(undefined);
+  setInspectorMode("details");
+  setCommitMessage("");
+  setCommitDescription("");
+  setAmendEnabled(false);
+}
 export const [selectedCommit, setSelectedCommit] = createSignal<string | undefined>(undefined);
 
 export type MainView = "graph" | "diff";

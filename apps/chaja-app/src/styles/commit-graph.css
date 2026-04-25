@@ -232,6 +232,35 @@
   opacity: 0.8;
 }
 
+/* Hide-btn — visible on pill hover only (matches GK's `enableShowHideRefsOptions
+   && !hasActive` gating; the `!hasActive` half is enforced via `suppressHide`
+   from the pill group). */
+.ref-pill__hide-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin-left: 2px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.ref-pill:hover .ref-pill__hide-btn,
+.ref-pill:focus-within .ref-pill__hide-btn {
+  display: inline-flex;
+}
+
+.ref-pill__hide-btn:hover {
+  background: color-mix(in srgb, currentColor 25%, transparent);
+  opacity: 1;
+}
+
 /* Type-color variants — GitHub status palette conventions, not lane colors.
    Doc 06 explicitly discards lane tinting as a chajá-specific deviation. */
 .ref-pill--head {

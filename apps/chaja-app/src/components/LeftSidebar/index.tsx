@@ -5,12 +5,11 @@ import { createResource, createSignal, For, Show } from "solid-js";
 import { listBranches, getRepoState, type BranchInfo, type RepoStateInfo } from "../../ipc";
 import {
   branchesNonce,
-  refreshBranches,
   repoPath,
   setShowLeftPanel,
   showLeftPanel,
 } from "../../state";
-import { ContextMenu } from "../ContextMenu";
+import { useBranchOps } from "../../branchOps";
 import {
   IconArchive,
   IconBranch,
@@ -21,10 +20,8 @@ import {
   IconUsers,
 } from "../Icons";
 import { LocalBranchRow, RemoteBranchRow } from "./branchRows";
-import { DialogsHost } from "./DialogsHost";
 import { SidebarSection } from "./SidebarSection";
 import { StateBanner } from "./StateBanner";
-import { createBranchOps } from "./useBranchOps";
 
 export function LeftSidebar() {
   const [collapsed, setCollapsed] = createSignal(false);
@@ -50,7 +47,7 @@ export function LeftSidebar() {
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
   const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
 
-  const ops = createBranchOps({ refresh: refreshBranches });
+  const ops = useBranchOps();
 
   return (
     <aside class="sidebar" data-collapsed={collapsed() ? "true" : "false"}>
@@ -164,16 +161,6 @@ export function LeftSidebar() {
         </SidebarSection>
       </div>
 
-      <Show when={ops.menu()}>
-        <ContextMenu
-          x={ops.menu()!.x}
-          y={ops.menu()!.y}
-          items={ops.menu()!.items}
-          onClose={() => ops.setMenu(null)}
-        />
-      </Show>
-
-      <DialogsHost ops={ops} />
     </aside>
   );
 }

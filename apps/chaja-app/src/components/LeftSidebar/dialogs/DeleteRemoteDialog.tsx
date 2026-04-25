@@ -3,7 +3,7 @@
 import { Show } from "solid-js";
 
 import { Dialog } from "../../Dialog";
-import type { BranchOps } from "../useBranchOps";
+import type { BranchOps } from "../../../branchOps";
 
 export function DeleteRemoteDialog(props: { ops: BranchOps }) {
   const { ops } = props;

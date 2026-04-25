@@ -25,12 +25,20 @@ import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import {
   IconBranch,
   IconCheck,
+  IconClose,
   IconCloud,
   IconPin,
   IconTag,
 } from "../Icons";
 import type { RefTag } from "../../ipc/commits";
-import { clearHoveredRef, pinnedSha, setHoveredRef } from "../../state";
+import {
+  clearHoveredRef,
+  hiddenRefs,
+  pinnedSha,
+  setHiddenRef,
+  setHoveredRef,
+} from "../../state";
+import { refKey, useBranchOps } from "../../branchOps";
 
 /**
  * Map a ref-tag `kind` (backend enum) to the `HoveredRef.kind` channel used
@@ -123,16 +131,24 @@ function PillKindIcon(props: { kind: RefTag["kind"] }) {
 
 interface RefPillProps {
   tag: RefTag;
+  sha: string;
   active?: boolean;
   pinned?: boolean;
+  /** When true, suppress the hide-btn slot (matches GK's `!hasActive` gate). */
+  suppressHide?: boolean;
 }
 
 function RefPill(props: RefPillProps) {
+  const ops = useBranchOps();
   const enter = () =>
     setHoveredRef({
       kind: hoveredKindFor(props.tag.kind),
       name: props.tag.name,
     });
+  const hide = (e: MouseEvent) => {
+    e.stopPropagation();
+    setHiddenRef(refKey(props.tag), true);
+  };
   // The annotation slot is mutually exclusive — checkmark when this pill is
   // the active (HEAD-aliased) ref; otherwise pin when this pill represents
   // the trunk's local branch.
@@ -150,6 +166,7 @@ function RefPill(props: RefPillProps) {
       onMouseLeave={clearHoveredRef}
       onFocus={enter}
       onBlur={clearHoveredRef}
+      onContextMenu={(e) => ops.openRefContextMenu(e, props.tag, props.sha)}
     >
       <Show when={props.active}>
         <IconCheck class="ref-pill__annotation" width={12} height={12} />
@@ -172,6 +189,17 @@ function RefPill(props: RefPillProps) {
           </Show>
         </span>
       </Show>
+      <Show when={!props.suppressHide && props.tag.kind !== "Head"}>
+        <button
+          type="button"
+          class="ref-pill__hide-btn"
+          title={`Hide '${props.tag.name}'`}
+          aria-label={`Hide ${props.tag.name}`}
+          onClick={hide}
+        >
+          <IconClose width={10} height={10} />
+        </button>
+      </Show>
     </span>
   );
 }
@@ -186,7 +214,12 @@ function RefPill(props: RefPillProps) {
  */
 export function RefPillGroup(props: { refs: RefTag[]; sha: string }) {
   const isPinnedRow = () => pinnedSha() === props.sha;
-  const ordered = () => orderRefs(props.refs, isPinnedRow());
+  // Filter out user-hidden refs before ordering — GK matches behaviour:
+  // hidden pills disappear from the row entirely, available again only via
+  // the `Show all hidden refs` action (deferred, follow-up issue).
+  const visibleRefs = () =>
+    props.refs.filter((r) => !hiddenRefs().has(refKey(r)));
+  const ordered = () => orderRefs(visibleRefs(), isPinnedRow());
   const hasActive = () => ordered().some((r) => r.kind === "Head");
   // Stage-2 only annotates the *first* local-branch pill on the pinned row
   // — there's exactly one, but if a row carried multiple local branches
@@ -229,8 +262,10 @@ export function RefPillGroup(props: { refs: RefTag[]; sha: string }) {
       >
         <RefPill
           tag={ordered()[0]}
+          sha={props.sha}
           active={ordered()[0].kind === "Head"}
           pinned={isPinnedPill(ordered()[0], 0)}
+          suppressHide={hasActive()}
         />
         <Show when={ordered().length > 1}>
           <button
@@ -252,7 +287,9 @@ export function RefPillGroup(props: { refs: RefTag[]; sha: string }) {
               {(r, i) => (
                 <RefPill
                   tag={r}
+                  sha={props.sha}
                   pinned={isPinnedPill(r, i() + 1)}
+                  suppressHide={hasActive()}
                 />
               )}
             </For>

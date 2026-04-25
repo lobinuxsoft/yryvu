@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createSignal } from "solid-js";
+import { createContext, createSignal, useContext } from "solid-js";
 
 import {
   abortMerge,
@@ -15,11 +15,12 @@ import {
   stashPush,
   type BranchInfo,
   type MergeStrategy,
-} from "../../ipc";
-import { repoPath } from "../../state";
-import type { ContextMenuItem } from "../ContextMenu";
-import { parseRemoteBranchName } from "./helpers";
-import type { DialogState, MenuState } from "./types";
+  type RefTag,
+} from "./ipc";
+import { repoPath, setHiddenRef } from "./state";
+import type { ContextMenuItem } from "./components/ContextMenu";
+import { parseRemoteBranchName } from "./components/LeftSidebar/helpers";
+import type { DialogState, MenuState } from "./components/LeftSidebar/types";
 
 export interface BranchOpsDeps {
   refresh: () => void;
@@ -271,6 +272,80 @@ export function createBranchOps(deps: BranchOpsDeps) {
     setMenu({ x: e.clientX, y: e.clientY, items });
   }
 
+  /**
+   * Right-click menu for a ref pill in the BRANCH/TAG column. Items shape
+   * follows the GitKraken bundle's `RefContextMenu` (validated 2026-04-25):
+   * `RefCheckout`, `RenameRef`, `RefDelete`, `RefPin` (chajá-internal still),
+   * `RefHide`. Ref-kind drives availability — tags don't checkout, remote
+   * branches don't rename in-place, etc.
+   *
+   * The pill's commit sha lets us reuse the same `tryCheckout` /
+   * `openCreateDialog` flow as the sidebar — no new ops surface needed.
+   */
+  function openRefContextMenu(e: MouseEvent, tag: RefTag, sha: string) {
+    e.preventDefault();
+    const items: ContextMenuItem[] = [];
+    if (tag.kind === "Branch") {
+      items.push({
+        label: `Checkout '${tag.name}'`,
+        onSelect: () => void tryCheckout(tag.name),
+      });
+      items.push({
+        label: `Merge '${tag.name}' into current`,
+        onSelect: () => openMergePickDialog(tag.name),
+      });
+      items.push({ type: "separator" });
+      items.push({
+        label: "Create branch here",
+        onSelect: () => openCreateDialog(sha),
+      });
+      items.push({
+        label: `Rename '${tag.name}'…`,
+        onSelect: () => openRenameDialog(tag.name),
+      });
+      items.push({
+        label: `Delete '${tag.name}'…`,
+        danger: true,
+        onSelect: () => openDeleteDialog(tag.name),
+      });
+    } else if (tag.kind === "RemoteBranch") {
+      const parsed = parseRemoteBranchName(tag.name);
+      items.push({
+        label: `Merge '${tag.name}' into current`,
+        onSelect: () => openMergePickDialog(tag.name),
+      });
+      items.push({ type: "separator" });
+      items.push({
+        label: "Create branch here",
+        onSelect: () => openCreateDialog(sha),
+      });
+      items.push({
+        label: `Delete remote '${tag.name}'…`,
+        danger: true,
+        disabled: !parsed,
+        onSelect: () =>
+          parsed && openDeleteRemoteDialog(parsed.remote, parsed.name),
+      });
+    } else if (tag.kind === "Tag") {
+      items.push({
+        label: "Create branch here",
+        onSelect: () => openCreateDialog(sha),
+      });
+    }
+    // Hide is offered for every non-active ref (the bundle gates it on
+    // `enableShowHideRefsOptions && !hasActive`; the per-pill flag covers the
+    // second half — the first is a global setting we don't expose yet).
+    if (tag.kind !== "Head") {
+      if (items.length > 0) items.push({ type: "separator" });
+      items.push({
+        label: `Hide '${tag.name}'`,
+        onSelect: () => setHiddenRef(refKey(tag), true),
+      });
+    }
+    if (items.length === 0) return;
+    setMenu({ x: e.clientX, y: e.clientY, items });
+  }
+
   return {
     // state
     menu,
@@ -292,6 +367,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
     // context menu
     openBranchContextMenu,
     openRemoteContextMenu,
+    openRefContextMenu,
     // async operations
     tryCheckout,
     stashAndCheckout,
@@ -306,3 +382,39 @@ export function createBranchOps(deps: BranchOpsDeps) {
 }
 
 export type BranchOps = ReturnType<typeof createBranchOps>;
+
+/**
+ * Stable key used to track hidden refs across reloads. Encodes both kind
+ * and name because tags and branches share namespaces and the Hide action
+ * targets a specific (kind, name) pair from the right-click menu.
+ */
+export function refKey(tag: { kind: RefTag["kind"]; name: string }): string {
+  return `${tag.kind}/${tag.name}`;
+}
+
+/**
+ * Solid context wiring for the lifted `useBranchOps`. AppShell instantiates
+ * exactly one `createBranchOps` call and exposes it via the provider; both
+ * LeftSidebar and CommitGraph (ref pills) consume the same instance so the
+ * dialogs / menu / refresh nonces stay coordinated.
+ */
+const BranchOpsContext = createContext<BranchOps>();
+
+export function BranchOpsProvider(props: {
+  ops: BranchOps;
+  children: import("solid-js").JSX.Element;
+}) {
+  return (
+    <BranchOpsContext.Provider value={props.ops}>
+      {props.children}
+    </BranchOpsContext.Provider>
+  );
+}
+
+export function useBranchOps(): BranchOps {
+  const ctx = useContext(BranchOpsContext);
+  if (!ctx) {
+    throw new Error("useBranchOps must be called inside <BranchOpsProvider>");
+  }
+  return ctx;
+}

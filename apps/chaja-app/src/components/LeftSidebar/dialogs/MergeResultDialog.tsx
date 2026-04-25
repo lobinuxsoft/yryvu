@@ -5,7 +5,7 @@ import { For, Show } from "solid-js";
 import type { MergeResult } from "../../../ipc";
 import { Dialog } from "../../Dialog";
 import { mergeResultTitle } from "../helpers";
-import type { BranchOps } from "../useBranchOps";
+import type { BranchOps } from "../../../branchOps";
 
 export function MergeResultDialog(props: { ops: BranchOps }) {
   const { ops } = props;

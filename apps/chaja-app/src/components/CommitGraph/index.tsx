@@ -20,7 +20,6 @@ import {
 } from "../../ipc";
 import {
   activeColumnSettings,
-  activeOrderedZones,
   amendEnabled,
   commitZoneMode,
   commitMessage,
@@ -186,16 +185,6 @@ export function CommitGraph(props: CommitGraphProps) {
   const graphContentWidth = createMemo(() => {
     const dims = getRenderDims(commitZoneMode() === "compact");
     return dims.gutter + (maxLane() + 1) * dims.laneWidth + 8;
-  });
-  // Pick the zone that should soak up leftover horizontal space — 1:1
-  // with GK. Message is "elastic content" so when it's visible IT gets
-  // the leftover; otherwise fall back to the rightmost visible zone so
-  // there's never a dead strip on the right edge. Reactive on
-  // visibility / mode changes.
-  const growZone = createMemo(() => {
-    const order = activeOrderedZones();
-    if (order.includes("commitMessage")) return "commitMessage" as const;
-    return order[order.length - 1];
   });
 
   // Push the user-controlled column widths to CSS custom properties on
@@ -396,13 +385,9 @@ export function CommitGraph(props: CommitGraphProps) {
           That way each cell inherits its zone's scroll coordinate
           system — the GRAPH cell lives inside the horizontal scroll
           wrapper, so the node follows horizontal pan too. */}
-      {/* `growZone()` reactive — drives `is-last-visible` so the
-          rightmost visible column flex-grows to soak up leftover space.
-          Reorders with mode automatically. */}
       <div class="commit-graph__zones">
         <div
           class="commit-graph__zone commit-graph__zone--branch"
-          classList={{ "is-last-visible": growZone() === "ref" }}
           style={{ order: activeColumnSettings("ref").order }}
           onWheel={forwardWheel}
         >
@@ -486,10 +471,7 @@ export function CommitGraph(props: CommitGraphProps) {
         </div>
         <div
           class="commit-graph__zone commit-graph__zone--graph"
-          classList={{
-            "is-compact": commitZoneMode() === "compact",
-            "is-last-visible": growZone() === "graph",
-          }}
+          classList={{ "is-compact": commitZoneMode() === "compact" }}
           style={{ order: activeColumnSettings("graph").order }}
           onWheel={forwardWheel}
         >
@@ -612,8 +594,7 @@ export function CommitGraph(props: CommitGraphProps) {
         </div>
         <div
           class="commit-graph__zone commit-graph__zone--messages"
-          classList={{ "is-last-visible": growZone() === "commitMessage" }}
-          style={{ order: activeColumnSettings("commitMessage").order }}
+                    style={{ order: activeColumnSettings("commitMessage").order }}
           ref={messagesScroll}
           onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
         >
@@ -682,8 +663,7 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitAuthor").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--author"
-            classList={{ "is-last-visible": growZone() === "commitAuthor" }}
-            style={{ order: activeColumnSettings("commitAuthor").order }}
+                        style={{ order: activeColumnSettings("commitAuthor").order }}
             onWheel={forwardWheel}
           >
             <ul
@@ -758,8 +738,7 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitDateTime").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--date-time"
-            classList={{ "is-last-visible": growZone() === "commitDateTime" }}
-            style={{ order: activeColumnSettings("commitDateTime").order }}
+                        style={{ order: activeColumnSettings("commitDateTime").order }}
             onWheel={forwardWheel}
           >
             <ul
@@ -813,8 +792,7 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitSha").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--sha"
-            classList={{ "is-last-visible": growZone() === "commitSha" }}
-            style={{ order: activeColumnSettings("commitSha").order }}
+                        style={{ order: activeColumnSettings("commitSha").order }}
             onWheel={forwardWheel}
           >
             <ul

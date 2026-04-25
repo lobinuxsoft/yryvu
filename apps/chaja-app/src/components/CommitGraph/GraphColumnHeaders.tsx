@@ -9,7 +9,7 @@
  * slice of the column state.
  */
 
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For } from "solid-js";
 
 import { activeColumnSettings, activeOrderedZones } from "../../state";
 import { ColumnSettingsButton } from "./ColumnSettingsButton";
@@ -48,29 +48,24 @@ function HeaderLabel(props: { id: GraphZoneId }) {
 
 export function GraphColumnHeaders() {
   const visible = createMemo(() => activeOrderedZones());
-  // Same flex-grow target rule as the body — message wins when visible,
-  // last-by-order wins otherwise. Keeps the header strip aligned with
-  // the zones below at all times.
-  const growZone = createMemo<GraphZoneId | undefined>(() => {
-    const order = visible();
-    if (order.includes("commitMessage")) return "commitMessage";
-    return order[order.length - 1];
-  });
 
   return (
     <div class="main__graph-column-headers">
       <For each={visible()}>
-        {(id, idx) => (
+        {(id) => (
           <span
             class="main__graph-column-header"
             data-zone={id}
-            classList={{ "is-last-visible": growZone() === id }}
             style={{ order: activeColumnSettings(id).order }}
           >
             <HeaderLabel id={id} />
-            <Show when={idx() < visible().length - 1}>
-              <GraphColumnResizer leftZone={id} />
-            </Show>
+            {/* Every column gets its own resize handle (including the
+                rightmost one) — fixes #157, where the rightmost zone
+                couldn't shrink to its declared `minimumWidth` because
+                no handle controlled it. The handle always operates on
+                the column it sits on, and `setGraphZoneWidth` clamps
+                the result to `[minimumWidth, maximumWidth]`. */}
+            <GraphColumnResizer leftZone={id} />
           </span>
         )}
       </For>

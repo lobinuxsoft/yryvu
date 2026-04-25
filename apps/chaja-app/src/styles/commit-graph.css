@@ -84,13 +84,14 @@
 }
 
 /* Streaks gutter — 4 px column on the right, OUTSIDE the horizontal
-   scroll container so it never moves horizontally. `translateY` on
-   the inner element syncs its vertical offset with `scrollTop`. */
+   scroll container so it never moves horizontally. Vertical sync now
+   comes from the parent `.commit-graph__zones` scrolling everything
+   together; the gutter has no height constraint and grows with its
+   `totalHeight` inner so the absolute-positioned per-row streaks
+   stay aligned with their commits as the user scrolls. */
 .commit-graph__col-graph-streaks {
   flex-shrink: 0;
   width: 4px;
-  height: 100%;
-  overflow: hidden;
   pointer-events: none;
   position: relative;
 }

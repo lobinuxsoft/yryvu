@@ -49,6 +49,7 @@ import {
 } from "./RowRenderer";
 import { createIncrementalEdgeStates } from "./edgeStates";
 import { formatCommitDateTime } from "./columns";
+import { createVirtualizer } from "@tanstack/solid-virtual";
 
 /**
  * Threshold below which the Author cell renders avatar-only (initials
@@ -157,7 +158,7 @@ export function CommitGraph(props: CommitGraphProps) {
   // `wipShift()` pixels and rendering the WIP row absolute-positioned
   // inside the same scroll-synced coordinate system.
   const wipShift = () => (dirtyFileCount() > 0 ? ROW_HEIGHT : 0);
-  const totalHeight = () => rows().length * ROW_HEIGHT + wipShift();
+  const totalHeight = () => virtualizer.getTotalSize() + wipShift();
 
   /* ========================================================================
      Graph-column intrinsic width (#141 follow-up) — when the repo fans out
@@ -291,46 +292,21 @@ export function CommitGraph(props: CommitGraphProps) {
      ======================================================================== */
   const OVERSCAN_ROWS = 8;
   let zonesScroll: HTMLDivElement | undefined;
-  const [scrollTop, setScrollTop] = createSignal(0);
-  const [viewportHeight, setViewportHeight] = createSignal(0);
 
-  // Vertical scroll lives on the `.commit-graph__zones` container — the
-  // single source of truth for both `scrollTop` and `viewportHeight`,
-  // independent of which zones are visible. Previous design pinned the
-  // scroll to the messages zone, which broke the moment a user toggled
-  // commit-message off (no scroll provider → empty viewport →
-  // `visibleRange` collapsed to zero rows).
-  onMount(() => {
-    if (!zonesScroll) return;
-    setViewportHeight(zonesScroll.clientHeight);
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setViewportHeight(entry.contentRect.height);
-      }
-    });
-    ro.observe(zonesScroll);
-    onCleanup(() => ro.disconnect());
-  });
-
-  const visibleRange = createMemo(() => {
-    const total = rows().length;
-    const vh = viewportHeight();
-    if (total === 0 || vh === 0) return { start: 0, end: 0 };
-    const st = scrollTop();
-    const start = Math.max(0, Math.floor(st / ROW_HEIGHT) - OVERSCAN_ROWS);
-    const end = Math.min(
-      total,
-      Math.ceil((st + vh) / ROW_HEIGHT) + OVERSCAN_ROWS,
-    );
-    return { start, end };
-  });
-
-  // Sliced row view. Returns references into `rows()` so <For>'s keyed
-  // reconciliation matches items by identity — rows that stay in the
-  // window during scroll don't remount, only their `top` offset updates.
-  const visibleRows = createMemo(() => {
-    const { start, end } = visibleRange();
-    return rows().slice(start, end);
+  // Vertical virtualizer 1:1 with GK's `MultiGrid` (which underlies its
+  // graph view in `react-virtualized`). Single instance shared across
+  // every visible zone — they all iterate the same `getVirtualItems()`,
+  // so a commit's row across BRANCH/TAG / GRAPH / MESSAGE / AUTHOR /
+  // DATE-TIME / SHA stays at the same `start` offset. The scroll
+  // element is the `.commit-graph__zones` container so toggling any
+  // single zone off doesn't lose the scroll provider.
+  const virtualizer = createVirtualizer({
+    get count() {
+      return rows().length;
+    },
+    getScrollElement: () => zonesScroll ?? null,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: OVERSCAN_ROWS,
   });
 
   /**
@@ -389,7 +365,7 @@ export function CommitGraph(props: CommitGraphProps) {
       <div
         class="commit-graph__zones"
         ref={zonesScroll}
-        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+        
       >
         <Show when={activeColumnSettings("ref").visible}>
         <div
@@ -421,9 +397,11 @@ export function CommitGraph(props: CommitGraphProps) {
                 title="View working-directory changes"
               />
             </Show>
-            <For each={visibleRows()}>
-              {(r, i) => {
-                const globalIndex = () => visibleRange().start + i();
+            <For each={virtualizer.getVirtualItems()}>
+              {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                
                 return (
                   <li
                     class={rowWrapperClass(
@@ -436,7 +414,7 @@ export function CommitGraph(props: CommitGraphProps) {
                     }}
                     data-selected={selectedCommit() === r.sha ? "true" : "false"}
                     style={{
-                      top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                      top: `${item.start + wipShift()}px`,
                       height: `${ROW_HEIGHT}px`,
                       "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                     }}
@@ -521,9 +499,11 @@ export function CommitGraph(props: CommitGraphProps) {
                   />
                 </li>
               </Show>
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                  
                   return (
                     <li
                       class={rowWrapperClass(
@@ -536,7 +516,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       }}
                       data-selected={selectedCommit() === r.sha ? "true" : "false"}
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
@@ -560,7 +540,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       />
                       <CommitRowGraph
                         row={r}
-                        edges={edgeStates()[globalIndex()] ?? new Map()}
+                        edges={edgeStates()[item.index] ?? new Map()}
                         hostingService={hostingService()}
                         compact={commitZoneMode() === "compact"}
                       />
@@ -583,14 +563,16 @@ export function CommitGraph(props: CommitGraphProps) {
   
               }}
             >
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                  
                   return (
                     <span
                       class="commit-graph__lane-streak"
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + (ROW_HEIGHT - 22) / 2 + wipShift()}px`,
+                        top: `${item.start + (ROW_HEIGHT - 22) / 2 + wipShift()}px`,
                         "background-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
                     />
@@ -633,9 +615,11 @@ export function CommitGraph(props: CommitGraphProps) {
                 <span class="commit-graph__wip-badge">+{dirtyFileCount()}</span>
               </li>
             </Show>
-            <For each={visibleRows()}>
-              {(r, i) => {
-                const globalIndex = () => visibleRange().start + i();
+            <For each={virtualizer.getVirtualItems()}>
+              {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                
                 return (
                   <li
                     class={rowWrapperClass(
@@ -648,7 +632,7 @@ export function CommitGraph(props: CommitGraphProps) {
                     }}
                     data-selected={selectedCommit() === r.sha ? "true" : "false"}
                     style={{
-                      top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                      top: `${item.start + wipShift()}px`,
                       height: `${ROW_HEIGHT}px`,
                       "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                     }}
@@ -688,9 +672,11 @@ export function CommitGraph(props: CommitGraphProps) {
                   style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
                 />
               </Show>
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                  
                   return (
                     <li
                       class={rowWrapperClass(
@@ -703,7 +689,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       }}
                       data-selected={selectedCommit() === r.sha ? "true" : "false"}
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
@@ -763,9 +749,11 @@ export function CommitGraph(props: CommitGraphProps) {
                   style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
                 />
               </Show>
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                  
                   return (
                     <li
                       class={rowWrapperClass(
@@ -778,7 +766,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       }}
                       data-selected={selectedCommit() === r.sha ? "true" : "false"}
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
@@ -817,9 +805,11 @@ export function CommitGraph(props: CommitGraphProps) {
                   style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
                 />
               </Show>
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                  
                   return (
                     <li
                       class={rowWrapperClass(
@@ -832,7 +822,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       }}
                       data-selected={selectedCommit() === r.sha ? "true" : "false"}
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}

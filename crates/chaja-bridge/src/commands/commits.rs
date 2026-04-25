@@ -11,10 +11,20 @@ use crate::repo::commits::{commit_details as commit_details_impl, pick_pinned_he
 use crate::repo::hosting::detect_hosting_service;
 use crate::repo::GixBackend;
 
+/// Streamed batch payload for `graph:batch` events.
+///
+/// `pinned_sha` carries the trunk pin selected by `pick_pinned_head_for_path`
+/// so the frontend can mark the pinned ref group with a pin annotation
+/// (issue #145, doc 06 stage-2 ordering). Same value across every batch in
+/// a single stream — frontend reads it from the first batch and ignores
+/// repeats. `None` only when the repo has no resolvable trunk (detached HEAD
+/// + no `origin/HEAD` + no canonical-name local branch).
 #[derive(Debug, Clone, Serialize)]
 pub struct GraphBatch {
     pub rows: Vec<GraphRow>,
     pub done: bool,
+    #[serde(rename = "pinnedSha")]
+    pub pinned_sha: Option<String>,
 }
 
 pub const GRAPH_BATCH_EVENT: &str = "graph:batch";
@@ -44,10 +54,11 @@ pub async fn stream_graph(
         for row in rows {
             buffer.push(row);
             if buffer.len() >= batch_size {
-                flush(&app, &mut buffer, false).map_err(|e| e.to_string())?;
+                flush(&app, &mut buffer, false, pinned_tip.as_deref())
+                    .map_err(|e| e.to_string())?;
             }
         }
-        flush(&app, &mut buffer, true).map_err(|e| e.to_string())?;
+        flush(&app, &mut buffer, true, pinned_tip.as_deref()).map_err(|e| e.to_string())?;
         Ok(())
     })
     .await
@@ -56,9 +67,21 @@ pub async fn stream_graph(
     Ok(())
 }
 
-fn flush(app: &AppHandle, buffer: &mut Vec<GraphRow>, done: bool) -> tauri::Result<()> {
+fn flush(
+    app: &AppHandle,
+    buffer: &mut Vec<GraphRow>,
+    done: bool,
+    pinned_sha: Option<&str>,
+) -> tauri::Result<()> {
     let rows = std::mem::take(buffer);
-    app.emit(GRAPH_BATCH_EVENT, GraphBatch { rows, done })
+    app.emit(
+        GRAPH_BATCH_EVENT,
+        GraphBatch {
+            rows,
+            done,
+            pinned_sha: pinned_sha.map(|s| s.to_string()),
+        },
+    )
 }
 
 #[tauri::command]

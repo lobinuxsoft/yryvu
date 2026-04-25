@@ -24,15 +24,16 @@ import { Portal } from "solid-js/web";
 
 import { IconCheck, IconGear } from "../Icons";
 import {
-  graphColumnMode,
-  graphColumnVisibility,
-  resetGraphColumnsToPreset,
-  setGraphColumnMode,
+  activeColumnSettings,
+  commitZoneMode,
+  resetColumnsToCompactLayout,
+  resetColumnsToDefaultLayout,
   setGraphZoneVisible,
   setSmartBranchesEnabled,
   smartBranchesEnabled,
+  toggleCommitZoneMode,
 } from "../../state";
-import { ZONE_ORDER, ZONE_SPECS, type GraphZoneId } from "./columns";
+import { ALL_ZONES, ZONE_SPECS, type GraphZoneId } from "./columns";
 
 export function ColumnSettingsButton() {
   const [open, setOpen] = createSignal(false);
@@ -74,7 +75,7 @@ export function ColumnSettingsButton() {
     });
   });
 
-  const isVisible = (id: GraphZoneId) => graphColumnVisibility()[id];
+  const isVisible = (id: GraphZoneId) => activeColumnSettings(id).visible;
   // The `ref` and `graph` zones are required — hiding them would leave
   // the graph with no graph. GK greys both out in the menu; we mirror
   // by disabling their toggles instead of allowing 0-column layouts.
@@ -106,7 +107,7 @@ export function ColumnSettingsButton() {
             }}
           >
             <div class="graph-col-settings__group">
-              <For each={ZONE_ORDER}>
+              <For each={ALL_ZONES}>
                 {(id) => (
                   <button
                     type="button"
@@ -130,14 +131,10 @@ export function ColumnSettingsButton() {
               <button
                 type="button"
                 class="graph-col-settings__item"
-                onClick={() =>
-                  setGraphColumnMode(
-                    graphColumnMode() === "compact" ? "default" : "compact",
-                  )
-                }
+                onClick={() => toggleCommitZoneMode()}
               >
                 <span class="graph-col-settings__check">
-                  <Show when={graphColumnMode() === "compact"}>
+                  <Show when={commitZoneMode() === "compact"}>
                     <IconCheck width={12} height={12} />
                   </Show>
                 </span>
@@ -162,7 +159,7 @@ export function ColumnSettingsButton() {
                 type="button"
                 class="graph-col-settings__item"
                 onClick={() => {
-                  resetGraphColumnsToPreset("default");
+                  resetColumnsToDefaultLayout();
                   setOpen(false);
                 }}
               >
@@ -173,7 +170,7 @@ export function ColumnSettingsButton() {
                 type="button"
                 class="graph-col-settings__item"
                 onClick={() => {
-                  resetGraphColumnsToPreset("compact");
+                  resetColumnsToCompactLayout();
                   setOpen(false);
                 }}
               >

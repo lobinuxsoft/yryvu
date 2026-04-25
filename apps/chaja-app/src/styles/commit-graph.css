@@ -63,6 +63,14 @@
   flex-direction: row;
 }
 
+/* Compact graph rendering — shrinks lane spacing + node radii via CSS
+   transform on the inner SVG. Mirrors GK's `commitZone.mode = Compact`
+   visual: same viewport, denser graph. */
+.commit-graph__zone--graph.is-compact .graph-row__svg {
+  transform: scale(0.65);
+  transform-origin: left center;
+}
+
 .commit-graph__col-graph-hscroll {
   flex: 1;
   min-width: 0;
@@ -90,9 +98,81 @@
 }
 
 .commit-graph__zone--messages {
+  /* Width fixed via CSS var (driven by `graphColumnWidths.commitMessage`).
+     1:1 with GK — every column has a hard width, the trailing spacer
+     soaks up any leftover space, scroll-x kicks in if total > container. */
+  width: var(--graph-col-message);
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+/* Trailing spacer: takes whatever pixels remain when the sum of column
+   widths is smaller than the viewport. Mirrors GK's empty-area pattern. */
+.commit-graph__zone--filler {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
+}
+
+/* Author / Date-Time / SHA zones — siblings of messages, fixed widths
+   driven by their CSS vars. Vertical scroll syncs to the messages zone
+   via `transform: translateY(-scrollTop)` (same pattern as the BRANCH /
+   GRAPH zones). */
+.commit-graph__zone--author {
+  width: var(--graph-col-author);
+  flex-shrink: 0;
+}
+
+.commit-graph__zone--date-time {
+  width: var(--graph-col-date-time);
+  flex-shrink: 0;
+}
+
+.commit-graph__zone--sha {
+  width: var(--graph-col-sha);
+  flex-shrink: 0;
+}
+
+.commit-graph__col-author,
+.commit-graph__col-date-time,
+.commit-graph__col-sha {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  min-width: 0;
+}
+
+.commit-graph__col-author .graph-row-wrapper,
+.commit-graph__col-date-time .graph-row-wrapper,
+.commit-graph__col-sha .graph-row-wrapper {
+  padding-left: var(--graph-col-gap);
+  padding-right: var(--graph-col-gap);
+  font-size: 12px;
+  color: var(--fg-1);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.commit-graph__author,
+.commit-graph__date-time,
+.commit-graph__sha {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-graph__date-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+
+
+.commit-graph__sha {
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
+  font-size: 11px;
+  color: var(--fg-2);
 }
 
 /* GRAPH horizontal scrollbar styling (WebKit — Tauri Linux). Applied

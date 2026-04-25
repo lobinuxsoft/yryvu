@@ -19,10 +19,11 @@ import {
   type HostingService,
 } from "../../ipc";
 import {
+  activeColumnSettings,
   amendEnabled,
+  commitZoneMode,
   commitMessage,
   dirtyFileCount,
-  graphColumnWidths,
   graphNonce,
   hoveredRef,
   inspectorMode,
@@ -31,6 +32,9 @@ import {
   setInspectorMode,
   setPinnedSha,
   setSelectedCommit,
+  setStaleRefs,
+  smartBranchesEnabled,
+  SMART_BRANCH_STALE_DAYS,
 } from "../../state";
 import { isRowMemberOfHoveredRef } from "./hoverDim";
 import { ContextMenu } from "../ContextMenu";
@@ -44,6 +48,7 @@ import {
   ROW_HEIGHT,
 } from "./RowRenderer";
 import { createIncrementalEdgeStates } from "./edgeStates";
+import { formatCommitDateTime } from "./columns";
 
 /**
  * Module-level className cache (Bd pattern from doc 12 — row wrapper).
@@ -183,13 +188,63 @@ export function CommitGraph(props: CommitGraphProps) {
     const main = rootEl?.closest(".main") as HTMLElement | null;
     if (!main) return;
     createEffect(() => {
-      const widths = graphColumnWidths();
-      main.style.setProperty("--graph-col-branch", `${widths.ref}px`);
-      main.style.setProperty("--graph-col-graph", `${widths.graph}px`);
+      // Active settings come from the current mode's slice — toggling
+      // Compact / Default rebinds widths in one shot.
+      main.style.setProperty(
+        "--graph-col-branch",
+        `${activeColumnSettings("ref").width}px`,
+      );
+      main.style.setProperty(
+        "--graph-col-graph",
+        `${activeColumnSettings("graph").width}px`,
+      );
+      main.style.setProperty(
+        "--graph-col-message",
+        `${activeColumnSettings("commitMessage").width}px`,
+      );
+      main.style.setProperty(
+        "--graph-col-author",
+        `${activeColumnSettings("commitAuthor").width}px`,
+      );
+      main.style.setProperty(
+        "--graph-col-date-time",
+        `${activeColumnSettings("commitDateTime").width}px`,
+      );
+      main.style.setProperty(
+        "--graph-col-sha",
+        `${activeColumnSettings("commitSha").width}px`,
+      );
+    });
+    // Smart Branch Visibility pass — populate the `staleRefs` set with
+    // any ref whose tip commit is older than the staleness threshold.
+    // Iterates `rows()` once per change; cheap because we already track
+    // tip-row alignment via the graph stream.
+    createEffect(() => {
+      if (!smartBranchesEnabled()) {
+        setStaleRefs(new Set());
+        return;
+      }
+      const thresholdSec = SMART_BRANCH_STALE_DAYS * 24 * 3600;
+      const nowSec = Date.now() / 1000;
+      const stale = new Set<string>();
+      for (const row of rows()) {
+        if (nowSec - row.author_date <= thresholdSec) continue;
+        for (const ref of row.refs) {
+          // HEAD is never auto-hidden — would erase the active checkout
+          // marker even after a long break.
+          if (ref.kind === "Head") continue;
+          stale.add(`${ref.kind}/${ref.name}`);
+        }
+      }
+      setStaleRefs(stale);
     });
     onCleanup(() => {
       main.style.removeProperty("--graph-col-branch");
       main.style.removeProperty("--graph-col-graph");
+      main.style.removeProperty("--graph-col-message");
+      main.style.removeProperty("--graph-col-author");
+      main.style.removeProperty("--graph-col-date-time");
+      main.style.removeProperty("--graph-col-sha");
     });
   });
   // HEAD row drives the WIP pseudo-row: its lane pins the dashed node
@@ -321,6 +376,7 @@ export function CommitGraph(props: CommitGraphProps) {
       <div class="commit-graph__zones">
         <div
           class="commit-graph__zone commit-graph__zone--branch"
+          style={{ order: activeColumnSettings("ref").order }}
           onWheel={forwardWheel}
         >
           <ul
@@ -403,6 +459,8 @@ export function CommitGraph(props: CommitGraphProps) {
         </div>
         <div
           class="commit-graph__zone commit-graph__zone--graph"
+          classList={{ "is-compact": commitZoneMode() === "compact" }}
+          style={{ order: activeColumnSettings("graph").order }}
           onWheel={forwardWheel}
         >
           {/* Horizontal scroll container — nested inside the zone so the
@@ -518,6 +576,7 @@ export function CommitGraph(props: CommitGraphProps) {
         </div>
         <div
           class="commit-graph__zone commit-graph__zone--messages"
+          style={{ order: activeColumnSettings("commitMessage").order }}
           ref={messagesScroll}
           onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
         >
@@ -576,15 +635,180 @@ export function CommitGraph(props: CommitGraphProps) {
                       ops.openCommitContextMenu(e, r.sha, r.short_sha)
                     }
                   >
-                    <span class="commit-graph__sha">{r.short_sha}</span>
                     <span class="commit-graph__summary">{r.summary}</span>
-                    <span class="commit-graph__author">{r.author_name}</span>
                   </li>
                 );
               }}
             </For>
           </ul>
         </div>
+        <Show when={activeColumnSettings("commitAuthor").visible}>
+          <div
+            class="commit-graph__zone commit-graph__zone--author"
+            style={{ order: activeColumnSettings("commitAuthor").order }}
+            onWheel={forwardWheel}
+          >
+            <ul
+              class="commit-graph__col-author"
+              style={{
+                height: `${totalHeight()}px`,
+                transform: `translateY(-${scrollTop()}px)`,
+              }}
+            >
+              <Show when={dirtyFileCount() > 0}>
+                <li
+                  class="commit-graph__wip-cell commit-graph__wip-cell--author"
+                  style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
+                />
+              </Show>
+              <For each={visibleRows()}>
+                {(r, i) => {
+                  const globalIndex = () => visibleRange().start + i();
+                  return (
+                    <li
+                      class={rowWrapperClass(
+                        r.is_merge ? "merge" : "commit",
+                        hoveredCommit() === r.sha,
+                        selectedCommit() === r.sha,
+                      )}
+                      classList={{
+                        "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                      }}
+                      data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                      style={{
+                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        height: `${ROW_HEIGHT}px`,
+                        "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                      }}
+                      onClick={() => setSelectedCommit(r.sha)}
+                      onMouseEnter={() => setHoveredCommit(r.sha)}
+                      onMouseLeave={() => {
+                        if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
+                      }}
+                    >
+                      <span class="commit-graph__author" title={r.author_name}>
+                        {r.author_name}
+                      </span>
+                    </li>
+                  );
+                }}
+              </For>
+            </ul>
+          </div>
+        </Show>
+        <Show when={activeColumnSettings("commitDateTime").visible}>
+          <div
+            class="commit-graph__zone commit-graph__zone--date-time"
+            style={{ order: activeColumnSettings("commitDateTime").order }}
+            onWheel={forwardWheel}
+          >
+            <ul
+              class="commit-graph__col-date-time"
+              style={{
+                height: `${totalHeight()}px`,
+                transform: `translateY(-${scrollTop()}px)`,
+              }}
+            >
+              <Show when={dirtyFileCount() > 0}>
+                <li
+                  class="commit-graph__wip-cell commit-graph__wip-cell--date-time"
+                  style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
+                />
+              </Show>
+              <For each={visibleRows()}>
+                {(r, i) => {
+                  const globalIndex = () => visibleRange().start + i();
+                  return (
+                    <li
+                      class={rowWrapperClass(
+                        r.is_merge ? "merge" : "commit",
+                        hoveredCommit() === r.sha,
+                        selectedCommit() === r.sha,
+                      )}
+                      classList={{
+                        "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                      }}
+                      data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                      style={{
+                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        height: `${ROW_HEIGHT}px`,
+                        "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                      }}
+                      onClick={() => setSelectedCommit(r.sha)}
+                      onMouseEnter={() => setHoveredCommit(r.sha)}
+                      onMouseLeave={() => {
+                        if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
+                      }}
+                    >
+                      <span class="commit-graph__date-time">
+                        {formatCommitDateTime(r.author_date)}
+                      </span>
+                    </li>
+                  );
+                }}
+              </For>
+            </ul>
+          </div>
+        </Show>
+        <Show when={activeColumnSettings("commitSha").visible}>
+          <div
+            class="commit-graph__zone commit-graph__zone--sha"
+            style={{ order: activeColumnSettings("commitSha").order }}
+            onWheel={forwardWheel}
+          >
+            <ul
+              class="commit-graph__col-sha"
+              style={{
+                height: `${totalHeight()}px`,
+                transform: `translateY(-${scrollTop()}px)`,
+              }}
+            >
+              <Show when={dirtyFileCount() > 0}>
+                <li
+                  class="commit-graph__wip-cell commit-graph__wip-cell--sha"
+                  style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
+                />
+              </Show>
+              <For each={visibleRows()}>
+                {(r, i) => {
+                  const globalIndex = () => visibleRange().start + i();
+                  return (
+                    <li
+                      class={rowWrapperClass(
+                        r.is_merge ? "merge" : "commit",
+                        hoveredCommit() === r.sha,
+                        selectedCommit() === r.sha,
+                      )}
+                      classList={{
+                        "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                      }}
+                      data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                      style={{
+                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        height: `${ROW_HEIGHT}px`,
+                        "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                      }}
+                      onClick={() => setSelectedCommit(r.sha)}
+                      onMouseEnter={() => setHoveredCommit(r.sha)}
+                      onMouseLeave={() => {
+                        if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
+                      }}
+                    >
+                      <span class="commit-graph__sha">{r.short_sha}</span>
+                    </li>
+                  );
+                }}
+              </For>
+            </ul>
+          </div>
+        </Show>
+        {/* Trailing filler — soaks up leftover space. Order 100 keeps it
+            after every visible zone regardless of the active mode's
+            reordering. */}
+        <div
+          class="commit-graph__zone commit-graph__zone--filler"
+          style={{ order: 100 }}
+        />
       </div>
       <Show when={ops.menu()}>
         <ContextMenu

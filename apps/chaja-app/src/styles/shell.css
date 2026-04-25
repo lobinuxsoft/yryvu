@@ -107,8 +107,28 @@
 }
 
 .main__graph-column-header[data-zone="commitMessage"] {
+  width: var(--graph-col-message);
+  padding-left: var(--graph-col-gap);
+}
+
+.main__graph-column-header--filler {
   flex: 1;
   min-width: 0;
+  padding: 0;
+}
+
+.main__graph-column-header[data-zone="commitAuthor"] {
+  width: var(--graph-col-author);
+  padding-left: var(--graph-col-gap);
+}
+
+.main__graph-column-header[data-zone="commitDateTime"] {
+  width: var(--graph-col-date-time);
+  padding-left: var(--graph-col-gap);
+}
+
+.main__graph-column-header[data-zone="commitSha"] {
+  width: var(--graph-col-sha);
   padding-left: var(--graph-col-gap);
 }
 
@@ -182,6 +202,11 @@ body.is-resizing-column {
 /* Column-settings ⚙ button + popover. Anchored at the right edge of
    the column header strip; popover renders via Portal at fixed coords. */
 .graph-col-settings__btn {
+  /* Pinned to the right edge of the header strip via flex order. The
+     filler (`order: 100`) takes the slack space; the button sits after
+     it. `margin-left: auto` is redundant once order is set, but kept
+     as a fallback if `order` ever stops applying. */
+  order: 200;
   margin-left: auto;
   display: inline-flex;
   align-items: center;

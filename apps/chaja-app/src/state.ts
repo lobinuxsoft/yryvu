@@ -4,11 +4,13 @@ import { createMemo, createResource, createSignal, type Signal } from "solid-js"
 
 import { getWorkingTreeStatus, type WorkingTreeStatus } from "./ipc";
 import {
+  ALL_ZONES,
   clampZoneWidth,
-  presetVisibility,
-  presetWidths,
-  ZONE_ORDER,
-  type GraphColumnMode,
+  compactColumnLayout,
+  defaultColumnLayout,
+  orderedVisibleZones,
+  type ColumnSettings,
+  type CommitZoneMode,
   type GraphZoneId,
 } from "./components/CommitGraph/columns";
 
@@ -245,26 +247,42 @@ export function clearHiddenRefs(): void {
   setHiddenRefsInternal(empty);
 }
 
-/// Graph column system — widths, visibility, mode (default vs compact),
-/// Smart Branch Visibility toggle. Persisted globally; per-repo overrides
-/// can layer on top in a future pass (matches GK's two-tier persistence
-/// model from research doc 10).
-const COLUMN_WIDTHS_KEY = `${STORAGE_PREFIX}graphColumnWidths`;
-const COLUMN_VISIBILITY_KEY = `${STORAGE_PREFIX}graphColumnVisibility`;
+/// Graph column system. Two pieces of state, separately persisted:
+///
+/// 1. `graphColumns` — the active layout (width / visible / order per
+///    zone). Resize handles, visibility toggles, and the two `Reset
+///    columns to …` actions all write here.
+///
+/// 2. `commitZoneMode` — `text` | `compact`. Sole observer is the
+///    GRAPH zone's renderer (controls lane / circle compactness). 1:1
+///    with GK's `setZoneColumnMode(commitZone, …)` sa.
+///
+/// `Reset columns to compact layout` overwrites `graphColumns` with the
+/// compact preset (which reorders author left of message and hides
+/// dateTime) AND switches `commitZoneMode` to compact. The standalone
+/// `Compact Graph Column` toggle only flips `commitZoneMode` — column
+/// order / visibility / widths stay on whatever the user has now.
+const COLUMN_LAYOUT_KEY = `${STORAGE_PREFIX}graphColumnLayout`;
+const COMMIT_ZONE_MODE_KEY = `${STORAGE_PREFIX}commitZoneMode`;
 
-function loadColumnWidths(): Record<GraphZoneId, number> {
-  const raw = localStorage.getItem(COLUMN_WIDTHS_KEY);
-  const fallback = presetWidths("default");
+function loadColumnLayout(): Record<GraphZoneId, ColumnSettings> {
+  const fallback = defaultColumnLayout();
+  const raw = localStorage.getItem(COLUMN_LAYOUT_KEY);
   if (!raw) return fallback;
   try {
     const parsed = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return fallback;
     const out = { ...fallback };
-    for (const id of ZONE_ORDER) {
-      const candidate = (parsed as Record<string, unknown>)[id];
-      if (typeof candidate === "number" && Number.isFinite(candidate)) {
-        out[id] = clampZoneWidth(id, candidate);
+    for (const id of ALL_ZONES) {
+      const candidate = (parsed as Record<string, Partial<ColumnSettings>>)[id];
+      if (!candidate || typeof candidate !== "object") continue;
+      const merged: ColumnSettings = { ...out[id] };
+      if (typeof candidate.width === "number") {
+        merged.width = clampZoneWidth(id, candidate.width);
       }
+      if (typeof candidate.visible === "boolean") merged.visible = candidate.visible;
+      if (typeof candidate.order === "number") merged.order = candidate.order;
+      out[id] = merged;
     }
     return out;
   } catch {
@@ -272,75 +290,104 @@ function loadColumnWidths(): Record<GraphZoneId, number> {
   }
 }
 
-function loadColumnVisibility(): Record<GraphZoneId, boolean> {
-  const raw = localStorage.getItem(COLUMN_VISIBILITY_KEY);
-  const fallback = presetVisibility();
-  if (!raw) return fallback;
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return fallback;
-    const out = { ...fallback };
-    for (const id of ZONE_ORDER) {
-      const candidate = (parsed as Record<string, unknown>)[id];
-      if (typeof candidate === "boolean") out[id] = candidate;
-    }
-    return out;
-  } catch {
-    return fallback;
-  }
+function loadCommitZoneMode(): CommitZoneMode {
+  return localStorage.getItem(COMMIT_ZONE_MODE_KEY) === "compact" ? "compact" : "text";
 }
 
-const [graphColumnWidthsInternal, setGraphColumnWidthsInternal] =
-  createSignal<Record<GraphZoneId, number>>(loadColumnWidths());
-const [graphColumnVisibilityInternal, setGraphColumnVisibilityInternal] =
-  createSignal<Record<GraphZoneId, boolean>>(loadColumnVisibility());
+const [graphColumnsInternal, setGraphColumnsInternal] = createSignal<
+  Record<GraphZoneId, ColumnSettings>
+>(loadColumnLayout());
+const [commitZoneModeInternal, setCommitZoneModeInternal] =
+  createSignal<CommitZoneMode>(loadCommitZoneMode());
 
-export const graphColumnWidths = graphColumnWidthsInternal;
-export const graphColumnVisibility = graphColumnVisibilityInternal;
+export const graphColumns = graphColumnsInternal;
+export const commitZoneMode = commitZoneModeInternal;
 
+function persistLayout(next: Record<GraphZoneId, ColumnSettings>): void {
+  localStorage.setItem(COLUMN_LAYOUT_KEY, JSON.stringify(next));
+  setGraphColumnsInternal(next);
+}
+
+/// Active settings for a given zone — reads the live `graphColumns` map.
+export const activeColumnSettings = (id: GraphZoneId): ColumnSettings =>
+  graphColumnsInternal()[id];
+
+/// Visible zones in left-to-right render order, derived from the live
+/// layout map. Reactive on width / visibility / order changes.
+export const activeOrderedZones = (): GraphZoneId[] =>
+  orderedVisibleZones(graphColumnsInternal());
+
+/// Resize a column.
 export function setGraphZoneWidth(id: GraphZoneId, width: number): void {
-  const next = { ...graphColumnWidthsInternal(), [id]: clampZoneWidth(id, width) };
-  localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(next));
-  setGraphColumnWidthsInternal(next);
+  const cur = graphColumnsInternal();
+  persistLayout({
+    ...cur,
+    [id]: { ...cur[id], width: clampZoneWidth(id, width) },
+  });
 }
 
+/// Toggle a zone's visibility.
 export function setGraphZoneVisible(id: GraphZoneId, visible: boolean): void {
-  const next = { ...graphColumnVisibilityInternal(), [id]: visible };
-  localStorage.setItem(COLUMN_VISIBILITY_KEY, JSON.stringify(next));
-  setGraphColumnVisibilityInternal(next);
+  const cur = graphColumnsInternal();
+  persistLayout({ ...cur, [id]: { ...cur[id], visible } });
 }
 
-const [graphColumnMode, setGraphColumnModeInternal] = createSignal<GraphColumnMode>(
-  (localStorage.getItem(`${STORAGE_PREFIX}graphColumnMode`) === "compact"
-    ? "compact"
-    : "default") as GraphColumnMode,
-);
-export { graphColumnMode };
-
-export function setGraphColumnMode(mode: GraphColumnMode): void {
-  localStorage.setItem(`${STORAGE_PREFIX}graphColumnMode`, mode);
-  setGraphColumnModeInternal(mode);
+/// Flip the GRAPH zone's compact rendering mode. Affects only the graph
+/// zone's lane / node sizing — column order, visibility, and widths
+/// elsewhere are untouched. 1:1 with GK's `Compact Graph Column` toggle.
+export function setCommitZoneMode(mode: CommitZoneMode): void {
+  localStorage.setItem(COMMIT_ZONE_MODE_KEY, mode);
+  setCommitZoneModeInternal(mode);
 }
 
-/// Reset widths to a preset (default or compact). Visibility is
-/// untouched — GK's `Reset to default layout` keeps the user's
-/// visibility choices.
-export function resetGraphColumnsToPreset(mode: GraphColumnMode): void {
-  const widths = presetWidths(mode);
-  localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(widths));
-  setGraphColumnWidthsInternal(widths);
-  setGraphColumnMode(mode);
+export function toggleCommitZoneMode(): void {
+  setCommitZoneMode(commitZoneModeInternal() === "compact" ? "text" : "compact");
+}
+
+/// `Reset columns to default layout` action. Overwrites the layout
+/// with bundle defaults and forces the graph zone back to text mode.
+export function resetColumnsToDefaultLayout(): void {
+  persistLayout(defaultColumnLayout());
+  setCommitZoneMode("text");
+}
+
+/// `Reset columns to compact layout` action. Overwrites the layout
+/// with the compact preset (author moves left of message; dateTime
+/// is hidden) and switches the graph zone to compact rendering.
+export function resetColumnsToCompactLayout(): void {
+  persistLayout(compactColumnLayout());
+  setCommitZoneMode("compact");
 }
 
 /// Smart Branch Visibility — auto-hide branches with stale tips. GK has
-/// a full service for this; chajá's first pass uses a single-knob toggle
-/// and a 90-day staleness threshold applied client-side over the ref
-/// list (the actual hide flows through the same `hiddenRefs` set so the
-/// HiddenRefsButton popover lists them too).
+/// a dedicated `SmartBranchesService` that combines staleness + branch
+/// status (merged / divergent / etc.); chajá's first pass uses a single
+/// knob and a 90-day staleness threshold applied to the tip commit's
+/// author_date. Computed in `CommitGraph` from the streamed rows and
+/// pushed into `staleRefs` here so `RefPillGroup` can filter without
+/// recomputing.
 export const [smartBranchesEnabled, setSmartBranchesEnabled] = persistedBool(
   "smartBranchesEnabled",
   false,
 );
+
+/// Days of inactivity beyond which a branch is considered stale by the
+/// Smart Branch Visibility filter. Matches the conventional GK heuristic
+/// of "older than three months" (no exact bundle constant — `SmartBranches`
+/// drives staleness off a service the front-end queries; we approximate).
+export const SMART_BRANCH_STALE_DAYS = 90;
+
+/// Set of `${kind}/${name}` keys auto-filtered by the Smart Branch
+/// Visibility pass. Computed by `CommitGraph` whenever its row stream
+/// updates and `smartBranchesEnabled` is on. Empty when the toggle is
+/// off so RefPillGroup short-circuits cleanly.
+const [staleRefsInternal, setStaleRefsInternal] =
+  createSignal<Set<string>>(new Set());
+export const staleRefs = staleRefsInternal;
+
+export function setStaleRefs(next: Set<string>): void {
+  setStaleRefsInternal(next);
+}
 
 export const dirtyFileCount = createMemo(() => {
   const s = workingTreeStatus();

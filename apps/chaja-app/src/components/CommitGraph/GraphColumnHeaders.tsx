@@ -2,23 +2,20 @@
 
 /**
  * Header strip above the commit graph: column labels, resize handles
- * between them, and the column-settings ⚙ button (1:1 with GK's
- * column-header chrome). The labels iterate `ZONE_ORDER` filtered by
- * the user's visibility map, so ticking `Author` in the settings menu
- * surfaces it inline alongside the existing columns.
- *
- * The BRANCH/TAG header swaps `Branch / Tag` text for an inline group
- * that includes the `HiddenRefsButton` so the user always has a place
- * to restore hidden refs.
+ * between them, and the column-settings ⚙ button (1:1 with GK's column
+ * header chrome). Iterates `activeOrderedZones()` so the bundle's
+ * compact-mode reordering (author left of message) falls out
+ * automatically. Each header column reads its width from the active
+ * slice of the column state.
  */
 
 import { createMemo, For, Show } from "solid-js";
 
-import { graphColumnVisibility } from "../../state";
+import { activeColumnSettings, activeOrderedZones } from "../../state";
 import { ColumnSettingsButton } from "./ColumnSettingsButton";
 import { GraphColumnResizer } from "./GraphColumnResizer";
 import { HiddenRefsButton } from "./HiddenRefsButton";
-import { ZONE_ORDER, ZONE_SPECS, type GraphZoneId } from "./columns";
+import { ZONE_SPECS, type GraphZoneId } from "./columns";
 
 function HeaderLabel(props: { id: GraphZoneId }) {
   if (props.id === "ref") {
@@ -33,28 +30,28 @@ function HeaderLabel(props: { id: GraphZoneId }) {
 }
 
 export function GraphColumnHeaders() {
-  const visibleZones = createMemo<GraphZoneId[]>(() =>
-    ZONE_ORDER.filter((id) => graphColumnVisibility()[id]),
-  );
+  const visible = createMemo(() => activeOrderedZones());
 
   return (
     <div class="main__graph-column-headers">
-      <For each={visibleZones()}>
+      <For each={visible()}>
         {(id, idx) => (
           <span
             class="main__graph-column-header"
             data-zone={id}
-            classList={{
-              "is-last": idx() === visibleZones().length - 1,
-            }}
+            style={{ order: activeColumnSettings(id).order }}
           >
             <HeaderLabel id={id} />
-            <Show when={idx() < visibleZones().length - 1}>
+            <Show when={idx() < visible().length - 1}>
               <GraphColumnResizer leftZone={id} />
             </Show>
           </span>
         )}
       </For>
+      <span
+        class="main__graph-column-header main__graph-column-header--filler"
+        style={{ order: 100 }}
+      />
       <ColumnSettingsButton />
     </div>
   );

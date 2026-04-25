@@ -199,8 +199,10 @@ export const IconTerminal = (p?: IconProps) =>
 export const IconGear = (p?: IconProps) =>
   base(
     <>
-      <circle cx="8" cy="8" r="2" />
-      <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.5 3.5l1.5 1.5M11 11l1.5 1.5M12.5 3.5L11 5M5 11l-1.5 1.5" />
+      {/* 6-tooth gear: outer cog ring + inner hub. Filled tooth shapes
+          with a transparent inner ring read clearly at 14 px. */}
+      <path d="M8 1.5l1.1 1.6 2-.4.4 2 1.6 1.1-1 1.7 1 1.7-1.6 1.1-.4 2-2-.4L8 14.5l-1.1-1.6-2 .4-.4-2-1.6-1.1 1-1.7-1-1.7 1.6-1.1.4-2 2 .4z" />
+      <circle cx="8" cy="8" r="2.5" fill="var(--bg-1)" />
     </>,
     p,
   );

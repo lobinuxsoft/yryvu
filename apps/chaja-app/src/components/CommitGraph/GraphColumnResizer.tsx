@@ -16,7 +16,7 @@
  * resize-handle UX from GTK / VS Code).
  */
 
-import { graphColumnWidths, setGraphZoneWidth } from "../../state";
+import { activeColumnSettings, setGraphZoneWidth } from "../../state";
 import type { GraphZoneId } from "./columns";
 
 const DRAG_BODY_CLASS = "is-resizing-column";
@@ -30,7 +30,7 @@ export function GraphColumnResizer(props: { leftZone: GraphZoneId }) {
     e.preventDefault();
     e.stopPropagation();
     startX = e.clientX;
-    startWidth = graphColumnWidths()[props.leftZone];
+    startWidth = activeColumnSettings(props.leftZone).width;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     document.body.classList.add(DRAG_BODY_CLASS);
   };

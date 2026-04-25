@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * Column system for the commit graph. 1:1 with GitKraken's
- * `graphZones` enum + the `*_ZONE_DEFAULT_WIDTH` / `*_COMPACT_WIDTH` /
- * `*_MAX_WIDTH` constants extracted from the bundle (2026-04-25).
+ * Column system for the commit graph. Modeled after GitKraken's
+ * `graphZoneMetaData` (extracted from the bundle 2026-04-25), but
+ * simplified now that we know how the toggle and presets actually
+ * interact:
  *
- * Bundle source: `/var/mnt/DATA/gitkraken-extract/.../render.bundle.js`
- *
- * Default mode = pills + lane graph + commit message visible. Author /
- * date-time / SHA columns ship hidden (matching the GK first-launch
- * defaults as captured in the user's eggscape screenshots) and surface
- * via the column-settings popover.
+ * - There's a SINGLE active configuration per zone — `width`, `visible`,
+ *   `order`. The user resizes / toggles into that one set.
+ * - `commitZoneMode` (Text | Compact) is a SEPARATE flag that only
+ *   affects how the GRAPH zone renders internally. It does not reorder
+ *   other zones or change their widths.
+ * - The bundle exposes two named presets — `defaultColSettings` and
+ *   `compactColSettings` per zone — surfaced as `Reset columns to
+ *   default layout` and `Reset columns to compact layout` actions.
+ *   These are destructive resets that overwrite the user's current
+ *   widths / visibility / order with the preset's values.
  */
 
 export type GraphZoneId =
@@ -21,86 +26,79 @@ export type GraphZoneId =
   | "commitDateTime"
   | "commitSha";
 
-export type GraphColumnMode = "default" | "compact";
+/** GK's `GraphColumnMode`. Only the GRAPH zone observes it. */
+export type CommitZoneMode = "text" | "compact";
+
+export interface ColumnSettings {
+  width: number;
+  visible: boolean;
+  order: number;
+}
 
 export interface ZoneSpec {
-  /** Width when `graphColumnMode === "default"`. */
-  default: number;
-  /** Width when `graphColumnMode === "compact"`. */
-  compact: number;
-  /** Lower clamp for user resize. */
-  min: number;
-  /** Upper clamp for user resize. */
-  max: number;
-  /** Whether the zone ships visible on first launch. */
-  defaultVisible: boolean;
-  /** Header label (capitalized as GK paints it). */
+  defaults: ColumnSettings;
+  compact: ColumnSettings;
+  minimumWidth: number;
+  maximumWidth: number;
   label: string;
 }
 
 /**
- * Per-zone defaults. The `graph` zone has no GK constant (GK derives its
- * width from the lane content), so we set a comfortable 200 default,
- * 100 compact (lane width drops in compact mode anyway), and a generous
- * max so wide repos can stretch it without bumping into the cap.
+ * 1:1 with `graphZoneMetaData` per the bundle:
+ *
+ * - default order: ref=0, graph=1, message=2, author=3, dateTime=5, sha=6
+ * - compact order: ref=0, graph=1, author=2, message=3, dateTime=5, sha=6
+ *   (author swaps in front of message; dateTime is hidden in compact)
+ *
+ * Widths come from the `*_DEFAULT_WIDTH` / `*_COMPACT_WIDTH` constants.
  */
 export const ZONE_SPECS: Record<GraphZoneId, ZoneSpec> = {
   ref: {
-    default: 130,
-    compact: 32,
-    min: 32,
-    max: 300,
-    defaultVisible: true,
+    defaults: { width: 130, visible: true, order: 0 },
+    compact: { width: 32, visible: true, order: 0 },
+    minimumWidth: 32,
+    maximumWidth: 300,
     label: "Branch / Tag",
   },
   graph: {
-    default: 200,
-    compact: 100,
-    min: 80,
-    max: 800,
-    defaultVisible: true,
+    defaults: { width: 200, visible: true, order: 1 },
+    compact: { width: 150, visible: true, order: 1 },
+    minimumWidth: 80,
+    maximumWidth: 800,
     label: "Graph",
   },
   commitMessage: {
-    default: 300,
-    compact: 500,
-    min: 200,
-    max: 800,
-    defaultVisible: true,
+    defaults: { width: 300, visible: true, order: 2 },
+    compact: { width: 500, visible: true, order: 3 },
+    minimumWidth: 200,
+    maximumWidth: 800,
     label: "Commit Message",
   },
   commitAuthor: {
-    default: 130,
-    compact: 32,
-    min: 32,
-    max: 175,
-    defaultVisible: false,
+    defaults: { width: 130, visible: true, order: 3 },
+    compact: { width: 32, visible: true, order: 2 },
+    minimumWidth: 32,
+    maximumWidth: 175,
     label: "Author",
   },
   commitDateTime: {
-    default: 130,
-    compact: 130,
-    min: 100,
-    max: 175,
-    defaultVisible: false,
+    defaults: { width: 130, visible: true, order: 5 },
+    compact: { width: 130, visible: false, order: 5 },
+    minimumWidth: 100,
+    maximumWidth: 175,
     label: "Date / Time",
   },
   commitSha: {
-    default: 130,
-    compact: 130,
-    min: 60,
-    max: 200,
-    defaultVisible: false,
+    defaults: { width: 130, visible: true, order: 6 },
+    compact: { width: 130, visible: true, order: 6 },
+    minimumWidth: 60,
+    maximumWidth: 200,
     label: "SHA",
   },
 };
 
-/**
- * Render order. Mirrors GK's left-to-right column layout. Reorder is a
- * GK feature (drag-to-reorder via react-dnd per doc 10) deferred to a
- * follow-up issue — the bundle ships this fixed order as the default.
- */
-export const ZONE_ORDER: GraphZoneId[] = [
+/** Every zone id, in storage-stable order. */
+export const ALL_ZONES: GraphZoneId[] = [
   "ref",
   "graph",
   "commitMessage",
@@ -109,26 +107,61 @@ export const ZONE_ORDER: GraphZoneId[] = [
   "commitSha",
 ];
 
-/** Clamp a width to the zone's [min, max] range. */
+/** Build a fresh `Record<id, ColumnSettings>` from the bundle defaults. */
+export function defaultColumnLayout(): Record<GraphZoneId, ColumnSettings> {
+  const out = {} as Record<GraphZoneId, ColumnSettings>;
+  for (const id of ALL_ZONES) out[id] = { ...ZONE_SPECS[id].defaults };
+  return out;
+}
+
+/** Build the compact preset layout. */
+export function compactColumnLayout(): Record<GraphZoneId, ColumnSettings> {
+  const out = {} as Record<GraphZoneId, ColumnSettings>;
+  for (const id of ALL_ZONES) out[id] = { ...ZONE_SPECS[id].compact };
+  return out;
+}
+
+/** Clamp a width to a zone's [min, max]. */
 export function clampZoneWidth(id: GraphZoneId, width: number): number {
   const spec = ZONE_SPECS[id];
-  return Math.max(spec.min, Math.min(spec.max, Math.round(width)));
+  return Math.max(spec.minimumWidth, Math.min(spec.maximumWidth, Math.round(width)));
 }
 
-/** Produce a fresh widths map per the requested mode. */
-export function presetWidths(
-  mode: GraphColumnMode,
-): Record<GraphZoneId, number> {
-  const out = {} as Record<GraphZoneId, number>;
-  for (const id of ZONE_ORDER) {
-    out[id] = mode === "compact" ? ZONE_SPECS[id].compact : ZONE_SPECS[id].default;
-  }
-  return out;
+/** Visible zones in left-to-right render order. */
+export function orderedVisibleZones(
+  layout: Record<GraphZoneId, ColumnSettings>,
+): GraphZoneId[] {
+  return ALL_ZONES.filter((id) => layout[id].visible).sort(
+    (a, b) => layout[a].order - layout[b].order,
+  );
 }
 
-/** Produce a fresh visibility map per first-launch defaults. */
-export function presetVisibility(): Record<GraphZoneId, boolean> {
-  const out = {} as Record<GraphZoneId, boolean>;
-  for (const id of ZONE_ORDER) out[id] = ZONE_SPECS[id].defaultVisible;
-  return out;
+/** Format a unix-seconds timestamp for the date-time column. */
+export function formatCommitDateTime(unixSeconds: number): string {
+  if (!Number.isFinite(unixSeconds) || unixSeconds <= 0) return "";
+  const date = new Date(unixSeconds * 1000);
+  const now = new Date();
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    date.getFullYear() === yesterday.getFullYear() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getDate() === yesterday.getDate();
+  const time = date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  if (sameDay) return `Today, ${time}`;
+  if (isYesterday) return `Yesterday, ${time}`;
+  const sameYear = date.getFullYear() === now.getFullYear();
+  const dateStr = date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: sameYear ? undefined : "numeric",
+  });
+  return `${dateStr}, ${time}`;
 }

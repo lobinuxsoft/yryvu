@@ -36,6 +36,7 @@ import {
   pinnedSha,
   setHiddenRef,
   setHoveredRef,
+  staleRefs,
 } from "../../state";
 import { refKey, useBranchOps } from "../../branchOps";
 
@@ -193,13 +194,10 @@ function RefPill(props: RefPillProps) {
     e.stopPropagation();
     setHiddenRef(refKey(props.tag), true);
   };
-  // GK's pill anatomy slots:
-  //   annotation = check (active) | pin (pinned trunk, non-active)
-  //   icon-L     = ref-kind glyph
-  //   name       = short name
-  //   icon-R     = monitor (active checkout / worktree) + cloud (tracking remote)
-  //   upstream   = ↑N ↓N when tracking diverged
-  //   hide-btn   = × on hover, suppressed when group has the active ref
+  // Compact mode does NOT change pill anatomy — verified against GK's
+  // bundle (`mode: Compact` is telemetry metadata, not a rendering
+  // switch). Pills always render full text + icons; the only effect
+  // of compact mode is column widths + reorder + dateTime hidden.
   const showMonitor = () => props.active === true;
   const showCloud = () =>
     props.tag.kind === "Branch" && props.tag.upstream !== null;
@@ -279,7 +277,14 @@ export function RefPillGroup(props: {
 }) {
   const isPinnedRow = () => pinnedSha() === props.sha;
   const visibleRefs = () =>
-    props.refs.filter((r) => !hiddenRefs().has(refKey(r)));
+    props.refs.filter((r) => {
+      const key = refKey(r);
+      if (hiddenRefs().has(key)) return false;
+      // Smart Branch Visibility: hide stale (tip > N days old) when the
+      // toggle is enabled. The set is empty when the toggle is off.
+      if (staleRefs().has(key)) return false;
+      return true;
+    });
   const ordered = () => orderRefs(visibleRefs(), isPinnedRow());
   const hasActive = () => ordered().some((r) => r.kind === "Head");
   const isPinnedPill = (tag: RefTag, idx: number) => {

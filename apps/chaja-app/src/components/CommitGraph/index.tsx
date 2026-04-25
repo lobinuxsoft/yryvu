@@ -22,6 +22,7 @@ import {
   amendEnabled,
   commitMessage,
   dirtyFileCount,
+  graphColumnWidths,
   graphNonce,
   hoveredRef,
   inspectorMode,
@@ -172,31 +173,22 @@ export function CommitGraph(props: CommitGraphProps) {
     () => GUTTER + (maxLane() + 1) * LANE_WIDTH + 8,
   );
 
-  // Size the GRAPH zone to its content, capped at GRAPH_ZONE_MAX_PX.
-  // GitKraken's bundle exposes `REF_ZONE_DEFAULT_WIDTH=130` /
-  // `COMMIT_ZONE_DEFAULT_WIDTH=150` etc., but no fixed cap on the graph
-  // zone — the user resizes it. Until column-resize lands (#37), 280 px
-  // (≈12 lanes at 22 px each + gutter) covers the comfortable case
-  // without donating half the viewport to dead lane space on busy
-  // repos like `eggscape`. Wider repos pick up the horizontal scroll
-  // already wired into `.col-graph-hscroll`.
-  //
-  // Written as a CSS custom property on `.main` so both the header row
-  // and the zone pick it up via the same inheritance chain.
-  const GRAPH_ZONE_MIN_PX = 80;
-  const GRAPH_ZONE_MAX_PX = 280;
+  // Push the user-controlled column widths to CSS custom properties on
+  // `.main` so both the header strip and the zones below pick them up
+  // through the same inheritance chain. Driven by the persisted
+  // `graphColumnWidths` signal — column-resize handles write to it,
+  // settings-menu presets reset it, and we just react.
   let rootEl: HTMLDivElement | undefined;
   onMount(() => {
     const main = rootEl?.closest(".main") as HTMLElement | null;
     if (!main) return;
     createEffect(() => {
-      const clamped = Math.max(
-        GRAPH_ZONE_MIN_PX,
-        Math.min(graphContentWidth() + 4, GRAPH_ZONE_MAX_PX),
-      );
-      main.style.setProperty("--graph-col-graph", `${clamped}px`);
+      const widths = graphColumnWidths();
+      main.style.setProperty("--graph-col-branch", `${widths.ref}px`);
+      main.style.setProperty("--graph-col-graph", `${widths.graph}px`);
     });
     onCleanup(() => {
+      main.style.removeProperty("--graph-col-branch");
       main.style.removeProperty("--graph-col-graph");
     });
   });

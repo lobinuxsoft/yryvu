@@ -5,7 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import { CommitGraph } from "../CommitGraph";
-import { HiddenRefsButton } from "../CommitGraph/HiddenRefsButton";
+import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
 import { FileDiffTab } from "../FileDiffTab";
 import { Toolbar } from "../Toolbar";
@@ -106,14 +106,7 @@ export function AppShell() {
             fallback={<FileDiffTab />}
           >
             <div class="main">
-              <div class="main__graph-column-headers">
-                <span class="main__graph-column-header-branch">
-                  <span>Branch / Tag</span>
-                  <HiddenRefsButton />
-                </span>
-                <span>Graph</span>
-                <span>Commit Message</span>
-              </div>
+              <GraphColumnHeaders />
               <div class="main__graph-host">
                 <CommitGraph repoPath={repoPath()!} />
               </div>

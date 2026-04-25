@@ -3,6 +3,14 @@
 import { createMemo, createResource, createSignal, type Signal } from "solid-js";
 
 import { getWorkingTreeStatus, type WorkingTreeStatus } from "./ipc";
+import {
+  clampZoneWidth,
+  presetVisibility,
+  presetWidths,
+  ZONE_ORDER,
+  type GraphColumnMode,
+  type GraphZoneId,
+} from "./components/CommitGraph/columns";
 
 const STORAGE_PREFIX = "chaja.";
 const STORAGE_RECENT_KEY = `${STORAGE_PREFIX}recentRepos`;
@@ -236,6 +244,103 @@ export function clearHiddenRefs(): void {
   persistHiddenRefs(empty);
   setHiddenRefsInternal(empty);
 }
+
+/// Graph column system — widths, visibility, mode (default vs compact),
+/// Smart Branch Visibility toggle. Persisted globally; per-repo overrides
+/// can layer on top in a future pass (matches GK's two-tier persistence
+/// model from research doc 10).
+const COLUMN_WIDTHS_KEY = `${STORAGE_PREFIX}graphColumnWidths`;
+const COLUMN_VISIBILITY_KEY = `${STORAGE_PREFIX}graphColumnVisibility`;
+
+function loadColumnWidths(): Record<GraphZoneId, number> {
+  const raw = localStorage.getItem(COLUMN_WIDTHS_KEY);
+  const fallback = presetWidths("default");
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return fallback;
+    const out = { ...fallback };
+    for (const id of ZONE_ORDER) {
+      const candidate = (parsed as Record<string, unknown>)[id];
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        out[id] = clampZoneWidth(id, candidate);
+      }
+    }
+    return out;
+  } catch {
+    return fallback;
+  }
+}
+
+function loadColumnVisibility(): Record<GraphZoneId, boolean> {
+  const raw = localStorage.getItem(COLUMN_VISIBILITY_KEY);
+  const fallback = presetVisibility();
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return fallback;
+    const out = { ...fallback };
+    for (const id of ZONE_ORDER) {
+      const candidate = (parsed as Record<string, unknown>)[id];
+      if (typeof candidate === "boolean") out[id] = candidate;
+    }
+    return out;
+  } catch {
+    return fallback;
+  }
+}
+
+const [graphColumnWidthsInternal, setGraphColumnWidthsInternal] =
+  createSignal<Record<GraphZoneId, number>>(loadColumnWidths());
+const [graphColumnVisibilityInternal, setGraphColumnVisibilityInternal] =
+  createSignal<Record<GraphZoneId, boolean>>(loadColumnVisibility());
+
+export const graphColumnWidths = graphColumnWidthsInternal;
+export const graphColumnVisibility = graphColumnVisibilityInternal;
+
+export function setGraphZoneWidth(id: GraphZoneId, width: number): void {
+  const next = { ...graphColumnWidthsInternal(), [id]: clampZoneWidth(id, width) };
+  localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(next));
+  setGraphColumnWidthsInternal(next);
+}
+
+export function setGraphZoneVisible(id: GraphZoneId, visible: boolean): void {
+  const next = { ...graphColumnVisibilityInternal(), [id]: visible };
+  localStorage.setItem(COLUMN_VISIBILITY_KEY, JSON.stringify(next));
+  setGraphColumnVisibilityInternal(next);
+}
+
+const [graphColumnMode, setGraphColumnModeInternal] = createSignal<GraphColumnMode>(
+  (localStorage.getItem(`${STORAGE_PREFIX}graphColumnMode`) === "compact"
+    ? "compact"
+    : "default") as GraphColumnMode,
+);
+export { graphColumnMode };
+
+export function setGraphColumnMode(mode: GraphColumnMode): void {
+  localStorage.setItem(`${STORAGE_PREFIX}graphColumnMode`, mode);
+  setGraphColumnModeInternal(mode);
+}
+
+/// Reset widths to a preset (default or compact). Visibility is
+/// untouched — GK's `Reset to default layout` keeps the user's
+/// visibility choices.
+export function resetGraphColumnsToPreset(mode: GraphColumnMode): void {
+  const widths = presetWidths(mode);
+  localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(widths));
+  setGraphColumnWidthsInternal(widths);
+  setGraphColumnMode(mode);
+}
+
+/// Smart Branch Visibility — auto-hide branches with stale tips. GK has
+/// a full service for this; chajá's first pass uses a single-knob toggle
+/// and a 90-day staleness threshold applied client-side over the ref
+/// list (the actual hide flows through the same `hiddenRefs` set so the
+/// HiddenRefsButton popover lists them too).
+export const [smartBranchesEnabled, setSmartBranchesEnabled] = persistedBool(
+  "smartBranchesEnabled",
+  false,
+);
 
 export const dirtyFileCount = createMemo(() => {
   const s = workingTreeStatus();

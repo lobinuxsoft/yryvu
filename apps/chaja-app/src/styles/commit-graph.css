@@ -187,10 +187,49 @@
   flex-shrink: 0;
 }
 
+.ref-pill__annotation {
+  flex-shrink: 0;
+  /* Annotation slot sits at the far left, ahead of the kind icon. Slightly
+     more prominent than the kind glyph since it conveys ref *state*
+     (checked-out / pinned) rather than ref *type*. */
+  opacity: 0.95;
+}
+
 .ref-pill__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Upstream indicator — ahead/behind arrows tracked vs configured upstream.
+   Renders only when at least one of ahead/behind is non-zero (matches the
+   GK bundle which hides the row entirely when in sync). */
+.ref-pill__upstream {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.ref-pill__ahead,
+.ref-pill__behind {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+/* Pinned annotation — only the trunk's local-branch pill on the pinned
+   row gets it. Visually weaker than the active checkmark so the
+   precedence reads at a glance. */
+.ref-pill.is-pinned {
+  border-color: color-mix(in srgb, var(--fg-1) 35%, transparent);
+}
+
+.ref-pill.is-pinned .ref-pill__annotation {
+  opacity: 0.8;
 }
 
 /* Type-color variants — GitHub status palette conventions, not lane colors.

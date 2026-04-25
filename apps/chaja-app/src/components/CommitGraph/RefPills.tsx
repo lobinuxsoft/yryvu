@@ -4,20 +4,20 @@
  * Per-commit ref pill group in the BRANCH/TAG column.
  *
  * 1:1 port of GitKraken's `ref-node` component per
- * `docs/research/gitkraken-graph/06-ref-pills.md`. Renders the first pill
- * inline plus a `+N` overflow chip that opens a popover listing the rest.
- * No lane-color tinting — pills use ref-type colors per doc 06's explicit
- * rule ("legitimate clone-scope correction: pills use ref-type colors, not
- * lane color").
+ * `docs/research/gitkraken-graph/06-ref-pills.md`. Composite anatomy
+ * `[annotation][icon-L][name][upstream]` driven by the RefTag payload,
+ * with stage-1 (HEAD), stage-2 (pinned) and stage-3 (type / alpha)
+ * ordering. Renders the first pill inline plus a `+N` overflow chip
+ * that opens a popover listing the rest.
  *
- * Deferred to follow-up (not in this first pass):
- * - Right-click context menu (checkout / rename / delete / pin-to-left) —
- *   requires lifting `useBranchOps` from LeftSidebar so CommitGraph can
+ * Deferred to follow-up (Fase 3 of issue #145):
+ * - Right-click context menu (checkout / rename / delete / pin / hide).
+ *   Requires lifting `useBranchOps` from LeftSidebar so CommitGraph can
  *   consume it.
- * - Upstream ahead/behind indicators — needs backend to emit tracking info
- *   per ref (separate plumbing).
- * - PR-attribution badge — soft-depends on #15 GH PR list landing.
- * - Hide-btn — not critical for initial clone visibility.
+ * - Hide-btn (hover-only). Backed by a `hiddenRefs` persisted set —
+ *   coupled to the context menu hide entry so they ship together.
+ * - PR-attribution badge (icons-R slot). Soft-depends on #15 GitHub PR
+ *   list landing.
  */
 
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
@@ -26,10 +26,11 @@ import {
   IconBranch,
   IconCheck,
   IconCloud,
+  IconPin,
   IconTag,
 } from "../Icons";
 import type { RefTag } from "../../ipc/commits";
-import { clearHoveredRef, setHoveredRef } from "../../state";
+import { clearHoveredRef, pinnedSha, setHoveredRef } from "../../state";
 
 /**
  * Map a ref-tag `kind` (backend enum) to the `HoveredRef.kind` channel used
@@ -67,45 +68,50 @@ function typePriority(kind: RefTag["kind"]): number {
 }
 
 /**
- * Ordering within a commit's ref list (single "group" since they all share
- * the same commit). Doc 06 defines three-stage comparison:
- * 1. HEAD (checked-out) first.
- * 2. Type priority desc.
- * 3. Alphabetical by name.
+ * Three-stage ordering per doc 06:
+ *   1. HEAD (checked-out) first.
+ *   2. Pinned-branch group next — only applies on the pinned row, where
+ *      the local branch matching the pinned head sha is promoted.
+ *   3. Type priority desc, then alphabetical by name.
  *
- * Pinned-branch priority (stage 2 in the full GitKraken algorithm) is
- * deferred — backend doesn't yet expose the pinned sha to the frontend.
+ * `pinnedRow` indicates the call-site already verified the row's sha
+ * matches the global `pinnedSha`; otherwise stage 2 is a no-op.
  */
-function orderRefs(refs: RefTag[]): RefTag[] {
+function orderRefs(refs: RefTag[], pinnedRow: boolean): RefTag[] {
   return [...refs].sort((a, b) => {
-    // HEAD first.
     if (a.kind === "Head" && b.kind !== "Head") return -1;
     if (b.kind === "Head" && a.kind !== "Head") return 1;
+    if (pinnedRow) {
+      // The local branch on the pinned row outranks any other non-HEAD ref.
+      // Tags / remotes on the same commit fall to stage 3.
+      if (a.kind === "Branch" && b.kind !== "Branch") return -1;
+      if (b.kind === "Branch" && a.kind !== "Branch") return 1;
+    }
     const p = typePriority(b.kind) - typePriority(a.kind);
     if (p !== 0) return p;
     return a.name.localeCompare(b.name);
   });
 }
 
-function pillClass(kind: RefTag["kind"]): string {
+function pillKindClass(kind: RefTag["kind"]): string {
   switch (kind) {
     case "Head":
-      return "ref-pill ref-pill--head";
+      return "ref-pill--head";
     case "Branch":
-      return "ref-pill ref-pill--branch";
+      return "ref-pill--branch";
     case "RemoteBranch":
-      return "ref-pill ref-pill--remote";
+      return "ref-pill--remote";
     case "Tag":
-      return "ref-pill ref-pill--tag";
+      return "ref-pill--tag";
   }
 }
 
-function PillIcon(props: { kind: RefTag["kind"] }) {
+function PillKindIcon(props: { kind: RefTag["kind"] }) {
   switch (props.kind) {
     case "Head":
-      // Checkmark annotation for the checked-out ref (doc 06 — annotation
-      // sits at the far left of the pill, takes priority over the name).
-      return <IconCheck class="ref-pill__icon" width={12} height={12} />;
+      // HEAD's annotation slot already carries the checkmark — the icon
+      // slot reuses the local-branch glyph for visual consistency.
+      return <IconBranch class="ref-pill__icon" width={12} height={12} />;
     case "Branch":
       return <IconBranch class="ref-pill__icon" width={12} height={12} />;
     case "RemoteBranch":
@@ -115,20 +121,29 @@ function PillIcon(props: { kind: RefTag["kind"] }) {
   }
 }
 
-function RefPill(props: { tag: RefTag; active?: boolean }) {
-  // Hover / focus on a pill → register it as the hovered ref so the graph
-  // dims non-ancestors. Uses `head` bucket for local branches AND the
-  // HEAD ref itself (backend treats local-branch and head as the same
-  // namespace in `child_refs.heads`).
+interface RefPillProps {
+  tag: RefTag;
+  active?: boolean;
+  pinned?: boolean;
+}
+
+function RefPill(props: RefPillProps) {
   const enter = () =>
     setHoveredRef({
       kind: hoveredKindFor(props.tag.kind),
       name: props.tag.name,
     });
+  // The annotation slot is mutually exclusive — checkmark when this pill is
+  // the active (HEAD-aliased) ref; otherwise pin when this pill represents
+  // the trunk's local branch.
   return (
     <span
-      class={pillClass(props.tag.kind)}
-      classList={{ "is-active": props.active }}
+      class="ref-pill"
+      classList={{
+        [pillKindClass(props.tag.kind)]: true,
+        "is-active": props.active,
+        "is-pinned": props.pinned && !props.active,
+      }}
       title={props.tag.name}
       tabIndex={0}
       onMouseEnter={enter}
@@ -136,8 +151,27 @@ function RefPill(props: { tag: RefTag; active?: boolean }) {
       onFocus={enter}
       onBlur={clearHoveredRef}
     >
-      <PillIcon kind={props.tag.kind} />
+      <Show when={props.active}>
+        <IconCheck class="ref-pill__annotation" width={12} height={12} />
+      </Show>
+      <Show when={props.pinned && !props.active}>
+        <IconPin class="ref-pill__annotation" width={12} height={12} />
+      </Show>
+      <PillKindIcon kind={props.tag.kind} />
       <span class="ref-pill__name">{props.tag.name}</span>
+      <Show when={props.tag.upstream && (props.tag.ahead > 0 || props.tag.behind > 0)}>
+        <span
+          class="ref-pill__upstream"
+          title={`Tracks ${props.tag.upstream} (${props.tag.ahead} ahead, ${props.tag.behind} behind)`}
+        >
+          <Show when={props.tag.ahead > 0}>
+            <span class="ref-pill__ahead">↑{props.tag.ahead}</span>
+          </Show>
+          <Show when={props.tag.behind > 0}>
+            <span class="ref-pill__behind">↓{props.tag.behind}</span>
+          </Show>
+        </span>
+      </Show>
     </span>
   );
 }
@@ -145,10 +179,24 @@ function RefPill(props: { tag: RefTag; active?: boolean }) {
 /**
  * Full per-row group. Renders the first pill inline; additional pills go
  * behind a `+N` chip that opens a popover on click.
+ *
+ * `sha` is the row's commit sha — compared against the global `pinnedSha`
+ * signal to decide whether stage-2 ordering applies and whether the
+ * pinned annotation renders on the local-branch pill.
  */
-export function RefPillGroup(props: { refs: RefTag[] }) {
-  const ordered = () => orderRefs(props.refs);
+export function RefPillGroup(props: { refs: RefTag[]; sha: string }) {
+  const isPinnedRow = () => pinnedSha() === props.sha;
+  const ordered = () => orderRefs(props.refs, isPinnedRow());
   const hasActive = () => ordered().some((r) => r.kind === "Head");
+  // Stage-2 only annotates the *first* local-branch pill on the pinned row
+  // — there's exactly one, but if a row carried multiple local branches
+  // the pin would still belong to the trunk-aliased one (already first
+  // post-orderRefs when `pinnedRow=true`).
+  const isPinnedPill = (tag: RefTag, idx: number) => {
+    if (!isPinnedRow()) return false;
+    if (tag.kind !== "Branch") return false;
+    return ordered().findIndex((r) => r.kind === "Branch") === idx;
+  };
 
   const [popoverOpen, setPopoverOpen] = createSignal(false);
   let rootEl: HTMLSpanElement | undefined;
@@ -182,6 +230,7 @@ export function RefPillGroup(props: { refs: RefTag[] }) {
         <RefPill
           tag={ordered()[0]}
           active={ordered()[0].kind === "Head"}
+          pinned={isPinnedPill(ordered()[0], 0)}
         />
         <Show when={ordered().length > 1}>
           <button
@@ -200,7 +249,12 @@ export function RefPillGroup(props: { refs: RefTag[] }) {
         <Show when={popoverOpen()}>
           <div class="ref-node__popover" onClick={(e) => e.stopPropagation()}>
             <For each={ordered().slice(1)}>
-              {(r) => <RefPill tag={r} />}
+              {(r, i) => (
+                <RefPill
+                  tag={r}
+                  pinned={isPinnedPill(r, i() + 1)}
+                />
+              )}
             </For>
           </div>
         </Show>

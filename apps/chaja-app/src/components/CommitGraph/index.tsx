@@ -28,6 +28,7 @@ import {
   selectedCommit,
   setCommitMessage,
   setInspectorMode,
+  setPinnedSha,
   setSelectedCommit,
 } from "../../state";
 import { isRowMemberOfHoveredRef } from "./hoverDim";
@@ -106,9 +107,15 @@ export function CommitGraph(props: CommitGraphProps) {
     setRows([]);
     setLoading(true);
     setError(undefined);
-    const handle = streamGraph(path, (batch) => {
-      setRows((prev) => prev.concat(batch));
-    });
+    const handle = streamGraph(
+      path,
+      (batch) => {
+        setRows((prev) => prev.concat(batch));
+      },
+      {
+        onPinned: (sha) => setPinnedSha(sha ?? undefined),
+      },
+    );
     handle.promise
       .then(() => setLoading(false))
       .catch((e) => {
@@ -373,7 +380,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
                     }}
                   >
-                    <RefPillGroup refs={r.refs} />
+                    <RefPillGroup refs={r.refs} sha={r.sha} />
                     {/* Connector line (#127) — fills the gap between the
                         last pill and the right edge of the BRANCH/TAG
                         cell, tinted with the row's lane color. HEAD rows

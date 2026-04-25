@@ -248,3 +248,21 @@ export const IconRefresh = (p?: IconProps) =>
     </>,
     p,
   );
+
+export const IconPin = (p?: IconProps) =>
+  base(
+    <>
+      <path d="M9.5 1.5l5 5-2 2-3-1-2.5 2.5L8 11l-1.5 1.5L4 10l1.5-1.5 1 1L9 7l-1-3z" />
+      <path d="M5.5 11.5L2 14.5" />
+    </>,
+    p,
+  );
+
+export const IconClose = (p?: IconProps) =>
+  base(
+    <>
+      <path d="M3.5 3.5l9 9" />
+      <path d="M12.5 3.5l-9 9" />
+    </>,
+    p,
+  );

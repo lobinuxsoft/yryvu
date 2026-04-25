@@ -83,6 +83,7 @@ export function setRepoPath(next: string | undefined): void {
   setSelectedCommit(undefined);
   setSelectedDiffFile(undefined);
   setHoveredRef(undefined);
+  setPinnedSha(undefined);
   setInspectorMode("details");
   setCommitMessage("");
   setCommitDescription("");
@@ -183,6 +184,15 @@ export const [hoveredRef, setHoveredRef] = createSignal<HoveredRef | undefined>(
 export function clearHoveredRef() {
   setHoveredRef(undefined);
 }
+
+/// SHA of the trunk pin chosen by the backend's `pick_pinned_head`. Written
+/// once per repo by the graph stream's `onPinned` callback; consumed by the
+/// ref-pill ordering pass to surface the pinned-branch annotation (doc 06
+/// stage 2). `undefined` until the first stream batch arrives, or for repos
+/// with no resolvable trunk (detached HEAD + no remote default).
+export const [pinnedSha, setPinnedSha] = createSignal<string | undefined>(
+  undefined,
+);
 
 export const dirtyFileCount = createMemo(() => {
   const s = workingTreeStatus();

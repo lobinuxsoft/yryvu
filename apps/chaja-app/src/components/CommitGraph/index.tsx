@@ -290,24 +290,25 @@ export function CommitGraph(props: CommitGraphProps) {
      to render).
      ======================================================================== */
   const OVERSCAN_ROWS = 8;
-  let messagesScroll: HTMLDivElement | undefined;
+  let zonesScroll: HTMLDivElement | undefined;
   const [scrollTop, setScrollTop] = createSignal(0);
   const [viewportHeight, setViewportHeight] = createSignal(0);
 
-  function forwardWheel(e: WheelEvent) {
-    if (!messagesScroll || e.deltaY === 0) return;
-    messagesScroll.scrollTop += e.deltaY;
-  }
-
+  // Vertical scroll lives on the `.commit-graph__zones` container — the
+  // single source of truth for both `scrollTop` and `viewportHeight`,
+  // independent of which zones are visible. Previous design pinned the
+  // scroll to the messages zone, which broke the moment a user toggled
+  // commit-message off (no scroll provider → empty viewport →
+  // `visibleRange` collapsed to zero rows).
   onMount(() => {
-    if (!messagesScroll) return;
-    setViewportHeight(messagesScroll.clientHeight);
+    if (!zonesScroll) return;
+    setViewportHeight(zonesScroll.clientHeight);
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setViewportHeight(entry.contentRect.height);
       }
     });
-    ro.observe(messagesScroll);
+    ro.observe(zonesScroll);
     onCleanup(() => ro.disconnect());
   });
 
@@ -385,18 +386,22 @@ export function CommitGraph(props: CommitGraphProps) {
           That way each cell inherits its zone's scroll coordinate
           system — the GRAPH cell lives inside the horizontal scroll
           wrapper, so the node follows horizontal pan too. */}
-      <div class="commit-graph__zones">
+      <div
+        class="commit-graph__zones"
+        ref={zonesScroll}
+        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      >
         <Show when={activeColumnSettings("ref").visible}>
         <div
           class="commit-graph__zone commit-graph__zone--branch"
           style={{ order: activeColumnSettings("ref").order }}
-          onWheel={forwardWheel}
+          
         >
           <ul
             class="commit-graph__col-branch"
             style={{
               height: `${totalHeight()}px`,
-              transform: `translateY(-${scrollTop()}px)`,
+
             }}
           >
             <Show when={dirtyFileCount() > 0}>
@@ -476,7 +481,7 @@ export function CommitGraph(props: CommitGraphProps) {
           class="commit-graph__zone commit-graph__zone--graph"
           classList={{ "is-compact": commitZoneMode() === "compact" }}
           style={{ order: activeColumnSettings("graph").order }}
-          onWheel={forwardWheel}
+          
         >
           {/* Horizontal scroll container — nested inside the zone so the
               right-edge streaks overlay (below) can be absolute-positioned
@@ -489,7 +494,7 @@ export function CommitGraph(props: CommitGraphProps) {
               style={{
                 height: `${totalHeight()}px`,
                 width: `${graphContentWidth()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+  
               }}
             >
               <Show when={dirtyFileCount() > 0}>
@@ -575,7 +580,7 @@ export function CommitGraph(props: CommitGraphProps) {
               class="commit-graph__col-graph-streaks-inner"
               style={{
                 height: `${totalHeight()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+  
               }}
             >
               <For each={visibleRows()}>
@@ -600,8 +605,6 @@ export function CommitGraph(props: CommitGraphProps) {
         <div
           class="commit-graph__zone commit-graph__zone--messages"
           style={{ order: activeColumnSettings("commitMessage").order }}
-          ref={messagesScroll}
-          onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
         >
           <ul
             class="commit-graph__col-messages"
@@ -670,13 +673,13 @@ export function CommitGraph(props: CommitGraphProps) {
           <div
             class="commit-graph__zone commit-graph__zone--author"
             style={{ order: activeColumnSettings("commitAuthor").order }}
-            onWheel={forwardWheel}
+            
           >
             <ul
               class="commit-graph__col-author"
               style={{
                 height: `${totalHeight()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+  
               }}
             >
               <Show when={dirtyFileCount() > 0}>
@@ -745,13 +748,13 @@ export function CommitGraph(props: CommitGraphProps) {
           <div
             class="commit-graph__zone commit-graph__zone--date-time"
             style={{ order: activeColumnSettings("commitDateTime").order }}
-            onWheel={forwardWheel}
+            
           >
             <ul
               class="commit-graph__col-date-time"
               style={{
                 height: `${totalHeight()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+  
               }}
             >
               <Show when={dirtyFileCount() > 0}>
@@ -799,13 +802,13 @@ export function CommitGraph(props: CommitGraphProps) {
           <div
             class="commit-graph__zone commit-graph__zone--sha"
             style={{ order: activeColumnSettings("commitSha").order }}
-            onWheel={forwardWheel}
+            
           >
             <ul
               class="commit-graph__col-sha"
               style={{
                 height: `${totalHeight()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+  
               }}
             >
               <Show when={dirtyFileCount() > 0}>

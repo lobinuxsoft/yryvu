@@ -37,13 +37,23 @@
   min-height: 0;
   display: flex;
   padding: 0 var(--graph-col-padding);
-  overflow: hidden;
+  /* Single source of vertical scroll. Used to live on the messages
+     zone, but the moment a user toggled commit-message off the scroll
+     provider disappeared and `visibleRange` collapsed to zero rows.
+     Hosting the scroll on the always-mounted container fixes that. */
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
 }
 
 .commit-graph__zone {
   position: relative;
-  overflow: hidden;
+  /* No `overflow: hidden` — the zones used to clip individually so
+     each one's UL could be `transform: translateY`-synced. With the
+     outer container hosting the single source of vertical scroll,
+     each zone's UL grows to its full content height and the parent
+     scrolls them all in lockstep. The GRAPH zone re-introduces its
+     own clipping for the horizontal-scroll inner wrapper below. */
 }
 
 .commit-graph__zone--branch {
@@ -92,11 +102,10 @@
 
 .commit-graph__zone--messages {
   /* Width fixed via CSS var (driven by `graphColumnWidths.commitMessage`).
-     1:1 with GK — every column has a hard width, the trailing spacer
-     soaks up any leftover space, scroll-x kicks in if total > container. */
+     Vertical scroll lives on the parent `.commit-graph__zones` so this
+     zone can be hidden without taking the scroll provider with it. */
   width: var(--graph-col-message);
   flex-shrink: 0;
-  overflow-y: auto;
 }
 
 

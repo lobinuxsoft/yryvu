@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, createMemo, For, on } from "solid-js";
+import { createEffect, createMemo, For, on, Show } from "solid-js";
 
 import type { FileDiff } from "../../ipc/diff";
 import { FileListToolbar } from "./FileListToolbar";
@@ -11,6 +11,7 @@ import {
   expandAllDirs,
   filterQuery,
   forceFileVisible,
+  hasAnyCollapsed,
   isDirCollapsed,
   isFileForcedVisible,
   resetRevState,
@@ -26,9 +27,18 @@ import {
   type FlatRow,
 } from "./treeBuild";
 
-/// `listType` mirrors GitKraken's `listTypes` enum. Only `committed` is
-/// wired today — `staged` / `unstaged` come with future working-dir port.
+/// `listType` mirrors GitKraken's `listTypes` enum.
 export type FileListType = "committed" | "staged" | "unstaged";
+
+/// Per-file action surfaced on row hover (Stage / Discard / Unstage). Only
+/// applied to file rows — directory rows ignore the slot.
+export interface RowAction {
+  label: string;
+  title?: string;
+  /// `danger` tints the button red on hover (Discard).
+  variant?: "default" | "danger";
+  onClick: (path: string) => void;
+}
 
 export interface FileListProps {
   repoId: string;
@@ -40,6 +50,13 @@ export interface FileListProps {
   files: FileDiff[];
   activeFilePath: string | undefined;
   onSelectFile: (path: string) => void;
+  /// Optional per-file action buttons (Stage / Discard / Unstage). Working-
+  /// tree variants pass non-empty; the committed variant leaves them off.
+  rowActions?: RowAction[];
+  /// CommitPanel renders ONE shared toolbar above its two sections — both
+  /// FileList instances opt out via this flag to avoid duplicate Tree/Flat
+  /// + filter inputs. The committed variant renders its own toolbar.
+  hideToolbar?: boolean;
 }
 
 /// 1:1 port of GitKraken's RightPanel file-list widget.
@@ -116,13 +133,18 @@ export function FileList(props: FileListProps) {
 
   return (
     <div class="file-list">
-      <FileListToolbar
-        repoId={props.repoId}
-        onExpandAll={() => expandAllDirs(props.repoId, props.revKey, isTree())}
-        onCollapseAll={() =>
-          collapseAllDirs(props.repoId, props.revKey, isTree(), allDirPaths())
-        }
-      />
+      <Show when={!props.hideToolbar}>
+        <FileListToolbar
+          repoId={props.repoId}
+          allExpanded={
+            !hasAnyCollapsed(props.repoId, props.revKey, isTree())
+          }
+          onExpandAll={() => expandAllDirs(props.repoId, props.revKey, isTree())}
+          onCollapseAll={() =>
+            collapseAllDirs(props.repoId, props.revKey, isTree(), allDirPaths())
+          }
+        />
+      </Show>
       <ul class="file-list__items">
         <For each={rows()}>
           {(row) => (
@@ -136,6 +158,7 @@ export function FileList(props: FileListProps) {
                   row.kind === "dir" ? isDirExpanded(row.path) : false
                 }
                 onClick={() => onClick(row)}
+                actions={props.rowActions}
               />
             </li>
           )}

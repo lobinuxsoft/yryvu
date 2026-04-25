@@ -112,84 +112,9 @@
   background: var(--bg-accent-hover);
 }
 
-/* -------- File rows ---------------------------------------------------- */
-.commit-panel__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.commit-panel__row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border-radius: var(--radius-sm);
-  padding: 2px;
-}
-
-.commit-panel__row:hover {
-  background: var(--bg-2);
-}
-
-.commit-panel__row[data-active="true"] {
-  background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
-}
-
-.commit-panel__row-main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  background: transparent;
-  border: 0;
-  color: var(--fg-1);
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-  min-width: 0;
-}
-
-.commit-panel__row[data-active="true"] .commit-panel__row-main {
-  color: var(--fg-0);
-}
-
-.commit-panel__row-actions {
-  display: inline-flex;
-  gap: 4px;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 100ms;
-}
-
-.commit-panel__row:hover .commit-panel__row-actions,
-.commit-panel__row[data-active="true"] .commit-panel__row-actions {
-  opacity: 1;
-}
-
-.commit-panel__row-action {
-  background: transparent;
-  color: var(--fg-2);
-  border: 1px solid var(--bg-3);
-  border-radius: var(--radius-sm);
-  padding: 2px 8px;
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.commit-panel__row-action:hover {
-  background: var(--bg-accent);
-  color: var(--fg-0);
-  border-color: var(--bg-accent);
-}
-
-.commit-panel__row-action[data-variant="danger"]:hover {
-  background: var(--danger);
-  border-color: var(--danger);
-}
+/* File rows + per-row hover actions live in `file-list.css` since the
+   working-tree sections now share the FileList widget with the committed
+   diff view. */
 
 /* ========================================================================
    Commit form — sticky bottom.

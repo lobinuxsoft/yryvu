@@ -173,6 +173,13 @@ export function collapseAllDirs(
   allDirPaths: string[],
 ): void {
   const key = ephemeralKey(id, revKey, isTree);
+  // Parent slot must exist before writing `collapsedDirs` — Solid's setStore
+  // on a record-shaped top-level key is inconsistent about auto-creating
+  // missing intermediates, and when a commit is selected for the first time
+  // the `resetRevState` effect has `defer: true` and hasn't run yet. Skipping
+  // this call is what made Collapse/Expand All silently no-op until the user
+  // toggled a chevron (which calls ensureEphemeral itself).
+  ensureEphemeral(key);
   const next: Record<string, true> = {};
   for (const p of allDirPaths) next[p] = true;
   setEphemeralByKey(key, "collapsedDirs", next);
@@ -182,6 +189,7 @@ export function collapseAllDirs(
 /// Expand every directory. `TreeViewAllDirectoriesCollapsedStateSet(false)`.
 export function expandAllDirs(id: string, revKey: string, isTree: boolean): void {
   const key = ephemeralKey(id, revKey, isTree);
+  ensureEphemeral(key);
   setEphemeralByKey(key, "collapsedDirs", {});
   setFullyExpanded(id, true);
 }
@@ -208,6 +216,23 @@ export function isFileForcedVisible(
 ): boolean {
   const key = ephemeralKey(id, revKey, isTree);
   return ephemeralByKey[key]?.forcedVisible[filePath] === true;
+}
+
+/// Reactive predicate: does the ephemeral state for this (id, revKey,
+/// isTree) hold any collapsed directories? Drives the toolbar's
+/// Expand/Collapse-all label based on what's *actually* visible, instead
+/// of the persisted `fullyExpanded` flag — that flag survives across
+/// sessions per-repo and can drift away from per-rev state.
+export function hasAnyCollapsed(
+  id: string,
+  revKey: string,
+  isTree: boolean,
+): boolean {
+  const key = ephemeralKey(id, revKey, isTree);
+  const state = ephemeralByKey[key];
+  if (!state) return false;
+  for (const _ in state.collapsedDirs) return true;
+  return false;
 }
 
 /// Drop ephemeral state for a given revision. `TreeViewAtShaReset`.

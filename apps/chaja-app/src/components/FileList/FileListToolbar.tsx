@@ -3,13 +3,17 @@
 import {
   displayTree,
   filterQuery,
-  fullyExpanded,
   setDisplayTree,
   setFilterQuery,
 } from "./store";
 
 export interface FileListToolbarProps {
   repoId: string;
+  /// Computed by the caller from per-rev state (`hasAnyCollapsed`). Drives
+  /// the label and click action of the Expand/Collapse-all button so it
+  /// reflects what's visible on screen rather than a persisted flag that
+  /// can drift across sessions.
+  allExpanded: boolean;
   onExpandAll: () => void;
   onCollapseAll: () => void;
 }
@@ -19,7 +23,7 @@ export interface FileListToolbarProps {
 /// `gitkraken-right-panel/06-file-list-inspector-specifics.md`).
 export function FileListToolbar(props: FileListToolbarProps) {
   const isTree = () => displayTree(props.repoId);
-  const expandLabel = () => (fullyExpanded(props.repoId) ? "Collapse All" : "Expand All");
+  const expandLabel = () => (props.allExpanded ? "Collapse All" : "Expand All");
 
   return (
     <div class="file-list__toolbar" role="toolbar">
@@ -50,7 +54,7 @@ export function FileListToolbar(props: FileListToolbarProps) {
         title={expandLabel()}
         disabled={!isTree()}
         onClick={() =>
-          fullyExpanded(props.repoId) ? props.onCollapseAll() : props.onExpandAll()
+          props.allExpanded ? props.onCollapseAll() : props.onExpandAll()
         }
       >
         {expandLabel()}

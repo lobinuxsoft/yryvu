@@ -30,6 +30,7 @@ import {
   collapseAllDirs,
   displayTree,
   expandAllDirs,
+  hasAnyCollapsed,
 } from "../FileList/store";
 import {
   buildTreeFromPaths,
@@ -213,6 +214,10 @@ export function CommitPanel(props: CommitPanelProps) {
       <Show when={totalChanges() > 0}>
         <FileListToolbar
           repoId={repoId()}
+          allExpanded={
+            !hasAnyCollapsed(repoId(), UNSTAGED_REV, isTree()) &&
+            !hasAnyCollapsed(repoId(), STAGED_REV, isTree())
+          }
           onExpandAll={onExpandAllSections}
           onCollapseAll={onCollapseAllSections}
         />

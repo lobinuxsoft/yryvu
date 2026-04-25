@@ -218,6 +218,23 @@ export function isFileForcedVisible(
   return ephemeralByKey[key]?.forcedVisible[filePath] === true;
 }
 
+/// Reactive predicate: does the ephemeral state for this (id, revKey,
+/// isTree) hold any collapsed directories? Drives the toolbar's
+/// Expand/Collapse-all label based on what's *actually* visible, instead
+/// of the persisted `fullyExpanded` flag — that flag survives across
+/// sessions per-repo and can drift away from per-rev state.
+export function hasAnyCollapsed(
+  id: string,
+  revKey: string,
+  isTree: boolean,
+): boolean {
+  const key = ephemeralKey(id, revKey, isTree);
+  const state = ephemeralByKey[key];
+  if (!state) return false;
+  for (const _ in state.collapsedDirs) return true;
+  return false;
+}
+
 /// Drop ephemeral state for a given revision. `TreeViewAtShaReset`.
 /// Called when the rev key changes (commit re-selected, working-tree
 /// status refreshed, …).

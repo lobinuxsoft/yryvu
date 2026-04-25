@@ -11,6 +11,7 @@ import {
   expandAllDirs,
   filterQuery,
   forceFileVisible,
+  hasAnyCollapsed,
   isDirCollapsed,
   isFileForcedVisible,
   resetRevState,
@@ -135,6 +136,9 @@ export function FileList(props: FileListProps) {
       <Show when={!props.hideToolbar}>
         <FileListToolbar
           repoId={props.repoId}
+          allExpanded={
+            !hasAnyCollapsed(props.repoId, props.revKey, isTree())
+          }
           onExpandAll={() => expandAllDirs(props.repoId, props.revKey, isTree())}
           onCollapseAll={() =>
             collapseAllDirs(props.repoId, props.revKey, isTree(), allDirPaths())

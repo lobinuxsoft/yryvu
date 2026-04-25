@@ -76,10 +76,16 @@ export function ColumnSettingsButton() {
   });
 
   const isVisible = (id: GraphZoneId) => activeColumnSettings(id).visible;
-  // The `ref` and `graph` zones are required — hiding them would leave
-  // the graph with no graph. GK greys both out in the menu; we mirror
-  // by disabling their toggles instead of allowing 0-column layouts.
-  const isToggleable = (id: GraphZoneId) => id !== "ref" && id !== "graph";
+  // 1:1 with GK's `enabled: !(gn && 1 === Ve.length)` (bundle ~342409):
+  // a checkbox is disabled only when it would leave the user with zero
+  // visible columns. Every zone is otherwise toggleable — including
+  // ref / graph / commitMessage. The previous chajá-specific gate that
+  // pinned ref + graph was a chajá invention; removing it fixes #157
+  // follow-up where toggling Commit Message off left the body
+  // rendering through.
+  const visibleCount = () =>
+    ALL_ZONES.reduce((n, id) => n + (activeColumnSettings(id).visible ? 1 : 0), 0);
+  const isToggleable = (id: GraphZoneId) => !(isVisible(id) && visibleCount() === 1);
 
   return (
     <>

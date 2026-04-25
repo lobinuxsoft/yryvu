@@ -386,6 +386,7 @@ export function CommitGraph(props: CommitGraphProps) {
           system — the GRAPH cell lives inside the horizontal scroll
           wrapper, so the node follows horizontal pan too. */}
       <div class="commit-graph__zones">
+        <Show when={activeColumnSettings("ref").visible}>
         <div
           class="commit-graph__zone commit-graph__zone--branch"
           style={{ order: activeColumnSettings("ref").order }}
@@ -469,6 +470,8 @@ export function CommitGraph(props: CommitGraphProps) {
             </For>
           </ul>
         </div>
+        </Show>
+        <Show when={activeColumnSettings("graph").visible}>
         <div
           class="commit-graph__zone commit-graph__zone--graph"
           classList={{ "is-compact": commitZoneMode() === "compact" }}
@@ -592,9 +595,11 @@ export function CommitGraph(props: CommitGraphProps) {
             </div>
           </div>
         </div>
+        </Show>
+        <Show when={activeColumnSettings("commitMessage").visible}>
         <div
           class="commit-graph__zone commit-graph__zone--messages"
-                    style={{ order: activeColumnSettings("commitMessage").order }}
+          style={{ order: activeColumnSettings("commitMessage").order }}
           ref={messagesScroll}
           onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
         >
@@ -660,10 +665,11 @@ export function CommitGraph(props: CommitGraphProps) {
             </For>
           </ul>
         </div>
+        </Show>
         <Show when={activeColumnSettings("commitAuthor").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--author"
-                        style={{ order: activeColumnSettings("commitAuthor").order }}
+            style={{ order: activeColumnSettings("commitAuthor").order }}
             onWheel={forwardWheel}
           >
             <ul
@@ -738,7 +744,7 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitDateTime").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--date-time"
-                        style={{ order: activeColumnSettings("commitDateTime").order }}
+            style={{ order: activeColumnSettings("commitDateTime").order }}
             onWheel={forwardWheel}
           >
             <ul
@@ -792,7 +798,7 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitSha").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--sha"
-                        style={{ order: activeColumnSettings("commitSha").order }}
+            style={{ order: activeColumnSettings("commitSha").order }}
             onWheel={forwardWheel}
           >
             <ul

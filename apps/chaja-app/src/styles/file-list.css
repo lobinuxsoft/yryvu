@@ -98,14 +98,21 @@
   flex-direction: column;
 }
 
-.file-list__items > li { display: contents; }
+/* Each row is a flex container so file-row + optional actions sit side
+   by side. Hover on the <li> tints the inner button and reveals actions
+   uniformly across both halves. */
+.file-list__items > li {
+  display: flex;
+  align-items: stretch;
+}
 
 .file-list__row,
 .file-list__dir {
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   background: transparent;
   border: 0;
   text-align: left;
@@ -115,12 +122,50 @@
   padding-right: 6px;
 }
 
-.file-list__row:hover,
-.file-list__dir:hover { background: var(--bg-2); }
+.file-list__items > li:hover .file-list__row,
+.file-list__items > li:hover .file-list__dir { background: var(--bg-2); }
 
 .file-list__row[data-active="true"] {
   background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
   color: var(--fg-0);
+}
+
+/* -------- Per-file hover actions (Stage / Discard / Unstage) ----------
+   Working-tree variants only; committed lists never pass actions. */
+.file-list__row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-right: 6px;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+
+.file-list__items > li:hover .file-list__row-actions,
+.file-list__items > li:has(.file-list__row[data-active="true"]) .file-list__row-actions {
+  opacity: 1;
+}
+
+.file-list__row-action {
+  background: transparent;
+  color: var(--fg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.file-list__row-action:hover {
+  background: var(--bg-accent);
+  color: var(--fg-0);
+  border-color: var(--bg-accent);
+}
+
+.file-list__row-action[data-variant="danger"]:hover {
+  background: var(--danger);
+  border-color: var(--danger);
 }
 
 .file-list__dir-chevron {

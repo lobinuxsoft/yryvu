@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 
 import { statusTone } from "../RightPanel/statusTone";
+import type { RowAction } from "./index";
 import type { FlatRow } from "./treeBuild";
 
 /// Row-level constants grepped from GitKraken's bundle (see research doc
@@ -20,6 +21,8 @@ export interface RowProps {
   active: boolean;
   isExpanded: boolean;
   onClick: () => void;
+  /// File-row only; ignored for directories.
+  actions?: RowAction[];
 }
 
 export function Row(props: RowProps) {
@@ -38,32 +41,54 @@ function FileLine(props: RowProps) {
     props.row.depth * TREE_VIEW_LEVEL_INDENT + FILE_NODE_CONTENTS_PADDING_LEFT;
 
   return (
-    <button
-      type="button"
-      class="file-list__row"
-      data-active={props.active ? "true" : "false"}
-      title={props.row.path}
-      style={{ "padding-left": `${indent()}px`, height: `${ROW_HEIGHT}px` }}
-      onClick={() => props.onClick()}
-    >
-      <span class="changed-files__status" data-tone={tone().tone}>
-        {tone().label}
-      </span>
-      <Show when={file().old_path}>
-        <span class="changed-files__old">{file().old_path} →</span>
-      </Show>
-      <span class="changed-files__path">{label()}</span>
-      <Show when={file().additions > 0 || file().deletions > 0}>
-        <span class="changed-files__stats">
-          <Show when={file().additions > 0}>
-            <span class="changed-files__stats--add">+{file().additions}</span>
-          </Show>
-          <Show when={file().deletions > 0}>
-            <span class="changed-files__stats--del">-{file().deletions}</span>
-          </Show>
+    <>
+      <button
+        type="button"
+        class="file-list__row"
+        data-active={props.active ? "true" : "false"}
+        title={props.row.path}
+        style={{ "padding-left": `${indent()}px`, height: `${ROW_HEIGHT}px` }}
+        onClick={() => props.onClick()}
+      >
+        <span class="changed-files__status" data-tone={tone().tone}>
+          {tone().label}
         </span>
+        <Show when={file().old_path}>
+          <span class="changed-files__old">{file().old_path} →</span>
+        </Show>
+        <span class="changed-files__path">{label()}</span>
+        <Show when={file().additions > 0 || file().deletions > 0}>
+          <span class="changed-files__stats">
+            <Show when={file().additions > 0}>
+              <span class="changed-files__stats--add">+{file().additions}</span>
+            </Show>
+            <Show when={file().deletions > 0}>
+              <span class="changed-files__stats--del">-{file().deletions}</span>
+            </Show>
+          </span>
+        </Show>
+      </button>
+      <Show when={props.actions && props.actions.length > 0}>
+        <div class="file-list__row-actions">
+          <For each={props.actions}>
+            {(a) => (
+              <button
+                type="button"
+                class="file-list__row-action"
+                data-variant={a.variant ?? "default"}
+                title={a.title ?? a.label}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  a.onClick(props.row.path);
+                }}
+              >
+                {a.label}
+              </button>
+            )}
+          </For>
+        </div>
       </Show>
-    </button>
+    </>
   );
 }
 

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, on, Show } from "solid-js";
+import { createEffect, createMemo, on, Show } from "solid-js";
 
 import { getHeadCommitMessage, type WorkingTreeStatus } from "../../ipc";
+import type { FileDiff } from "../../ipc/diff";
+import type { WorkingTreeChange } from "../../ipc/staging";
 import {
   amendEnabled,
   commitDescription,
@@ -22,8 +24,18 @@ import {
   stagedFilesCollapsed,
   unstagedFilesCollapsed,
 } from "../../state";
+import { FileList, type RowAction } from "../FileList";
+import { FileListToolbar } from "../FileList/FileListToolbar";
+import {
+  collapseAllDirs,
+  displayTree,
+  expandAllDirs,
+} from "../FileList/store";
+import {
+  buildTreeFromPaths,
+  collectDirPaths,
+} from "../FileList/treeBuild";
 import { CommitButton } from "./CommitButton";
-import { CommitFileList, type RowAction } from "./CommitFileList";
 import { CommitMessage } from "./CommitMessage";
 
 export interface CommitPanelProps {
@@ -38,6 +50,29 @@ export interface CommitPanelProps {
   onCommitAndPush: () => void;
 }
 
+const UNSTAGED_REV: string = "unstaged";
+const STAGED_REV: string = "staged";
+
+/// Working-tree changes carry no diffstat (the backend doesn't compute one
+/// for the WorkingTreeChange shape). Synthesizing a zero-stat FileDiff lets
+/// the FileList widget consume the same row contract as the committed view —
+/// the Row's `<Show when={additions>0 || deletions>0}>` guard already hides
+/// stats when zero, so the visual matches GitKraken's working-tree rows.
+function toFileDiff(change: WorkingTreeChange): FileDiff {
+  return {
+    path: change.path,
+    old_path: change.old_path,
+    status: change.status,
+    is_binary: false,
+    truncated: false,
+    old_size: 0,
+    new_size: 0,
+    additions: 0,
+    deletions: 0,
+    hunks: [],
+  };
+}
+
 export function CommitPanel(props: CommitPanelProps) {
   const unstaged = () => props.status?.unstaged ?? [];
   const staged = () => props.status?.staged ?? [];
@@ -46,6 +81,27 @@ export function CommitPanel(props: CommitPanelProps) {
     (stagedCount() > 0 || amendEnabled()) &&
     commitMessage().trim().length > 0;
   const totalChanges = () => unstaged().length + staged().length;
+
+  const repoId = () => repoPath() ?? "";
+
+  const unstagedFiles = createMemo<FileDiff[]>(() =>
+    unstaged().map(toFileDiff),
+  );
+  const stagedFiles = createMemo<FileDiff[]>(() => staged().map(toFileDiff));
+
+  // Tree is rebuilt independently inside FileList for rendering; we recompute
+  // here only to derive the dir-paths set the shared Expand/Collapse All
+  // actions need (the toolbar lives outside FileList for working-tree view,
+  // so it can't reach into the widget's internal memo). Cost: O(N) per side
+  // per status refresh — negligible relative to the IPC round-trip.
+  const unstagedDirPaths = createMemo(() =>
+    collectDirPaths(buildTreeFromPaths(unstagedFiles())),
+  );
+  const stagedDirPaths = createMemo(() =>
+    collectDirPaths(buildTreeFromPaths(stagedFiles())),
+  );
+
+  const isTree = () => displayTree(repoId());
 
   // Toggling Amend on pre-fills summary/description from HEAD; off clears
   // both. User edits in between are preserved — we only fire on the
@@ -92,9 +148,12 @@ export function CommitPanel(props: CommitPanelProps) {
     return submitLabel();
   };
 
-  const isActive = (side: "unstaged" | "staged", path: string) => {
+  const activeFor = (
+    side: "unstaged" | "staged",
+  ): string | undefined => {
     const sel = selectedDiffFile();
-    return sel?.kind === "staging" && sel.side === side && sel.path === path;
+    if (sel?.kind !== "staging" || sel.side !== side) return undefined;
+    return sel.path;
   };
 
   const unstagedActions: RowAction[] = [
@@ -117,6 +176,19 @@ export function CommitPanel(props: CommitPanelProps) {
     },
   ];
 
+  // Shared toolbar fires Expand/Collapse All for both sections at once so
+  // the widget action surface stays single-source-of-truth across the
+  // working-tree view. Tree/Flat mode and filter are already shared via the
+  // per-repo persisted store.
+  const onExpandAllSections = () => {
+    expandAllDirs(repoId(), UNSTAGED_REV, isTree());
+    expandAllDirs(repoId(), STAGED_REV, isTree());
+  };
+  const onCollapseAllSections = () => {
+    collapseAllDirs(repoId(), UNSTAGED_REV, isTree(), unstagedDirPaths());
+    collapseAllDirs(repoId(), STAGED_REV, isTree(), stagedDirPaths());
+  };
+
   return (
     <div class="commit-panel">
       <div class="commit-panel__header">
@@ -138,31 +210,101 @@ export function CommitPanel(props: CommitPanelProps) {
         <p class="inspector__empty">Working tree is clean.</p>
       </Show>
 
-      <CommitFileList
-        title="Unstaged Files"
-        side="unstaged"
-        changes={unstaged()}
-        collapsed={unstagedFilesCollapsed()}
-        onToggleCollapsed={() => setUnstagedFilesCollapsed((v) => !v)}
-        bulkActionLabel="Stage All Changes"
-        onBulkAction={() => props.onStageAll()}
-        rowActions={unstagedActions}
-        onRowClick={(path) => openStagingDiffTab("unstaged", path)}
-        isActive={(path) => isActive("unstaged", path)}
-      />
+      <Show when={totalChanges() > 0}>
+        <FileListToolbar
+          repoId={repoId()}
+          onExpandAll={onExpandAllSections}
+          onCollapseAll={onCollapseAllSections}
+        />
+      </Show>
 
-      <CommitFileList
-        title="Staged Files"
-        side="staged"
-        changes={staged()}
-        collapsed={stagedFilesCollapsed()}
-        onToggleCollapsed={() => setStagedFilesCollapsed((v) => !v)}
-        bulkActionLabel="Unstage All Changes"
-        onBulkAction={() => props.onUnstageAll()}
-        rowActions={stagedActions}
-        onRowClick={(path) => openStagingDiffTab("staged", path)}
-        isActive={(path) => isActive("staged", path)}
-      />
+      <section class="commit-panel__section" data-side="unstaged">
+        <header class="commit-panel__section-header">
+          <button
+            class="commit-panel__section-toggle"
+            type="button"
+            aria-expanded={!unstagedFilesCollapsed()}
+            onClick={() => setUnstagedFilesCollapsed((v) => !v)}
+            title={unstagedFilesCollapsed() ? "Expand" : "Collapse"}
+          >
+            <span
+              class="commit-panel__section-chevron"
+              data-collapsed={unstagedFilesCollapsed() ? "true" : "false"}
+            >
+              ▸
+            </span>
+            <span class="commit-panel__section-title">Unstaged Files</span>
+            <span class="commit-panel__section-count">
+              {unstaged().length}
+            </span>
+          </button>
+          <Show when={unstaged().length > 0}>
+            <button
+              class="commit-panel__bulk"
+              type="button"
+              title="Stage All Changes"
+              onClick={() => props.onStageAll()}
+            >
+              Stage All Changes
+            </button>
+          </Show>
+        </header>
+        <Show when={!unstagedFilesCollapsed() && unstaged().length > 0}>
+          <FileList
+            repoId={repoId()}
+            revKey={UNSTAGED_REV}
+            listType="unstaged"
+            files={unstagedFiles()}
+            activeFilePath={activeFor("unstaged")}
+            onSelectFile={(p) => openStagingDiffTab("unstaged", p)}
+            rowActions={unstagedActions}
+            hideToolbar
+          />
+        </Show>
+      </section>
+
+      <section class="commit-panel__section" data-side="staged">
+        <header class="commit-panel__section-header">
+          <button
+            class="commit-panel__section-toggle"
+            type="button"
+            aria-expanded={!stagedFilesCollapsed()}
+            onClick={() => setStagedFilesCollapsed((v) => !v)}
+            title={stagedFilesCollapsed() ? "Expand" : "Collapse"}
+          >
+            <span
+              class="commit-panel__section-chevron"
+              data-collapsed={stagedFilesCollapsed() ? "true" : "false"}
+            >
+              ▸
+            </span>
+            <span class="commit-panel__section-title">Staged Files</span>
+            <span class="commit-panel__section-count">{staged().length}</span>
+          </button>
+          <Show when={staged().length > 0}>
+            <button
+              class="commit-panel__bulk"
+              type="button"
+              title="Unstage All Changes"
+              onClick={() => props.onUnstageAll()}
+            >
+              Unstage All Changes
+            </button>
+          </Show>
+        </header>
+        <Show when={!stagedFilesCollapsed() && staged().length > 0}>
+          <FileList
+            repoId={repoId()}
+            revKey={STAGED_REV}
+            listType="staged"
+            files={stagedFiles()}
+            activeFilePath={activeFor("staged")}
+            onSelectFile={(p) => openStagingDiffTab("staged", p)}
+            rowActions={stagedActions}
+            hideToolbar
+          />
+        </Show>
+      </section>
 
       <section class="commit-panel__commit-form">
         <header class="commit-panel__commit-form__header">

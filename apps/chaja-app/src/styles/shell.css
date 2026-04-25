@@ -80,6 +80,131 @@
   padding-left: var(--graph-col-gap);
 }
 
+.main__graph-column-header-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Hidden refs button — header-mounted, mirrors GK's
+   `header-ref-node-hidden-refs-btn`. Disabled state when no refs hidden. */
+.hidden-refs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.hidden-refs__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-3);
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.hidden-refs__btn:hover:not(:disabled) {
+  background: var(--bg-3);
+  color: var(--fg-0);
+  border-color: var(--border);
+}
+
+.hidden-refs__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.hidden-refs__count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.hidden-refs__popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 240px;
+  max-width: 360px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px color-mix(in srgb, black 40%, transparent);
+  z-index: 20;
+}
+
+.hidden-refs__popover-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  padding: 4px 6px 6px;
+}
+
+.hidden-refs__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hidden-refs__list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg-1);
+}
+
+.hidden-refs__list-item:hover {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+
+.hidden-refs__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--fg-3);
+}
+
+.hidden-refs__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hidden-refs__restore {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg-1);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.hidden-refs__restore:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border-color: color-mix(in srgb, var(--fg-1) 30%, transparent);
+}
+
 .main__graph-host {
   flex: 1;
   min-height: 0;

@@ -266,3 +266,16 @@ export const IconClose = (p?: IconProps) =>
     </>,
     p,
   );
+
+/** Monitor / worktree indicator. Marks a ref that has a worktree mounted
+ * (the active checkout) — GK paints a small monitor glyph on the right
+ * side of pills that own a workdir. */
+export const IconMonitor = (p?: IconProps) =>
+  base(
+    <>
+      <rect x="2" y="3" width="12" height="8" rx="1" />
+      <path d="M5.5 13.5h5" />
+      <path d="M8 11v2.5" />
+    </>,
+    p,
+  );

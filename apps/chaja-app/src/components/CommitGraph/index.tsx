@@ -172,32 +172,31 @@ export function CommitGraph(props: CommitGraphProps) {
     () => GUTTER + (maxLane() + 1) * LANE_WIDTH + 8,
   );
 
-  // Size the GRAPH zone to its content — avoids the black gutter on
-  // narrow-lane repos (only 1-3 lanes used of a 240 px slot) and gives
-  // wide graphs room to breathe without horizontal scroll. Clamped so
-  // the header label "Graph" always has a reasonable min and so a huge
-  // lane count doesn't shove the message column off-screen.
+  // Size the GRAPH zone to its content, capped at GRAPH_ZONE_MAX_PX.
+  // GitKraken's bundle exposes `REF_ZONE_DEFAULT_WIDTH=130` /
+  // `COMMIT_ZONE_DEFAULT_WIDTH=150` etc., but no fixed cap on the graph
+  // zone — the user resizes it. Until column-resize lands (#37), 280 px
+  // (≈12 lanes at 22 px each + gutter) covers the comfortable case
+  // without donating half the viewport to dead lane space on busy
+  // repos like `eggscape`. Wider repos pick up the horizontal scroll
+  // already wired into `.col-graph-hscroll`.
   //
   // Written as a CSS custom property on `.main` so both the header row
   // and the zone pick it up via the same inheritance chain.
+  const GRAPH_ZONE_MIN_PX = 80;
+  const GRAPH_ZONE_MAX_PX = 280;
   let rootEl: HTMLDivElement | undefined;
-  const [winWidth, setWinWidth] = createSignal(
-    typeof window !== "undefined" ? window.innerWidth : 1920,
-  );
   onMount(() => {
     const main = rootEl?.closest(".main") as HTMLElement | null;
     if (!main) return;
-    const onResize = () => setWinWidth(window.innerWidth);
-    window.addEventListener("resize", onResize);
     createEffect(() => {
       const clamped = Math.max(
-        80,
-        Math.min(graphContentWidth() + 4, Math.round(winWidth() * 0.4)),
+        GRAPH_ZONE_MIN_PX,
+        Math.min(graphContentWidth() + 4, GRAPH_ZONE_MAX_PX),
       );
       main.style.setProperty("--graph-col-graph", `${clamped}px`);
     });
     onCleanup(() => {
-      window.removeEventListener("resize", onResize);
       main.style.removeProperty("--graph-col-graph");
     });
   });
@@ -380,7 +379,12 @@ export function CommitGraph(props: CommitGraphProps) {
                       if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
                     }}
                   >
-                    <RefPillGroup refs={r.refs} sha={r.sha} />
+                    <RefPillGroup
+                      refs={r.refs}
+                      sha={r.sha}
+                      childRefs={r.child_refs}
+                      isRowHovered={hoveredCommit() === r.sha}
+                    />
                     {/* Connector line (#127) — fills the gap between the
                         last pill and the right edge of the BRANCH/TAG
                         cell, tinted with the row's lane color. HEAD rows

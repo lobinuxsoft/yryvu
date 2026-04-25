@@ -187,6 +187,14 @@
   flex-shrink: 0;
 }
 
+.ref-pill__icon-r {
+  flex-shrink: 0;
+  opacity: 0.85;
+  /* Right-side icons (monitor, cloud) sit between name and upstream. The
+     monitor glyph indicates worktree / active checkout; cloud indicates
+     the local branch has remote tracking config. */
+}
+
 .ref-pill__annotation {
   flex-shrink: 0;
   /* Annotation slot sits at the far left, ahead of the kind icon. Slightly
@@ -230,6 +238,31 @@
 
 .ref-pill.is-pinned .ref-pill__annotation {
   opacity: 0.8;
+}
+
+/* Ghost pills — refs that pass through this commit but don't tip here.
+   GK shows them only on row hover (`showGhostRefsOnRowHover`). Visually
+   they read as "shadow" pills: lower opacity, no border, smaller weight,
+   no interactivity. */
+.ref-pill.is-ghost {
+  opacity: 0.35;
+  background: transparent;
+  border-color: transparent;
+  font-weight: 400;
+  cursor: default;
+  pointer-events: none;
+  /* Compress: ghost pills should not crowd the active pill row. */
+  padding: 0 4px;
+  max-width: 110px;
+}
+
+/* Ghost container holds the on-hover companions. Inline so they sit on
+   the same line as the live pill + overflow chip; gap matches `.ref-node`
+   for visual continuity. */
+.ref-node__ghosts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Hide-btn — visible on pill hover only (matches GK's `enableShowHideRefsOptions
@@ -316,9 +349,10 @@
 }
 
 .ref-node__popover {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
+  /* Rendered via Portal at document.body, positioned with `top`/`left`
+     written inline from the trigger's getBoundingClientRect(). Fixed so
+     the popover escapes the BRANCH/TAG zone's `overflow: hidden`. */
+  position: fixed;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -327,12 +361,28 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 8px 24px color-mix(in srgb, black 40%, transparent);
-  z-index: 10;
+  z-index: 100;
   min-width: 160px;
+  /* Stretch to fit the longest ref name (within reason). 24-char branches
+     like `4236-fix-frameo-en-casco` overflow a 200-px pill cap; readable
+     names matter more than a tight rectangle here. */
+  max-width: min(420px, 80vw);
+  width: max-content;
 }
 
 .ref-node__popover .ref-pill {
-  max-width: 200px;
+  /* Inside the popover, drop the inline max-width cap so long branch
+     names like `4236-fix-frameo-en-casco` render in full. The popover
+     itself caps total width at min(420px, 80vw). */
+  max-width: none;
+}
+
+.ref-node__popover .ref-pill__name {
+  /* And let the name keep its natural width — no truncation inside the
+     popover (the inline pill still truncates to fit the BRANCH/TAG
+     column). */
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .commit-graph__col-graph {

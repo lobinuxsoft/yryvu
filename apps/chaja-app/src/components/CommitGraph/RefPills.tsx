@@ -4,33 +4,32 @@
  * Per-commit ref pill group in the BRANCH/TAG column.
  *
  * 1:1 port of GitKraken's `ref-node` component per
- * `docs/research/gitkraken-graph/06-ref-pills.md`. Composite anatomy
- * `[annotation][icon-L][name][upstream]` driven by the RefTag payload,
- * with stage-1 (HEAD), stage-2 (pinned) and stage-3 (type / alpha)
- * ordering. Renders the first pill inline plus a `+N` overflow chip
- * that opens a popover listing the rest.
+ * `docs/research/gitkraken-graph/06-ref-pills.md`.
  *
- * Deferred to follow-up (Fase 3 of issue #145):
- * - Right-click context menu (checkout / rename / delete / pin / hide).
- *   Requires lifting `useBranchOps` from LeftSidebar so CommitGraph can
- *   consume it.
- * - Hide-btn (hover-only). Backed by a `hiddenRefs` persisted set —
- *   coupled to the context menu hide entry so they ship together.
- * - PR-attribution badge (icons-R slot). Soft-depends on #15 GitHub PR
- *   list landing.
+ * Composite anatomy (left → right):
+ *   `[annotation] [icon-L] [name] [icon-R: monitor + cloud] [upstream] [hide-btn]`
+ *
+ * Three ordering stages: HEAD → pinned-trunk → type/alpha. Overflow refs
+ * collapse into a `+N` chip that opens a hover-delayed popover (matches
+ * the bundle's `OverlayTrigger` 250 ms hover behaviour). When the row is
+ * hovered, additional ghost pills surface for refs that pass through
+ * this commit but aren't tipped here (`child_refs`) — gated by the GK
+ * `showGhostRefsOnRowHover` setting.
  */
 
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { Portal } from "solid-js/web";
 
 import {
   IconBranch,
   IconCheck,
   IconClose,
   IconCloud,
+  IconMonitor,
   IconPin,
   IconTag,
 } from "../Icons";
-import type { RefTag } from "../../ipc/commits";
+import type { ChildRefs, RefTag } from "../../ipc/commits";
 import {
   clearHoveredRef,
   hiddenRefs,
@@ -81,17 +80,12 @@ function typePriority(kind: RefTag["kind"]): number {
  *   2. Pinned-branch group next — only applies on the pinned row, where
  *      the local branch matching the pinned head sha is promoted.
  *   3. Type priority desc, then alphabetical by name.
- *
- * `pinnedRow` indicates the call-site already verified the row's sha
- * matches the global `pinnedSha`; otherwise stage 2 is a no-op.
  */
 function orderRefs(refs: RefTag[], pinnedRow: boolean): RefTag[] {
   return [...refs].sort((a, b) => {
     if (a.kind === "Head" && b.kind !== "Head") return -1;
     if (b.kind === "Head" && a.kind !== "Head") return 1;
     if (pinnedRow) {
-      // The local branch on the pinned row outranks any other non-HEAD ref.
-      // Tags / remotes on the same commit fall to stage 3.
       if (a.kind === "Branch" && b.kind !== "Branch") return -1;
       if (b.kind === "Branch" && a.kind !== "Branch") return 1;
     }
@@ -117,9 +111,6 @@ function pillKindClass(kind: RefTag["kind"]): string {
 function PillKindIcon(props: { kind: RefTag["kind"] }) {
   switch (props.kind) {
     case "Head":
-      // HEAD's annotation slot already carries the checkmark — the icon
-      // slot reuses the local-branch glyph for visual consistency.
-      return <IconBranch class="ref-pill__icon" width={12} height={12} />;
     case "Branch":
       return <IconBranch class="ref-pill__icon" width={12} height={12} />;
     case "RemoteBranch":
@@ -129,29 +120,89 @@ function PillKindIcon(props: { kind: RefTag["kind"] }) {
   }
 }
 
+/** Synthesize a minimal RefTag for ghost rendering — no upstream data. */
+function ghostTag(name: string, kind: RefTag["kind"]): RefTag {
+  return { name, kind, upstream: null, ahead: 0, behind: 0 };
+}
+
+/**
+ * Build the ghost ref list for a row: refs that pass through this commit
+ * but don't tip here. Sourced from `child_refs` (populated bottom-up in
+ * graph-core), minus refs that already render as real pills, minus
+ * user-hidden refs.
+ */
+function ghostRefsFor(
+  childRefs: ChildRefs,
+  liveRefs: RefTag[],
+  hidden: Set<string>,
+): RefTag[] {
+  const liveByBucket = {
+    head: new Set<string>(),
+    remote: new Set<string>(),
+    tag: new Set<string>(),
+  };
+  for (const r of liveRefs) {
+    liveByBucket[hoveredKindFor(r.kind)].add(r.name);
+  }
+  const out: RefTag[] = [];
+  for (const name of childRefs.heads) {
+    if (liveByBucket.head.has(name)) continue;
+    const tag = ghostTag(name, "Branch");
+    if (hidden.has(refKey(tag))) continue;
+    out.push(tag);
+  }
+  for (const name of childRefs.remotes) {
+    if (liveByBucket.remote.has(name)) continue;
+    const tag = ghostTag(name, "RemoteBranch");
+    if (hidden.has(refKey(tag))) continue;
+    out.push(tag);
+  }
+  for (const name of childRefs.tags) {
+    if (liveByBucket.tag.has(name)) continue;
+    const tag = ghostTag(name, "Tag");
+    if (hidden.has(refKey(tag))) continue;
+    out.push(tag);
+  }
+  return out;
+}
+
 interface RefPillProps {
   tag: RefTag;
   sha: string;
   active?: boolean;
   pinned?: boolean;
+  ghost?: boolean;
   /** When true, suppress the hide-btn slot (matches GK's `!hasActive` gate). */
   suppressHide?: boolean;
 }
 
 function RefPill(props: RefPillProps) {
   const ops = useBranchOps();
-  const enter = () =>
+  const enter = () => {
+    if (props.ghost) return;
     setHoveredRef({
       kind: hoveredKindFor(props.tag.kind),
       name: props.tag.name,
     });
+  };
+  const leave = () => {
+    if (props.ghost) return;
+    clearHoveredRef();
+  };
   const hide = (e: MouseEvent) => {
     e.stopPropagation();
     setHiddenRef(refKey(props.tag), true);
   };
-  // The annotation slot is mutually exclusive — checkmark when this pill is
-  // the active (HEAD-aliased) ref; otherwise pin when this pill represents
-  // the trunk's local branch.
+  // GK's pill anatomy slots:
+  //   annotation = check (active) | pin (pinned trunk, non-active)
+  //   icon-L     = ref-kind glyph
+  //   name       = short name
+  //   icon-R     = monitor (active checkout / worktree) + cloud (tracking remote)
+  //   upstream   = ↑N ↓N when tracking diverged
+  //   hide-btn   = × on hover, suppressed when group has the active ref
+  const showMonitor = () => props.active === true;
+  const showCloud = () =>
+    props.tag.kind === "Branch" && props.tag.upstream !== null;
   return (
     <span
       class="ref-pill"
@@ -159,14 +210,18 @@ function RefPill(props: RefPillProps) {
         [pillKindClass(props.tag.kind)]: true,
         "is-active": props.active,
         "is-pinned": props.pinned && !props.active,
+        "is-ghost": props.ghost,
       }}
       title={props.tag.name}
-      tabIndex={0}
+      tabIndex={props.ghost ? -1 : 0}
       onMouseEnter={enter}
-      onMouseLeave={clearHoveredRef}
+      onMouseLeave={leave}
       onFocus={enter}
-      onBlur={clearHoveredRef}
-      onContextMenu={(e) => ops.openRefContextMenu(e, props.tag, props.sha)}
+      onBlur={leave}
+      onContextMenu={(e) => {
+        if (props.ghost) return;
+        ops.openRefContextMenu(e, props.tag, props.sha);
+      }}
     >
       <Show when={props.active}>
         <IconCheck class="ref-pill__annotation" width={12} height={12} />
@@ -176,6 +231,12 @@ function RefPill(props: RefPillProps) {
       </Show>
       <PillKindIcon kind={props.tag.kind} />
       <span class="ref-pill__name">{props.tag.name}</span>
+      <Show when={showMonitor()}>
+        <IconMonitor class="ref-pill__icon-r" width={11} height={11} />
+      </Show>
+      <Show when={showCloud()}>
+        <IconCloud class="ref-pill__icon-r" width={11} height={11} />
+      </Show>
       <Show when={props.tag.upstream && (props.tag.ahead > 0 || props.tag.behind > 0)}>
         <span
           class="ref-pill__upstream"
@@ -189,7 +250,7 @@ function RefPill(props: RefPillProps) {
           </Show>
         </span>
       </Show>
-      <Show when={!props.suppressHide && props.tag.kind !== "Head"}>
+      <Show when={!props.ghost && !props.suppressHide && props.tag.kind !== "Head"}>
         <button
           type="button"
           class="ref-pill__hide-btn"
@@ -206,94 +267,168 @@ function RefPill(props: RefPillProps) {
 
 /**
  * Full per-row group. Renders the first pill inline; additional pills go
- * behind a `+N` chip that opens a popover on click.
- *
- * `sha` is the row's commit sha — compared against the global `pinnedSha`
- * signal to decide whether stage-2 ordering applies and whether the
- * pinned annotation renders on the local-branch pill.
+ * behind a `+N` chip that opens a hover-delayed popover. Ghost pills for
+ * refs that pass through this commit (sourced from `childRefs`) appear
+ * only while the row is hovered.
  */
-export function RefPillGroup(props: { refs: RefTag[]; sha: string }) {
+export function RefPillGroup(props: {
+  refs: RefTag[];
+  sha: string;
+  childRefs: ChildRefs;
+  isRowHovered: boolean;
+}) {
   const isPinnedRow = () => pinnedSha() === props.sha;
-  // Filter out user-hidden refs before ordering — GK matches behaviour:
-  // hidden pills disappear from the row entirely, available again only via
-  // the `Show all hidden refs` action (deferred, follow-up issue).
   const visibleRefs = () =>
     props.refs.filter((r) => !hiddenRefs().has(refKey(r)));
   const ordered = () => orderRefs(visibleRefs(), isPinnedRow());
   const hasActive = () => ordered().some((r) => r.kind === "Head");
-  // Stage-2 only annotates the *first* local-branch pill on the pinned row
-  // — there's exactly one, but if a row carried multiple local branches
-  // the pin would still belong to the trunk-aliased one (already first
-  // post-orderRefs when `pinnedRow=true`).
   const isPinnedPill = (tag: RefTag, idx: number) => {
     if (!isPinnedRow()) return false;
     if (tag.kind !== "Branch") return false;
     return ordered().findIndex((r) => r.kind === "Branch") === idx;
   };
+  const ghostRefs = () =>
+    props.isRowHovered
+      ? ghostRefsFor(props.childRefs, props.refs, hiddenRefs())
+      : [];
+  const orderedGhosts = () =>
+    [...ghostRefs()].sort((a, b) => {
+      const p = typePriority(b.kind) - typePriority(a.kind);
+      if (p !== 0) return p;
+      return a.name.localeCompare(b.name);
+    });
 
+  // Hover-delayed popover (GK uses 250 ms via OverlayTrigger). Open on
+  // pointer-enter of the +N chip after the delay; cancel if the pointer
+  // leaves before it elapses; keep open as long as the pointer stays in
+  // the chip OR the popover (uses a small grace timer on leave so the
+  // user can move diagonally between the two).
+  const HOVER_OPEN_DELAY = 250;
+  const HOVER_CLOSE_DELAY = 120;
   const [popoverOpen, setPopoverOpen] = createSignal(false);
-  let rootEl: HTMLSpanElement | undefined;
+  // Popover renders in a Portal so it can escape the BRANCH/TAG zone's
+  // `overflow: hidden`. Position is captured from the trigger's
+  // `getBoundingClientRect()` at open time (fixed coords).
+  const [popoverPos, setPopoverPos] = createSignal<{ top: number; left: number } | null>(null);
+  let triggerEl: HTMLButtonElement | undefined;
+  let openTimer: ReturnType<typeof setTimeout> | undefined;
+  let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
-  // Close popover on outside click / Escape. Also close if the ref list
-  // changes while the popover is open (e.g. user switched commits).
+  const openPopover = () => {
+    if (triggerEl) {
+      const rect = triggerEl.getBoundingClientRect();
+      setPopoverPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setPopoverOpen(true);
+  };
+
+  const cancelTimers = () => {
+    if (openTimer) {
+      clearTimeout(openTimer);
+      openTimer = undefined;
+    }
+    if (closeTimer) {
+      clearTimeout(closeTimer);
+      closeTimer = undefined;
+    }
+  };
+  const scheduleOpen = () => {
+    cancelTimers();
+    openTimer = setTimeout(() => openPopover(), HOVER_OPEN_DELAY);
+  };
+  const scheduleClose = () => {
+    cancelTimers();
+    closeTimer = setTimeout(() => setPopoverOpen(false), HOVER_CLOSE_DELAY);
+  };
+  const keepOpen = () => cancelTimers();
+  onCleanup(cancelTimers);
+
+  // Close on Escape — preserves keyboard escape hatch for hover popovers.
   createEffect(() => {
     if (!popoverOpen()) return;
-
-    const onDocClick = (e: MouseEvent) => {
-      if (rootEl && !rootEl.contains(e.target as Node)) setPopoverOpen(false);
-    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setPopoverOpen(false);
     };
-    document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
-    onCleanup(() => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    });
+    onCleanup(() => document.removeEventListener("keydown", onKey));
   });
 
   return (
-    <Show when={ordered().length > 0}>
+    <Show when={ordered().length > 0 || orderedGhosts().length > 0}>
       <span
         class="ref-node"
-        classList={{ "has-active": hasActive() }}
-        ref={(el) => (rootEl = el)}
+        classList={{
+          "has-active": hasActive(),
+          "row-hovered": props.isRowHovered,
+        }}
       >
-        <RefPill
-          tag={ordered()[0]}
-          sha={props.sha}
-          active={ordered()[0].kind === "Head"}
-          pinned={isPinnedPill(ordered()[0], 0)}
-          suppressHide={hasActive()}
-        />
+        <Show when={ordered().length > 0}>
+          <RefPill
+            tag={ordered()[0]}
+            sha={props.sha}
+            active={ordered()[0].kind === "Head"}
+            pinned={isPinnedPill(ordered()[0], 0)}
+            suppressHide={hasActive()}
+          />
+        </Show>
         <Show when={ordered().length > 1}>
           <button
             type="button"
             class="ref-node__overflow"
             classList={{ "is-active": hasActive() }}
+            ref={(el) => (triggerEl = el)}
+            onMouseEnter={scheduleOpen}
+            onMouseLeave={scheduleClose}
+            onFocus={scheduleOpen}
+            onBlur={scheduleClose}
+            // Click toggles too — accessibility for keyboard users + a
+            // fallback when hover misfires (touchscreens, slow trackpads).
             onClick={(e) => {
               e.stopPropagation();
-              setPopoverOpen((o) => !o);
+              cancelTimers();
+              if (popoverOpen()) {
+                setPopoverOpen(false);
+              } else {
+                openPopover();
+              }
             }}
-            title={`${ordered().length - 1} more ref${ordered().length - 1 === 1 ? "" : "s"}`}
+            aria-label={`${ordered().length - 1} more ref${ordered().length - 1 === 1 ? "" : "s"}`}
+            aria-expanded={popoverOpen()}
           >
             +{ordered().length - 1}
           </button>
         </Show>
-        <Show when={popoverOpen()}>
-          <div class="ref-node__popover" onClick={(e) => e.stopPropagation()}>
-            <For each={ordered().slice(1)}>
-              {(r, i) => (
-                <RefPill
-                  tag={r}
-                  sha={props.sha}
-                  pinned={isPinnedPill(r, i() + 1)}
-                  suppressHide={hasActive()}
-                />
-              )}
+        <Show when={popoverOpen() && popoverPos() !== null}>
+          <Portal>
+            <div
+              class="ref-node__popover"
+              style={{
+                top: `${popoverPos()!.top}px`,
+                left: `${popoverPos()!.left}px`,
+              }}
+              onMouseEnter={keepOpen}
+              onMouseLeave={scheduleClose}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <For each={ordered().slice(1)}>
+                {(r, i) => (
+                  <RefPill
+                    tag={r}
+                    sha={props.sha}
+                    pinned={isPinnedPill(r, i() + 1)}
+                    suppressHide={hasActive()}
+                  />
+                )}
+              </For>
+            </div>
+          </Portal>
+        </Show>
+        <Show when={orderedGhosts().length > 0}>
+          <span class="ref-node__ghosts">
+            <For each={orderedGhosts()}>
+              {(r) => <RefPill tag={r} sha={props.sha} ghost />}
             </For>
-          </div>
+          </span>
         </Show>
       </span>
     </Show>

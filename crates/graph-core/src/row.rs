@@ -5,9 +5,10 @@ use std::collections::HashSet;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum RefKind {
+    #[default]
     Branch,
     RemoteBranch,
     Tag,
@@ -28,11 +29,30 @@ pub struct ChildRefs {
     pub tags: HashSet<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// A ref pointing at the row's commit.
+///
+/// `upstream` / `ahead` / `behind` are populated for local branches that have
+/// a tracking remote branch configured (`branch.<name>.remote` +
+/// `branch.<name>.merge`). Remote branches, tags, and `HEAD` always carry the
+/// defaults `(None, 0, 0)`. Resolution + counts are computed via git2's
+/// `graph_ahead_behind` because gix 0.68 lacks a stable equivalent — see
+/// `repo/commits.rs::resolve_upstream_tracking`.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RefTag {
     pub name: String,
     pub kind: RefKind,
+    /// Short name of the tracked remote branch (e.g. `origin/main`). `None`
+    /// when the local branch has no upstream configured or this ref isn't a
+    /// local branch.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub upstream: Option<String>,
+    /// Commits this local branch has that the upstream doesn't.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub ahead: u32,
+    /// Commits the upstream has that this local branch doesn't.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub behind: u32,
 }
 
 /// Input commit — caller is responsible for providing commits in reverse-topological order

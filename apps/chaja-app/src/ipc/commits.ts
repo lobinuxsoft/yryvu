@@ -56,6 +56,22 @@ export function getHostingService(repoPath: string): Promise<HostingService> {
 export interface RefTag {
   name: string;
   kind: "Branch" | "RemoteBranch" | "Tag" | "Head";
+  /**
+   * Short name of the tracked remote branch (e.g. `origin/main`). `null` when
+   * the local branch has no upstream configured or this ref isn't a local
+   * branch. Drives the upstream indicator section of the composite ref pill
+   * (issue #145, doc 06).
+   */
+  upstream: string | null;
+  /**
+   * Commits this local branch has that the upstream doesn't. `0` when no
+   * upstream is configured. Renders as `↑N` in the composite pill.
+   */
+  ahead: number;
+  /**
+   * Commits the upstream has that this local branch doesn't. Renders as `↓N`.
+   */
+  behind: number;
 }
 
 /**
@@ -177,6 +193,13 @@ export function getCommitDetails(
 interface GraphBatch {
   rows: GraphRow[];
   done: boolean;
+  /**
+   * SHA of the trunk pin selected by the backend's `pick_pinned_head`. Same
+   * value across every batch in a stream — frontend writes it once on the
+   * first batch that carries it. `null` when the repo has no resolvable
+   * trunk (detached HEAD + no remote default + no canonical branch).
+   */
+  pinnedSha: string | null;
 }
 
 export interface StreamHandle {
@@ -186,13 +209,20 @@ export interface StreamHandle {
 
 /**
  * Invokes `stream_graph` on the Rust side and emits row batches via `onBatch`.
- * Resolves when the Rust task signals `done`.
+ * Each batch also carries the trunk-pin sha through `onPinned`; identical
+ * across batches for a given stream so the consumer can write it once and
+ * ignore repeats. Resolves when the Rust task signals `done`.
  */
 export function streamGraph(
   repoPath: string,
   onBatch: (rows: GraphRow[]) => void,
-  batchSize = 100,
+  options: {
+    batchSize?: number;
+    onPinned?: (sha: string | null) => void;
+  } = {},
 ): StreamHandle {
+  const batchSize = options.batchSize ?? 100;
+  const onPinned = options.onPinned;
   let unlisten: UnlistenFn | undefined;
   let resolve!: () => void;
   let reject!: (err: unknown) => void;
@@ -205,6 +235,7 @@ export function streamGraph(
   (async () => {
     try {
       unlisten = await listen<GraphBatch>("graph:batch", (e) => {
+        onPinned?.(e.payload.pinnedSha);
         if (e.payload.rows.length > 0) onBatch(e.payload.rows);
         if (e.payload.done) {
           unlisten?.();

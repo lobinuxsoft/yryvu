@@ -63,6 +63,7 @@
   flex-direction: row;
 }
 
+
 .commit-graph__col-graph-hscroll {
   flex: 1;
   min-width: 0;
@@ -90,9 +91,131 @@
 }
 
 .commit-graph__zone--messages {
+  /* Width fixed via CSS var (driven by `graphColumnWidths.commitMessage`).
+     1:1 with GK — every column has a hard width, the trailing spacer
+     soaks up any leftover space, scroll-x kicks in if total > container. */
+  width: var(--graph-col-message);
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+
+/* Author / Date-Time / SHA zones — siblings of messages, fixed widths
+   driven by their CSS vars. Vertical scroll syncs to the messages zone
+   via `transform: translateY(-scrollTop)` (same pattern as the BRANCH /
+   GRAPH zones). */
+.commit-graph__zone--author {
+  width: var(--graph-col-author);
+  flex-shrink: 0;
+}
+
+.commit-graph__zone--date-time {
+  width: var(--graph-col-date-time);
+  flex-shrink: 0;
+}
+
+.commit-graph__zone--sha {
+  width: var(--graph-col-sha);
+  flex-shrink: 0;
+}
+
+.commit-graph__col-author,
+.commit-graph__col-date-time,
+.commit-graph__col-sha {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  min-width: 0;
+}
+
+.commit-graph__col-author .graph-row-wrapper,
+.commit-graph__col-date-time .graph-row-wrapper,
+.commit-graph__col-sha .graph-row-wrapper {
+  /* Minimal left padding (2 px, matching GK's `.graph-cell` rule). The
+     inner text span flexes to the row's full width so ellipsis only
+     ever kicks in when the actual cell can't fit the name. */
+  padding-left: 2px;
+  padding-right: 2px;
+  font-size: 12px;
+  color: var(--fg-1);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.commit-graph__author,
+.commit-graph__date-time,
+.commit-graph__sha {
+  /* `flex: 1` + `min-width: 0` is the canonical flex idiom for a child
+     that should both expand to fill the wrapper AND shrink with ellipsis
+     when the wrapper itself is too narrow. Without `min-width: 0` flex
+     refuses to size below the content's intrinsic width and the column
+     overflows the parent. */
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-graph__date-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+
+/* Author cell — icon-only mode triggered when the Author column is
+   resized below `COMMIT_AUTHOR_ZONE_SHOW_ICON_WIDTH = 55` (1:1 with
+   GK's per-zone icon-width constant). The badge inherits the row's
+   lane color so commits remain visually grouped by branch even when
+   author names are hidden. */
+.commit-graph__author--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* HTML twin of `<CommitAvatar>` (the SVG variant inside the graph
+   zone). Reuses the same `avatarStatusByEmail` cache so an image
+   loaded once for the graph circle is hit from cache when the Author
+   column also paints it. Initials show through underneath when the
+   image is still loading or 404'd. */
+.author-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.author-badge__initials {
+  position: relative;
+  z-index: 0;
+}
+
+.author-badge__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  z-index: 1;
+  transition: opacity 120ms ease-out;
+}
+
+
+.commit-graph__sha {
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
+  font-size: 11px;
+  color: var(--fg-2);
 }
 
 /* GRAPH horizontal scrollbar styling (WebKit — Tauri Linux). Applied
@@ -187,10 +310,111 @@
   flex-shrink: 0;
 }
 
+.ref-pill__icon-r {
+  flex-shrink: 0;
+  opacity: 0.85;
+  /* Right-side icons (monitor, cloud) sit between name and upstream. The
+     monitor glyph indicates worktree / active checkout; cloud indicates
+     the local branch has remote tracking config. */
+}
+
+.ref-pill__annotation {
+  flex-shrink: 0;
+  /* Annotation slot sits at the far left, ahead of the kind icon. Slightly
+     more prominent than the kind glyph since it conveys ref *state*
+     (checked-out / pinned) rather than ref *type*. */
+  opacity: 0.95;
+}
+
 .ref-pill__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Upstream indicator — ahead/behind arrows tracked vs configured upstream.
+   Renders only when at least one of ahead/behind is non-zero (matches the
+   GK bundle which hides the row entirely when in sync). */
+.ref-pill__upstream {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.ref-pill__ahead,
+.ref-pill__behind {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+/* Pinned annotation — only the trunk's local-branch pill on the pinned
+   row gets it. Visually weaker than the active checkmark so the
+   precedence reads at a glance. */
+.ref-pill.is-pinned {
+  border-color: color-mix(in srgb, var(--fg-1) 35%, transparent);
+}
+
+.ref-pill.is-pinned .ref-pill__annotation {
+  opacity: 0.8;
+}
+
+/* Ghost pills — refs that pass through this commit but don't tip here.
+   GK shows them only on row hover (`showGhostRefsOnRowHover`). Visually
+   they read as "shadow" pills: lower opacity, no border, smaller weight,
+   no interactivity. */
+.ref-pill.is-ghost {
+  opacity: 0.35;
+  background: transparent;
+  border-color: transparent;
+  font-weight: 400;
+  cursor: default;
+  pointer-events: none;
+  /* Compress: ghost pills should not crowd the active pill row. */
+  padding: 0 4px;
+  max-width: 110px;
+}
+
+/* Ghost container holds the on-hover companions. Inline so they sit on
+   the same line as the live pill + overflow chip; gap matches `.ref-node`
+   for visual continuity. */
+.ref-node__ghosts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Hide-btn — visible on pill hover only (matches GK's `enableShowHideRefsOptions
+   && !hasActive` gating; the `!hasActive` half is enforced via `suppressHide`
+   from the pill group). */
+.ref-pill__hide-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin-left: 2px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.ref-pill:hover .ref-pill__hide-btn,
+.ref-pill:focus-within .ref-pill__hide-btn {
+  display: inline-flex;
+}
+
+.ref-pill__hide-btn:hover {
+  background: color-mix(in srgb, currentColor 25%, transparent);
+  opacity: 1;
 }
 
 /* Type-color variants — GitHub status palette conventions, not lane colors.
@@ -248,9 +472,10 @@
 }
 
 .ref-node__popover {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
+  /* Rendered via Portal at document.body, positioned with `top`/`left`
+     written inline from the trigger's getBoundingClientRect(). Fixed so
+     the popover escapes the BRANCH/TAG zone's `overflow: hidden`. */
+  position: fixed;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -259,12 +484,28 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 8px 24px color-mix(in srgb, black 40%, transparent);
-  z-index: 10;
+  z-index: 100;
   min-width: 160px;
+  /* Stretch to fit the longest ref name (within reason). 24-char branches
+     like `4236-fix-frameo-en-casco` overflow a 200-px pill cap; readable
+     names matter more than a tight rectangle here. */
+  max-width: min(420px, 80vw);
+  width: max-content;
 }
 
 .ref-node__popover .ref-pill {
-  max-width: 200px;
+  /* Inside the popover, drop the inline max-width cap so long branch
+     names like `4236-fix-frameo-en-casco` render in full. The popover
+     itself caps total width at min(420px, 80vw). */
+  max-width: none;
+}
+
+.ref-node__popover .ref-pill__name {
+  /* And let the name keep its natural width — no truncation inside the
+     popover (the inline pill still truncates to fit the BRANCH/TAG
+     column). */
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .commit-graph__col-graph {
@@ -397,24 +638,8 @@
   transition: opacity 80ms ease-out;
 }
 
-.commit-graph__sha {
-  font-family: var(--font-mono);
-  color: var(--fg-2);
-  width: 72px;
-  flex-shrink: 0;
-}
-
 .commit-graph__summary {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.commit-graph__author {
-  color: var(--fg-3);
-  font-size: 11px;
-  max-width: 30%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

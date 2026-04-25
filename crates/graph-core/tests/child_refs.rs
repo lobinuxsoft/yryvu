@@ -29,6 +29,7 @@ fn linear_chain_propagates_branch_to_ancestors_only() {
             vec![RefTag {
                 name: "main".into(),
                 kind: RefKind::Branch,
+                ..Default::default()
             }],
         ),
         commit("P", &["R"]),
@@ -61,6 +62,7 @@ fn merge_unions_both_branches_into_common_ancestor() {
             vec![RefTag {
                 name: "main".into(),
                 kind: RefKind::Branch,
+                ..Default::default()
             }],
         ),
         commit_with_refs(
@@ -69,6 +71,7 @@ fn merge_unions_both_branches_into_common_ancestor() {
             vec![RefTag {
                 name: "feature".into(),
                 kind: RefKind::Branch,
+                ..Default::default()
             }],
         ),
         commit("C", &["R"]),
@@ -106,18 +109,22 @@ fn ref_kinds_route_to_correct_buckets() {
                 RefTag {
                     name: "main".into(),
                     kind: RefKind::Branch,
+                    ..Default::default()
                 },
                 RefTag {
                     name: "origin/main".into(),
                     kind: RefKind::RemoteBranch,
+                    ..Default::default()
                 },
                 RefTag {
                     name: "v1.0.0".into(),
                     kind: RefKind::Tag,
+                    ..Default::default()
                 },
                 RefTag {
                     name: "HEAD".into(),
                     kind: RefKind::Head,
+                    ..Default::default()
                 },
             ],
         ),
@@ -152,14 +159,17 @@ fn multiple_refs_on_one_row_all_propagate() {
                 RefTag {
                     name: "main".into(),
                     kind: RefKind::Branch,
+                    ..Default::default()
                 },
                 RefTag {
                     name: "release/1.x".into(),
                     kind: RefKind::Branch,
+                    ..Default::default()
                 },
                 RefTag {
                     name: "release-v1.0".into(),
                     kind: RefKind::Tag,
+                    ..Default::default()
                 },
             ],
         ),
@@ -193,6 +203,7 @@ fn orphan_branches_do_not_cross_contaminate() {
             vec![RefTag {
                 name: "chain-a".into(),
                 kind: RefKind::Branch,
+                ..Default::default()
             }],
         ),
         commit_with_refs(
@@ -201,6 +212,7 @@ fn orphan_branches_do_not_cross_contaminate() {
             vec![RefTag {
                 name: "chain-b".into(),
                 kind: RefKind::Branch,
+                ..Default::default()
             }],
         ),
         commit("a2", &[]),

@@ -4,7 +4,7 @@ import { For, Show } from "solid-js";
 
 import type { MergeStrategy } from "../../../ipc";
 import { Dialog } from "../../Dialog";
-import type { BranchOps } from "../useBranchOps";
+import type { BranchOps } from "../../../branchOps";
 
 const STRATEGIES: { value: MergeStrategy; label: string }[] = [
   {

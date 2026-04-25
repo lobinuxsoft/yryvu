@@ -199,8 +199,10 @@ export const IconTerminal = (p?: IconProps) =>
 export const IconGear = (p?: IconProps) =>
   base(
     <>
-      <circle cx="8" cy="8" r="2" />
-      <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.5 3.5l1.5 1.5M11 11l1.5 1.5M12.5 3.5L11 5M5 11l-1.5 1.5" />
+      {/* 6-tooth gear: outer cog ring + inner hub. Filled tooth shapes
+          with a transparent inner ring read clearly at 14 px. */}
+      <path d="M8 1.5l1.1 1.6 2-.4.4 2 1.6 1.1-1 1.7 1 1.7-1.6 1.1-.4 2-2-.4L8 14.5l-1.1-1.6-2 .4-.4-2-1.6-1.1 1-1.7-1-1.7 1.6-1.1.4-2 2 .4z" />
+      <circle cx="8" cy="8" r="2.5" fill="var(--bg-1)" />
     </>,
     p,
   );
@@ -246,5 +248,42 @@ export const IconRefresh = (p?: IconProps) =>
       <path d="M13 4a5 5 0 1 0 1.3 5" />
       <path d="M13 2v3h-3" />
     </>,
+    p,
+  );
+
+export const IconPin = (p?: IconProps) =>
+  base(
+    <>
+      <path d="M9.5 1.5l5 5-2 2-3-1-2.5 2.5L8 11l-1.5 1.5L4 10l1.5-1.5 1 1L9 7l-1-3z" />
+      <path d="M5.5 11.5L2 14.5" />
+    </>,
+    p,
+  );
+
+export const IconClose = (p?: IconProps) =>
+  base(
+    <>
+      <path d="M3.5 3.5l9 9" />
+      <path d="M12.5 3.5l-9 9" />
+    </>,
+    p,
+  );
+
+/** Monitor / worktree indicator. Marks a ref that has a worktree mounted
+ * (the active checkout) — GK paints a small monitor glyph on the right
+ * side of pills that own a workdir. */
+export const IconMonitor = (p?: IconProps) =>
+  base(
+    <>
+      <rect x="2" y="3" width="12" height="8" rx="1" />
+      <path d="M5.5 13.5h5" />
+      <path d="M8 11v2.5" />
+    </>,
+    p,
+  );
+
+export const IconFilter = (p?: IconProps) =>
+  base(
+    <path d="M2 3h12l-4.5 5.5v4l-3 1.5v-5.5z" />,
     p,
   );

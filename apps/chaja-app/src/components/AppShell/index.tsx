@@ -5,16 +5,21 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import { CommitGraph } from "../CommitGraph";
+import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
 import { FileDiffTab } from "../FileDiffTab";
 import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
+import { DialogsHost } from "../LeftSidebar/DialogsHost";
 import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
+import { ContextMenu } from "../ContextMenu";
 import { IconOpenFolder, IconPlus, IconStar } from "../Icons";
+import { BranchOpsProvider, createBranchOps } from "../../branchOps";
 import {
   mainView,
   pushRecentRepo,
+  refreshBranches,
   repoPath,
   setRepoPath,
   setShowLeftPanel,
@@ -54,7 +59,14 @@ export function AppShell() {
     document.documentElement.setAttribute("data-theme", theme());
   });
 
+  // Single shared BranchOps instance. LeftSidebar and CommitGraph (ref pills)
+  // both consume it via `useBranchOps()` so dialogs and the context menu
+  // overlay live at the shell level — opening a menu from a ref pill in the
+  // graph still surfaces the same dialogs the sidebar uses.
+  const branchOps = createBranchOps({ refresh: refreshBranches });
+
   return (
+    <BranchOpsProvider ops={branchOps}>
     <div
       class="shell"
       data-show-left={showLeftPanel() ? "true" : "false"}
@@ -94,11 +106,7 @@ export function AppShell() {
             fallback={<FileDiffTab />}
           >
             <div class="main">
-              <div class="main__graph-column-headers">
-                <span>Branch / Tag</span>
-                <span>Graph</span>
-                <span>Commit Message</span>
-              </div>
+              <GraphColumnHeaders />
               <div class="main__graph-host">
                 <CommitGraph repoPath={repoPath()!} />
               </div>
@@ -114,7 +122,18 @@ export function AppShell() {
       <div class="shell__statusbar">
         <StatusBar />
       </div>
+
+      <Show when={branchOps.menu()}>
+        <ContextMenu
+          x={branchOps.menu()!.x}
+          y={branchOps.menu()!.y}
+          items={branchOps.menu()!.items}
+          onClose={() => branchOps.setMenu(null)}
+        />
+      </Show>
+      <DialogsHost ops={branchOps} />
     </div>
+    </BranchOpsProvider>
   );
 }
 

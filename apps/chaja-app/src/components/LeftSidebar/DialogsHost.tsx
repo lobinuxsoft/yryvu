@@ -7,7 +7,7 @@ import { DeleteRemoteDialog } from "./dialogs/DeleteRemoteDialog";
 import { MergePickDialog } from "./dialogs/MergePickDialog";
 import { MergeResultDialog } from "./dialogs/MergeResultDialog";
 import { RenameDialog } from "./dialogs/RenameDialog";
-import type { BranchOps } from "./useBranchOps";
+import type { BranchOps } from "../../branchOps";
 
 /**
  * Renders every branch-related dialog; each one opens itself based on

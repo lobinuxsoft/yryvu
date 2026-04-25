@@ -15,8 +15,11 @@ pub fn walk_commits(
     repo_path: &Path,
 ) -> Result<Box<dyn Iterator<Item = Result<Commit, BackendError>> + Send>, BackendError> {
     let repo = open_repo(repo_path)?;
+    // git2 powers upstream resolution + ahead/behind counts for ref pills
+    // (BACKEND: git2 — gix 0.68 lacks a stable `graph_ahead_behind` equivalent).
+    let git2_repo = open_git2(repo_path).ok();
 
-    let scan = collect_ref_tips(&repo)?;
+    let scan = collect_ref_tips(&repo, git2_repo.as_ref())?;
     if scan.tips.is_empty() {
         return Ok(Box::new(std::iter::empty()));
     }
@@ -395,6 +398,43 @@ fn peel_ref(repo: &gix::Repository, full_name: &str) -> Option<String> {
     Some(id.to_string())
 }
 
+/// Resolved tracking info for a single local branch. All-zero default means
+/// "no upstream configured or resolution failed" — the branch renders without
+/// the upstream indicator.
+#[derive(Debug, Default)]
+struct UpstreamInfo {
+    upstream: Option<String>,
+    ahead: u32,
+    behind: u32,
+}
+
+/// Resolve the upstream tracking branch + ahead/behind counts for a local
+/// branch using git2. Returns `None` only on errors that prevent classifying
+/// the branch (no upstream configured returns `Some(default)` with empty data).
+///
+/// Driven by `branch.<name>.remote` + `branch.<name>.merge` in the repo
+/// config — git2's `Branch::upstream()` reads those internally. We use
+/// `graph_ahead_behind` which is libgit2's optimized two-pointer walk
+/// (`git_graph_ahead_behind`) to avoid loading every commit on either side.
+fn resolve_upstream_tracking(
+    repo: &git2::Repository,
+    local_short_name: &str,
+) -> Option<UpstreamInfo> {
+    let local = repo
+        .find_branch(local_short_name, git2::BranchType::Local)
+        .ok()?;
+    let upstream = local.upstream().ok()?;
+    let upstream_name = upstream.name().ok().flatten()?.to_string();
+    let local_oid = local.get().target()?;
+    let upstream_oid = upstream.get().target()?;
+    let (ahead, behind) = repo.graph_ahead_behind(local_oid, upstream_oid).ok()?;
+    Some(UpstreamInfo {
+        upstream: Some(upstream_name),
+        ahead: ahead as u32,
+        behind: behind as u32,
+    })
+}
+
 /// Output of [`collect_ref_tips`]: the set of starting commits to seed the
 /// revwalk with, plus a map from each tip's object id to the [`RefTag`] list
 /// describing the refs that resolve to it.
@@ -406,7 +446,10 @@ struct RefScan {
     refs_by_oid: HashMap<gix::ObjectId, Vec<RefTag>>,
 }
 
-fn collect_ref_tips(repo: &gix::Repository) -> Result<RefScan, BackendError> {
+fn collect_ref_tips(
+    repo: &gix::Repository,
+    git2_repo: Option<&git2::Repository>,
+) -> Result<RefScan, BackendError> {
     let platform = repo
         .references()
         .context("open references platform")
@@ -432,9 +475,15 @@ fn collect_ref_tips(repo: &gix::Repository) -> Result<RefScan, BackendError> {
         if seen.insert(id) {
             tips.push(id);
         }
+        let upstream = git2_repo
+            .and_then(|r| resolve_upstream_tracking(r, &short))
+            .unwrap_or_default();
         refs_by_oid.entry(id).or_default().push(RefTag {
             name: short,
             kind: RefKind::Branch,
+            upstream: upstream.upstream,
+            ahead: upstream.ahead,
+            behind: upstream.behind,
         });
     }
 
@@ -462,6 +511,7 @@ fn collect_ref_tips(repo: &gix::Repository) -> Result<RefScan, BackendError> {
         refs_by_oid.entry(id).or_default().push(RefTag {
             name: short,
             kind: RefKind::RemoteBranch,
+            ..Default::default()
         });
     }
 
@@ -484,6 +534,7 @@ fn collect_ref_tips(repo: &gix::Repository) -> Result<RefScan, BackendError> {
         refs_by_oid.entry(id).or_default().push(RefTag {
             name: short,
             kind: RefKind::Tag,
+            ..Default::default()
         });
     }
 
@@ -496,6 +547,7 @@ fn collect_ref_tips(repo: &gix::Repository) -> Result<RefScan, BackendError> {
         refs_by_oid.entry(id).or_default().push(RefTag {
             name: "HEAD".to_string(),
             kind: RefKind::Head,
+            ..Default::default()
         });
         if seen.insert(id) {
             tips.push(id);

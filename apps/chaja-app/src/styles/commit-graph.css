@@ -36,6 +36,12 @@
   flex: 1;
   min-height: 0;
   display: flex;
+  /* `align-items: flex-start` keeps each zone at its natural content
+     height (== UL totalHeight). Without it, flex defaults to
+     `stretch`, every zone gets pulled to the container height, and
+     the leftover viewport space below the last commit shows as a
+     dead band the row tint can't reach. */
+  align-items: flex-start;
   padding: 0 var(--graph-col-padding);
   /* Single source of vertical scroll. Used to live on the messages
      zone, but the moment a user toggled commit-message off the scroll
@@ -77,7 +83,9 @@
 .commit-graph__col-graph-hscroll {
   flex: 1;
   min-width: 0;
-  height: 100%;
+  /* No `height: 100%` — the wrapper hugs its UL's natural totalHeight
+     so the parent `.commit-graph__zones` scrolls everything together
+     without a dead viewport-tall slab at the bottom. */
   overflow-x: auto;
   overflow-y: hidden;
   position: relative;

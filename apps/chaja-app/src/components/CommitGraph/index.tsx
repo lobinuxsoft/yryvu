@@ -526,18 +526,6 @@ export function CommitGraph(props: CommitGraphProps) {
                         if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
                       }}
                     >
-                      <span
-                        class="commit-graph__row-tint"
-                        aria-hidden="true"
-                        style={(() => {
-                          const dims = getRenderDims(
-                            commitZoneMode() === "compact",
-                          );
-                          return {
-                            left: `${dims.gutter + r.lane * dims.laneWidth + dims.laneWidth / 2}px`,
-                          };
-                        })()}
-                      />
                       <CommitRowGraph
                         row={r}
                         edges={edgeStates()[item.index] ?? new Map()}

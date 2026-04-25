@@ -281,3 +281,9 @@ export const IconMonitor = (p?: IconProps) =>
     </>,
     p,
   );
+
+export const IconFilter = (p?: IconProps) =>
+  base(
+    <path d="M2 3h12l-4.5 5.5v4l-3 1.5v-5.5z" />,
+    p,
+  );

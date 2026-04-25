@@ -20,6 +20,7 @@ import {
 } from "../../ipc";
 import {
   activeColumnSettings,
+  activeOrderedZones,
   amendEnabled,
   commitZoneMode,
   commitMessage,
@@ -42,13 +43,21 @@ import { CommitDialogs } from "./CommitDialogs";
 import { createCommitOps } from "./useCommitOps";
 import { RefPillGroup } from "./RefPills";
 import {
+  AuthorBadge,
   CommitRowGraph,
-  GUTTER,
-  LANE_WIDTH,
+  getRenderDims,
   ROW_HEIGHT,
 } from "./RowRenderer";
 import { createIncrementalEdgeStates } from "./edgeStates";
 import { formatCommitDateTime } from "./columns";
+
+/**
+ * Threshold below which the Author cell renders avatar-only (initials
+ * badge with the lane color) instead of the author name. 1:1 with GK's
+ * `COMMIT_AUTHOR_ZONE_SHOW_ICON_WIDTH = 55` constant from the bundle.
+ * Resizing the Author column under 55 px swaps the rendering.
+ */
+const AUTHOR_ICON_WIDTH_THRESHOLD = 55;
 
 /**
  * Module-level className cache (Bd pattern from doc 12 — row wrapper).
@@ -174,9 +183,20 @@ export function CommitGraph(props: CommitGraphProps) {
     }
     return max;
   });
-  const graphContentWidth = createMemo(
-    () => GUTTER + (maxLane() + 1) * LANE_WIDTH + 8,
-  );
+  const graphContentWidth = createMemo(() => {
+    const dims = getRenderDims(commitZoneMode() === "compact");
+    return dims.gutter + (maxLane() + 1) * dims.laneWidth + 8;
+  });
+  // Pick the zone that should soak up leftover horizontal space — 1:1
+  // with GK. Message is "elastic content" so when it's visible IT gets
+  // the leftover; otherwise fall back to the rightmost visible zone so
+  // there's never a dead strip on the right edge. Reactive on
+  // visibility / mode changes.
+  const growZone = createMemo(() => {
+    const order = activeOrderedZones();
+    if (order.includes("commitMessage")) return "commitMessage" as const;
+    return order[order.length - 1];
+  });
 
   // Push the user-controlled column widths to CSS custom properties on
   // `.main` so both the header strip and the zones below pick them up
@@ -258,7 +278,10 @@ export function CommitGraph(props: CommitGraphProps) {
   const headBranchName = createMemo(
     () => headRow()?.refs.find((r) => r.kind === "Head")?.name,
   );
-  const wipNodeX = () => GUTTER + headLane() * LANE_WIDTH + LANE_WIDTH / 2;
+  const wipNodeX = () => {
+    const dims = getRenderDims(commitZoneMode() === "compact");
+    return dims.gutter + headLane() * dims.laneWidth + dims.laneWidth / 2;
+  };
 
   /* ========================================================================
      Row virtualization (#141) — only mount rows visible in the viewport plus
@@ -373,9 +396,13 @@ export function CommitGraph(props: CommitGraphProps) {
           That way each cell inherits its zone's scroll coordinate
           system — the GRAPH cell lives inside the horizontal scroll
           wrapper, so the node follows horizontal pan too. */}
+      {/* `growZone()` reactive — drives `is-last-visible` so the
+          rightmost visible column flex-grows to soak up leftover space.
+          Reorders with mode automatically. */}
       <div class="commit-graph__zones">
         <div
           class="commit-graph__zone commit-graph__zone--branch"
+          classList={{ "is-last-visible": growZone() === "ref" }}
           style={{ order: activeColumnSettings("ref").order }}
           onWheel={forwardWheel}
         >
@@ -459,7 +486,10 @@ export function CommitGraph(props: CommitGraphProps) {
         </div>
         <div
           class="commit-graph__zone commit-graph__zone--graph"
-          classList={{ "is-compact": commitZoneMode() === "compact" }}
+          classList={{
+            "is-compact": commitZoneMode() === "compact",
+            "is-last-visible": growZone() === "graph",
+          }}
           style={{ order: activeColumnSettings("graph").order }}
           onWheel={forwardWheel}
         >
@@ -529,14 +559,20 @@ export function CommitGraph(props: CommitGraphProps) {
                       <span
                         class="commit-graph__row-tint"
                         aria-hidden="true"
-                        style={{
-                          left: `${GUTTER + r.lane * LANE_WIDTH + LANE_WIDTH / 2}px`,
-                        }}
+                        style={(() => {
+                          const dims = getRenderDims(
+                            commitZoneMode() === "compact",
+                          );
+                          return {
+                            left: `${dims.gutter + r.lane * dims.laneWidth + dims.laneWidth / 2}px`,
+                          };
+                        })()}
                       />
                       <CommitRowGraph
                         row={r}
                         edges={edgeStates()[globalIndex()] ?? new Map()}
                         hostingService={hostingService()}
+                        compact={commitZoneMode() === "compact"}
                       />
                     </li>
                   );
@@ -576,6 +612,7 @@ export function CommitGraph(props: CommitGraphProps) {
         </div>
         <div
           class="commit-graph__zone commit-graph__zone--messages"
+          classList={{ "is-last-visible": growZone() === "commitMessage" }}
           style={{ order: activeColumnSettings("commitMessage").order }}
           ref={messagesScroll}
           onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
@@ -645,6 +682,7 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitAuthor").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--author"
+            classList={{ "is-last-visible": growZone() === "commitAuthor" }}
             style={{ order: activeColumnSettings("commitAuthor").order }}
             onWheel={forwardWheel}
           >
@@ -686,9 +724,30 @@ export function CommitGraph(props: CommitGraphProps) {
                         if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
                       }}
                     >
-                      <span class="commit-graph__author" title={r.author_name}>
-                        {r.author_name}
-                      </span>
+                      <Show
+                        when={
+                          activeColumnSettings("commitAuthor").width >
+                          AUTHOR_ICON_WIDTH_THRESHOLD
+                        }
+                        fallback={
+                          <span
+                            class="commit-graph__author commit-graph__author--icon"
+                            title={r.author_name}
+                          >
+                            <AuthorBadge
+                              authorEmail={r.author_email}
+                              authorInitials={r.author_initials}
+                              gravatarHash={r.gravatar_hash}
+                              hostingService={hostingService()}
+                              colorIdx={r.color_idx}
+                            />
+                          </span>
+                        }
+                      >
+                        <span class="commit-graph__author" title={r.author_name}>
+                          {r.author_name}
+                        </span>
+                      </Show>
                     </li>
                   );
                 }}
@@ -699,6 +758,7 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitDateTime").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--date-time"
+            classList={{ "is-last-visible": growZone() === "commitDateTime" }}
             style={{ order: activeColumnSettings("commitDateTime").order }}
             onWheel={forwardWheel}
           >
@@ -753,6 +813,7 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitSha").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--sha"
+            classList={{ "is-last-visible": growZone() === "commitSha" }}
             style={{ order: activeColumnSettings("commitSha").order }}
             onWheel={forwardWheel}
           >
@@ -802,13 +863,6 @@ export function CommitGraph(props: CommitGraphProps) {
             </ul>
           </div>
         </Show>
-        {/* Trailing filler — soaks up leftover space. Order 100 keeps it
-            after every visible zone regardless of the active mode's
-            reordering. */}
-        <div
-          class="commit-graph__zone commit-graph__zone--filler"
-          style={{ order: 100 }}
-        />
       </div>
       <Show when={ops.menu()}>
         <ContextMenu

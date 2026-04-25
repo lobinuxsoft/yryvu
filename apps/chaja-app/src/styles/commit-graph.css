@@ -63,13 +63,6 @@
   flex-direction: row;
 }
 
-/* Compact graph rendering — shrinks lane spacing + node radii via CSS
-   transform on the inner SVG. Mirrors GK's `commitZone.mode = Compact`
-   visual: same viewport, denser graph. */
-.commit-graph__zone--graph.is-compact .graph-row__svg {
-  transform: scale(0.65);
-  transform-origin: left center;
-}
 
 .commit-graph__col-graph-hscroll {
   flex: 1;
@@ -106,12 +99,6 @@
   overflow-y: auto;
 }
 
-/* Trailing spacer: takes whatever pixels remain when the sum of column
-   widths is smaller than the viewport. Mirrors GK's empty-area pattern. */
-.commit-graph__zone--filler {
-  flex: 1;
-  min-width: 0;
-}
 
 /* Author / Date-Time / SHA zones — siblings of messages, fixed widths
    driven by their CSS vars. Vertical scroll syncs to the messages zone
@@ -145,8 +132,11 @@
 .commit-graph__col-author .graph-row-wrapper,
 .commit-graph__col-date-time .graph-row-wrapper,
 .commit-graph__col-sha .graph-row-wrapper {
-  padding-left: var(--graph-col-gap);
-  padding-right: var(--graph-col-gap);
+  /* Minimal left padding (2 px, matching GK's `.graph-cell` rule). The
+     inner text span flexes to the row's full width so ellipsis only
+     ever kicks in when the actual cell can't fit the name. */
+  padding-left: 2px;
+  padding-right: 2px;
   font-size: 12px;
   color: var(--fg-1);
   display: flex;
@@ -158,6 +148,13 @@
 .commit-graph__author,
 .commit-graph__date-time,
 .commit-graph__sha {
+  /* `flex: 1` + `min-width: 0` is the canonical flex idiom for a child
+     that should both expand to fill the wrapper AND shrink with ellipsis
+     when the wrapper itself is too narrow. Without `min-width: 0` flex
+     refuses to size below the content's intrinsic width and the column
+     overflows the parent. */
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -166,6 +163,52 @@
 .commit-graph__date-time {
   font-variant-numeric: tabular-nums;
   color: var(--fg-2);
+}
+
+/* Author cell — icon-only mode triggered when the Author column is
+   resized below `COMMIT_AUTHOR_ZONE_SHOW_ICON_WIDTH = 55` (1:1 with
+   GK's per-zone icon-width constant). The badge inherits the row's
+   lane color so commits remain visually grouped by branch even when
+   author names are hidden. */
+.commit-graph__author--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* HTML twin of `<CommitAvatar>` (the SVG variant inside the graph
+   zone). Reuses the same `avatarStatusByEmail` cache so an image
+   loaded once for the graph circle is hit from cache when the Author
+   column also paints it. Initials show through underneath when the
+   image is still loading or 404'd. */
+.author-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.author-badge__initials {
+  position: relative;
+  z-index: 0;
+}
+
+.author-badge__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  z-index: 1;
+  transition: opacity 120ms ease-out;
 }
 
 
@@ -595,24 +638,8 @@
   transition: opacity 80ms ease-out;
 }
 
-.commit-graph__sha {
-  font-family: var(--font-mono);
-  color: var(--fg-2);
-  width: 72px;
-  flex-shrink: 0;
-}
-
 .commit-graph__summary {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.commit-graph__author {
-  color: var(--fg-3);
-  font-size: 11px;
-  max-width: 30%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

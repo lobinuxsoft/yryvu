@@ -111,11 +111,6 @@
   padding-left: var(--graph-col-gap);
 }
 
-.main__graph-column-header--filler {
-  flex: 1;
-  min-width: 0;
-  padding: 0;
-}
 
 .main__graph-column-header[data-zone="commitAuthor"] {
   width: var(--graph-col-author);
@@ -132,10 +127,40 @@
   padding-left: var(--graph-col-gap);
 }
 
-.main__graph-column-header-branch {
+.main__graph-column-header-branch,
+.main__graph-column-header-author {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Author column filter button — 1:1 with GK's author/team filter
+   trigger. The popover (`Filter the graph by team or author`) is
+   deferred until the backend can list distinct authors per repo;
+   the button stays visible but disabled until then. */
+.author-filter__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--fg-3);
+  cursor: pointer;
+}
+
+.author-filter__btn:hover:not(:disabled) {
+  background: var(--bg-3);
+  color: var(--fg-0);
+  border-color: var(--border);
+}
+
+.author-filter__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* Resize handle — 1:1 port of GK's `.table-list-resize-handle`

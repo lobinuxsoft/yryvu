@@ -68,14 +68,123 @@ function rememberAvatarStatus(email: string, failed: boolean) {
 }
 
 const ROW_HEIGHT = 28;
-const LANE_WIDTH = 22;
-const GUTTER = 28;
-const COMMIT_RADIUS = 11;
-const MERGE_RADIUS = 6;
-const EDGE_ARC_APPROACH = 11;
-const EDGE_ARC_PADDING = 3;
-const ARC_RADIUS = EDGE_ARC_APPROACH - EDGE_ARC_PADDING;
 const PALETTE_SIZE = 10;
+
+/**
+ * Resolve the best avatar URL for an author email. Shared by the
+ * SVG `CommitAvatar` (graph zone) and the HTML `AuthorBadge` (author
+ * column icon-only mode) so the same image gets cache-hit by the
+ * browser the second time around.
+ *
+ * Provider preference matches GK (`getAvatarFromEmail`, app bundle):
+ *   1. github CDN email endpoint when the repo's primary remote is GH;
+ *   2. github noreply email → `github.com/<user>.png`;
+ *   3. gravatar with `d=404` so misses fall back to initials.
+ */
+export function resolveAvatarUrl(
+  email: string,
+  gravatarHash: string,
+  hostingService: HostingService,
+  diameterPx: number,
+): string {
+  if (hostingService === "github") {
+    return `https://avatars.githubusercontent.com/u/e?email=${encodeURIComponent(
+      email,
+    )}&s=${diameterPx}`;
+  }
+  const noreply = /^(?:\d+\+)?([^@\s]+)@users\.noreply\.github\.com$/i.exec(email);
+  if (noreply && noreply[1]) {
+    return `https://github.com/${noreply[1]}.png?size=${diameterPx}`;
+  }
+  return `https://gravatar.com/avatar/${gravatarHash}?s=${diameterPx}&d=404`;
+}
+
+/**
+ * HTML-friendly author avatar badge — used by the Author column in
+ * icon-only mode. Mirrors `CommitAvatar`'s URL resolution and 404
+ * cache so the image is loaded once per email and reused everywhere.
+ */
+export function AuthorBadge(props: {
+  authorEmail: string;
+  authorInitials: string;
+  gravatarHash: string;
+  hostingService: HostingService;
+  colorIdx: number;
+}) {
+  const cached = avatarStatusByEmail.get(props.authorEmail);
+  const [loaded, setLoaded] = createSignal(cached === false);
+  const url = () =>
+    resolveAvatarUrl(props.authorEmail, props.gravatarHash, props.hostingService, 44);
+  return (
+    <span
+      class="author-badge"
+      style={{
+        background: `var(--column-${props.colorIdx % PALETTE_SIZE}-color)`,
+      }}
+    >
+      <span class="author-badge__initials">{props.authorInitials}</span>
+      <Show when={cached !== true}>
+        <img
+          class="author-badge__img"
+          src={url()}
+          alt=""
+          style={{ opacity: loaded() ? 1 : 0 }}
+          onLoad={() => {
+            rememberAvatarStatus(props.authorEmail, false);
+            setLoaded(true);
+          }}
+          onError={() => {
+            rememberAvatarStatus(props.authorEmail, true);
+          }}
+        />
+      </Show>
+    </span>
+  );
+}
+
+/**
+ * Render dimensions — driven from `commitZoneMode`. `default` matches the
+ * GK bundle's hardcoded `COMMIT_COLUMN_WIDTH=22` / `COMMIT_NODE_DIAMETER=22`
+ * (1:1 with text mode). `compact` shrinks the lane width + node radius
+ * to roughly 64% so a busy graph fits more lanes per pixel — the bundle
+ * ships a single COMMIT_COLUMN_WIDTH constant, but the user-visible
+ * compact mode in GK does pack more lanes into the same horizontal
+ * space, which matches the geometric reduction encoded here.
+ */
+export interface RenderDims {
+  laneWidth: number;
+  gutter: number;
+  commitRadius: number;
+  mergeRadius: number;
+  edgeArcApproach: number;
+  edgeArcPadding: number;
+  arcRadius: number;
+}
+
+const DEFAULT_DIMS: RenderDims = {
+  laneWidth: 22,
+  gutter: 28,
+  commitRadius: 11,
+  mergeRadius: 6,
+  edgeArcApproach: 11,
+  edgeArcPadding: 3,
+  arcRadius: 8,
+};
+
+const COMPACT_DIMS: RenderDims = {
+  laneWidth: 14,
+  gutter: 18,
+  commitRadius: 7,
+  mergeRadius: 4,
+  edgeArcApproach: 7,
+  edgeArcPadding: 2,
+  arcRadius: 5,
+};
+
+export function getRenderDims(compact: boolean): RenderDims {
+  return compact ? COMPACT_DIMS : DEFAULT_DIMS;
+}
+
 
 // GK's `eC`/`eT` lookup tables: angle (degrees) → cos/sin. Convention:
 // 0=LEFT, 90=DOWN, 180=RIGHT, 270=UP (y grows down in SVG).
@@ -84,8 +193,8 @@ const SIN_TABLE: Record<number, number> = { 0: 0, 90: 1, 180: 0, 270: -1 };
 
 type ArcAngle = 0 | 90 | 180 | 270;
 
-function laneCenterX(lane: number): number {
-  return GUTTER + lane * LANE_WIDTH + LANE_WIDTH / 2;
+function laneCenterX(lane: number, dims: RenderDims): number {
+  return dims.gutter + lane * dims.laneWidth + dims.laneWidth / 2;
 }
 
 function laneColor(col: number): string {
@@ -93,15 +202,15 @@ function laneColor(col: number): string {
 }
 
 /** GK's `eE(e, t, o)`: arc endpoint + straight-line-padding offset for a
- *  cardinal angle on a circle of radius `EDGE_ARC_APPROACH` at (cx, cy). */
-function arcEndpoint(cx: number, cy: number, angle: ArcAngle) {
+ *  cardinal angle on a circle of radius `dims.edgeArcApproach` at (cx, cy). */
+function arcEndpoint(cx: number, cy: number, angle: ArcAngle, dims: RenderDims) {
   const cosA = COS_TABLE[angle];
   const sinA = SIN_TABLE[angle];
   return {
-    x: cx - EDGE_ARC_APPROACH * cosA,
-    y: cy + EDGE_ARC_APPROACH * sinA,
-    xOffset: -(cosA * EDGE_ARC_PADDING),
-    yOffset: sinA * EDGE_ARC_PADDING,
+    x: cx - dims.edgeArcApproach * cosA,
+    y: cy + dims.edgeArcApproach * sinA,
+    xOffset: -(cosA * dims.edgeArcPadding),
+    yOffset: sinA * dims.edgeArcPadding,
   };
 }
 
@@ -112,13 +221,14 @@ function arcPath(
   cy: number,
   startAngle: ArcAngle,
   endAngle: ArcAngle,
+  dims: RenderDims,
 ): string {
-  const s = arcEndpoint(cx, cy, startAngle);
-  const l = arcEndpoint(cx, cy, endAngle);
+  const s = arcEndpoint(cx, cy, startAngle, dims);
+  const l = arcEndpoint(cx, cy, endAngle, dims);
   const leadIn =
     l.xOffset !== 0 ? `H ${s.x + l.xOffset}` : `V ${s.y + l.yOffset}`;
   const leadOut = s.xOffset !== 0 ? `H ${l.x}` : `V ${l.y}`;
-  return `M ${s.x} ${s.y} ${leadIn} A ${ARC_RADIUS} ${ARC_RADIUS} 0 0 0 ${
+  return `M ${s.x} ${s.y} ${leadIn} A ${dims.arcRadius} ${dims.arcRadius} 0 0 0 ${
     l.x + s.xOffset
   } ${l.y + s.yOffset} ${leadOut}`;
 }
@@ -126,13 +236,10 @@ function arcPath(
 export interface CommitRowGraphProps {
   row: GraphRow;
   edges: RowEdges;
-  /**
-   * Hosting service of the repo's primary remote, passed down from
-   * `CommitGraph`. Drives provider-native avatar source selection in
-   * `<CommitAvatar>` — `"github"` uses GitHub's CDN email endpoint,
-   * anything else falls back to Gravatar.
-   */
   hostingService: HostingService;
+  /** When `true`, render with the compact dimension preset (smaller
+   *  lanes + nodes). Mirrors GK's `commitZone.mode === Compact`. */
+  compact: boolean;
 }
 
 /**
@@ -280,8 +387,8 @@ function CommitAvatar(props: {
  * grouping `<g>` wrapper because the DOM layering is already correct via
  * append order.
  */
-function renderPassThrough(col: number) {
-  const x = laneCenterX(col);
+function renderPassThrough(col: number, dims: RenderDims) {
+  const x = laneCenterX(col, dims);
   return (
     <line
       x1={x}
@@ -294,11 +401,10 @@ function renderPassThrough(col: number) {
   );
 }
 
-function renderStartingEdge(edgeCol: number, nodeCol: number) {
-  const edgeX = laneCenterX(edgeCol);
+function renderStartingEdge(edgeCol: number, nodeCol: number, dims: RenderDims) {
+  const edgeX = laneCenterX(edgeCol, dims);
   const color = laneColor(edgeCol);
   if (edgeCol === nodeCol) {
-    // Same-column — simple bottom-half vertical at commit's lane.
     return (
       <line
         x1={edgeX}
@@ -310,31 +416,25 @@ function renderStartingEdge(edgeCol: number, nodeCol: number) {
       />
     );
   }
-  // Cross-column L-shape (merge extra parent): edge leaves commit at
-  // midY, arcs over to the parent's column at the row's bottom.
-  const nodeX = laneCenterX(nodeCol);
+  const nodeX = laneCenterX(nodeCol, dims);
   const sign = nodeX > edgeX ? 1 : -1;
-  const h = sign * EDGE_ARC_APPROACH;
+  const h = sign * dims.edgeArcApproach;
   const arcCx = edgeX + h;
-  const arcCy = ROW_HEIGHT - EDGE_ARC_PADDING;
-  // GK's literal table at bundle offset 242611:
-  //   t<o → start=180, end=270   (commit LEFT of edge, sign<0)
-  //   t>o → start=270, end=  0   (commit RIGHT of edge, sign>0)
-  // `t` is nodeCol in the calling convention; `o` is edgeCol.
+  const arcCy = ROW_HEIGHT - dims.edgeArcPadding;
   const startAngle: ArcAngle = sign > 0 ? 270 : 180;
   const endAngle: ArcAngle = sign > 0 ? 0 : 270;
   return (
     <>
       <line
         x1={edgeX}
-        y1={ROW_HEIGHT - EDGE_ARC_PADDING}
+        y1={ROW_HEIGHT - dims.edgeArcPadding}
         x2={edgeX}
         y2={ROW_HEIGHT}
         stroke={color}
         stroke-width="2"
       />
       <path
-        d={arcPath(arcCx, arcCy, startAngle, endAngle)}
+        d={arcPath(arcCx, arcCy, startAngle, endAngle, dims)}
         stroke={color}
         fill="none"
         stroke-width="2"
@@ -351,11 +451,10 @@ function renderStartingEdge(edgeCol: number, nodeCol: number) {
   );
 }
 
-function renderEndingEdge(edgeCol: number, nodeCol: number) {
-  const edgeX = laneCenterX(edgeCol);
+function renderEndingEdge(edgeCol: number, nodeCol: number, dims: RenderDims) {
+  const edgeX = laneCenterX(edgeCol, dims);
   const color = laneColor(edgeCol);
   if (edgeCol === nodeCol) {
-    // Same-column — simple top-half vertical at commit's lane.
     return (
       <line
         x1={edgeX}
@@ -367,17 +466,11 @@ function renderEndingEdge(edgeCol: number, nodeCol: number) {
       />
     );
   }
-  // Cross-column L-shape (first-parent at different lane): edge enters
-  // at row top in the descendant's (edge) column, arcs over to midY at
-  // the parent commit's column.
-  const nodeX = laneCenterX(nodeCol);
+  const nodeX = laneCenterX(nodeCol, dims);
   const sign = nodeX > edgeX ? 1 : -1;
-  const h = sign * EDGE_ARC_APPROACH;
+  const h = sign * dims.edgeArcApproach;
   const arcCx = edgeX + h;
-  const arcCy = EDGE_ARC_PADDING;
-  // GK's literal table at bundle offset 243347:
-  //   t>o → start=  0, end=90    (commit RIGHT of edge, sign>0)
-  //   t<o → start= 90, end=180   (commit LEFT of edge, sign<0)
+  const arcCy = dims.edgeArcPadding;
   const startAngle: ArcAngle = sign > 0 ? 0 : 90;
   const endAngle: ArcAngle = sign > 0 ? 90 : 180;
   return (
@@ -386,12 +479,12 @@ function renderEndingEdge(edgeCol: number, nodeCol: number) {
         x1={edgeX}
         y1={0}
         x2={edgeX}
-        y2={EDGE_ARC_PADDING}
+        y2={dims.edgeArcPadding}
         stroke={color}
         stroke-width="2"
       />
       <path
-        d={arcPath(arcCx, arcCy, startAngle, endAngle)}
+        d={arcPath(arcCx, arcCy, startAngle, endAngle, dims)}
         stroke={color}
         fill="none"
         stroke-width="2"
@@ -409,15 +502,11 @@ function renderEndingEdge(edgeCol: number, nodeCol: number) {
 }
 
 export function CommitRowGraph(props: CommitRowGraphProps) {
+  const dims = () => getRenderDims(props.compact);
   const midY = ROW_HEIGHT / 2;
   const radius = () =>
-    props.row.is_merge ? MERGE_RADIUS : COMMIT_RADIUS;
+    props.row.is_merge ? dims().mergeRadius : dims().commitRadius;
   const commitColor = () => laneColor(props.row.color_idx);
-  // HEAD rows get a 2-px ref-connector; every other row stays at 1 px.
-  // GitKraken highlights the checked-out branch the same way — the
-  // connector doubles as a subtle "you are here" cue. Detected via the
-  // synthetic `Head` ref the backend emits alongside the local branch
-  // whose commit is HEAD.
   const isHeadRow = () => props.row.refs.some((r) => r.kind === "Head");
   const hasRefs = () => props.row.refs.length > 0;
 
@@ -436,7 +525,7 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
     for (const pl of props.row.parent_lanes) if (pl > max) max = pl;
     return max;
   };
-  const svgWidth = () => laneCenterX(maxLane()) + COMMIT_RADIUS + 4;
+  const svgWidth = () => laneCenterX(maxLane(), dims()) + dims().commitRadius + 4;
 
   return (
     <svg
@@ -445,57 +534,37 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
       height={ROW_HEIGHT}
       aria-hidden="true"
     >
-      {/* Ref-pill → commit connector (#127). Horizontal line from the SVG's
-          left edge to just before the commit circle, at midY. The span in
-          the BRANCH/TAG column handles the portion to the left of this
-          SVG; together they span from the last pill all the way into the
-          node. Painted BEFORE the edge dispatch so any passThrough/ending
-          edges crossing at midY layer on top (matches GK's render order).
-          Non-HEAD rows drop to opacity 0.25 (GitKraken's `.ref-line`
-          default) so only the checked-out branch's connector reads at
-          full strength. */}
       <Show when={hasRefs()}>
         <line
           x1={0}
           y1={midY}
-          x2={laneCenterX(props.row.lane) - radius()}
+          x2={laneCenterX(props.row.lane, dims()) - radius()}
           y2={midY}
           stroke={commitColor()}
           stroke-width={isHeadRow() ? 2 : 1}
           stroke-opacity={isHeadRow() ? 1 : 0.25}
         />
       </Show>
-      {/* Per-column dispatch — exact GK loop: starting, then passThrough,
-          then ending at each column. Column ascending so layering is
-          deterministic across rows. */}
       <For each={sortedEdges()}>
         {([col, cell]) => (
           <>
             <Show when={cell.starting}>
-              {renderStartingEdge(col, props.row.lane)}
+              {renderStartingEdge(col, props.row.lane, dims())}
             </Show>
             <Show when={cell.passThrough}>
-              {renderPassThrough(col)}
+              {renderPassThrough(col, dims())}
             </Show>
             <Show when={cell.ending}>
-              {renderEndingEdge(col, props.row.lane)}
+              {renderEndingEdge(col, props.row.lane, dims())}
             </Show>
           </>
         )}
       </For>
-
-      {/* Commit node — painted last so it sits atop any horizontal that
-          reaches into its column at midY.
-          - Merges: a plain lane-color disc at the smaller merge radius.
-            GitKraken's product decision is to skip the avatar on merge
-            commits (doc 16 / bundle `GraphAvatar` props).
-          - Regular commits: lane-color backdrop + Gravatar image with
-            initials fallback, via `CommitAvatar`. */}
       <Show
         when={!props.row.is_merge}
         fallback={
           <circle
-            cx={laneCenterX(props.row.lane)}
+            cx={laneCenterX(props.row.lane, dims())}
             cy={midY}
             r={radius()}
             fill={commitColor()}
@@ -503,7 +572,7 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
         }
       >
         <CommitAvatar
-          cx={laneCenterX(props.row.lane)}
+          cx={laneCenterX(props.row.lane, dims())}
           cy={midY}
           radius={radius()}
           colorIdx={props.row.color_idx}
@@ -517,4 +586,4 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
   );
 }
 
-export { ROW_HEIGHT, LANE_WIDTH, GUTTER, COMMIT_RADIUS, MERGE_RADIUS };
+export { ROW_HEIGHT };

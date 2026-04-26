@@ -353,9 +353,10 @@ body.is-resizing-column {
 }
 
 .hidden-refs__popover {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
+  /* Rendered via Portal at document.body with `top`/`left` written
+     inline from the trigger's getBoundingClientRect(). Fixed so the
+     popover escapes the column header's `overflow: hidden`. */
+  position: fixed;
   min-width: 240px;
   max-width: 360px;
   max-height: 320px;
@@ -365,7 +366,7 @@ body.is-resizing-column {
   border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 8px 24px color-mix(in srgb, black 40%, transparent);
-  z-index: 20;
+  z-index: 100;
 }
 
 .hidden-refs__popover-title {

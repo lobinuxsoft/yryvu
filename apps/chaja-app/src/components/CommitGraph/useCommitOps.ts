@@ -16,6 +16,7 @@ import {
 } from "../../ipc";
 import { refreshBranches, refreshGraph, repoPath } from "../../state";
 import type { ContextMenuItem } from "../ContextMenu";
+import { notify } from "../Notifications";
 
 export type CommitMenuState = {
   x: number;
@@ -93,13 +94,16 @@ export function createCommitOps(deps: CommitOpsDeps) {
   async function doCheckout(sha: string) {
     const path = repoPath();
     if (!path) return;
+    const shortSha = sha.slice(0, 7);
     try {
       await checkoutCommit(path, sha);
       closeDialog();
       refreshGraph();
       refreshBranches();
+      notify.success("Checked out commit", { message: shortSha });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Checkout failed", { message: String(err) });
     }
   }
 
@@ -112,8 +116,10 @@ export function createCommitOps(deps: CommitOpsDeps) {
       closeDialog();
       refreshGraph();
       refreshBranches();
+      notify.success("Checked out commit", { message: `Auto-stashed → ${shortSha}` });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Checkout failed", { message: String(err) });
     }
   }
 
@@ -128,8 +134,10 @@ export function createCommitOps(deps: CommitOpsDeps) {
       closeDialog();
       refreshGraph();
       refreshBranches();
+      notify.success("Branch created", { message: `${name} @ ${state.shortSha}` });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Create branch failed", { message: String(err) });
     }
   }
 
@@ -146,45 +154,58 @@ export function createCommitOps(deps: CommitOpsDeps) {
       closeDialog();
       refreshGraph();
       refreshBranches();
+      notify.success("Tag created", {
+        message: state.annotated ? `${name} (annotated)` : name,
+      });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Create tag failed", { message: String(err) });
     }
   }
 
   async function doReset(sha: string, mode: ResetMode) {
     const path = repoPath();
     if (!path) return;
+    const shortSha = sha.slice(0, 7);
     try {
       await resetToCommit(path, sha, mode);
       closeDialog();
       refreshGraph();
       refreshBranches();
+      notify.success(`Reset (${mode})`, { message: shortSha });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Reset failed", { message: String(err) });
     }
   }
 
   async function doCherryPick(sha: string) {
     const path = repoPath();
     if (!path) return;
+    const shortSha = sha.slice(0, 7);
     try {
       await cherryPickCommit(path, sha);
       refreshGraph();
       refreshBranches();
+      notify.success("Cherry-picked", { message: shortSha });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Cherry-pick failed", { message: String(err) });
     }
   }
 
   async function doRevert(sha: string) {
     const path = repoPath();
     if (!path) return;
+    const shortSha = sha.slice(0, 7);
     try {
       await revertCommit(path, sha);
       refreshGraph();
       refreshBranches();
+      notify.success("Reverted", { message: shortSha });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Revert failed", { message: String(err) });
     }
   }
 
@@ -197,8 +218,10 @@ export function createCommitOps(deps: CommitOpsDeps) {
       const written = await formatPatch(path, sha, dir);
       setDialogError(null);
       setDialog({ kind: "patch-saved", path: written });
+      notify.success("Patch saved", { message: written });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Format-patch failed", { message: String(err) });
     }
   }
 

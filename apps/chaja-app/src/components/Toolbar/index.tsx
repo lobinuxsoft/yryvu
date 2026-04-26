@@ -23,6 +23,7 @@ import {
   refreshWorkingTree,
   repoPath,
 } from "../../state";
+import { Bell, dismissToast, notify } from "../Notifications";
 import {
   IconArrowDown,
   IconArrowUp,
@@ -41,11 +42,8 @@ export interface ToolbarProps {
   onOpenRepo: () => void;
 }
 
-const ERROR_DISMISS_MS = 5000;
-
 export function Toolbar(props: ToolbarProps) {
   const ops = useBranchOps();
-  const [error, setError] = createSignal<string | null>(null);
   const [pending, setPending] = createSignal<string | null>(null);
   const [actionsOpen, setActionsOpen] = createSignal(false);
 
@@ -55,13 +53,6 @@ export function Toolbar(props: ToolbarProps) {
     return p.split("/").filter(Boolean).pop() ?? p;
   };
 
-  function flashError(msg: string) {
-    setError(msg);
-    window.setTimeout(() => {
-      if (error() === msg) setError(null);
-    }, ERROR_DISMISS_MS);
-  }
-
   // After a remote-touching op succeeds, bump both nonces so the graph
   // (commits) and the sidebar (refs / ahead-behind) re-stream. Working-tree
   // nonces are bumped explicitly by callers that touch the workdir.
@@ -70,28 +61,49 @@ export function Toolbar(props: ToolbarProps) {
     refreshBranches();
   }
 
-  async function withOp(label: string, fn: () => Promise<void>): Promise<void> {
+  async function withOp(
+    label: string,
+    successTitle: string,
+    fn: () => Promise<string | void>,
+  ): Promise<void> {
     const path = repoPath();
     if (!path) return;
     setPending(label);
+    const loadingId = notify.loading(`${label}…`);
     try {
-      await fn();
+      const successMessage = await fn();
+      dismissToast(loadingId);
+      notify.success(
+        successTitle,
+        typeof successMessage === "string" ? { message: successMessage } : undefined,
+      );
     } catch (err) {
-      flashError(`${label} failed: ${String(err)}`);
+      dismissToast(loadingId);
+      notify.error(`${label} failed`, { message: String(err) });
     } finally {
       setPending(null);
     }
   }
 
   async function onPull() {
-    await withOp("Pull", async () => {
-      await pull(repoPath()!, "fast-forward-or-merge");
+    await withOp("Pull", "Pull complete", async () => {
+      const result = await pull(repoPath()!, "fast-forward-or-merge");
       refreshAfterRemoteOp();
+      switch (result.kind) {
+        case "already-up-to-date":
+          return "Already up to date";
+        case "fast-forward":
+          return `Fast-forwarded to ${result.new_head.slice(0, 7)}`;
+        case "merged":
+          return `Merge commit ${result.new_head.slice(0, 7)}`;
+        case "conflict":
+          throw new Error(`Conflicts in ${result.paths.join(", ")}`);
+      }
     });
   }
 
   async function onPush() {
-    await withOp("Push", async () => {
+    await withOp("Push", "Push complete", async () => {
       await push(repoPath()!);
       refreshAfterRemoteOp();
     });
@@ -103,7 +115,7 @@ export function Toolbar(props: ToolbarProps) {
   }
 
   async function onStash() {
-    await withOp("Stash", async () => {
+    await withOp("Stash", "Stashed working tree", async () => {
       await stashPush(repoPath()!);
       refreshWorkingTree();
       refreshAfterRemoteOp();
@@ -111,7 +123,7 @@ export function Toolbar(props: ToolbarProps) {
   }
 
   async function onPop() {
-    await withOp("Stash pop", async () => {
+    await withOp("Stash pop", "Stash applied", async () => {
       await stashPop(repoPath()!);
       refreshWorkingTree();
       refreshAfterRemoteOp();
@@ -120,7 +132,7 @@ export function Toolbar(props: ToolbarProps) {
 
   async function onFetchAll() {
     setActionsOpen(false);
-    await withOp("Fetch all", async () => {
+    await withOp("Fetch all", "Fetched all remotes", async () => {
       await fetchPrune(repoPath()!);
       refreshAfterRemoteOp();
     });
@@ -196,6 +208,7 @@ export function Toolbar(props: ToolbarProps) {
           disabled={!hasRepo() || opInFlight()}
           onClick={() => setActionsOpen((v) => !v)}
         />
+        <Bell />
         <ToolbarBtn icon={<IconSearch />} label="Search" disabled />
         <Show when={actionsOpen()}>
           <ActionsDropdown
@@ -204,17 +217,6 @@ export function Toolbar(props: ToolbarProps) {
           />
         </Show>
       </div>
-
-      <Show when={pending()}>
-        {(p) => <span class="toolbar__pending" aria-live="polite">{p()}…</span>}
-      </Show>
-      <Show when={error()}>
-        {(msg) => (
-          <div class="toolbar__error" role="alert" onClick={() => setError(null)}>
-            {msg()}
-          </div>
-        )}
-      </Show>
     </div>
   );
 }

@@ -287,3 +287,42 @@ export const IconFilter = (p?: IconProps) =>
     <path d="M2 3h12l-4.5 5.5v4l-3 1.5v-5.5z" />,
     p,
   );
+
+/** Notification bell. Used by the Notifications surface. */
+export const IconBell = (p?: IconProps) =>
+  base(
+    <>
+      <path d="M3.5 11.5h9l-1-1.5v-3a3.5 3.5 0 0 0-7 0v3z" />
+      <path d="M6.5 13.5a1.5 1.5 0 0 0 3 0" />
+    </>,
+    p,
+  );
+
+export const IconInfo = (p?: IconProps) =>
+  base(
+    <>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 7v4" />
+      <path d="M8 5v.5" />
+    </>,
+    p,
+  );
+
+export const IconAlertCircle = (p?: IconProps) =>
+  base(
+    <>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 5v3.5" />
+      <path d="M8 11v.5" />
+    </>,
+    p,
+  );
+
+/** Spinner glyph. Pair with `animation: spin 1s linear infinite;` in
+ * the consumer's CSS to make it actually spin (the icon itself is a
+ * partial circle). */
+export const IconSpinner = (p?: IconProps) =>
+  base(
+    <path d="M8 2a6 6 0 1 1-6 6" />,
+    p,
+  );

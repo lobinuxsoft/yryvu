@@ -14,6 +14,7 @@ import { DialogsHost } from "../LeftSidebar/DialogsHost";
 import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
+import { ToastContainer } from "../Notifications";
 import { IconOpenFolder, IconPlus, IconStar } from "../Icons";
 import { BranchOpsProvider, createBranchOps } from "../../branchOps";
 import {
@@ -132,6 +133,7 @@ export function AppShell() {
         />
       </Show>
       <DialogsHost ops={branchOps} />
+      <ToastContainer />
     </div>
     </BranchOpsProvider>
   );

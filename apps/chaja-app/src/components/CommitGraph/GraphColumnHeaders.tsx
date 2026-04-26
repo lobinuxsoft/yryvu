@@ -21,7 +21,6 @@ import {
 import { GraphColumnResizer } from "./GraphColumnResizer";
 import { HiddenRefsButton } from "./HiddenRefsButton";
 import { ZONE_SPECS, type GraphZoneId } from "./columns";
-import { IconFilter } from "../Icons";
 
 function HeaderLabel(props: { id: GraphZoneId }) {
   if (props.id === "ref") {
@@ -29,22 +28,6 @@ function HeaderLabel(props: { id: GraphZoneId }) {
       <span class="main__graph-column-header-branch">
         <span>{ZONE_SPECS.ref.label}</span>
         <HiddenRefsButton />
-      </span>
-    );
-  }
-  if (props.id === "commitAuthor") {
-    return (
-      <span class="main__graph-column-header-author">
-        <span>{ZONE_SPECS.commitAuthor.label}</span>
-        <button
-          type="button"
-          class="author-filter__btn"
-          title="Filter the graph by author"
-          aria-label="Filter authors"
-          disabled
-        >
-          <IconFilter width={12} height={12} />
-        </button>
       </span>
     );
   }

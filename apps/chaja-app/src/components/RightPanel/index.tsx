@@ -34,6 +34,7 @@ import {
 import { CommitDetails } from "./CommitDetails";
 import { CommitPanel } from "./CommitPanel";
 import { DiscardDialog } from "./DiscardDialog";
+import { notify } from "../Notifications";
 
 export function RightPanel() {
   // Paths queued for destructive discard; rendered by <DiscardDialog/>.
@@ -89,7 +90,10 @@ export function RightPanel() {
     try {
       await stageFiles(p, paths);
     } catch (err) {
-      console.error("stage_files failed", err);
+      // Per-file stage failures are atypical (the path either exists or
+      // doesn't); notify so the user knows they hit one. Successful
+      // stages stay silent — they happen on every hover-reveal click.
+      notify.error("Stage failed", { message: String(err) });
     }
     refreshWorkingTree();
   }
@@ -100,7 +104,7 @@ export function RightPanel() {
     try {
       await unstageFiles(p, paths);
     } catch (err) {
-      console.error("unstage_files failed", err);
+      notify.error("Unstage failed", { message: String(err) });
     }
     refreshWorkingTree();
   }
@@ -111,7 +115,7 @@ export function RightPanel() {
     try {
       await stageAll(p);
     } catch (err) {
-      console.error("stage_all failed", err);
+      notify.error("Stage all failed", { message: String(err) });
     }
     refreshWorkingTree();
   }
@@ -122,7 +126,7 @@ export function RightPanel() {
     try {
       await unstageAll(p);
     } catch (err) {
-      console.error("unstage_all failed", err);
+      notify.error("Unstage all failed", { message: String(err) });
     }
     refreshWorkingTree();
   }
@@ -142,8 +146,11 @@ export function RightPanel() {
     if (!p || !paths || paths.length === 0) return;
     try {
       await discardPaths(p, paths);
+      notify.success("Discarded", {
+        message: paths.length === 1 ? paths[0] : `${paths.length} files`,
+      });
     } catch (err) {
-      console.error("discard_paths failed", err);
+      notify.error("Discard failed", { message: String(err) });
     }
     refreshWorkingTree();
   }
@@ -171,7 +178,9 @@ export function RightPanel() {
     try {
       newSha = await createCommit(p, opts);
     } catch (err) {
-      console.error("create_commit failed", err);
+      notify.error(opts.amend ? "Amend failed" : "Commit failed", {
+        message: String(err),
+      });
       return;
     }
     clearPendingMessage();
@@ -180,6 +189,9 @@ export function RightPanel() {
     refreshBranches();
     setSelectedCommit(newSha);
     setInspectorMode("details");
+    notify.success(opts.amend ? "Amended" : "Commit created", {
+      message: newSha.slice(0, 7),
+    });
   }
 
   async function handleCommitAndPush() {
@@ -190,11 +202,12 @@ export function RightPanel() {
     try {
       newSha = await commitAndPush(p, opts);
     } catch (err) {
-      // The commit itself may have succeeded even if the push didn't —
-      // tell the user so they can retry push alone instead of rewriting
-      // their message.
-      console.error("commit_and_push failed", err);
-      alert(`Commit and Push failed:\n${String(err)}\n\nIf the commit went through, your working tree is already updated; you can retry the push separately.`);
+      // The commit itself may have succeeded even if the push didn't.
+      // Surface the failure so the user can retry push alone instead of
+      // rewriting their message.
+      notify.error("Commit and push failed", {
+        message: `${String(err)} — if the commit went through, retry push alone.`,
+      });
       refreshWorkingTree();
       refreshGraph();
       refreshBranches();
@@ -206,6 +219,7 @@ export function RightPanel() {
     refreshBranches();
     setSelectedCommit(newSha);
     setInspectorMode("details");
+    notify.success("Commit and push", { message: newSha.slice(0, 7) });
   }
 
   return (

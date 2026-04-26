@@ -21,6 +21,7 @@ import { repoPath, setHiddenRef } from "./state";
 import type { ContextMenuItem } from "./components/ContextMenu";
 import { parseRemoteBranchName } from "./components/LeftSidebar/helpers";
 import type { DialogState, MenuState } from "./components/LeftSidebar/types";
+import { notify } from "./components/Notifications";
 
 export interface BranchOpsDeps {
   refresh: () => void;
@@ -91,8 +92,10 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await checkoutBranch(path, target);
       closeDialog();
       deps.refresh();
+      notify.success("Checked out", { message: target });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Checkout failed", { message: String(err) });
     }
   }
 
@@ -104,8 +107,10 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await checkoutBranch(path, target);
       closeDialog();
       deps.refresh();
+      notify.success("Checked out", { message: `Auto-stashed → ${target}` });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Checkout failed", { message: String(err) });
     }
   }
 
@@ -118,8 +123,29 @@ export function createBranchOps(deps: BranchOpsDeps) {
       const result = await mergeBranch(path, state.source, mergeStrategy());
       setDialog({ kind: "merge-result", result });
       deps.refresh();
+      switch (result.kind) {
+        case "already-up-to-date":
+          notify.success("Merge: already up to date", { message: state.source });
+          break;
+        case "fast-forward":
+          notify.success("Fast-forward merge", {
+            message: `${state.source} → ${result.new_head.slice(0, 7)}`,
+          });
+          break;
+        case "merged":
+          notify.success("Merge commit", {
+            message: `${state.source} → ${result.new_head.slice(0, 7)}`,
+          });
+          break;
+        case "conflict":
+          notify.error("Merge conflicts", {
+            message: result.paths.join(", "),
+          });
+          break;
+      }
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Merge failed", { message: String(err) });
     }
   }
 
@@ -132,8 +158,12 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await deleteRemoteBranch(path, state.remote, state.name);
       closeDialog();
       deps.refresh();
+      notify.success("Remote branch deleted", {
+        message: `${state.remote}/${state.name}`,
+      });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Delete remote branch failed", { message: String(err) });
     }
   }
 
@@ -144,8 +174,10 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await abortMerge(path);
       closeDialog();
       deps.refresh();
+      notify.success("Merge aborted");
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Abort merge failed", { message: String(err) });
     }
   }
 
@@ -159,8 +191,10 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await createBranch(path, name, state.from);
       closeDialog();
       deps.refresh();
+      notify.success("Branch created", { message: name });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Create branch failed", { message: String(err) });
     }
   }
 
@@ -177,8 +211,12 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await renameBranch(path, state.oldName, newName);
       closeDialog();
       deps.refresh();
+      notify.success("Branch renamed", {
+        message: `${state.oldName} → ${newName}`,
+      });
     } catch (err) {
       setDialogError(String(err));
+      notify.error("Rename branch failed", { message: String(err) });
     }
   }
 
@@ -191,14 +229,20 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await deleteLocalBranch(path, state.name, force);
       closeDialog();
       deps.refresh();
+      notify.success("Branch deleted", {
+        message: force ? `${state.name} (forced)` : state.name,
+      });
     } catch (err) {
       const msg = String(err);
       if (!force && msg.includes("not fully merged")) {
+        // Keep the dialog open so the user can confirm a force-delete.
+        // Don't toast yet — the dialog itself surfaces the next step.
         setDialog({ kind: "delete", name: state.name, unmerged: true });
         setDialogError(null);
         return;
       }
       setDialogError(msg);
+      notify.error("Delete branch failed", { message: msg });
     }
   }
 
@@ -209,8 +253,11 @@ export function createBranchOps(deps: BranchOpsDeps) {
     try {
       await fetchPrune(path);
       deps.refresh();
+      notify.success("Fetched all remotes");
     } catch (err) {
-      setDialogError(`Refresh failed: ${String(err)}`);
+      const msg = String(err);
+      setDialogError(`Refresh failed: ${msg}`);
+      notify.error("Fetch failed", { message: msg });
     } finally {
       setRefreshingRemote(false);
     }

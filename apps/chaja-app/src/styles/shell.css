@@ -227,22 +227,22 @@ body.is-resizing-column {
 /* Column-settings ⚙ button + popover. Anchored at the right edge of
    the column header strip; popover renders via Portal at fixed coords. */
 .graph-col-settings__btn {
-  /* Pinned to the right edge of the header strip via flex order. The
-     filler (`order: 100`) takes the slack space; the button sits after
-     it. `margin-left: auto` is redundant once order is set, but kept
-     as a fallback if `order` ever stops applying. */
   order: 200;
   margin-left: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Without `flex-shrink: 0` the button collapsed to width 0 inside
+     the flex strip when the headers' fixed widths summed close to the
+     container's width — the gear vanished. */
+  flex-shrink: 0;
   width: 22px;
   height: 22px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
-  color: var(--fg-3);
+  color: var(--fg-2);
   cursor: pointer;
   align-self: center;
 }

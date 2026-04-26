@@ -317,13 +317,56 @@ export const activeColumnSettings = (id: GraphZoneId): ColumnSettings =>
 export const activeOrderedZones = (): GraphZoneId[] =>
   orderedVisibleZones(graphColumnsInternal());
 
-/// Resize a column.
+/// Resize a column. Mirrors GK's `adjustResizedGraphZone` —
+/// `expandZoneWidthsToFitWidth` / `shrinkZoneWidthsToFitWidth` cascade
+/// (bundle ~458970): the delta absorbed by the resized zone is paid
+/// back to (or taken from) the visible zones to its right, in order,
+/// each zone clamped to its own `[minimumWidth, maximumWidth]`. When
+/// the cascade hits the right edge with delta still to spend, the
+/// remainder stays on the resized zone (so the user feels a hard stop
+/// rather than the column spilling through other columns).
 export function setGraphZoneWidth(id: GraphZoneId, width: number): void {
   const cur = graphColumnsInternal();
-  persistLayout({
+  const ordered = orderedVisibleZones(cur);
+  const idx = ordered.indexOf(id);
+  if (idx < 0) {
+    // Resizing a hidden zone — write straight through, no cascade.
+    persistLayout({
+      ...cur,
+      [id]: { ...cur[id], width: clampZoneWidth(id, width) },
+    });
+    return;
+  }
+
+  const oldWidth = cur[id].width;
+  const requestedNew = clampZoneWidth(id, width);
+  const next: Record<GraphZoneId, ColumnSettings> = {
     ...cur,
-    [id]: { ...cur[id], width: clampZoneWidth(id, width) },
-  });
+    [id]: { ...cur[id], width: requestedNew },
+  };
+  // Positive `slack` means the resized zone shrunk — neighbours to the
+  // right need to grow by that much. Negative means it grew — they need
+  // to shrink. Walk in left-to-right order so the closest neighbour
+  // absorbs first (matches GK; the user feels the resize "push" the
+  // adjacent column rather than re-flowing the far end of the row).
+  let slack = oldWidth - requestedNew;
+  for (let i = idx + 1; i < ordered.length && slack !== 0; i += 1) {
+    const rid = ordered[i];
+    const r = next[rid];
+    const desired = r.width + slack;
+    const clamped = clampZoneWidth(rid, desired);
+    const consumed = clamped - r.width;
+    next[rid] = { ...r, width: clamped };
+    slack -= consumed;
+  }
+  // If `slack` is still non-zero, every column to the right is at its
+  // bound. Reflect that on the resized zone — the user can't go past
+  // what the cascade can absorb.
+  if (slack !== 0) {
+    const finalSelf = clampZoneWidth(id, requestedNew + slack);
+    next[id] = { ...next[id], width: finalSelf };
+  }
+  persistLayout(next);
 }
 
 /// Toggle a zone's visibility.

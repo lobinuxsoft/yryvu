@@ -20,7 +20,6 @@ import {
 } from "../../ipc";
 import {
   activeColumnSettings,
-  activeOrderedZones,
   amendEnabled,
   commitZoneMode,
   commitMessage,
@@ -50,6 +49,7 @@ import {
 } from "./RowRenderer";
 import { createIncrementalEdgeStates } from "./edgeStates";
 import { formatCommitDateTime } from "./columns";
+import { createVirtualizer } from "@tanstack/solid-virtual";
 
 /**
  * Threshold below which the Author cell renders avatar-only (initials
@@ -158,7 +158,7 @@ export function CommitGraph(props: CommitGraphProps) {
   // `wipShift()` pixels and rendering the WIP row absolute-positioned
   // inside the same scroll-synced coordinate system.
   const wipShift = () => (dirtyFileCount() > 0 ? ROW_HEIGHT : 0);
-  const totalHeight = () => rows().length * ROW_HEIGHT + wipShift();
+  const totalHeight = () => virtualizer.getTotalSize() + wipShift();
 
   /* ========================================================================
      Graph-column intrinsic width (#141 follow-up) — when the repo fans out
@@ -186,16 +186,6 @@ export function CommitGraph(props: CommitGraphProps) {
   const graphContentWidth = createMemo(() => {
     const dims = getRenderDims(commitZoneMode() === "compact");
     return dims.gutter + (maxLane() + 1) * dims.laneWidth + 8;
-  });
-  // Pick the zone that should soak up leftover horizontal space — 1:1
-  // with GK. Message is "elastic content" so when it's visible IT gets
-  // the leftover; otherwise fall back to the rightmost visible zone so
-  // there's never a dead strip on the right edge. Reactive on
-  // visibility / mode changes.
-  const growZone = createMemo(() => {
-    const order = activeOrderedZones();
-    if (order.includes("commitMessage")) return "commitMessage" as const;
-    return order[order.length - 1];
   });
 
   // Push the user-controlled column widths to CSS custom properties on
@@ -301,46 +291,22 @@ export function CommitGraph(props: CommitGraphProps) {
      to render).
      ======================================================================== */
   const OVERSCAN_ROWS = 8;
-  let messagesScroll: HTMLDivElement | undefined;
-  const [scrollTop, setScrollTop] = createSignal(0);
-  const [viewportHeight, setViewportHeight] = createSignal(0);
+  let zonesScroll: HTMLDivElement | undefined;
 
-  function forwardWheel(e: WheelEvent) {
-    if (!messagesScroll || e.deltaY === 0) return;
-    messagesScroll.scrollTop += e.deltaY;
-  }
-
-  onMount(() => {
-    if (!messagesScroll) return;
-    setViewportHeight(messagesScroll.clientHeight);
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setViewportHeight(entry.contentRect.height);
-      }
-    });
-    ro.observe(messagesScroll);
-    onCleanup(() => ro.disconnect());
-  });
-
-  const visibleRange = createMemo(() => {
-    const total = rows().length;
-    const vh = viewportHeight();
-    if (total === 0 || vh === 0) return { start: 0, end: 0 };
-    const st = scrollTop();
-    const start = Math.max(0, Math.floor(st / ROW_HEIGHT) - OVERSCAN_ROWS);
-    const end = Math.min(
-      total,
-      Math.ceil((st + vh) / ROW_HEIGHT) + OVERSCAN_ROWS,
-    );
-    return { start, end };
-  });
-
-  // Sliced row view. Returns references into `rows()` so <For>'s keyed
-  // reconciliation matches items by identity — rows that stay in the
-  // window during scroll don't remount, only their `top` offset updates.
-  const visibleRows = createMemo(() => {
-    const { start, end } = visibleRange();
-    return rows().slice(start, end);
+  // Vertical virtualizer 1:1 with GK's `MultiGrid` (which underlies its
+  // graph view in `react-virtualized`). Single instance shared across
+  // every visible zone — they all iterate the same `getVirtualItems()`,
+  // so a commit's row across BRANCH/TAG / GRAPH / MESSAGE / AUTHOR /
+  // DATE-TIME / SHA stays at the same `start` offset. The scroll
+  // element is the `.commit-graph__zones` container so toggling any
+  // single zone off doesn't lose the scroll provider.
+  const virtualizer = createVirtualizer({
+    get count() {
+      return rows().length;
+    },
+    getScrollElement: () => zonesScroll ?? null,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: OVERSCAN_ROWS,
   });
 
   /**
@@ -396,21 +362,22 @@ export function CommitGraph(props: CommitGraphProps) {
           That way each cell inherits its zone's scroll coordinate
           system — the GRAPH cell lives inside the horizontal scroll
           wrapper, so the node follows horizontal pan too. */}
-      {/* `growZone()` reactive — drives `is-last-visible` so the
-          rightmost visible column flex-grows to soak up leftover space.
-          Reorders with mode automatically. */}
-      <div class="commit-graph__zones">
+      <div
+        class="commit-graph__zones"
+        ref={zonesScroll}
+        
+      >
+        <Show when={activeColumnSettings("ref").visible}>
         <div
           class="commit-graph__zone commit-graph__zone--branch"
-          classList={{ "is-last-visible": growZone() === "ref" }}
           style={{ order: activeColumnSettings("ref").order }}
-          onWheel={forwardWheel}
+          
         >
           <ul
             class="commit-graph__col-branch"
             style={{
               height: `${totalHeight()}px`,
-              transform: `translateY(-${scrollTop()}px)`,
+
             }}
           >
             <Show when={dirtyFileCount() > 0}>
@@ -430,9 +397,11 @@ export function CommitGraph(props: CommitGraphProps) {
                 title="View working-directory changes"
               />
             </Show>
-            <For each={visibleRows()}>
-              {(r, i) => {
-                const globalIndex = () => visibleRange().start + i();
+            <For each={virtualizer.getVirtualItems()}>
+              {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                
                 return (
                   <li
                     class={rowWrapperClass(
@@ -445,7 +414,7 @@ export function CommitGraph(props: CommitGraphProps) {
                     }}
                     data-selected={selectedCommit() === r.sha ? "true" : "false"}
                     style={{
-                      top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                      top: `${item.start + wipShift()}px`,
                       height: `${ROW_HEIGHT}px`,
                       "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                     }}
@@ -484,14 +453,13 @@ export function CommitGraph(props: CommitGraphProps) {
             </For>
           </ul>
         </div>
+        </Show>
+        <Show when={activeColumnSettings("graph").visible}>
         <div
           class="commit-graph__zone commit-graph__zone--graph"
-          classList={{
-            "is-compact": commitZoneMode() === "compact",
-            "is-last-visible": growZone() === "graph",
-          }}
+          classList={{ "is-compact": commitZoneMode() === "compact" }}
           style={{ order: activeColumnSettings("graph").order }}
-          onWheel={forwardWheel}
+          
         >
           {/* Horizontal scroll container — nested inside the zone so the
               right-edge streaks overlay (below) can be absolute-positioned
@@ -503,8 +471,7 @@ export function CommitGraph(props: CommitGraphProps) {
               class="commit-graph__col-graph"
               style={{
                 height: `${totalHeight()}px`,
-                width: `${graphContentWidth()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+                "min-width": `${graphContentWidth()}px`,
               }}
             >
               <Show when={dirtyFileCount() > 0}>
@@ -531,9 +498,12 @@ export function CommitGraph(props: CommitGraphProps) {
                   />
                 </li>
               </Show>
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                const dims = getRenderDims(commitZoneMode() === "compact");
+                const nodeX = dims.gutter + r.lane * dims.laneWidth + dims.laneWidth / 2;
                   return (
                     <li
                       class={rowWrapperClass(
@@ -546,7 +516,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       }}
                       data-selected={selectedCommit() === r.sha ? "true" : "false"}
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
@@ -559,18 +529,11 @@ export function CommitGraph(props: CommitGraphProps) {
                       <span
                         class="commit-graph__row-tint"
                         aria-hidden="true"
-                        style={(() => {
-                          const dims = getRenderDims(
-                            commitZoneMode() === "compact",
-                          );
-                          return {
-                            left: `${dims.gutter + r.lane * dims.laneWidth + dims.laneWidth / 2}px`,
-                          };
-                        })()}
+                        style={{ left: `${nodeX}px` }}
                       />
                       <CommitRowGraph
                         row={r}
-                        edges={edgeStates()[globalIndex()] ?? new Map()}
+                        edges={edgeStates()[item.index] ?? new Map()}
                         hostingService={hostingService()}
                         compact={commitZoneMode() === "compact"}
                       />
@@ -590,17 +553,19 @@ export function CommitGraph(props: CommitGraphProps) {
               class="commit-graph__col-graph-streaks-inner"
               style={{
                 height: `${totalHeight()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+  
               }}
             >
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                  
                   return (
                     <span
                       class="commit-graph__lane-streak"
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + (ROW_HEIGHT - 22) / 2 + wipShift()}px`,
+                        top: `${item.start + (ROW_HEIGHT - 22) / 2 + wipShift()}px`,
                         "background-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
                     />
@@ -610,12 +575,11 @@ export function CommitGraph(props: CommitGraphProps) {
             </div>
           </div>
         </div>
+        </Show>
+        <Show when={activeColumnSettings("commitMessage").visible}>
         <div
           class="commit-graph__zone commit-graph__zone--messages"
-          classList={{ "is-last-visible": growZone() === "commitMessage" }}
           style={{ order: activeColumnSettings("commitMessage").order }}
-          ref={messagesScroll}
-          onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
         >
           <ul
             class="commit-graph__col-messages"
@@ -644,9 +608,11 @@ export function CommitGraph(props: CommitGraphProps) {
                 <span class="commit-graph__wip-badge">+{dirtyFileCount()}</span>
               </li>
             </Show>
-            <For each={visibleRows()}>
-              {(r, i) => {
-                const globalIndex = () => visibleRange().start + i();
+            <For each={virtualizer.getVirtualItems()}>
+              {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                
                 return (
                   <li
                     class={rowWrapperClass(
@@ -659,7 +625,7 @@ export function CommitGraph(props: CommitGraphProps) {
                     }}
                     data-selected={selectedCommit() === r.sha ? "true" : "false"}
                     style={{
-                      top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                      top: `${item.start + wipShift()}px`,
                       height: `${ROW_HEIGHT}px`,
                       "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                     }}
@@ -679,18 +645,18 @@ export function CommitGraph(props: CommitGraphProps) {
             </For>
           </ul>
         </div>
+        </Show>
         <Show when={activeColumnSettings("commitAuthor").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--author"
-            classList={{ "is-last-visible": growZone() === "commitAuthor" }}
             style={{ order: activeColumnSettings("commitAuthor").order }}
-            onWheel={forwardWheel}
+            
           >
             <ul
               class="commit-graph__col-author"
               style={{
                 height: `${totalHeight()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+  
               }}
             >
               <Show when={dirtyFileCount() > 0}>
@@ -699,9 +665,11 @@ export function CommitGraph(props: CommitGraphProps) {
                   style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
                 />
               </Show>
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                  
                   return (
                     <li
                       class={rowWrapperClass(
@@ -714,7 +682,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       }}
                       data-selected={selectedCommit() === r.sha ? "true" : "false"}
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
@@ -758,15 +726,14 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitDateTime").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--date-time"
-            classList={{ "is-last-visible": growZone() === "commitDateTime" }}
             style={{ order: activeColumnSettings("commitDateTime").order }}
-            onWheel={forwardWheel}
+            
           >
             <ul
               class="commit-graph__col-date-time"
               style={{
                 height: `${totalHeight()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+  
               }}
             >
               <Show when={dirtyFileCount() > 0}>
@@ -775,9 +742,11 @@ export function CommitGraph(props: CommitGraphProps) {
                   style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
                 />
               </Show>
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                  
                   return (
                     <li
                       class={rowWrapperClass(
@@ -790,7 +759,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       }}
                       data-selected={selectedCommit() === r.sha ? "true" : "false"}
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
@@ -813,15 +782,14 @@ export function CommitGraph(props: CommitGraphProps) {
         <Show when={activeColumnSettings("commitSha").visible}>
           <div
             class="commit-graph__zone commit-graph__zone--sha"
-            classList={{ "is-last-visible": growZone() === "commitSha" }}
             style={{ order: activeColumnSettings("commitSha").order }}
-            onWheel={forwardWheel}
+            
           >
             <ul
               class="commit-graph__col-sha"
               style={{
                 height: `${totalHeight()}px`,
-                transform: `translateY(-${scrollTop()}px)`,
+  
               }}
             >
               <Show when={dirtyFileCount() > 0}>
@@ -830,9 +798,11 @@ export function CommitGraph(props: CommitGraphProps) {
                   style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
                 />
               </Show>
-              <For each={visibleRows()}>
-                {(r, i) => {
-                  const globalIndex = () => visibleRange().start + i();
+              <For each={virtualizer.getVirtualItems()}>
+                {(item) => {
+                const r = rows()[item.index];
+                if (!r) return null;
+                  
                   return (
                     <li
                       class={rowWrapperClass(
@@ -845,7 +815,7 @@ export function CommitGraph(props: CommitGraphProps) {
                       }}
                       data-selected={selectedCommit() === r.sha ? "true" : "false"}
                       style={{
-                        top: `${globalIndex() * ROW_HEIGHT + wipShift()}px`,
+                        top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}

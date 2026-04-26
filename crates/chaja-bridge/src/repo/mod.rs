@@ -28,7 +28,9 @@ mod common;
 pub(crate) mod hosting;
 mod merge;
 mod patches;
+pub(crate) mod reflog;
 mod remote;
+pub(crate) mod smart_branches;
 pub(crate) mod staging;
 mod tags;
 mod worktree;
@@ -223,5 +225,13 @@ impl GitBackend for GixBackend {
         opts: &CommitOptions,
     ) -> Result<String, BackendError> {
         staging::commit_and_push(repo_path, opts)
+    }
+
+    fn smart_visible_refs(
+        &self,
+        repo_path: &Path,
+        profile_default: Option<&str>,
+    ) -> Result<Vec<String>, BackendError> {
+        smart_branches::smart_visible_refs(repo_path, profile_default)
     }
 }

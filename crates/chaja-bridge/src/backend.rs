@@ -44,6 +44,8 @@ pub enum BackendError {
     RemoteNotFound { name: String },
     #[error("push failed: {0}")]
     PushFailed(String),
+    #[error("force-with-lease aborted: remote {ref_name} moved since the last fetch")]
+    LeaseStale { ref_name: String },
     #[error("fetch failed: {0}")]
     FetchFailed(String),
     #[error("git operation failed: {0}")]
@@ -81,6 +83,19 @@ pub enum ResetMode {
     /// Move HEAD, reset index and force-checkout working tree to match target.
     /// Destructive: uncommitted changes are lost.
     Hard,
+}
+
+/// Push customisation. Currently exposes the `--force-with-lease` switch;
+/// chajá deliberately does not surface a bare `--force` from the UI to keep
+/// users from clobbering coworkers' commits unintentionally.
+#[derive(Debug, Clone, Copy, Default, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct PushOptions {
+    /// When `true`, allow a non-fast-forward push **only** if the remote tip
+    /// still matches the local tracking ref. The lease check happens inside
+    /// the push negotiation callback; mismatches abort with a typed error.
+    #[serde(default)]
+    pub force_with_lease: bool,
 }
 
 #[derive(Debug, Clone, Copy, serde::Deserialize)]
@@ -369,6 +384,21 @@ pub trait GitBackend: Send + Sync {
         repo_path: &Path,
         profile_default: Option<&str>,
     ) -> Result<Vec<String>, BackendError>;
+
+    /// Push HEAD's branch to its configured upstream (or `origin/<branch>`
+    /// when absent). Honors `PushOptions::force_with_lease`.
+    fn push(&self, repo_path: &Path, opts: PushOptions) -> Result<(), BackendError>;
+
+    /// Pull (fetch + merge) the upstream of HEAD's branch. `remote` is
+    /// `None` for "use the upstream's remote" (the typical case); set it
+    /// when the user explicitly picks a different remote in the toolbar
+    /// dropdown. `strategy` controls fast-forward vs merge-commit.
+    fn pull(
+        &self,
+        repo_path: &Path,
+        remote: Option<&str>,
+        strategy: MergeStrategy,
+    ) -> Result<MergeResult, BackendError>;
 }
 
 pub use crate::repo::GixBackend;

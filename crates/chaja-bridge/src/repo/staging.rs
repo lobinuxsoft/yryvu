@@ -443,7 +443,7 @@ pub fn discard_paths(repo_path: &Path, paths: &[String]) -> Result<(), BackendEr
 /// `push_current_branch` for individual migration blockers.
 pub fn commit_and_push(repo_path: &Path, opts: &CommitOptions) -> Result<String, BackendError> {
     let new_sha = create_commit(repo_path, opts)?;
-    super::remote::push_current_branch(repo_path)?;
+    super::remote::push_current_branch(repo_path, crate::backend::PushOptions::default())?;
     Ok(new_sha)
 }
 

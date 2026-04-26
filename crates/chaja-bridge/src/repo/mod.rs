@@ -19,7 +19,7 @@ use graph_core::Commit;
 
 use crate::backend::{
     BackendError, BranchInfo, CommitDiff, CommitOptions, FileDiff, GitBackend, MergeResult,
-    MergeStrategy, RepoStateInfo, ResetMode, WorkingTreeStatus,
+    MergeStrategy, PushOptions, RepoStateInfo, ResetMode, WorkingTreeStatus,
 };
 
 mod branches;
@@ -233,5 +233,18 @@ impl GitBackend for GixBackend {
         profile_default: Option<&str>,
     ) -> Result<Vec<String>, BackendError> {
         smart_branches::smart_visible_refs(repo_path, profile_default)
+    }
+
+    fn push(&self, repo_path: &Path, opts: PushOptions) -> Result<(), BackendError> {
+        remote::push_current_branch(repo_path, opts)
+    }
+
+    fn pull(
+        &self,
+        repo_path: &Path,
+        remote_arg: Option<&str>,
+        strategy: MergeStrategy,
+    ) -> Result<MergeResult, BackendError> {
+        remote::pull(repo_path, remote_arg, strategy)
     }
 }

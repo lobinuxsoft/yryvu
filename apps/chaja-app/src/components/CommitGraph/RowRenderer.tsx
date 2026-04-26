@@ -143,13 +143,23 @@ export function AuthorBadge(props: {
 }
 
 /**
- * Render dimensions — driven from `commitZoneMode`. `default` matches the
- * GK bundle's hardcoded `COMMIT_COLUMN_WIDTH=22` / `COMMIT_NODE_DIAMETER=22`
- * (1:1 with text mode). `compact` shrinks the lane width + node radius
- * to roughly 64% so a busy graph fits more lanes per pixel — the bundle
- * ships a single COMMIT_COLUMN_WIDTH constant, but the user-visible
- * compact mode in GK does pack more lanes into the same horizontal
- * space, which matches the geometric reduction encoded here.
+ * Render dimensions — 1:1 with the GK bundle's `graphZoneModeConstants`
+ * factory (module 21792). The arc constants (`edgeArcApproach`,
+ * `edgeArcPadding`, `arcRadius`) are mode-INDEPENDENT in GK — only
+ * the lane geometry (lane width, gutter, node diameter) and the
+ * stroke width shrink in compact. Earlier versions of chajá scaled
+ * the arc constants too, which broke the geometry: stub lines no
+ * longer met the arc cleanly, so cross-lane edges rendered with
+ * disconnected segments (#154).
+ *
+ * GK constants:
+ *   - `COMMIT_ZONE_EDGE_ARC_RADIUS  = 11` (both modes)
+ *   - `COMMIT_ZONE_EDGE_ARC_PADDING = 3`  (both modes)
+ *   - `COMMIT_COLUMN_WIDTH`         : 22 default / 10 compact
+ *   - `COMMIT_NODE_DIAMETER`        : 22 default / 10 compact
+ *   - `COMMIT_MERGE_NODE_DIAMETER`  : 12 default / 10 compact
+ *   - `COMMIT_ZONE_GUTTER_WIDTH`    : 28 default / 10 compact
+ *   - `COMMIT_ZONE_LINE_WIDTH`      : 2  default / 1  compact
  */
 export interface RenderDims {
   laneWidth: number;
@@ -159,6 +169,7 @@ export interface RenderDims {
   edgeArcApproach: number;
   edgeArcPadding: number;
   arcRadius: number;
+  lineWidth: number;
 }
 
 const DEFAULT_DIMS: RenderDims = {
@@ -169,16 +180,18 @@ const DEFAULT_DIMS: RenderDims = {
   edgeArcApproach: 11,
   edgeArcPadding: 3,
   arcRadius: 8,
+  lineWidth: 2,
 };
 
 const COMPACT_DIMS: RenderDims = {
-  laneWidth: 14,
-  gutter: 18,
-  commitRadius: 7,
-  mergeRadius: 4,
-  edgeArcApproach: 7,
-  edgeArcPadding: 2,
-  arcRadius: 5,
+  laneWidth: 10,
+  gutter: 10,
+  commitRadius: 5,
+  mergeRadius: 5,
+  edgeArcApproach: 11,
+  edgeArcPadding: 3,
+  arcRadius: 8,
+  lineWidth: 1,
 };
 
 export function getRenderDims(compact: boolean): RenderDims {
@@ -396,7 +409,7 @@ function renderPassThrough(col: number, dims: RenderDims) {
       x2={x}
       y2={ROW_HEIGHT}
       stroke={laneColor(col)}
-      stroke-width="2"
+      stroke-width={dims.lineWidth}
     />
   );
 }
@@ -412,7 +425,7 @@ function renderStartingEdge(edgeCol: number, nodeCol: number, dims: RenderDims) 
         x2={edgeX}
         y2={ROW_HEIGHT}
         stroke={color}
-        stroke-width="2"
+        stroke-width={dims.lineWidth}
       />
     );
   }
@@ -431,13 +444,13 @@ function renderStartingEdge(edgeCol: number, nodeCol: number, dims: RenderDims) 
         x2={edgeX}
         y2={ROW_HEIGHT}
         stroke={color}
-        stroke-width="2"
+        stroke-width={dims.lineWidth}
       />
       <path
         d={arcPath(arcCx, arcCy, startAngle, endAngle, dims)}
         stroke={color}
         fill="none"
-        stroke-width="2"
+        stroke-width={dims.lineWidth}
       />
       <line
         x1={arcCx}
@@ -445,7 +458,7 @@ function renderStartingEdge(edgeCol: number, nodeCol: number, dims: RenderDims) 
         x2={nodeX}
         y2={ROW_HEIGHT / 2}
         stroke={color}
-        stroke-width="2"
+        stroke-width={dims.lineWidth}
       />
     </>
   );
@@ -462,7 +475,7 @@ function renderEndingEdge(edgeCol: number, nodeCol: number, dims: RenderDims) {
         x2={edgeX}
         y2={ROW_HEIGHT / 2}
         stroke={color}
-        stroke-width="2"
+        stroke-width={dims.lineWidth}
       />
     );
   }
@@ -481,13 +494,13 @@ function renderEndingEdge(edgeCol: number, nodeCol: number, dims: RenderDims) {
         x2={edgeX}
         y2={dims.edgeArcPadding}
         stroke={color}
-        stroke-width="2"
+        stroke-width={dims.lineWidth}
       />
       <path
         d={arcPath(arcCx, arcCy, startAngle, endAngle, dims)}
         stroke={color}
         fill="none"
-        stroke-width="2"
+        stroke-width={dims.lineWidth}
       />
       <line
         x1={arcCx}
@@ -495,7 +508,7 @@ function renderEndingEdge(edgeCol: number, nodeCol: number, dims: RenderDims) {
         x2={nodeX}
         y2={ROW_HEIGHT / 2}
         stroke={color}
-        stroke-width="2"
+        stroke-width={dims.lineWidth}
       />
     </>
   );

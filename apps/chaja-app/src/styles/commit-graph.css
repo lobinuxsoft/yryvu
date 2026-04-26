@@ -565,7 +565,10 @@
   position: absolute;
   top: 50%;
   right: 0;
-  height: 22px;
+  /* `height` is set inline per row from `dims.commitRadius * 2` so
+     the tint always matches the node's diameter — 22 px in default,
+     10 px in compact. Hardcoding 22 px here left a fat band trailing
+     off the tiny compact node. */
   transform: translateY(-50%);
   pointer-events: none;
   background-color: color-mix(
@@ -590,7 +593,8 @@
   position: absolute;
   left: 0;
   width: 4px;
-  height: 22px;
+  /* `height` is set inline per row from `dims.commitRadius * 2` so the
+     streak matches the node diameter (22 px default, 10 px compact). */
 }
 
 

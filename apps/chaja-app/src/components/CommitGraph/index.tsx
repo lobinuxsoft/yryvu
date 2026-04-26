@@ -502,8 +502,16 @@ export function CommitGraph(props: CommitGraphProps) {
                 {(item) => {
                 const r = rows()[item.index];
                 if (!r) return null;
-                const dims = getRenderDims(commitZoneMode() === "compact");
-                const nodeX = dims.gutter + r.lane * dims.laneWidth + dims.laneWidth / 2;
+                // Reactive getters — recompute when commitZoneMode flips
+                // so the tint anchor follows the new node geometry. A
+                // plain const here would freeze on first mount and leave
+                // the tint offset by the dim delta after a mode change.
+                const tintLeft = () => {
+                  const d = getRenderDims(commitZoneMode() === "compact");
+                  return d.gutter + r.lane * d.laneWidth + d.laneWidth / 2;
+                };
+                const tintHeight = () =>
+                  getRenderDims(commitZoneMode() === "compact").commitRadius * 2;
                   return (
                     <li
                       class={rowWrapperClass(
@@ -529,7 +537,10 @@ export function CommitGraph(props: CommitGraphProps) {
                       <span
                         class="commit-graph__row-tint"
                         aria-hidden="true"
-                        style={{ left: `${nodeX}px` }}
+                        style={{
+                          left: `${tintLeft()}px`,
+                          height: `${tintHeight()}px`,
+                        }}
                       />
                       <CommitRowGraph
                         row={r}
@@ -560,12 +571,14 @@ export function CommitGraph(props: CommitGraphProps) {
                 {(item) => {
                 const r = rows()[item.index];
                 if (!r) return null;
-                  
+                const streakHeight = () =>
+                  getRenderDims(commitZoneMode() === "compact").commitRadius * 2;
                   return (
                     <span
                       class="commit-graph__lane-streak"
                       style={{
-                        top: `${item.start + (ROW_HEIGHT - 22) / 2 + wipShift()}px`,
+                        top: `${item.start + (ROW_HEIGHT - streakHeight()) / 2 + wipShift()}px`,
+                        height: `${streakHeight()}px`,
                         "background-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
                     />

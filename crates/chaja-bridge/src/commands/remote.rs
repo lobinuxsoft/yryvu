@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::backend::GitBackend;
+use crate::backend::{GitBackend, MergeResult, MergeStrategy, PushOptions};
 use crate::repo::GixBackend;
 
 #[tauri::command]
@@ -25,6 +25,33 @@ pub async fn fetch_prune(repo_path: String, remote: Option<String>) -> Result<()
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .fetch_prune(&PathBuf::from(&repo_path), remote.as_deref())
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn push(repo_path: String, options: Option<PushOptions>) -> Result<(), String> {
+    let opts = options.unwrap_or_default();
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .push(&PathBuf::from(&repo_path), opts)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn pull(
+    repo_path: String,
+    remote: Option<String>,
+    strategy: MergeStrategy,
+) -> Result<MergeResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .pull(&PathBuf::from(&repo_path), remote.as_deref(), strategy)
             .map_err(|e| e.to_string())
     })
     .await

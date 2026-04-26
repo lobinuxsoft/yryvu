@@ -32,11 +32,11 @@ import {
 import type { ChildRefs, RefTag } from "../../ipc/commits";
 import {
   clearHoveredRef,
+  hiddenBySmartFilter,
   hiddenRefs,
   pinnedSha,
   setHiddenRef,
   setHoveredRef,
-  staleRefs,
 } from "../../state";
 import { refKey, useBranchOps } from "../../branchOps";
 
@@ -280,9 +280,9 @@ export function RefPillGroup(props: {
     props.refs.filter((r) => {
       const key = refKey(r);
       if (hiddenRefs().has(key)) return false;
-      // Smart Branch Visibility: hide stale (tip > N days old) when the
-      // toggle is enabled. The set is empty when the toggle is off.
-      if (staleRefs().has(key)) return false;
+      // Smart Branch Visibility: hide refs not in the backend-computed
+      // allowlist (empty set when the toggle is off).
+      if (hiddenBySmartFilter().has(key)) return false;
       return true;
     });
   const ordered = () => orderRefs(visibleRefs(), isPinnedRow());

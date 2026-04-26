@@ -402,34 +402,31 @@ export function resetColumnsToCompactLayout(): void {
   setCommitZoneMode("compact");
 }
 
-/// Smart Branch Visibility — auto-hide branches with stale tips. GK has
-/// a dedicated `SmartBranchesService` that combines staleness + branch
-/// status (merged / divergent / etc.); chajá's first pass uses a single
-/// knob and a 90-day staleness threshold applied to the tip commit's
-/// author_date. Computed in `CommitGraph` from the streamed rows and
-/// pushed into `staleRefs` here so `RefPillGroup` can filter without
-/// recomputing.
+/// Smart Branch Visibility — global toggle that drives a 1:1 port of
+/// GitKraken's `SmartBranchesService.resolveAllowedRefs`. When enabled,
+/// `CommitGraph` invokes the backend `smart_visible_refs` IPC and stores
+/// the complement (every ref *not* in the allowed set) in
+/// `hiddenBySmartFilter` so `RefPillGroup` can filter without recomputing.
+/// Persistence is profile-wide via `localStorage` (chajá has no
+/// per-profile config yet; matches GK's `["ui","graphOptions",
+/// "smartBranches"]` semantics functionally).
 export const [smartBranchesEnabled, setSmartBranchesEnabled] = persistedBool(
   "smartBranchesEnabled",
   false,
 );
 
-/// Days of inactivity beyond which a branch is considered stale by the
-/// Smart Branch Visibility filter. Matches the conventional GK heuristic
-/// of "older than three months" (no exact bundle constant — `SmartBranches`
-/// drives staleness off a service the front-end queries; we approximate).
-export const SMART_BRANCH_STALE_DAYS = 90;
-
-/// Set of `${kind}/${name}` keys auto-filtered by the Smart Branch
-/// Visibility pass. Computed by `CommitGraph` whenever its row stream
-/// updates and `smartBranchesEnabled` is on. Empty when the toggle is
-/// off so RefPillGroup short-circuits cleanly.
-const [staleRefsInternal, setStaleRefsInternal] =
+/// Set of `${kind}/${name}` keys hidden by the Smart Branch Visibility
+/// filter. Computed by `CommitGraph` whenever the IPC resolves a new
+/// allowlist. Empty when the toggle is off so RefPillGroup short-circuits.
+/// The set is *additive* with `hiddenRefs` (manual user hides) — chajá
+/// keeps the two filters separate, unlike GK which writes both to the
+/// repo-level `soloedRefs` setting.
+const [hiddenBySmartFilterInternal, setHiddenBySmartFilterInternal] =
   createSignal<Set<string>>(new Set());
-export const staleRefs = staleRefsInternal;
+export const hiddenBySmartFilter = hiddenBySmartFilterInternal;
 
-export function setStaleRefs(next: Set<string>): void {
-  setStaleRefsInternal(next);
+export function setHiddenBySmartFilter(next: Set<string>): void {
+  setHiddenBySmartFilterInternal(next);
 }
 
 export const dirtyFileCount = createMemo(() => {

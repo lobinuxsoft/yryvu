@@ -471,8 +471,7 @@ export function CommitGraph(props: CommitGraphProps) {
               class="commit-graph__col-graph"
               style={{
                 height: `${totalHeight()}px`,
-                width: `${graphContentWidth()}px`,
-  
+                "min-width": `${graphContentWidth()}px`,
               }}
             >
               <Show when={dirtyFileCount() > 0}>
@@ -503,7 +502,8 @@ export function CommitGraph(props: CommitGraphProps) {
                 {(item) => {
                 const r = rows()[item.index];
                 if (!r) return null;
-                  
+                const dims = getRenderDims(commitZoneMode() === "compact");
+                const nodeX = dims.gutter + r.lane * dims.laneWidth + dims.laneWidth / 2;
                   return (
                     <li
                       class={rowWrapperClass(
@@ -526,6 +526,11 @@ export function CommitGraph(props: CommitGraphProps) {
                         if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
                       }}
                     >
+                      <span
+                        class="commit-graph__row-tint"
+                        aria-hidden="true"
+                        style={{ left: `${nodeX}px` }}
+                      />
                       <CommitRowGraph
                         row={r}
                         edges={edgeStates()[item.index] ?? new Map()}

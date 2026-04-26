@@ -145,6 +145,12 @@
   padding: 0;
   position: relative;
   min-width: 0;
+  /* The UL is the containing block for its absolute-positioned row
+     wrappers (`left: 0; right: 0`). Without an explicit width the UL
+     collapses to 0 because every child is out-of-flow, which in turn
+     collapses the rows. `width: 100%` makes the UL fill the parent
+     zone's fixed width so rows stretch across the whole cell. */
+  width: 100%;
 }
 
 .commit-graph__col-author .graph-row-wrapper,
@@ -261,6 +267,7 @@
   padding: 0;
   position: relative;
   min-width: 0;
+  width: 100%;
 }
 
 /* Branch/tag column scope — left-align pills with 3px gap from the edge
@@ -531,7 +538,14 @@
   margin: 0;
   padding: 0;
   position: relative;
-  min-width: 0;
+  /* `width: 100%` so when lane content is narrower than the hscroll
+     viewport, the UL still fills the cell and the absolute-positioned
+     row wrappers (`left: 0; right: 0`) reach the right edge — instead
+     of collapsing to lane content width and leaving a dead band.
+     `min-width` is set inline to `graphContentWidth` so when lanes
+     overflow the viewport, the UL grows past 100 % and the wrapper's
+     `overflow-x: auto` activates. */
+  width: 100%;
 }
 
 /* Lane-color tint band (#128) — GitKraken's `BackgroundStreak` +
@@ -542,11 +556,26 @@
    trailing halo off the circle. Default 10 % opacity; jumps to 50 %
    when the row is selected, echoing GK's
    `.column-N.is-selected .commit-bg-color` variant. */
-/* Both the tint band and the streak are vertically centered and sized
-   to the commit node's diameter (22 px = COMMIT_RADIUS * 2), not the
-   full row height. Reads as a halo emitted from the circle rather than
-   a banner across the whole row. */
-.graph-row-wrapper.is-selected {
+/* Lane tint band — positioned absolutely inside each GRAPH-zone row
+   wrapper. `left` is set inline per row to `nodeCenterX` so the
+   tint reads as a halo trailing off the commit circle to the right.
+   Sized to the node's 22 px diameter and vertically centered. The
+   row's `--row-lane-color` flows in from the parent <li>'s style. */
+.commit-graph__row-tint {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  height: 22px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  background-color: color-mix(
+    in srgb,
+    var(--row-lane-color, transparent) 10%,
+    transparent
+  );
+}
+
+.graph-row-wrapper.is-selected .commit-graph__row-tint {
   background-color: color-mix(
     in srgb,
     var(--row-lane-color, transparent) 50%,
@@ -571,6 +600,7 @@
   padding: 0;
   position: relative;
   min-width: 0;
+  width: 100%;
   /* RightGutter divider (#128) — 1-px hairline + subtle inward shadow
      marks the GRAPH → MESSAGE boundary, pairing with the per-row
      lane-color streak on the GRAPH side. Applied here (not on
@@ -607,17 +637,11 @@
   align-items: center;
   font-size: 12px;
   color: var(--fg-1);
-  /* Lane-color tint over the full row width (1:1 with GK's
-     `.commit-bg-color height-100-percent width-100-percent`). Each
-     row's `<li>` writes `--row-lane-color` inline; this rule paints
-     it across BRANCH/TAG, GRAPH, MESSAGE, AUTHOR, DATE-TIME, SHA so
-     leftover horizontal space inside any zone still reads as part
-     of the row. */
-  background-color: color-mix(
-    in srgb,
-    var(--row-lane-color, transparent) 10%,
-    transparent
-  );
+  /* No global background — the lane tint is painted ONLY inside the
+     GRAPH zone via `.commit-graph__row-tint` (a per-row span anchored
+     at the commit node's centerX, extending right to the zone edge).
+     Mirrors GK's `BackgroundStreak` / `.commit-bg-color` rule which
+     never bleeds across BRANCH/TAG, MESSAGE, AUTHOR, DATE-TIME, SHA. */
 }
 
 .commit-graph__col-messages .graph-row-wrapper {

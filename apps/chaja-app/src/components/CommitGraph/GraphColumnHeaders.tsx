@@ -6,13 +6,18 @@
  * header chrome). Iterates `activeOrderedZones()` so the bundle's
  * compact-mode reordering (author left of message) falls out
  * automatically. Each header column reads its width from the active
- * slice of the column state.
+ * slice of the column state. Right-click on any header opens the
+ * same settings popover as the gear button (mirrors GK's column header
+ * context menu).
  */
 
-import { createMemo, For } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 
 import { activeColumnSettings, activeOrderedZones } from "../../state";
-import { ColumnSettingsButton } from "./ColumnSettingsButton";
+import {
+  ColumnSettingsMenu,
+  createMenuState,
+} from "./ColumnSettingsButton";
 import { GraphColumnResizer } from "./GraphColumnResizer";
 import { HiddenRefsButton } from "./HiddenRefsButton";
 import { ZONE_SPECS, type GraphZoneId } from "./columns";
@@ -48,6 +53,17 @@ function HeaderLabel(props: { id: GraphZoneId }) {
 
 export function GraphColumnHeaders() {
   const visible = createMemo(() => activeOrderedZones());
+  const menu = createMenuState();
+
+  // Open the menu near the cursor on right-click. `right` is computed
+  // from the click X so the popover stays anchored to the click point
+  // without overflowing the viewport.
+  const openFromContext = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const right = Math.max(8, window.innerWidth - e.clientX);
+    menu.open({ top: e.clientY + 4, right });
+  };
 
   return (
     <div class="main__graph-column-headers">
@@ -57,19 +73,16 @@ export function GraphColumnHeaders() {
             class="main__graph-column-header"
             data-zone={id}
             style={{ order: activeColumnSettings(id).order }}
+            onContextMenu={openFromContext}
           >
             <HeaderLabel id={id} />
-            {/* Every column gets its own resize handle (including the
-                rightmost one) — fixes #157, where the rightmost zone
-                couldn't shrink to its declared `minimumWidth` because
-                no handle controlled it. The handle always operates on
-                the column it sits on, and `setGraphZoneWidth` clamps
-                the result to `[minimumWidth, maximumWidth]`. */}
             <GraphColumnResizer leftZone={id} />
           </span>
         )}
       </For>
-      <ColumnSettingsButton />
+      <Show when={menu.pos()}>
+        <ColumnSettingsMenu pos={menu.pos()!} onClose={menu.close} />
+      </Show>
     </div>
   );
 }

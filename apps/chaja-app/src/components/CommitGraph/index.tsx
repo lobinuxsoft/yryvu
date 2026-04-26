@@ -3,6 +3,7 @@
 import {
   createEffect,
   createMemo,
+  createResource,
   createSignal,
   For,
   onCleanup,
@@ -14,6 +15,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
 import {
   getHostingService,
+  smartVisibleRefs,
   streamGraph,
   type GraphRow,
   type HostingService,
@@ -29,12 +31,11 @@ import {
   inspectorMode,
   selectedCommit,
   setCommitMessage,
+  setHiddenBySmartFilter,
   setInspectorMode,
   setPinnedSha,
   setSelectedCommit,
-  setStaleRefs,
   smartBranchesEnabled,
-  SMART_BRANCH_STALE_DAYS,
 } from "../../state";
 import { isRowMemberOfHoveredRef } from "./hoverDim";
 import { ContextMenu } from "../ContextMenu";
@@ -140,6 +141,63 @@ export function CommitGraph(props: CommitGraphProps) {
     onCleanup(() => handle.stop());
   });
 
+  // Smart Branch Visibility — port of GK's `SmartBranchesService`. The
+  // backend computes the deterministic 5-ref allowlist via `smartVisibleRefs`;
+  // we maintain the *complement* against `rows()` so RefPills can hide the
+  // pills with O(1) lookups. The resource re-fires on repo / toggle / refs
+  // changes (graphNonce bumps on every refresh that may move HEAD or refs).
+  // Detached HEAD: backend returns `[]`; we clear the filter without flagging
+  // an error (chajá deviation from GK's silent no-op — explicit cleanup).
+  const [smartAllowed] = createResource(
+    () => {
+      const path = props.repoPath;
+      const enabled = smartBranchesEnabled();
+      // Track graphNonce so a refresh re-runs the resolver.
+      void graphNonce();
+      return enabled ? path : null;
+    },
+    async (path: string) => smartVisibleRefs(path),
+  );
+
+  createEffect(() => {
+    if (!smartBranchesEnabled()) {
+      setHiddenBySmartFilter(new Set());
+      return;
+    }
+    const allowed = smartAllowed();
+    if (!allowed || allowed.length === 0) {
+      // Detached HEAD or unborn HEAD — backend returned an empty allowlist.
+      // Do not apply the filter; matches GK's no-op for these cases.
+      setHiddenBySmartFilter(new Set());
+      return;
+    }
+    const allowedKeys = new Set<string>();
+    for (const fullName of allowed) {
+      if (fullName.startsWith("refs/heads/")) {
+        const short = fullName.slice("refs/heads/".length);
+        // Backend doesn't know whether a ref is the active HEAD or a plain
+        // branch in chajá's RefTag taxonomy — accept either kind.
+        allowedKeys.add(`Head/${short}`);
+        allowedKeys.add(`Branch/${short}`);
+      } else if (fullName.startsWith("refs/remotes/")) {
+        const short = fullName.slice("refs/remotes/".length);
+        allowedKeys.add(`RemoteBranch/${short}`);
+      }
+    }
+    const hidden = new Set<string>();
+    for (const row of rows()) {
+      for (const ref of row.refs) {
+        // Tags pass through Smart Branch Visibility — GK's `includeRef`
+        // emits only branches and remotes, so tags are never in `allowed`,
+        // but Smart Branches is not meant to hide them either.
+        if (ref.kind === "Tag") continue;
+        const key = `${ref.kind}/${ref.name}`;
+        if (!allowedKeys.has(key)) hidden.add(key);
+      }
+    }
+    setHiddenBySmartFilter(hidden);
+  });
+
   // Detect the hosting-service tag once per repo path change. One-shot
   // query — the remote doesn't change while the graph is being rendered.
   createEffect(() => {
@@ -224,29 +282,6 @@ export function CommitGraph(props: CommitGraphProps) {
         "--graph-col-sha",
         `${activeColumnSettings("commitSha").width}px`,
       );
-    });
-    // Smart Branch Visibility pass — populate the `staleRefs` set with
-    // any ref whose tip commit is older than the staleness threshold.
-    // Iterates `rows()` once per change; cheap because we already track
-    // tip-row alignment via the graph stream.
-    createEffect(() => {
-      if (!smartBranchesEnabled()) {
-        setStaleRefs(new Set());
-        return;
-      }
-      const thresholdSec = SMART_BRANCH_STALE_DAYS * 24 * 3600;
-      const nowSec = Date.now() / 1000;
-      const stale = new Set<string>();
-      for (const row of rows()) {
-        if (nowSec - row.author_date <= thresholdSec) continue;
-        for (const ref of row.refs) {
-          // HEAD is never auto-hidden — would erase the active checkout
-          // marker even after a long break.
-          if (ref.kind === "Head") continue;
-          stale.add(`${ref.kind}/${ref.name}`);
-        }
-      }
-      setStaleRefs(stale);
     });
     onCleanup(() => {
       main.style.removeProperty("--graph-col-branch");

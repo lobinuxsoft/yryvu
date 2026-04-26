@@ -358,6 +358,17 @@ pub trait GitBackend: Send + Sync {
         repo_path: &Path,
         opts: &CommitOptions,
     ) -> Result<String, BackendError>;
+
+    /// Resolve the visible-ref allowlist for `Smart Branch Visibility`.
+    /// Empty result means "do not apply" (detached HEAD, unborn HEAD, or
+    /// repo open failure). `profile_default` mirrors GK's profile-wide
+    /// `init.defaultBranch` setting; pass [`None`] when chajá has no
+    /// profile-level override.
+    fn smart_visible_refs(
+        &self,
+        repo_path: &Path,
+        profile_default: Option<&str>,
+    ) -> Result<Vec<String>, BackendError>;
 }
 
 pub use crate::repo::GixBackend;

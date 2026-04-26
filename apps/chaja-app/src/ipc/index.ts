@@ -9,6 +9,7 @@ export * from "./commits";
 export * from "./diff";
 export * from "./merge";
 export * from "./remote";
+export * from "./smart_branches";
 export * from "./staging";
 export * from "./tags";
 export * from "./worktree";

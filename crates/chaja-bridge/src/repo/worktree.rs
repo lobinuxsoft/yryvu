@@ -185,6 +185,20 @@ pub fn stash_pop(repo_path: &Path) -> Result<(), BackendError> {
     Ok(())
 }
 
+/// Count the entries in the stash queue. The toolbar's Pop button gates
+/// on this to avoid the libgit2 `reference 'refs/stash' not found`
+/// error that fires when popping with an empty queue.
+pub fn stash_count(repo_path: &Path) -> Result<u32, BackendError> {
+    let mut repo = open_git2(repo_path)?;
+    let mut count: u32 = 0;
+    repo.stash_foreach(|_index, _message, _oid| {
+        count += 1;
+        true
+    })
+    .map_err(git2_err)?;
+    Ok(count)
+}
+
 pub fn abort_merge(repo_path: &Path) -> Result<(), BackendError> {
     let repo = open_git2(repo_path)?;
     // Reset hard to HEAD, then clean up MERGE_HEAD / MERGE_MSG.

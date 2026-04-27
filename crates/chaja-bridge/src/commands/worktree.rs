@@ -50,6 +50,17 @@ pub async fn stash_pop(repo_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn stash_count(repo_path: String) -> Result<u32, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stash_count(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 pub async fn abort_merge(repo_path: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend

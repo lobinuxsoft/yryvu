@@ -14,7 +14,7 @@ import {
   stashPush,
   type ResetMode,
 } from "../../ipc";
-import { refreshBranches, refreshGraph, repoPath } from "../../state";
+import { refreshBranches, refreshGraph, refreshWorkingTree, repoPath } from "../../state";
 import type { ContextMenuItem } from "../ContextMenu";
 import { notify } from "../Notifications";
 
@@ -100,6 +100,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
       closeDialog();
       refreshGraph();
       refreshBranches();
+      refreshWorkingTree();
       notify.success("Checked out commit", { message: shortSha });
     } catch (err) {
       setDialogError(String(err));
@@ -116,6 +117,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
       closeDialog();
       refreshGraph();
       refreshBranches();
+      refreshWorkingTree();
       notify.success("Checked out commit", { message: `Auto-stashed → ${shortSha}` });
     } catch (err) {
       setDialogError(String(err));
@@ -172,6 +174,10 @@ export function createCommitOps(deps: CommitOpsDeps) {
       closeDialog();
       refreshGraph();
       refreshBranches();
+      // Soft reset puts the popped commits' tree changes in the index;
+      // mixed puts them in the working tree; hard wipes both. All three
+      // change what the WIP panel must show.
+      refreshWorkingTree();
       notify.success(`Reset (${mode})`, { message: shortSha });
     } catch (err) {
       setDialogError(String(err));
@@ -187,6 +193,10 @@ export function createCommitOps(deps: CommitOpsDeps) {
       await cherryPickCommit(path, sha);
       refreshGraph();
       refreshBranches();
+      // Conflicts leave the working tree dirty with markers; clean
+      // applies write a new commit and the WT stays clean — either way
+      // the panel needs to refetch.
+      refreshWorkingTree();
       notify.success("Cherry-picked", { message: shortSha });
     } catch (err) {
       setDialogError(String(err));
@@ -202,6 +212,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
       await revertCommit(path, sha);
       refreshGraph();
       refreshBranches();
+      refreshWorkingTree();
       notify.success("Reverted", { message: shortSha });
     } catch (err) {
       setDialogError(String(err));

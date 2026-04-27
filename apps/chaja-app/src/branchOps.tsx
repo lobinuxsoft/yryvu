@@ -17,7 +17,7 @@ import {
   type MergeStrategy,
   type RefTag,
 } from "./ipc";
-import { repoPath, setHiddenRef } from "./state";
+import { refreshWorkingTree, repoPath, setHiddenRef } from "./state";
 import type { ContextMenuItem } from "./components/ContextMenu";
 import { parseRemoteBranchName } from "./components/LeftSidebar/helpers";
 import type { DialogState, MenuState } from "./components/LeftSidebar/types";
@@ -92,6 +92,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await checkoutBranch(path, target);
       closeDialog();
       deps.refresh();
+      refreshWorkingTree();
       notify.success("Checked out", { message: target });
     } catch (err) {
       setDialogError(String(err));
@@ -107,6 +108,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await checkoutBranch(path, target);
       closeDialog();
       deps.refresh();
+      refreshWorkingTree();
       notify.success("Checked out", { message: `Auto-stashed → ${target}` });
     } catch (err) {
       setDialogError(String(err));
@@ -123,6 +125,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
       const result = await mergeBranch(path, state.source, mergeStrategy());
       setDialog({ kind: "merge-result", result });
       deps.refresh();
+      refreshWorkingTree();
       switch (result.kind) {
         case "already-up-to-date":
           notify.success("Merge: already up to date", { message: state.source });
@@ -174,6 +177,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
       await abortMerge(path);
       closeDialog();
       deps.refresh();
+      refreshWorkingTree();
       notify.success("Merge aborted");
     } catch (err) {
       setDialogError(String(err));

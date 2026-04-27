@@ -247,4 +247,8 @@ impl GitBackend for GixBackend {
     ) -> Result<MergeResult, BackendError> {
         remote::pull(repo_path, remote_arg, strategy)
     }
+
+    fn force_pull(&self, repo_path: &Path) -> Result<(), BackendError> {
+        remote::force_pull(repo_path)
+    }
 }

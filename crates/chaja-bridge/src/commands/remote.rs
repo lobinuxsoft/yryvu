@@ -57,3 +57,14 @@ pub async fn pull(
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn force_pull(repo_path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .force_pull(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

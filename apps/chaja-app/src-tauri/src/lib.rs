@@ -54,6 +54,7 @@ pub fn run() {
             chaja_bridge::commands::smart_visible_refs,
             chaja_bridge::commands::push,
             chaja_bridge::commands::pull,
+            chaja_bridge::commands::force_pull,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

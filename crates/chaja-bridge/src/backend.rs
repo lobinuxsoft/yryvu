@@ -399,6 +399,11 @@ pub trait GitBackend: Send + Sync {
         remote: Option<&str>,
         strategy: MergeStrategy,
     ) -> Result<MergeResult, BackendError>;
+
+    /// Hard-reset HEAD to its upstream, fetching first. Destructive —
+    /// drops any local commits not reachable from the upstream. Refuses
+    /// on detached HEAD or when no upstream is configured.
+    fn force_pull(&self, repo_path: &Path) -> Result<(), BackendError>;
 }
 
 pub use crate::repo::GixBackend;

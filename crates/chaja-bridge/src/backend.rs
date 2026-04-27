@@ -404,6 +404,11 @@ pub trait GitBackend: Send + Sync {
     /// drops any local commits not reachable from the upstream. Refuses
     /// on detached HEAD or when no upstream is configured.
     fn force_pull(&self, repo_path: &Path) -> Result<(), BackendError>;
+
+    /// Count entries in the stash queue. The toolbar's Pop button gates
+    /// on this (`> 0`) to avoid the libgit2 "no stash" error that fires
+    /// when popping an empty queue.
+    fn stash_count(&self, repo_path: &Path) -> Result<u32, BackendError>;
 }
 
 pub use crate::repo::GixBackend;

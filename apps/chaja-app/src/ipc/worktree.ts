@@ -18,6 +18,10 @@ export function stashPop(repoPath: string): Promise<void> {
   return invoke<void>("stash_pop", { repoPath });
 }
 
+export function stashCount(repoPath: string): Promise<number> {
+  return invoke<number>("stash_count", { repoPath });
+}
+
 export interface RepoStateInfo {
   kind:
     | "clean"

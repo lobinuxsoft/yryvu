@@ -16,6 +16,7 @@ import {
   listBranches,
   pull,
   push,
+  stashCount,
   stashPop,
   stashPush,
   type BranchInfo,
@@ -30,6 +31,7 @@ import {
   refreshWorkingTree,
   repoPath,
   setPullType,
+  workingTreeNonce,
   type PullType,
 } from "../../state";
 import { Bell, dismissToast, notify } from "../Notifications";
@@ -84,6 +86,18 @@ export function Toolbar(props: ToolbarProps) {
   const behindCount = () => headBranch()?.behind ?? 0;
   const upstreamShort = () => headBranch()?.upstream ?? undefined;
   const hasUpstream = () => upstreamShort() !== undefined;
+
+  // Stash queue size — gates the Pop button so the user can't fire it
+  // on an empty queue. Keyed on workingTreeNonce so a successful Stash
+  // / Pop refetches without us doing anything else.
+  const [stashCountResource] = createResource<number, [string, number]>(
+    () => [repoPath() ?? "", workingTreeNonce()] as [string, number],
+    async ([path]) => {
+      if (!path) return 0;
+      return await stashCount(path);
+    },
+  );
+  const stashEntries = () => stashCountResource() ?? 0;
 
   function refreshAfterRemoteOp() {
     refreshGraph();
@@ -348,7 +362,12 @@ export function Toolbar(props: ToolbarProps) {
         <ToolbarBtn
           icon={<IconStashOut />}
           label="Pop"
-          disabled={!hasRepo() || opInFlight()}
+          disabled={!hasRepo() || opInFlight() || stashEntries() === 0}
+          title={
+            stashEntries() === 0
+              ? "No stashes to pop"
+              : `Pop stash (${stashEntries()} available)`
+          }
           onClick={onPop}
         />
         <ToolbarBtn icon={<IconTerminal />} label="Terminal" disabled />
@@ -463,6 +482,7 @@ function ToolbarBtn(props: {
   icon: JSX.Element;
   label: string;
   disabled?: boolean;
+  title?: string;
   onClick?: () => void;
 }) {
   return (
@@ -470,6 +490,7 @@ function ToolbarBtn(props: {
       class="toolbar__btn"
       type="button"
       disabled={props.disabled}
+      title={props.title}
       onClick={props.onClick}
     >
       <span class="toolbar__btn-icon">{props.icon}</span>

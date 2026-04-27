@@ -251,4 +251,8 @@ impl GitBackend for GixBackend {
     fn force_pull(&self, repo_path: &Path) -> Result<(), BackendError> {
         remote::force_pull(repo_path)
     }
+
+    fn stash_count(&self, repo_path: &Path) -> Result<u32, BackendError> {
+        worktree::stash_count(repo_path)
+    }
 }

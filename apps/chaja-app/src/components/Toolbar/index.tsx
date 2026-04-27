@@ -33,7 +33,9 @@ import {
   type PullType,
 } from "../../state";
 import { Bell, dismissToast, notify } from "../Notifications";
+import { BranchSwitcher } from "./BranchSwitcher";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { RepoSwitcher } from "./RepoSwitcher";
 import { SplitButton, type SplitButtonOption } from "./SplitButton";
 import { UpstreamIndicator } from "./UpstreamIndicator";
 import {
@@ -63,12 +65,6 @@ export function Toolbar(props: ToolbarProps) {
   const [pending, setPending] = createSignal<string | null>(null);
   const [actionsOpen, setActionsOpen] = createSignal(false);
   const [confirm, setConfirm] = createSignal<ConfirmKind | null>(null);
-
-  const currentRepoName = () => {
-    const p = repoPath();
-    if (!p) return undefined;
-    return p.split("/").filter(Boolean).pop() ?? p;
-  };
 
   // Active branch info — drives UpstreamIndicator and ahead/behind-aware
   // disable states. Keyed on (repoPath, branchesNonce) so it re-runs
@@ -297,25 +293,11 @@ export function Toolbar(props: ToolbarProps) {
 
   return (
     <div class="toolbar">
-      <div class="toolbar__selector">
-        <span>repository</span>
-        <button class="toolbar__selector-value" type="button" onClick={props.onOpenRepo}>
-          <Show when={currentRepoName()} fallback={<em>No repo</em>}>
-            {(name) => <>{name()} <span class="toolbar__arrow">▾</span></>}
-          </Show>
-        </button>
-      </div>
+      <RepoSwitcher onOpenRepo={props.onOpenRepo} />
 
       <span class="toolbar__arrow">→</span>
 
-      <div class="toolbar__selector">
-        <span>branch</span>
-        <button class="toolbar__selector-value" type="button" disabled>
-          <Show when={headBranch()} fallback={<em>— </em>}>
-            {(b) => <>{b().name}</>}
-          </Show>
-        </button>
-      </div>
+      <BranchSwitcher branches={branches() ?? []} active={headBranch()} />
 
       <UpstreamIndicator
         ahead={aheadCount()}
@@ -371,6 +353,8 @@ export function Toolbar(props: ToolbarProps) {
         />
         <ToolbarBtn icon={<IconTerminal />} label="Terminal" disabled />
       </div>
+
+      <div class="toolbar__spacer" />
 
       <div class="toolbar__actions toolbar__actions--trailing">
         <ToolbarBtn

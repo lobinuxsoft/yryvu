@@ -29,6 +29,24 @@ function persistedBool(key: string, fallback: boolean): Signal<boolean> {
   return [value, wrapped];
 }
 
+function persistedEnum<T extends string>(
+  key: string,
+  fallback: T,
+  allowed: readonly T[],
+): Signal<T> {
+  const stored = localStorage.getItem(STORAGE_PREFIX + key);
+  const initial = stored !== null && (allowed as readonly string[]).includes(stored)
+    ? (stored as T)
+    : fallback;
+  const [value, setValue] = createSignal<T>(initial);
+  const wrapped: Signal<T>[1] = ((next: T | ((prev: T) => T)) => {
+    const resolved = typeof next === "function" ? (next as (prev: T) => T)(value()) : next;
+    localStorage.setItem(STORAGE_PREFIX + key, resolved);
+    return setValue(() => resolved);
+  }) as Signal<T>[1];
+  return [value, wrapped];
+}
+
 export const [showLeftPanel, setShowLeftPanel] = persistedBool("showLeftPanel", true);
 export const [showRightPanel, setShowRightPanel] = persistedBool("showRightPanel", true);
 export const [showTerminalPanel, setShowTerminalPanel] = persistedBool("showTerminalPanel", false);
@@ -401,6 +419,32 @@ export function resetColumnsToCompactLayout(): void {
   persistLayout(compactColumnLayout());
   setCommitZoneMode("compact");
 }
+
+/// Toolbar Pull split-button preference. Mirrors GitKraken's
+/// `pullType` profile setting (`/tmp/gk-bundle-pretty.js:10511`).
+/// Backend `MergeStrategy` value the main button runs when clicked;
+/// `fetch` is a chajá deviation that wraps `fetch_prune` instead of a
+/// merge. `force_pull` is also chajá-specific (5th item).
+export type PullType =
+  | "fetch"
+  | "pull_merge"
+  | "pull_ff_only"
+  | "pull_rebase"
+  | "force_pull";
+
+const PULL_TYPES: readonly PullType[] = [
+  "fetch",
+  "pull_merge",
+  "pull_ff_only",
+  "pull_rebase",
+  "force_pull",
+];
+
+export const [pullType, setPullType] = persistedEnum<PullType>(
+  "pullType",
+  "pull_merge",
+  PULL_TYPES,
+);
 
 /// Smart Branch Visibility — global toggle that drives a 1:1 port of
 /// GitKraken's `SmartBranchesService.resolveAllowedRefs`. When enabled,

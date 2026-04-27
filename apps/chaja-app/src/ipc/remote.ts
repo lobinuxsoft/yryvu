@@ -48,3 +48,13 @@ export function pull(
 ): Promise<MergeResult> {
   return invoke<MergeResult>("pull", { repoPath, remote: remote ?? null, strategy });
 }
+
+/**
+ * Hard-reset HEAD to its upstream, fetching first. Destructive — discards
+ * any local commits not reachable from the upstream. Surfaced from the
+ * toolbar's Pull chevron as `Force pull` and gated behind a confirmation
+ * dialog because the operation cannot be undone without reflog spelunking.
+ */
+export function forcePull(repoPath: string): Promise<void> {
+  return invoke<void>("force_pull", { repoPath });
+}

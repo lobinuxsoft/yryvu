@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+  createMemo,
+  createResource,
   createSignal,
   type JSX,
   onCleanup,
@@ -10,25 +12,34 @@ import {
 
 import {
   fetchPrune,
+  forcePull,
+  listBranches,
   pull,
   push,
   stashPop,
   stashPush,
+  type BranchInfo,
 } from "../../ipc";
 import { useBranchOps } from "../../branchOps";
 import {
+  branchesNonce,
   dirtyFileCount,
+  pullType,
   refreshBranches,
   refreshGraph,
   refreshWorkingTree,
   repoPath,
+  setPullType,
+  type PullType,
 } from "../../state";
 import { Bell, dismissToast, notify } from "../Notifications";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { SplitButton, type SplitButtonOption } from "./SplitButton";
+import { UpstreamIndicator } from "./UpstreamIndicator";
 import {
   IconArrowDown,
   IconArrowUp,
   IconBranch,
-  IconChevronDown,
   IconGear,
   IconRedo,
   IconSearch,
@@ -42,10 +53,16 @@ export interface ToolbarProps {
   onOpenRepo: () => void;
 }
 
+type ConfirmKind = "force-pull" | "force-push";
+
+const PULL_HEADER = "Choose your pull strategy";
+const PUSH_HEADER = "Push options";
+
 export function Toolbar(props: ToolbarProps) {
   const ops = useBranchOps();
   const [pending, setPending] = createSignal<string | null>(null);
   const [actionsOpen, setActionsOpen] = createSignal(false);
+  const [confirm, setConfirm] = createSignal<ConfirmKind | null>(null);
 
   const currentRepoName = () => {
     const p = repoPath();
@@ -53,9 +70,25 @@ export function Toolbar(props: ToolbarProps) {
     return p.split("/").filter(Boolean).pop() ?? p;
   };
 
-  // After a remote-touching op succeeds, bump both nonces so the graph
-  // (commits) and the sidebar (refs / ahead-behind) re-stream. Working-tree
-  // nonces are bumped explicitly by callers that touch the workdir.
+  // Active branch info — drives UpstreamIndicator and ahead/behind-aware
+  // disable states. Keyed on (repoPath, branchesNonce) so it re-runs
+  // whenever the LeftSidebar refresh fires (push, pull, fetch, branch CRUD).
+  const [branches] = createResource<BranchInfo[], [string, number]>(
+    () => [repoPath() ?? "", branchesNonce()] as [string, number],
+    async ([path]) => {
+      if (!path) return [] as BranchInfo[];
+      return await listBranches(path);
+    },
+  );
+
+  const headBranch = createMemo<BranchInfo | undefined>(() =>
+    branches()?.find((b) => b.is_head),
+  );
+  const aheadCount = () => headBranch()?.ahead ?? 0;
+  const behindCount = () => headBranch()?.behind ?? 0;
+  const upstreamShort = () => headBranch()?.upstream ?? undefined;
+  const hasUpstream = () => upstreamShort() !== undefined;
+
   function refreshAfterRemoteOp() {
     refreshGraph();
     refreshBranches();
@@ -85,28 +118,87 @@ export function Toolbar(props: ToolbarProps) {
     }
   }
 
-  async function onPull() {
+  function pullStrategyMessage(
+    result: Awaited<ReturnType<typeof pull>>,
+  ): string {
+    switch (result.kind) {
+      case "already-up-to-date":
+        return "Already up to date";
+      case "fast-forward":
+        return `Fast-forwarded to ${result.new_head.slice(0, 7)}`;
+      case "merged":
+        return `Merge commit ${result.new_head.slice(0, 7)}`;
+      case "conflict":
+        throw new Error(`Conflicts in ${result.paths.join(", ")}`);
+    }
+  }
+
+  async function runPullMerge() {
     await withOp("Pull", "Pull complete", async () => {
       const result = await pull(repoPath()!, "fast-forward-or-merge");
       refreshAfterRemoteOp();
-      switch (result.kind) {
-        case "already-up-to-date":
-          return "Already up to date";
-        case "fast-forward":
-          return `Fast-forwarded to ${result.new_head.slice(0, 7)}`;
-        case "merged":
-          return `Merge commit ${result.new_head.slice(0, 7)}`;
-        case "conflict":
-          throw new Error(`Conflicts in ${result.paths.join(", ")}`);
-      }
+      return pullStrategyMessage(result);
     });
   }
 
-  async function onPush() {
+  async function runPullFFOnly() {
+    await withOp("Pull (FF only)", "Pull complete", async () => {
+      const result = await pull(repoPath()!, "fast-forward-only");
+      refreshAfterRemoteOp();
+      return pullStrategyMessage(result);
+    });
+  }
+
+  async function runFetchAll() {
+    setActionsOpen(false);
+    await withOp("Fetch all", "Fetched all remotes", async () => {
+      await fetchPrune(repoPath()!);
+      refreshAfterRemoteOp();
+    });
+  }
+
+  async function runForcePull() {
+    setConfirm(null);
+    await withOp("Force pull", "Force-pulled (HEAD reset to upstream)", async () => {
+      await forcePull(repoPath()!);
+      refreshAfterRemoteOp();
+      refreshWorkingTree();
+    });
+  }
+
+  async function runPush() {
     await withOp("Push", "Push complete", async () => {
       await push(repoPath()!);
       refreshAfterRemoteOp();
     });
+  }
+
+  async function runForcePushWithLease() {
+    setConfirm(null);
+    await withOp("Force push (with lease)", "Force-pushed with lease", async () => {
+      await push(repoPath()!, { forceWithLease: true });
+      refreshAfterRemoteOp();
+    });
+  }
+
+  function handlePullSelect(id: string) {
+    switch (id as PullType) {
+      case "fetch":
+        return void runFetchAll();
+      case "pull_merge":
+        return void runPullMerge();
+      case "pull_ff_only":
+        return void runPullFFOnly();
+      case "pull_rebase":
+        return; // disabled — rebase primitive #11
+      case "force_pull":
+        return setConfirm("force-pull");
+    }
+  }
+
+  function handlePushSelect(id: string) {
+    if (id === "push") return void runPush();
+    if (id === "force_push_lease") return setConfirm("force-push");
   }
 
   function onBranch() {
@@ -130,17 +222,78 @@ export function Toolbar(props: ToolbarProps) {
     });
   }
 
-  async function onFetchAll() {
-    setActionsOpen(false);
-    await withOp("Fetch all", "Fetched all remotes", async () => {
-      await fetchPrune(repoPath()!);
-      refreshAfterRemoteOp();
-    });
-  }
-
   const hasRepo = () => repoPath() !== undefined && repoPath() !== "";
   const stashDisabled = () => !hasRepo() || dirtyFileCount() === 0;
   const opInFlight = () => pending() !== null;
+  const pullDisabled = () => !hasRepo() || opInFlight();
+  const pushDisabled = () => !hasRepo() || opInFlight();
+
+  // Pull dropdown — order matches GitKraken (FETCH, MERGE, FF_ONLY,
+  // REBASE) plus chajá's `force_pull` as the destructive 5th item.
+  // `pull_rebase` stays disabled until the rebase primitive lands (#11).
+  const pullOptions = (): SplitButtonOption[] => [
+    { id: "fetch", label: "Fetch all" },
+    {
+      id: "pull_merge",
+      label: "Pull (merge)",
+      disabled: !hasUpstream(),
+      tooltip: hasUpstream() ? undefined : "No upstream configured",
+    },
+    {
+      id: "pull_ff_only",
+      label: "Pull (FF only)",
+      disabled: !hasUpstream(),
+      tooltip: hasUpstream() ? undefined : "No upstream configured",
+    },
+    {
+      id: "pull_rebase",
+      label: "Pull (rebase)",
+      disabled: true,
+      tooltip: "Awaiting interactive-rebase primitive (#11)",
+    },
+    {
+      id: "force_pull",
+      label: "Force pull",
+      destructive: true,
+      disabled: !hasUpstream(),
+      tooltip: hasUpstream()
+        ? "Hard-reset HEAD to upstream (destructive)"
+        : "No upstream configured",
+    },
+  ];
+
+  // Push dropdown — chajá deviation from GK (which uses a simple button
+  // and surfaces force-push reactively when push fails). The 2-item
+  // SplitButton matches the user's expectation of symmetry with Pull.
+  const pushOptions = (): SplitButtonOption[] => [
+    { id: "push", label: "Push" },
+    {
+      id: "force_push_lease",
+      label: "Force push (with lease)",
+      destructive: true,
+      tooltip: "Push only if the remote tip still matches the tracking ref",
+    },
+  ];
+
+  function pullMainLabel(): string {
+    switch (pullType()) {
+      case "fetch":
+        return "Fetch";
+      case "pull_ff_only":
+        return "Pull (FF)";
+      case "pull_rebase":
+        return "Pull";
+      case "force_pull":
+        return "Pull";
+      case "pull_merge":
+      default:
+        return "Pull";
+    }
+  }
+
+  function runPullDefault() {
+    handlePullSelect(pullType());
+  }
 
   return (
     <div class="toolbar">
@@ -158,27 +311,45 @@ export function Toolbar(props: ToolbarProps) {
       <div class="toolbar__selector">
         <span>branch</span>
         <button class="toolbar__selector-value" type="button" disabled>
-          <em>— </em>
+          <Show when={headBranch()} fallback={<em>— </em>}>
+            {(b) => <>{b().name}</>}
+          </Show>
         </button>
       </div>
+
+      <UpstreamIndicator
+        ahead={aheadCount()}
+        behind={behindCount()}
+        upstreamShort={upstreamShort()}
+      />
 
       <div class="toolbar__spacer" />
 
       <div class="toolbar__actions">
         <ToolbarBtn icon={<IconUndo />} label="Undo" disabled />
         <ToolbarBtn icon={<IconRedo />} label="Redo" disabled />
-        <ToolbarBtn
+        <SplitButton
           icon={<IconArrowDown />}
-          label="Pull"
-          split
-          disabled={!hasRepo() || opInFlight()}
-          onClick={onPull}
+          label={pullMainLabel()}
+          options={pullOptions()}
+          defaultOptionId={pullType()}
+          header={PULL_HEADER}
+          buttonDisabled={pullDisabled()}
+          dropdownDisabled={pullDisabled()}
+          onMainClick={runPullDefault}
+          onSelect={handlePullSelect}
+          onSetDefault={(id) => setPullType(id as PullType)}
         />
-        <ToolbarBtn
+        <SplitButton
           icon={<IconArrowUp />}
           label="Push"
-          disabled={!hasRepo() || opInFlight()}
-          onClick={onPush}
+          options={pushOptions()}
+          defaultOptionId="push"
+          header={PUSH_HEADER}
+          buttonDisabled={pushDisabled()}
+          dropdownDisabled={pushDisabled()}
+          onMainClick={() => void runPush()}
+          onSelect={handlePushSelect}
         />
         <ToolbarBtn
           icon={<IconBranch />}
@@ -213,10 +384,29 @@ export function Toolbar(props: ToolbarProps) {
         <Show when={actionsOpen()}>
           <ActionsDropdown
             onClose={() => setActionsOpen(false)}
-            onFetchAll={onFetchAll}
+            onFetchAll={runFetchAll}
           />
         </Show>
       </div>
+
+      <ConfirmDialog
+        open={confirm() === "force-pull"}
+        title="Force pull?"
+        body={`This will fetch ${upstreamShort() ?? "the upstream"} and hard-reset HEAD to it. Local commits not on the upstream will be discarded.`}
+        confirmLabel="Force pull"
+        destructive
+        onConfirm={runForcePull}
+        onCancel={() => setConfirm(null)}
+      />
+      <ConfirmDialog
+        open={confirm() === "force-push"}
+        title="Force push (with lease)?"
+        body={`This rewrites ${upstreamShort() ?? "the upstream"} but only if the remote tip still matches your local tracking ref. Coworkers' new commits will block the push.`}
+        confirmLabel="Force push"
+        destructive
+        onConfirm={runForcePushWithLease}
+        onCancel={() => setConfirm(null)}
+      />
     </div>
   );
 }
@@ -289,26 +479,17 @@ function ToolbarBtn(props: {
   icon: JSX.Element;
   label: string;
   disabled?: boolean;
-  split?: boolean;
   onClick?: () => void;
 }) {
   return (
     <button
       class="toolbar__btn"
-      classList={{ "toolbar__btn-split": props.split }}
       type="button"
       disabled={props.disabled}
       onClick={props.onClick}
     >
       <span class="toolbar__btn-icon">{props.icon}</span>
-      <span class="toolbar__btn-label">
-        {props.label}
-        <Show when={props.split}>
-          <span class="toolbar__btn-split-caret">
-            <IconChevronDown width="10" height="10" />
-          </span>
-        </Show>
-      </span>
+      <span class="toolbar__btn-label">{props.label}</span>
     </button>
   );
 }

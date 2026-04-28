@@ -12,4 +12,5 @@ export * from "./remote";
 export * from "./smart_branches";
 export * from "./staging";
 export * from "./tags";
+export * from "./undo";
 export * from "./worktree";

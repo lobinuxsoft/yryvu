@@ -2,7 +2,12 @@
 
 import { createMemo, createResource, createSignal, type Signal } from "solid-js";
 
-import { getWorkingTreeStatus, type WorkingTreeStatus } from "./ipc";
+import {
+  getUndoRedoState,
+  getWorkingTreeStatus,
+  type UndoRedoState,
+  type WorkingTreeStatus,
+} from "./ipc";
 import {
   ALL_ZONES,
   clampZoneWidth,
@@ -122,6 +127,10 @@ export function setRepoPath(next: string | undefined): void {
   // fetch resolved). createResource keeps the prior value during a
   // refetch by design — we explicitly null it here.
   mutateWorkingTreeStatus(undefined);
+  // Same reasoning for the undo/redo button state — the previous
+  // repo's `Undo` label would otherwise flash on the toolbar until
+  // the new sidecar fetch resolves.
+  mutateUndoRedoState(undefined);
 }
 
 /// Selection model — multi-row selection plus the WIP pseudo-row.
@@ -280,6 +289,15 @@ export function refreshWorkingTree() {
   setWorkingTreeNonce((n) => n + 1);
 }
 
+/// Bumped after every undo / redo IPC so the toolbar's button-state
+/// resource refetches and the buttons reflect the new cursor position.
+/// Also bumped by graph / branches / working-tree refreshes so a user
+/// committing through the toolbar sees Undo enable on the next tick.
+export const [undoRedoNonce, setUndoRedoNonce] = createSignal(0);
+export function refreshUndoRedo() {
+  setUndoRedoNonce((n) => n + 1);
+}
+
 const [workingTreeStatusInternal, { mutate: mutateWorkingTreeStatus }] =
   createResource<WorkingTreeStatus | undefined, [string, number]>(
     () => {
@@ -290,6 +308,11 @@ const [workingTreeStatusInternal, { mutate: mutateWorkingTreeStatus }] =
   );
 
 export const workingTreeStatus = workingTreeStatusInternal;
+
+// undoRedoState resource is defined later — `graphNonce` / `branchesNonce`
+// must be declared first since the source-key tracks them. See the
+// definition further down, near the bottom of the signal block.
+let mutateUndoRedoState: (next: UndoRedoState | undefined) => unknown = () => {};
 
 /// Draft commit message — two-way bound between the WIP row's input and the
 /// inspector commit panel.
@@ -309,6 +332,38 @@ export const [branchesNonce, setBranchesNonce] = createSignal(0);
 export function refreshBranches() {
   setBranchesNonce((n) => n + 1);
 }
+
+/// Toolbar Undo / Redo button state. Reads the per-repo sidecar via
+/// `get_undo_redo_state` whenever:
+///
+///   - the repo path changes,
+///   - `undoRedoNonce` bumps (an undo / redo just ran), OR
+///   - any of the other refresh nonces bumps (a tracked op landed —
+///     commit / checkout / reset / merge / stash all bump at least one
+///     of `graphNonce`, `branchesNonce`, or `workingTreeNonce`).
+///
+/// Tracking the other nonces keeps the toolbar buttons honest without
+/// having to thread an explicit `refreshUndoRedo` call through every
+/// op handler. Refetches are cheap (single JSON read).
+const [undoRedoStateInternal, undoRedoStateActions] = createResource<
+  UndoRedoState | undefined,
+  [string, number]
+>(
+  () => {
+    const p = repoPath();
+    if (!p) return undefined;
+    // Compose all four nonces into a single key. Solid only refetches on
+    // reference inequality, so a mutation that bumps any one of them
+    // produces a new tuple identity and triggers the read.
+    return [
+      p,
+      undoRedoNonce() + graphNonce() + branchesNonce() + workingTreeNonce(),
+    ] as [string, number];
+  },
+  async ([p]) => await getUndoRedoState(p),
+);
+mutateUndoRedoState = undoRedoStateActions.mutate;
+export const undoRedoState = undoRedoStateInternal;
 
 /// The ref the cursor is hovering (either a pill in the graph's BRANCH/TAG
 /// column or a row in the sidebar). Drives the graph's hover-dim effect

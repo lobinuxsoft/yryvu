@@ -784,20 +784,19 @@
   z-index: 2;
 }
 
-/* Vertical connector dropping from the WIP node into the scroll area
-   below, landing on the HEAD commit circle. Same dotted 2-px stroke as
-   the node border so the two read as one continuous stroke. The WIP
-   row is 26 px tall and the first real row's commit center sits at
-   y = ROW_HEIGHT/2 = 14 px from its top — total drop ≈ 24 px. */
-.commit-graph__wip-node::after {
-  content: "";
+/* WIP-to-HEAD dashed connector — full-length SVG path drawn outside the
+   WIP cell so it can span any number of rows down to the HEAD commit's
+   circle. Replaces the old `::after` pseudo-element which only covered
+   the gap to row 1, leaving a visible discontinuity when HEAD lived
+   further down (eggscape repro). 1:1 with GitKraken's
+   `stroke-dasharray="5 5"` 2-px stroke per the bundle's edge renderer. */
+.commit-graph__wip-edge {
   position: absolute;
-  left: 50%;
-  top: calc(100% + 2px);
-  width: 0;
-  height: 16px;
-  border-left: 2px dotted var(--wip-lane-color, var(--info));
-  transform: translateX(-1px);
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
 }
 
 /* WIP input (#129) — ports GitKraken's `.gk-text-input` look: dark

@@ -335,6 +335,20 @@ export function CommitGraph(props: CommitGraphProps) {
     return dims.gutter + headLane() * dims.laneWidth + dims.laneWidth / 2;
   };
 
+  /**
+   * Index of the HEAD-bearing row inside `rows()`. Drives the WIP-to-HEAD
+   * dashed connector — the line walks from the WIP cell at row 0 down to
+   * the HEAD commit's circle, regardless of how many rows separate them.
+   * `-1` means HEAD is not in the current view (filtered, off-stream, or
+   * detached without a pinned-trunk fallback) — caller hides the connector.
+   */
+  const headRowIndex = createMemo(() => {
+    const all = rows();
+    const head = headRow();
+    if (!head) return -1;
+    return all.indexOf(head);
+  });
+
   /* ========================================================================
      Row virtualization (#141) — only mount rows visible in the viewport plus
      a small overscan.
@@ -607,6 +621,29 @@ export function CommitGraph(props: CommitGraphProps) {
                     style={{ left: `${wipNodeX()}px` }}
                   />
                 </li>
+                {/* WIP-to-HEAD dashed connector — 1:1 with GitKraken's
+                    `stroke-dasharray="5 5"` SVG path. Travels from the WIP
+                    node's centre (row 0 midpoint) down to HEAD's circle
+                    centre, vertical-only since both share the HEAD lane.
+                    Hidden when HEAD is not visible in the current stream. */}
+                <Show when={headRowIndex() >= 0}>
+                  <svg
+                    class="commit-graph__wip-edge"
+                    style={{
+                      width: `${graphContentWidth()}px`,
+                      height: `${(headRowIndex() + 1) * ROW_HEIGHT + ROW_HEIGHT / 2}px`,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <path
+                      d={`M ${wipNodeX()} ${ROW_HEIGHT / 2} L ${wipNodeX()} ${(headRowIndex() + 1) * ROW_HEIGHT + ROW_HEIGHT / 2}`}
+                      stroke={`var(--column-${headColorIdx()}-color)`}
+                      stroke-width="2"
+                      stroke-dasharray="5 5"
+                      fill="none"
+                    />
+                  </svg>
+                </Show>
               </Show>
               <For each={virtualizer.getVirtualItems()}>
                 {(item) => {

@@ -4,54 +4,63 @@ import { createMemo, createResource, Show } from "solid-js";
 
 import { FileList } from "../../FileList";
 import {
+  getCombinedCommitDiff,
   getCommitDetails,
-  getCommitDiff,
   getHostingService,
+  type CombinedDiff,
   type CommitDetail,
-  type CommitDiff,
   type HostingService,
 } from "../../../ipc";
 import {
   openDiffTab,
   repoPath,
-  selectedCommit,
   selectedDiffFile,
+  selectedShas,
   setSelectedCommit,
+  workdirSelected,
 } from "../../../state";
 import { AuthorBlock } from "./AuthorBlock";
+import { CommitDiffSection } from "./CommitDiffSection";
 import { HeaderBlock } from "./HeaderBlock";
 import { MessageBlock } from "./MessageBlock";
+import { MultiSelectHeader } from "./MultiSelectHeader";
 
 /**
- * Right-panel commit inspector (issue #112, Fase 1).
+ * Right-panel commit inspector (issue #112).
  *
- * Layout top-to-bottom per `docs/research/gitkraken-right-panel/`:
- *  1. HeaderBlock — 6-char SHA with copy button + parent pills (`02-commit-header.md`).
- *  2. MessageBlock — subject + body with emojify-only transform (`03-message-section.md`).
- *  3. AuthorBlock — author / committer (with the double-guard) / co-authors (`04-author-committer-block.md`).
- *  4. Diff summary + changed files (Fase 2/3 — preserved from the pre-#112 panel).
+ * Selection-driven layout per `docs/research/gitkraken-right-panel/`:
  *
- * Two separate resources back the view: `details` (metadata) and `diff`
- * (file changes). The two commands are cheap; keeping them split means
- * a slow diff compute doesn't delay the message/author chrome.
+ *   - **Single commit** (`selectedShas().length === 1 && !workdirSelected()`):
+ *     full identity chrome — HeaderBlock (sha + parents) → MessageBlock
+ *     (subject + body) → AuthorBlock (author + committer + co-authors) →
+ *     CommitDiffSection chips → FileList.
+ *
+ *   - **Multi-commit / commit-vs-WIP / multi-vs-WIP / WIP-only**:
+ *     MultiSelectHeader (one-line title summarising what's being diffed) →
+ *     CommitDiffSection chips → FileList.
+ *
+ * The combined diff IPC drives every variant — `combined_commit_diff`
+ * returns the merged file diff plus a `kind` tag so we don't re-derive the
+ * variant on the frontend. Single-commit metadata still resolves through
+ * `getCommitDetails` (commit message + author), which the multi variants
+ * skip entirely.
  */
 export function CommitDetails() {
+  /**
+   * Single-commit metadata — author, committer, message, parents.
+   * Resolved only when exactly one committed row is selected and the WIP
+   * is NOT part of the selection. The combined diff handles every other
+   * variant on its own.
+   */
+  const detailsRequest = createMemo<[string, string] | undefined>(() => {
+    const p = repoPath();
+    const shas = selectedShas();
+    if (!p || shas.length !== 1 || workdirSelected()) return undefined;
+    return [p, shas[0]];
+  });
   const [details] = createResource<CommitDetail | undefined, [string, string]>(
-    () => {
-      const p = repoPath();
-      const s = selectedCommit();
-      return p && s ? ([p, s] as [string, string]) : undefined;
-    },
+    detailsRequest,
     async ([p, s]) => await getCommitDetails(p, s),
-  );
-
-  const [diff] = createResource<CommitDiff | undefined, [string, string]>(
-    () => {
-      const p = repoPath();
-      const s = selectedCommit();
-      return p && s ? ([p, s] as [string, string]) : undefined;
-    },
-    async ([p, s]) => await getCommitDiff(p, s),
   );
 
   const [hostingService] = createResource<HostingService, string>(
@@ -59,45 +68,78 @@ export function CommitDetails() {
     async (p) => await getHostingService(p),
   );
 
-  // Active file accessor — a createMemo so Solid's JSX attribute wrapping
-  // stays reactive. Passing an IIFE here (`activeFilePath={(() => {...})()}`)
-  // evaluates once at mount and never updates, which breaks selection
-  // highlight.
+  /**
+   * Combined diff — merged file diff for the current selection. Drives the
+   * stat chips, the file list, and the variant header.
+   */
+  const combinedRequest = createMemo<[string, string[], boolean] | undefined>(
+    () => {
+      const p = repoPath();
+      const shas = selectedShas();
+      const wip = workdirSelected();
+      if (!p) return undefined;
+      if (shas.length === 0 && !wip) return undefined;
+      return [p, shas, wip];
+    },
+  );
+  const [combined] = createResource<
+    CombinedDiff | undefined,
+    [string, string[], boolean]
+  >(combinedRequest, async ([p, s, w]) => await getCombinedCommitDiff(p, s, w));
+
+  /**
+   * Cache key for the FileList's per-revision ephemeral state (collapsed
+   * dirs, forced-visible files). Each selection variant gets its own
+   * keyspace so flipping between them doesn't leak collapsed dirs across
+   * unrelated diffs.
+   */
+  const revKey = createMemo<string>(() => {
+    const c = combined();
+    if (!c) return "";
+    return `${c.kind}|${c.shas.join(",")}|${c.include_workdir ? 1 : 0}`;
+  });
+
+  /**
+   * Active file in the diff full-tab — only meaningful in single-commit
+   * mode where we still drive the main view's diff. Multi-select / WIP
+   * variants leave the file list as a selection-only widget for now;
+   * routing the merged-diff into the main tab system needs its own
+   * follow-up (new `selectedDiffFile` kind + IPC for per-file merged
+   * patches).
+   */
   const activeFilePath = createMemo<string | undefined>(() => {
+    const c = combined();
+    if (!c || c.kind !== "single") return undefined;
     const sel = selectedDiffFile();
-    const d = diff();
-    if (!d || !sel || sel.kind !== "commit" || sel.sha !== d.sha) return undefined;
+    if (!sel || sel.kind !== "commit" || sel.sha !== c.shas[0]) return undefined;
     return sel.path;
   });
 
-  const totals = () => {
-    const d = diff();
-    if (!d) return { add: 0, del: 0, files: 0 };
-    return d.files.reduce(
-      (acc, f) => ({
-        add: acc.add + f.additions,
-        del: acc.del + f.deletions,
-        files: acc.files + 1,
-      }),
-      { add: 0, del: 0, files: 0 },
-    );
-  };
+  function handleFileSelect(path: string): void {
+    const c = combined();
+    if (!c) return;
+    if (c.kind === "single") {
+      openDiffTab(c.shas[0], path);
+    }
+    // Multi-select / WIP variants: clicking a file is a no-op for now.
+    // Tracked as a follow-up to extend the diff-tab system with a merged
+    // patch source.
+  }
+
+  const isSingle = createMemo(() => combined()?.kind === "single");
 
   return (
     <Show
-      when={selectedCommit()}
+      when={selectedShas().length > 0 || workdirSelected()}
       fallback={
         <p class="inspector__empty">Select a commit to see its details.</p>
       }
     >
-      <Show when={details.loading && !details()}>
-        <div class="inspector__status">Loading commit details…</div>
-      </Show>
-      <Show when={details.error}>
-        <div class="inspector__error">{String(details.error)}</div>
-      </Show>
-
-      <Show when={details()}>
+      {/* Single-commit chrome — guarded against `details()` being undefined
+          while the resource is in flight. The `combined` resource fires in
+          parallel so the chips/file list don't block on the metadata
+          fetch. */}
+      <Show when={isSingle() && details()}>
         {(d) => (
           <>
             <HeaderBlock
@@ -114,47 +156,40 @@ export function CommitDetails() {
           </>
         )}
       </Show>
+      <Show when={isSingle() && details.loading && !details()}>
+        <div class="inspector__status">Loading commit details…</div>
+      </Show>
+      <Show when={isSingle() && details.error}>
+        <div class="inspector__error">{String(details.error)}</div>
+      </Show>
 
-      <Show when={diff.loading && !diff()}>
+      {/* Multi / WIP / commit-vs-WIP / multi-vs-WIP — single-line header. */}
+      <Show when={combined() && !isSingle()}>
+        <MultiSelectHeader
+          kind={combined()!.kind}
+          nCommits={combined()!.n_commits}
+        />
+      </Show>
+
+      <Show when={combined.loading && !combined()}>
         <div class="inspector__status">Loading changed files…</div>
       </Show>
-      <Show when={diff.error}>
-        <div class="inspector__error">{String(diff.error)}</div>
+      <Show when={combined.error}>
+        <div class="inspector__error">{String(combined.error)}</div>
       </Show>
 
-      <Show when={diff() && !diff.loading && !diff.error}>
-        <div class="inspector__summary">
-          <span>
-            {totals().files} file{totals().files === 1 ? "" : "s"} changed
-          </span>
-          <Show when={totals().add > 0 || totals().del > 0}>
-            <span class="inspector__summary-stats">
-              <Show when={totals().add > 0}>
-                <span class="inspector__summary-stats--add">
-                  +{totals().add}
-                </span>
-              </Show>
-              <Show when={totals().del > 0}>
-                <span class="inspector__summary-stats--del">
-                  -{totals().del}
-                </span>
-              </Show>
-            </span>
-          </Show>
-          <Show when={diff()!.parent_sha}>
-            <span class="inspector__summary-parent">
-              vs <code>{diff()!.parent_sha!.slice(0, 7)}</code>
-            </span>
-          </Show>
-        </div>
-
+      <Show when={combined() && !combined.error}>
+        <CommitDiffSection
+          files={combined()!.files}
+          loading={combined.loading}
+        />
         <FileList
           repoId={repoPath() ?? ""}
-          revKey={diff()!.sha}
+          revKey={revKey()}
           listType="committed"
-          files={diff()!.files}
+          files={combined()!.files}
           activeFilePath={activeFilePath()}
-          onSelectFile={(path) => openDiffTab(diff()!.sha, path)}
+          onSelectFile={handleFileSelect}
         />
       </Show>
     </Show>

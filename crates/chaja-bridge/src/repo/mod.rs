@@ -18,8 +18,8 @@ use std::path::Path;
 use graph_core::Commit;
 
 use crate::backend::{
-    BackendError, BranchInfo, CommitDiff, CommitOptions, FileDiff, GitBackend, MergeResult,
-    MergeStrategy, PushOptions, RepoStateInfo, ResetMode, WorkingTreeStatus,
+    BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff, GitBackend,
+    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, WorkingTreeStatus,
 };
 
 mod branches;
@@ -165,6 +165,15 @@ impl GitBackend for GixBackend {
 
     fn commit_diff(&self, repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError> {
         commits::commit_diff(repo_path, sha)
+    }
+
+    fn combined_commit_diff(
+        &self,
+        repo_path: &Path,
+        shas: &[String],
+        include_workdir: bool,
+    ) -> Result<CombinedDiff, BackendError> {
+        commits::combined_commit_diff(repo_path, shas, include_workdir)
     }
 
     fn working_tree_status(&self, repo_path: &Path) -> Result<WorkingTreeStatus, BackendError> {

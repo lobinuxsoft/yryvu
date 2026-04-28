@@ -181,6 +181,43 @@ pub struct CommitDiff {
     pub files: Vec<FileDiff>,
 }
 
+/// Selection variant the right-panel inspector renders. Mirrors GitKraken's
+/// branching on `(selectedShas, isWorkDirSelected)` per
+/// `docs/research/gitkraken-right-panel/05-stats-and-file-list.md`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CombinedDiffKind {
+    /// Single commit vs its first parent.
+    Single,
+    /// Two or more commits merged: diff between the first parent of the oldest
+    /// commit and the tree of the youngest commit.
+    Multi,
+    /// Working tree (index + worktree) vs HEAD. Backend treats this as a
+    /// distinct kind because the inspector header ("Viewing diff against the
+    /// WIP") differs from any committed view.
+    WipOnly,
+    /// One commit plus the WIP: diff between the commit's tree and the
+    /// working tree.
+    CommitVsWip,
+    /// Two or more commits plus the WIP: diff between the first parent of the
+    /// oldest commit and the working tree.
+    MultiVsWip,
+}
+
+/// Result of a multi-revision / WIP-aware diff. Drives the inspector's stat
+/// chips, file list, and header copy in one round-trip.
+#[derive(Debug, Clone, Serialize)]
+pub struct CombinedDiff {
+    pub kind: CombinedDiffKind,
+    /// Count of committed rows in the selection. Zero for `WipOnly`.
+    pub n_commits: u32,
+    pub include_workdir: bool,
+    /// Shas considered, youngest-first (matching the order the frontend
+    /// selects rows in). Empty for `WipOnly`.
+    pub shas: Vec<String>,
+    pub files: Vec<FileDiff>,
+}
+
 /// Full commit metadata surfaced to the right-panel inspector.
 ///
 /// Mirrors the fields `graph_core::Commit` emits plus pre-computed badge
@@ -330,6 +367,18 @@ pub trait GitBackend: Send + Sync {
     fn fetch_prune(&self, repo_path: &Path, remote: Option<&str>) -> Result<(), BackendError>;
 
     fn commit_diff(&self, repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError>;
+
+    /// Multi-revision / WIP-aware diff for the right-panel inspector.
+    /// `shas` is ordered youngest-first (graph-row order). `include_workdir`
+    /// extends the comparison's new-side to the working tree (staged + unstaged
+    /// merged). The resulting [`CombinedDiff::kind`] tells the frontend which
+    /// inspector header to render — see [`CombinedDiffKind`].
+    fn combined_commit_diff(
+        &self,
+        repo_path: &Path,
+        shas: &[String],
+        include_workdir: bool,
+    ) -> Result<CombinedDiff, BackendError>;
 
     fn working_tree_status(&self, repo_path: &Path) -> Result<WorkingTreeStatus, BackendError>;
 

@@ -285,6 +285,17 @@ pub fn record_op(repo_path: &Path, kind: OpKind) -> Result<(), UndoLogError> {
     write_log(repo_path, &log)
 }
 
+/// Best-effort wrapper around `record_op` for callers that have already
+/// committed the underlying git operation. The op is real either way;
+/// a sidecar write failure must NOT propagate — the only consequence of
+/// a log miss is "this op won't be undoable through the toolbar." Logged
+/// at warn so users with disk-full / permission issues see a trail.
+pub fn record_op_best_effort(repo_path: &Path, kind: OpKind) {
+    if let Err(e) = record_op(repo_path, kind) {
+        tracing::warn!(error = %e, "failed to record op in undo log");
+    }
+}
+
 fn write_log(repo_path: &Path, log: &UndoLog) -> Result<(), UndoLogError> {
     let final_path = sidecar_path(repo_path);
     let parent = final_path.parent().ok_or_else(|| UndoLogError::Io {

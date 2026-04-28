@@ -256,6 +256,7 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
             .head()
             .map_err(|_| BackendError::Git(anyhow::anyhow!("cannot amend: no HEAD commit")))?;
         let head_commit = head.peel_to_commit().map_err(git2_err)?;
+        let old_sha = head_commit.id().to_string();
 
         let new_oid = head_commit
             .amend(
@@ -267,7 +268,15 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
                 Some(&tree),
             )
             .map_err(git2_err)?;
-        return Ok(new_oid.to_string());
+        let new_sha = new_oid.to_string();
+        crate::undo_log::record_op_best_effort(
+            repo_path,
+            crate::undo_log::OpKind::Amend {
+                old_sha,
+                new_sha: new_sha.clone(),
+            },
+        );
+        return Ok(new_sha);
     }
 
     let parents: Vec<git2::Commit> = match repo.head().ok() {
@@ -277,6 +286,7 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
         }
         None => Vec::new(),
     };
+    let parent_sha = parents.first().map(|c| c.id().to_string());
     let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
 
     let new_oid = repo
@@ -289,8 +299,17 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
             &parent_refs,
         )
         .map_err(git2_err)?;
+    let new_sha = new_oid.to_string();
 
-    Ok(new_oid.to_string())
+    crate::undo_log::record_op_best_effort(
+        repo_path,
+        crate::undo_log::OpKind::Commit {
+            sha: new_sha.clone(),
+            parent_sha,
+        },
+    );
+
+    Ok(new_sha)
 }
 
 pub fn commit_staged(repo_path: &Path, message: &str) -> Result<String, BackendError> {

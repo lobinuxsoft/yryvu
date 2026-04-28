@@ -73,7 +73,7 @@ pub struct BranchInfo {
     pub behind: u32,
 }
 
-#[derive(Debug, Clone, Copy, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ResetMode {
     /// Move HEAD (and branch tip) to the target; keep index and working tree.

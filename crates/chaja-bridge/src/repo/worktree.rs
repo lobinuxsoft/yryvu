@@ -3,8 +3,22 @@
 use std::path::Path;
 
 use crate::backend::{BackendError, RepoStateInfo, ResetMode};
+use crate::undo_log::{record_op_best_effort, OpKind};
 
 use super::common::{git2_err, open_git2};
+
+/// Snapshot of "where HEAD is right now" for the undo log. Returns the
+/// branch shorthand for an attached HEAD, the commit SHA for a detached
+/// one, or `None` for an unborn branch (no commits yet — checkout from
+/// nowhere isn't undoable).
+fn current_head_label(repo: &git2::Repository) -> Option<String> {
+    let head = repo.head().ok()?;
+    if head.is_branch() {
+        head.shorthand().map(|s| s.to_string())
+    } else {
+        head.peel_to_commit().ok().map(|c| c.id().to_string())
+    }
+}
 
 pub fn is_working_tree_dirty(repo_path: &Path) -> Result<bool, BackendError> {
     let repo = open_git2(repo_path)?;
@@ -24,6 +38,7 @@ pub fn checkout_branch(repo_path: &Path, name: &str) -> Result<(), BackendError>
             name: name.to_string(),
         })?;
 
+    let from = current_head_label(&repo);
     let obj = repo.revparse_single(&full_name).map_err(git2_err)?;
 
     // Default checkout is safe: it refuses when the working tree would lose
@@ -31,6 +46,15 @@ pub fn checkout_branch(repo_path: &Path, name: &str) -> Result<(), BackendError>
     // first and prompt the user.
     repo.checkout_tree(&obj, None).map_err(git2_err)?;
     repo.set_head(&full_name).map_err(git2_err)?;
+    if let Some(from) = from {
+        record_op_best_effort(
+            repo_path,
+            OpKind::CheckoutBranch {
+                from,
+                to: name.to_string(),
+            },
+        );
+    }
     Ok(())
 }
 
@@ -51,7 +75,23 @@ pub fn reset_to_commit(repo_path: &Path, sha: &str, mode: ResetMode) -> Result<(
         ResetMode::Hard => git2::ResetType::Hard,
     };
 
+    let from_sha = repo
+        .head()
+        .ok()
+        .and_then(|h| h.peel_to_commit().ok())
+        .map(|c| c.id().to_string());
+
     repo.reset(&obj, reset_type, None).map_err(git2_err)?;
+    if let Some(from_sha) = from_sha {
+        record_op_best_effort(
+            repo_path,
+            OpKind::Reset {
+                mode,
+                from_sha,
+                to_sha: sha.to_string(),
+            },
+        );
+    }
     Ok(())
 }
 
@@ -93,16 +133,24 @@ pub fn cherry_pick_commit(repo_path: &Path, sha: &str) -> Result<(), BackendErro
     let head = repo.head().map_err(git2_err)?;
     let parent_commit = head.peel_to_commit().map_err(git2_err)?;
     let sig = repo.signature().map_err(git2_err)?;
-    repo.commit(
-        Some("HEAD"),
-        &commit.author(),
-        &sig,
-        commit.message().unwrap_or(""),
-        &tree,
-        &[&parent_commit],
-    )
-    .map_err(git2_err)?;
+    let new_oid = repo
+        .commit(
+            Some("HEAD"),
+            &commit.author(),
+            &sig,
+            commit.message().unwrap_or(""),
+            &tree,
+            &[&parent_commit],
+        )
+        .map_err(git2_err)?;
     repo.cleanup_state().map_err(git2_err)?;
+    record_op_best_effort(
+        repo_path,
+        OpKind::CherryPick {
+            applied_sha: sha.to_string(),
+            new_sha: new_oid.to_string(),
+        },
+    );
     Ok(())
 }
 
@@ -146,9 +194,17 @@ pub fn revert_commit(repo_path: &Path, sha: &str) -> Result<(), BackendError> {
         .unwrap_or_else(|| format!("Revert {}", &sha[..sha.len().min(7)]));
     let body = format!("This reverts commit {sha}.");
     let msg = format!("{subject}\n\n{body}\n");
-    repo.commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&parent_commit])
+    let new_oid = repo
+        .commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&parent_commit])
         .map_err(git2_err)?;
     repo.cleanup_state().map_err(git2_err)?;
+    record_op_best_effort(
+        repo_path,
+        OpKind::Revert {
+            reverted_sha: sha.to_string(),
+            new_sha: new_oid.to_string(),
+        },
+    );
     Ok(())
 }
 
@@ -163,10 +219,21 @@ pub fn checkout_commit(repo_path: &Path, sha: &str) -> Result<(), BackendError> 
             sha: sha.to_string(),
         })?;
 
+    let from = current_head_label(&repo);
+
     // Safe checkout: git2 refuses to overwrite uncommitted changes. The UI is
     // expected to call `is_working_tree_dirty` first and prompt the user.
     repo.checkout_tree(&obj, None).map_err(git2_err)?;
     repo.set_head_detached(oid).map_err(git2_err)?;
+    if let Some(from) = from {
+        record_op_best_effort(
+            repo_path,
+            OpKind::CheckoutCommit {
+                from,
+                to_sha: sha.to_string(),
+            },
+        );
+    }
     Ok(())
 }
 
@@ -174,14 +241,38 @@ pub fn stash_push(repo_path: &Path, message: Option<&str>) -> Result<(), Backend
     let mut repo = open_git2(repo_path)?;
     let signature = repo.signature().map_err(git2_err)?;
     let flags = git2::StashFlags::DEFAULT | git2::StashFlags::INCLUDE_UNTRACKED;
-    repo.stash_save2(&signature, message, Some(flags))
+    let stash_oid = repo
+        .stash_save2(&signature, message, Some(flags))
         .map_err(git2_err)?;
+    record_op_best_effort(
+        repo_path,
+        OpKind::StashPush {
+            stash_sha: stash_oid.to_string(),
+        },
+    );
     Ok(())
 }
 
 pub fn stash_pop(repo_path: &Path) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
+    // Capture the soon-to-be-popped stash sha BEFORE the pop —
+    // stash_foreach exposes the queue top at index 0. After pop the
+    // stash is gone from the queue, so the inverse builder needs the
+    // sha from this snapshot to reconstruct it.
+    let mut stash_sha: Option<String> = None;
+    repo.stash_foreach(|index, _message, oid| {
+        if index == 0 {
+            stash_sha = Some(oid.to_string());
+            false
+        } else {
+            true
+        }
+    })
+    .map_err(git2_err)?;
     repo.stash_pop(0, None).map_err(git2_err)?;
+    if let Some(stash_sha) = stash_sha {
+        record_op_best_effort(repo_path, OpKind::StashPop { stash_sha });
+    }
     Ok(())
 }
 

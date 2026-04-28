@@ -16,6 +16,7 @@ import {
   listBranches,
   pull,
   push,
+  redoLastUndo,
   stashCount,
   stashPop,
   stashPush,
@@ -130,6 +131,27 @@ export function Toolbar(props: ToolbarProps) {
       }
     } catch (err) {
       notify.error(`Undo of ${label} failed`, { message: String(err) });
+    }
+    refreshGraph();
+    refreshBranches();
+    refreshWorkingTree();
+    refreshUndoRedo();
+  }
+
+  /** Mirror of handleUndo; cursor walks forward instead of back. */
+  async function handleRedo(): Promise<void> {
+    const path = repoPath();
+    if (!path) return;
+    const label = undoRedoState()?.redo_label ?? "operation";
+    try {
+      const outcome = await redoLastUndo(path);
+      if (outcome.outcome === "applied") {
+        notify.success("Redone", { message: outcome.kind_label });
+      } else {
+        notify.info("Cannot redo", { message: outcome.reason });
+      }
+    } catch (err) {
+      notify.error(`Redo of ${label} failed`, { message: String(err) });
     }
     refreshGraph();
     refreshBranches();
@@ -370,8 +392,14 @@ export function Toolbar(props: ToolbarProps) {
         <ToolbarBtn
           icon={<IconRedo />}
           label="Redo"
-          disabled
+          disabled={!undoRedoState()?.can_redo}
+          title={
+            undoRedoState()?.redo_label
+              ? `Redo ${undoRedoState()!.redo_label}`
+              : "Nothing to redo"
+          }
           badge={undoRedoState()?.redo_count}
+          onClick={handleRedo}
         />
         <SplitButton
           icon={<IconArrowDown />}

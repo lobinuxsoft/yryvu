@@ -21,12 +21,19 @@ use crate::undo_log::{read_log, set_cursor};
 
 /// Snapshot of the toolbar's undo / redo state. Re-fetched by the
 /// frontend on every `undoRedoNonce` bump and on initial repo open.
+///
+/// `undo_count` / `redo_count` drive the toolbar buttons' badges. Sum
+/// always equals `ops.len()` — the cursor cuts the queue into "behind"
+/// and "ahead" halves, which are exactly what Undo and Redo each have
+/// available to apply.
 #[derive(Debug, Clone, Serialize)]
 pub struct UndoRedoState {
     pub can_undo: bool,
     pub undo_label: Option<String>,
+    pub undo_count: u32,
     pub can_redo: bool,
     pub redo_label: Option<String>,
+    pub redo_count: u32,
 }
 
 #[tauri::command]
@@ -34,6 +41,7 @@ pub async fn get_undo_redo_state(repo_path: String) -> Result<UndoRedoState, Str
     tauri::async_runtime::spawn_blocking(move || {
         let log = read_log(&PathBuf::from(&repo_path)).map_err(|e| e.to_string())?;
         let cursor = log.cursor;
+        let total = log.ops.len();
         let undo_label = cursor
             .and_then(|c| log.ops.get(c))
             .map(|op| op.kind.human_label());
@@ -48,11 +56,18 @@ pub async fn get_undo_redo_state(repo_path: String) -> Result<UndoRedoState, Str
         let redo_label = redo_idx
             .and_then(|i| log.ops.get(i))
             .map(|op| op.kind.human_label());
+        // Counts: cursor = N means the next undo lands at N (N+1 ops
+        // are reachable backwards). When cursor is None we've undone
+        // past the start, so undo_count = 0 and redo_count = full log.
+        let undo_count = cursor.map(|c| c + 1).unwrap_or(0);
+        let redo_count = total.saturating_sub(undo_count);
         Ok::<_, String>(UndoRedoState {
             can_undo: undo_label.is_some(),
             undo_label,
+            undo_count: u32::try_from(undo_count).unwrap_or(u32::MAX),
             can_redo: redo_label.is_some(),
             redo_label,
+            redo_count: u32::try_from(redo_count).unwrap_or(u32::MAX),
         })
     })
     .await

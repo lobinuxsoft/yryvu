@@ -364,9 +364,15 @@ export function Toolbar(props: ToolbarProps) {
               ? `Undo ${undoRedoState()!.undo_label}`
               : "Nothing to undo"
           }
+          badge={undoRedoState()?.undo_count}
           onClick={handleUndo}
         />
-        <ToolbarBtn icon={<IconRedo />} label="Redo" disabled />
+        <ToolbarBtn
+          icon={<IconRedo />}
+          label="Redo"
+          disabled
+          badge={undoRedoState()?.redo_count}
+        />
         <SplitButton
           icon={<IconArrowDown />}
           label={pullMainLabel()}
@@ -527,6 +533,10 @@ function ToolbarBtn(props: {
   disabled?: boolean;
   title?: string;
   onClick?: () => void;
+  /// Optional numeric overlay shown at the top-right of the icon.
+  /// `> 0` renders the badge; falsy / 0 / undefined hides it. Used by
+  /// Undo / Redo to surface how many ops are reachable from the cursor.
+  badge?: number;
 }) {
   return (
     <button
@@ -536,7 +546,12 @@ function ToolbarBtn(props: {
       title={props.title}
       onClick={props.onClick}
     >
-      <span class="toolbar__btn-icon">{props.icon}</span>
+      <span class="toolbar__btn-icon">
+        {props.icon}
+        <Show when={props.badge && props.badge > 0}>
+          <span class="toolbar__btn-badge">{props.badge}</span>
+        </Show>
+      </span>
       <span class="toolbar__btn-label">{props.label}</span>
     </button>
   );

@@ -12,8 +12,10 @@ export type UndoOutcome =
 export interface UndoRedoState {
   can_undo: boolean;
   undo_label: string | null;
+  undo_count: number;
   can_redo: boolean;
   redo_label: string | null;
+  redo_count: number;
 }
 
 export function getUndoRedoState(repoPath: string): Promise<UndoRedoState> {

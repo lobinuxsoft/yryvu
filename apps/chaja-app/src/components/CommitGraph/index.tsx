@@ -44,6 +44,7 @@ import {
 import { isRowMemberOfHoveredRef } from "./hoverDim";
 import { ContextMenu } from "../ContextMenu";
 import { CommitDialogs } from "./CommitDialogs";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 import { createCommitOps } from "./useCommitOps";
 import { RefPillGroup } from "./RefPills";
 import {
@@ -437,8 +438,8 @@ export function CommitGraph(props: CommitGraphProps) {
       <Show when={error()}>
         <div class="commit-graph__error">Error: {error()}</div>
       </Show>
-      <Show when={loading()}>
-        <div class="commit-graph__status">Loading…</div>
+      <Show when={loading() && rows().length === 0}>
+        <LoadingSkeleton topOffset={dirtyFileCount() > 0 ? ROW_HEIGHT : 0} />
       </Show>
       {/* WIP pseudo-row — ports GitKraken's architecture exactly: the
           WIP is NOT a sibling floating above the zones; it is a regular

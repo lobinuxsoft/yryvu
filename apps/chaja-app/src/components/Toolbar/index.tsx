@@ -16,13 +16,12 @@ import {
   listBranches,
   pull,
   push,
-  redoLastUndo,
   stashCount,
   stashPop,
   stashPush,
-  undoLastOperation,
   type BranchInfo,
 } from "../../ipc";
+import { runRedo, runUndo } from "../../undoOps";
 import { useBranchOps } from "../../branchOps";
 import {
   branchesNonce,
@@ -30,7 +29,6 @@ import {
   pullType,
   refreshBranches,
   refreshGraph,
-  refreshUndoRedo,
   refreshWorkingTree,
   repoPath,
   setPullType,
@@ -108,56 +106,6 @@ export function Toolbar(props: ToolbarProps) {
     refreshBranches();
   }
 
-  /**
-   * Toolbar Undo handler — runs the inverse of the last tracked op via the
-   * sidecar log. `Applied` outcomes refresh every reactive surface
-   * (graph, branches, working tree, undo button state itself);
-   * `Untrackable` outcomes (root commit, stash pop in sub-PR 2) surface
-   * a warning toast without crashing. Errors propagate as red toasts.
-   */
-  async function handleUndo(): Promise<void> {
-    const path = repoPath();
-    if (!path) return;
-    const label = undoRedoState()?.undo_label ?? "operation";
-    try {
-      const outcome = await undoLastOperation(path);
-      if (outcome.outcome === "applied") {
-        notify.success("Undone", { message: outcome.kind_label });
-      } else {
-        // No `warning` channel exists — `info` reads as a neutral note,
-        // which fits the "this op exists in the log but can't be inverted
-        // safely right now" semantic better than `error` would.
-        notify.info("Cannot undo", { message: outcome.reason });
-      }
-    } catch (err) {
-      notify.error(`Undo of ${label} failed`, { message: String(err) });
-    }
-    refreshGraph();
-    refreshBranches();
-    refreshWorkingTree();
-    refreshUndoRedo();
-  }
-
-  /** Mirror of handleUndo; cursor walks forward instead of back. */
-  async function handleRedo(): Promise<void> {
-    const path = repoPath();
-    if (!path) return;
-    const label = undoRedoState()?.redo_label ?? "operation";
-    try {
-      const outcome = await redoLastUndo(path);
-      if (outcome.outcome === "applied") {
-        notify.success("Redone", { message: outcome.kind_label });
-      } else {
-        notify.info("Cannot redo", { message: outcome.reason });
-      }
-    } catch (err) {
-      notify.error(`Redo of ${label} failed`, { message: String(err) });
-    }
-    refreshGraph();
-    refreshBranches();
-    refreshWorkingTree();
-    refreshUndoRedo();
-  }
 
   async function withOp(
     label: string,
@@ -387,7 +335,7 @@ export function Toolbar(props: ToolbarProps) {
               : "Nothing to undo"
           }
           badge={undoRedoState()?.undo_count}
-          onClick={handleUndo}
+          onClick={runUndo}
         />
         <ToolbarBtn
           icon={<IconRedo />}
@@ -399,7 +347,7 @@ export function Toolbar(props: ToolbarProps) {
               : "Nothing to redo"
           }
           badge={undoRedoState()?.redo_count}
-          onClick={handleRedo}
+          onClick={runRedo}
         />
         <SplitButton
           icon={<IconArrowDown />}

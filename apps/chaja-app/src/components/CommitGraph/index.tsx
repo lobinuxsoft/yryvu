@@ -29,6 +29,7 @@ import {
   graphNonce,
   hoveredRef,
   inspectorMode,
+  pinnedSha,
   selectedShas,
   selectRangeTo,
   setCommitMessage,
@@ -44,6 +45,7 @@ import {
 import { isRowMemberOfHoveredRef } from "./hoverDim";
 import { ContextMenu } from "../ContextMenu";
 import { CommitDialogs } from "./CommitDialogs";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 import { createCommitOps } from "./useCommitOps";
 import { RefPillGroup } from "./RefPills";
 import {
@@ -299,9 +301,30 @@ export function CommitGraph(props: CommitGraphProps) {
   // HEAD row drives the WIP pseudo-row: its lane pins the dashed node
   // horizontally, its color tints the connector + borders, and its
   // `kind: "Head"` ref surfaces the current branch name for the
-  // placeholder label. Assumes `rows()[0]` is HEAD (topmost ordering),
-  // which the current commit-walker guarantees.
-  const headRow = createMemo(() => rows()[0]);
+  // placeholder label.
+  //
+  // The previous heuristic (`rows()[0]`) was wrong on repos where the
+  // youngest commit by committer-time belongs to a different branch
+  // than HEAD — the WIP node anchored to the topmost row's lane
+  // instead of the checked-out branch's lane. Eggscape repro: HEAD on
+  // `4236-fix-frameo-en-casco` (lane = green column), top row is
+  // `prueba loca` on `origin/feature-visu…` (lane 0 = blue). WIP cell
+  // used to land on lane 0 instead of green.
+  //
+  // Resolution priority — matches the spirit of `pick_pinned_head`
+  // backend-side: explicit `Head` ref → pinned trunk fallback →
+  // topmost row as last resort (detached HEAD with no resolvable pin).
+  const headRow = createMemo(() => {
+    const all = rows();
+    const withHead = all.find((r) => r.refs.some((ref) => ref.kind === "Head"));
+    if (withHead) return withHead;
+    const pin = pinnedSha();
+    if (pin) {
+      const pinned = all.find((r) => r.sha === pin);
+      if (pinned) return pinned;
+    }
+    return all[0];
+  });
   const headLane = createMemo(() => headRow()?.lane ?? 0);
   const headColorIdx = createMemo(() => (headRow()?.color_idx ?? 0) % 10);
   const headBranchName = createMemo(
@@ -311,6 +334,20 @@ export function CommitGraph(props: CommitGraphProps) {
     const dims = getRenderDims(commitZoneMode() === "compact");
     return dims.gutter + headLane() * dims.laneWidth + dims.laneWidth / 2;
   };
+
+  /**
+   * Index of the HEAD-bearing row inside `rows()`. Drives the WIP-to-HEAD
+   * dashed connector — the line walks from the WIP cell at row 0 down to
+   * the HEAD commit's circle, regardless of how many rows separate them.
+   * `-1` means HEAD is not in the current view (filtered, off-stream, or
+   * detached without a pinned-trunk fallback) — caller hides the connector.
+   */
+  const headRowIndex = createMemo(() => {
+    const all = rows();
+    const head = headRow();
+    if (!head) return -1;
+    return all.indexOf(head);
+  });
 
   /* ========================================================================
      Row virtualization (#141) — only mount rows visible in the viewport plus
@@ -437,8 +474,8 @@ export function CommitGraph(props: CommitGraphProps) {
       <Show when={error()}>
         <div class="commit-graph__error">Error: {error()}</div>
       </Show>
-      <Show when={loading()}>
-        <div class="commit-graph__status">Loading…</div>
+      <Show when={loading() && rows().length === 0}>
+        <LoadingSkeleton topOffset={dirtyFileCount() > 0 ? ROW_HEIGHT : 0} />
       </Show>
       {/* WIP pseudo-row — ports GitKraken's architecture exactly: the
           WIP is NOT a sibling floating above the zones; it is a regular
@@ -584,6 +621,29 @@ export function CommitGraph(props: CommitGraphProps) {
                     style={{ left: `${wipNodeX()}px` }}
                   />
                 </li>
+                {/* WIP-to-HEAD dashed connector — 1:1 with GitKraken's
+                    `stroke-dasharray="5 5"` SVG path. Travels from the WIP
+                    node's centre (row 0 midpoint) down to HEAD's circle
+                    centre, vertical-only since both share the HEAD lane.
+                    Hidden when HEAD is not visible in the current stream. */}
+                <Show when={headRowIndex() >= 0}>
+                  <svg
+                    class="commit-graph__wip-edge"
+                    style={{
+                      width: `${graphContentWidth()}px`,
+                      height: `${(headRowIndex() + 1) * ROW_HEIGHT + ROW_HEIGHT / 2}px`,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <path
+                      d={`M ${wipNodeX()} ${ROW_HEIGHT / 2} L ${wipNodeX()} ${(headRowIndex() + 1) * ROW_HEIGHT + ROW_HEIGHT / 2}`}
+                      stroke={`var(--column-${headColorIdx()}-color)`}
+                      stroke-width="2"
+                      stroke-dasharray="5 5"
+                      fill="none"
+                    />
+                  </svg>
+                </Show>
               </Show>
               <For each={virtualizer.getVirtualItems()}>
                 {(item) => {

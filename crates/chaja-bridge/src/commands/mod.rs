@@ -12,6 +12,7 @@ mod remote;
 mod smart_branches;
 mod staging;
 mod tags;
+mod undo;
 mod worktree;
 
 pub use branches::*;
@@ -21,4 +22,5 @@ pub use remote::*;
 pub use smart_branches::*;
 pub use staging::*;
 pub use tags::*;
+pub use undo::*;
 pub use worktree::*;

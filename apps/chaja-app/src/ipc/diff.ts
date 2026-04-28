@@ -52,3 +52,34 @@ export interface CommitDiff {
 export function getCommitDiff(repoPath: string, sha: string): Promise<CommitDiff> {
   return invoke<CommitDiff>("commit_diff", { repoPath, sha });
 }
+
+/// Selection variant the inspector renders. Mirrors the Rust enum
+/// `CombinedDiffKind` (kebab-case via `serde(rename_all)`).
+export type CombinedDiffKind =
+  | "single"
+  | "multi"
+  | "wip-only"
+  | "commit-vs-wip"
+  | "multi-vs-wip";
+
+/// Multi-revision / WIP-aware diff. `shas` is youngest-first to match the
+/// frontend's selection ordering.
+export interface CombinedDiff {
+  kind: CombinedDiffKind;
+  n_commits: number;
+  include_workdir: boolean;
+  shas: string[];
+  files: FileDiff[];
+}
+
+export function getCombinedCommitDiff(
+  repoPath: string,
+  shas: string[],
+  includeWorkdir: boolean,
+): Promise<CombinedDiff> {
+  return invoke<CombinedDiff>("combined_commit_diff", {
+    repoPath,
+    shas,
+    includeWorkdir,
+  });
+}

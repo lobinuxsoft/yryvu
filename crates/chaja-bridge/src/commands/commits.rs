@@ -6,7 +6,7 @@ use graph_core::{build_pinned_set, layout_commits, Commit, GraphRow};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-use crate::backend::{CommitDetail, CommitDiff, GitBackend, ResetMode};
+use crate::backend::{CombinedDiff, CommitDetail, CommitDiff, GitBackend, ResetMode};
 use crate::repo::commits::{commit_details as commit_details_impl, pick_pinned_head_for_path};
 use crate::repo::hosting::detect_hosting_service;
 use crate::repo::GixBackend;
@@ -89,6 +89,24 @@ pub async fn commit_diff(repo_path: String, sha: String) -> Result<CommitDiff, S
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .commit_diff(&PathBuf::from(&repo_path), &sha)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Multi-revision / WIP-aware diff for the right-panel inspector. Drives the
+/// chip stats, file list, and header copy in one round-trip — see
+/// [`crate::backend::CombinedDiff`] for the shape.
+#[tauri::command]
+pub async fn combined_commit_diff(
+    repo_path: String,
+    shas: Vec<String>,
+    include_workdir: bool,
+) -> Result<CombinedDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .combined_commit_diff(&PathBuf::from(&repo_path), &shas, include_workdir)
             .map_err(|e| e.to_string())
     })
     .await

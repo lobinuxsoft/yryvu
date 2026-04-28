@@ -4,6 +4,7 @@ import { createEffect, createMemo, For, on, Show } from "solid-js";
 
 import type { FileDiff } from "../../ipc/diff";
 import { FileListToolbar } from "./FileListToolbar";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 import { Row } from "./Row";
 import {
   collapseAllDirs,
@@ -57,6 +58,11 @@ export interface FileListProps {
   /// FileList instances opt out via this flag to avoid duplicate Tree/Flat
   /// + filter inputs. The committed variant renders its own toolbar.
   hideToolbar?: boolean;
+  /// When true and `files` is empty, render a skeleton row band instead
+  /// of collapsing to nothing. Keeps the inspector populated while the
+  /// diff IPC resolves (issue #176 — eggscape regression: 15K dirty
+  /// files used to leave the panel blank for several seconds).
+  loading?: boolean;
 }
 
 /// 1:1 port of GitKraken's RightPanel file-list widget.
@@ -145,25 +151,30 @@ export function FileList(props: FileListProps) {
           }
         />
       </Show>
-      <ul class="file-list__items">
-        <For each={rows()}>
-          {(row) => (
-            <li>
-              <Row
-                row={row}
-                active={
-                  row.kind === "file" && props.activeFilePath === row.path
-                }
-                isExpanded={
-                  row.kind === "dir" ? isDirExpanded(row.path) : false
-                }
-                onClick={() => onClick(row)}
-                actions={props.rowActions}
-              />
-            </li>
-          )}
-        </For>
-      </ul>
+      <Show
+        when={!(props.loading && props.files.length === 0)}
+        fallback={<LoadingSkeleton />}
+      >
+        <ul class="file-list__items">
+          <For each={rows()}>
+            {(row) => (
+              <li>
+                <Row
+                  row={row}
+                  active={
+                    row.kind === "file" && props.activeFilePath === row.path
+                  }
+                  isExpanded={
+                    row.kind === "dir" ? isDirExpanded(row.path) : false
+                  }
+                  onClick={() => onClick(row)}
+                  actions={props.rowActions}
+                />
+              </li>
+            )}
+          </For>
+        </ul>
+      </Show>
     </div>
   );
 }

@@ -34,7 +34,7 @@
 use std::path::Path;
 
 use crate::backend::BackendError;
-use crate::undo_log::OpKind;
+use crate::undo_log::{with_record_skipped, OpKind};
 
 use super::common::{git2_err, open_git2};
 use super::worktree;
@@ -55,7 +55,16 @@ pub enum UndoOutcome {
 /// Apply the inverse of `op` against `repo_path`. Errors propagate as
 /// `BackendError` so the UI can surface them through its standard
 /// notification channel.
+///
+/// The whole match runs inside [`with_record_skipped`] so the public op
+/// wrappers we delegate to (`checkout_branch`, `reset_to_commit`, …)
+/// don't append fresh log entries — undo moves the cursor backwards,
+/// it doesn't synthesise a "undo of X" record.
 pub fn apply_inverse(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
+    with_record_skipped(|| apply_inverse_inner(repo_path, op))
+}
+
+fn apply_inverse_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
     match op {
         OpKind::Commit {
             parent_sha: Some(parent_sha),

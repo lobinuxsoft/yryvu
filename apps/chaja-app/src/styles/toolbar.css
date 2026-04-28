@@ -76,8 +76,38 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   height: 16px;
   line-height: 1;
+}
+
+/* Numeric overlay on Undo / Redo (issue #185 follow-up). Positioned
+   top-right of the icon; mirrors GitKraken's stash-count chip on its
+   own toolbar buttons. Hidden via the parent's <Show> when the count
+   is 0 or undefined. */
+.toolbar__btn-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 16px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  letter-spacing: 0;
+  pointer-events: none;
+  /* Subtle outline so the chip reads against the accent background even
+     when the toolbar's own bg is similar in luminance. */
+  box-shadow: 0 0 0 1px var(--bg-1);
+}
+.toolbar__btn:disabled .toolbar__btn-badge {
+  background: var(--bg-3);
+  color: var(--fg-1);
 }
 
 .toolbar__btn-label {

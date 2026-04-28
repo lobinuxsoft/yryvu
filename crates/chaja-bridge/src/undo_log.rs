@@ -142,6 +142,29 @@ pub enum OpKind {
 }
 
 impl OpKind {
+    /// Human-readable label for toolbar tooltips ("Undo commit", "Undo
+    /// merge of feat-x", …). Sub-PR 2 uses this to populate the Undo
+    /// button's `title` attribute via `get_undo_redo_state`.
+    pub fn human_label(&self) -> String {
+        let short = |sha: &str| sha.chars().take(7).collect::<String>();
+        match self {
+            OpKind::Commit { .. } => "commit".into(),
+            OpKind::Amend { .. } => "amend".into(),
+            OpKind::CheckoutBranch { to, .. } => format!("checkout to {to}"),
+            OpKind::CheckoutCommit { to_sha, .. } => format!("checkout to {}", short(to_sha)),
+            OpKind::Reset { to_sha, mode, .. } => {
+                format!("{} reset to {}", reset_mode_str(*mode), short(to_sha))
+            }
+            OpKind::CherryPick { applied_sha, .. } => {
+                format!("cherry-pick of {}", short(applied_sha))
+            }
+            OpKind::Revert { reverted_sha, .. } => format!("revert of {}", short(reverted_sha)),
+            OpKind::Merge { source, .. } => format!("merge of {source}"),
+            OpKind::StashPush { .. } => "stash push".into(),
+            OpKind::StashPop { .. } => "stash pop".into(),
+        }
+    }
+
     /// Canonical reflog tag — written as the reflog message of the
     /// underlying ref update. Format: `chaja:op=<kind>|<key>=<value>|...`
     /// kept simple enough that an external grep can find chajá-tagged
@@ -294,6 +317,16 @@ pub fn record_op_best_effort(repo_path: &Path, kind: OpKind) {
     if let Err(e) = record_op(repo_path, kind) {
         tracing::warn!(error = %e, "failed to record op in undo log");
     }
+}
+
+/// Persist a cursor change. Used by sub-PR 2's `undo_last_operation` to
+/// step the cursor backwards after applying an inverse, and by sub-PR 3's
+/// redo to step forward again. Bypasses the truncate-on-record path —
+/// callers want to move the cursor without losing the redo tail.
+pub fn set_cursor(repo_path: &Path, cursor: Option<usize>) -> Result<(), UndoLogError> {
+    let mut log = read_log(repo_path)?;
+    log.cursor = cursor;
+    write_log(repo_path, &log)
 }
 
 fn write_log(repo_path: &Path, log: &UndoLog) -> Result<(), UndoLogError> {

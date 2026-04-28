@@ -33,6 +33,7 @@ mod remote;
 pub(crate) mod smart_branches;
 pub(crate) mod staging;
 mod tags;
+pub(crate) mod undo;
 mod worktree;
 
 #[derive(Debug, Default, Clone, Copy)]

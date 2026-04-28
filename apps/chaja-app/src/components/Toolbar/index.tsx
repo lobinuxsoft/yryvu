@@ -19,6 +19,7 @@ import {
   stashCount,
   stashPop,
   stashPush,
+  undoLastOperation,
   type BranchInfo,
 } from "../../ipc";
 import { useBranchOps } from "../../branchOps";
@@ -28,9 +29,11 @@ import {
   pullType,
   refreshBranches,
   refreshGraph,
+  refreshUndoRedo,
   refreshWorkingTree,
   repoPath,
   setPullType,
+  undoRedoState,
   workingTreeNonce,
   type PullType,
 } from "../../state";
@@ -102,6 +105,36 @@ export function Toolbar(props: ToolbarProps) {
   function refreshAfterRemoteOp() {
     refreshGraph();
     refreshBranches();
+  }
+
+  /**
+   * Toolbar Undo handler — runs the inverse of the last tracked op via the
+   * sidecar log. `Applied` outcomes refresh every reactive surface
+   * (graph, branches, working tree, undo button state itself);
+   * `Untrackable` outcomes (root commit, stash pop in sub-PR 2) surface
+   * a warning toast without crashing. Errors propagate as red toasts.
+   */
+  async function handleUndo(): Promise<void> {
+    const path = repoPath();
+    if (!path) return;
+    const label = undoRedoState()?.undo_label ?? "operation";
+    try {
+      const outcome = await undoLastOperation(path);
+      if (outcome.outcome === "applied") {
+        notify.success("Undone", { message: outcome.kind_label });
+      } else {
+        // No `warning` channel exists — `info` reads as a neutral note,
+        // which fits the "this op exists in the log but can't be inverted
+        // safely right now" semantic better than `error` would.
+        notify.info("Cannot undo", { message: outcome.reason });
+      }
+    } catch (err) {
+      notify.error(`Undo of ${label} failed`, { message: String(err) });
+    }
+    refreshGraph();
+    refreshBranches();
+    refreshWorkingTree();
+    refreshUndoRedo();
   }
 
   async function withOp(
@@ -322,8 +355,24 @@ export function Toolbar(props: ToolbarProps) {
       <div class="toolbar__spacer" />
 
       <div class="toolbar__actions">
-        <ToolbarBtn icon={<IconUndo />} label="Undo" disabled />
-        <ToolbarBtn icon={<IconRedo />} label="Redo" disabled />
+        <ToolbarBtn
+          icon={<IconUndo />}
+          label="Undo"
+          disabled={!undoRedoState()?.can_undo}
+          title={
+            undoRedoState()?.undo_label
+              ? `Undo ${undoRedoState()!.undo_label}`
+              : "Nothing to undo"
+          }
+          badge={undoRedoState()?.undo_count}
+          onClick={handleUndo}
+        />
+        <ToolbarBtn
+          icon={<IconRedo />}
+          label="Redo"
+          disabled
+          badge={undoRedoState()?.redo_count}
+        />
         <SplitButton
           icon={<IconArrowDown />}
           label={pullMainLabel()}
@@ -484,6 +533,10 @@ function ToolbarBtn(props: {
   disabled?: boolean;
   title?: string;
   onClick?: () => void;
+  /// Optional numeric overlay shown at the top-right of the icon.
+  /// `> 0` renders the badge; falsy / 0 / undefined hides it. Used by
+  /// Undo / Redo to surface how many ops are reachable from the cursor.
+  badge?: number;
 }) {
   return (
     <button
@@ -493,7 +546,12 @@ function ToolbarBtn(props: {
       title={props.title}
       onClick={props.onClick}
     >
-      <span class="toolbar__btn-icon">{props.icon}</span>
+      <span class="toolbar__btn-icon">
+        {props.icon}
+        <Show when={props.badge && props.badge > 0}>
+          <span class="toolbar__btn-badge">{props.badge}</span>
+        </Show>
+      </span>
       <span class="toolbar__btn-label">{props.label}</span>
     </button>
   );

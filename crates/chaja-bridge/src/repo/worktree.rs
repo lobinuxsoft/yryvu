@@ -133,16 +133,24 @@ pub fn cherry_pick_commit(repo_path: &Path, sha: &str) -> Result<(), BackendErro
     let head = repo.head().map_err(git2_err)?;
     let parent_commit = head.peel_to_commit().map_err(git2_err)?;
     let sig = repo.signature().map_err(git2_err)?;
-    repo.commit(
-        Some("HEAD"),
-        &commit.author(),
-        &sig,
-        commit.message().unwrap_or(""),
-        &tree,
-        &[&parent_commit],
-    )
-    .map_err(git2_err)?;
+    let new_oid = repo
+        .commit(
+            Some("HEAD"),
+            &commit.author(),
+            &sig,
+            commit.message().unwrap_or(""),
+            &tree,
+            &[&parent_commit],
+        )
+        .map_err(git2_err)?;
     repo.cleanup_state().map_err(git2_err)?;
+    record_op_best_effort(
+        repo_path,
+        OpKind::CherryPick {
+            applied_sha: sha.to_string(),
+            new_sha: new_oid.to_string(),
+        },
+    );
     Ok(())
 }
 
@@ -186,9 +194,17 @@ pub fn revert_commit(repo_path: &Path, sha: &str) -> Result<(), BackendError> {
         .unwrap_or_else(|| format!("Revert {}", &sha[..sha.len().min(7)]));
     let body = format!("This reverts commit {sha}.");
     let msg = format!("{subject}\n\n{body}\n");
-    repo.commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&parent_commit])
+    let new_oid = repo
+        .commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&parent_commit])
         .map_err(git2_err)?;
     repo.cleanup_state().map_err(git2_err)?;
+    record_op_best_effort(
+        repo_path,
+        OpKind::Revert {
+            reverted_sha: sha.to_string(),
+            new_sha: new_oid.to_string(),
+        },
+    );
     Ok(())
 }
 

@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use crate::backend::{BackendError, MergeResult, MergeStrategy};
+use crate::undo_log::{record_op_best_effort, OpKind};
 
 use super::common::{git2_err, open_git2, short_sha};
 
@@ -47,6 +48,14 @@ pub fn merge_branch(
                 .map_err(git2_err)?;
             let obj = repo.find_object(source_oid, None).map_err(git2_err)?;
             repo.checkout_tree(&obj, None).map_err(git2_err)?;
+            record_op_best_effort(
+                repo_path,
+                OpKind::Merge {
+                    source: source.to_string(),
+                    pre_merge_sha: head_oid.to_string(),
+                    post_merge_sha: source_oid.to_string(),
+                },
+            );
             Ok(MergeResult::FastForward {
                 new_head: source_oid.to_string(),
             })
@@ -90,6 +99,14 @@ pub fn merge_branch(
                 )
                 .map_err(git2_err)?;
             repo.cleanup_state().map_err(git2_err)?;
+            record_op_best_effort(
+                repo_path,
+                OpKind::Merge {
+                    source: source.to_string(),
+                    pre_merge_sha: head_oid.to_string(),
+                    post_merge_sha: commit_oid.to_string(),
+                },
+            );
             Ok(MergeResult::Merged {
                 new_head: commit_oid.to_string(),
             })

@@ -318,7 +318,9 @@ pub fn combined_commit_diff(
     // diff lights up every file as added, which matches what users expect for
     // a root commit's inspector view.
     let old_tree = match oldest_commit.as_ref() {
-        Some(c) if c.parent_count() > 0 => Some(c.parent(0).map_err(git2_err)?.tree().map_err(git2_err)?),
+        Some(c) if c.parent_count() > 0 => {
+            Some(c.parent(0).map_err(git2_err)?.tree().map_err(git2_err)?)
+        }
         Some(_) => None, // root commit
         None => {
             // WIP-only path: compare against HEAD.

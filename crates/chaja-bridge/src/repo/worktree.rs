@@ -3,8 +3,22 @@
 use std::path::Path;
 
 use crate::backend::{BackendError, RepoStateInfo, ResetMode};
+use crate::undo_log::{record_op_best_effort, OpKind};
 
 use super::common::{git2_err, open_git2};
+
+/// Snapshot of "where HEAD is right now" for the undo log. Returns the
+/// branch shorthand for an attached HEAD, the commit SHA for a detached
+/// one, or `None` for an unborn branch (no commits yet — checkout from
+/// nowhere isn't undoable).
+fn current_head_label(repo: &git2::Repository) -> Option<String> {
+    let head = repo.head().ok()?;
+    if head.is_branch() {
+        head.shorthand().map(|s| s.to_string())
+    } else {
+        head.peel_to_commit().ok().map(|c| c.id().to_string())
+    }
+}
 
 pub fn is_working_tree_dirty(repo_path: &Path) -> Result<bool, BackendError> {
     let repo = open_git2(repo_path)?;
@@ -24,6 +38,7 @@ pub fn checkout_branch(repo_path: &Path, name: &str) -> Result<(), BackendError>
             name: name.to_string(),
         })?;
 
+    let from = current_head_label(&repo);
     let obj = repo.revparse_single(&full_name).map_err(git2_err)?;
 
     // Default checkout is safe: it refuses when the working tree would lose
@@ -31,6 +46,15 @@ pub fn checkout_branch(repo_path: &Path, name: &str) -> Result<(), BackendError>
     // first and prompt the user.
     repo.checkout_tree(&obj, None).map_err(git2_err)?;
     repo.set_head(&full_name).map_err(git2_err)?;
+    if let Some(from) = from {
+        record_op_best_effort(
+            repo_path,
+            OpKind::CheckoutBranch {
+                from,
+                to: name.to_string(),
+            },
+        );
+    }
     Ok(())
 }
 
@@ -51,7 +75,23 @@ pub fn reset_to_commit(repo_path: &Path, sha: &str, mode: ResetMode) -> Result<(
         ResetMode::Hard => git2::ResetType::Hard,
     };
 
+    let from_sha = repo
+        .head()
+        .ok()
+        .and_then(|h| h.peel_to_commit().ok())
+        .map(|c| c.id().to_string());
+
     repo.reset(&obj, reset_type, None).map_err(git2_err)?;
+    if let Some(from_sha) = from_sha {
+        record_op_best_effort(
+            repo_path,
+            OpKind::Reset {
+                mode,
+                from_sha,
+                to_sha: sha.to_string(),
+            },
+        );
+    }
     Ok(())
 }
 
@@ -163,10 +203,21 @@ pub fn checkout_commit(repo_path: &Path, sha: &str) -> Result<(), BackendError> 
             sha: sha.to_string(),
         })?;
 
+    let from = current_head_label(&repo);
+
     // Safe checkout: git2 refuses to overwrite uncommitted changes. The UI is
     // expected to call `is_working_tree_dirty` first and prompt the user.
     repo.checkout_tree(&obj, None).map_err(git2_err)?;
     repo.set_head_detached(oid).map_err(git2_err)?;
+    if let Some(from) = from {
+        record_op_best_effort(
+            repo_path,
+            OpKind::CheckoutCommit {
+                from,
+                to_sha: sha.to_string(),
+            },
+        );
+    }
     Ok(())
 }
 

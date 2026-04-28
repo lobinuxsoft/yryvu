@@ -241,14 +241,38 @@ pub fn stash_push(repo_path: &Path, message: Option<&str>) -> Result<(), Backend
     let mut repo = open_git2(repo_path)?;
     let signature = repo.signature().map_err(git2_err)?;
     let flags = git2::StashFlags::DEFAULT | git2::StashFlags::INCLUDE_UNTRACKED;
-    repo.stash_save2(&signature, message, Some(flags))
+    let stash_oid = repo
+        .stash_save2(&signature, message, Some(flags))
         .map_err(git2_err)?;
+    record_op_best_effort(
+        repo_path,
+        OpKind::StashPush {
+            stash_sha: stash_oid.to_string(),
+        },
+    );
     Ok(())
 }
 
 pub fn stash_pop(repo_path: &Path) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
+    // Capture the soon-to-be-popped stash sha BEFORE the pop —
+    // stash_foreach exposes the queue top at index 0. After pop the
+    // stash is gone from the queue, so the inverse builder needs the
+    // sha from this snapshot to reconstruct it.
+    let mut stash_sha: Option<String> = None;
+    repo.stash_foreach(|index, _message, oid| {
+        if index == 0 {
+            stash_sha = Some(oid.to_string());
+            false
+        } else {
+            true
+        }
+    })
+    .map_err(git2_err)?;
     repo.stash_pop(0, None).map_err(git2_err)?;
+    if let Some(stash_sha) = stash_sha {
+        record_op_best_effort(repo_path, OpKind::StashPop { stash_sha });
+    }
     Ok(())
 }
 

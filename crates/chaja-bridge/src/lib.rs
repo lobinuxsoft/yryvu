@@ -5,5 +5,6 @@
 pub mod backend;
 pub mod commands;
 pub mod repo;
+pub mod undo_log;
 
 pub use backend::{GitBackend, GixBackend};

@@ -116,6 +116,12 @@ export function setRepoPath(next: string | undefined): void {
   setCommitMessage("");
   setCommitDescription("");
   setAmendEnabled(false);
+  // Invalidate the WIP resource so the previous repo's working-tree
+  // status doesn't leak across the switch (the WIP cell + right-panel
+  // staging UI used to show the old repo's dirty files until the new
+  // fetch resolved). createResource keeps the prior value during a
+  // refetch by design — we explicitly null it here.
+  mutateWorkingTreeStatus(undefined);
 }
 
 /// Selection model — multi-row selection plus the WIP pseudo-row.
@@ -274,16 +280,16 @@ export function refreshWorkingTree() {
   setWorkingTreeNonce((n) => n + 1);
 }
 
-export const [workingTreeStatus] = createResource<
-  WorkingTreeStatus | undefined,
-  [string, number]
->(
-  () => {
-    const p = repoPath();
-    return p ? ([p, workingTreeNonce()] as [string, number]) : undefined;
-  },
-  async ([p]) => await getWorkingTreeStatus(p)
-);
+const [workingTreeStatusInternal, { mutate: mutateWorkingTreeStatus }] =
+  createResource<WorkingTreeStatus | undefined, [string, number]>(
+    () => {
+      const p = repoPath();
+      return p ? ([p, workingTreeNonce()] as [string, number]) : undefined;
+    },
+    async ([p]) => await getWorkingTreeStatus(p),
+  );
+
+export const workingTreeStatus = workingTreeStatusInternal;
 
 /// Draft commit message — two-way bound between the WIP row's input and the
 /// inspector commit panel.

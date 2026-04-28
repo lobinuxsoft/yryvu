@@ -29,6 +29,7 @@ import {
   graphNonce,
   hoveredRef,
   inspectorMode,
+  pinnedSha,
   selectedShas,
   selectRangeTo,
   setCommitMessage,
@@ -300,9 +301,30 @@ export function CommitGraph(props: CommitGraphProps) {
   // HEAD row drives the WIP pseudo-row: its lane pins the dashed node
   // horizontally, its color tints the connector + borders, and its
   // `kind: "Head"` ref surfaces the current branch name for the
-  // placeholder label. Assumes `rows()[0]` is HEAD (topmost ordering),
-  // which the current commit-walker guarantees.
-  const headRow = createMemo(() => rows()[0]);
+  // placeholder label.
+  //
+  // The previous heuristic (`rows()[0]`) was wrong on repos where the
+  // youngest commit by committer-time belongs to a different branch
+  // than HEAD — the WIP node anchored to the topmost row's lane
+  // instead of the checked-out branch's lane. Eggscape repro: HEAD on
+  // `4236-fix-frameo-en-casco` (lane = green column), top row is
+  // `prueba loca` on `origin/feature-visu…` (lane 0 = blue). WIP cell
+  // used to land on lane 0 instead of green.
+  //
+  // Resolution priority — matches the spirit of `pick_pinned_head`
+  // backend-side: explicit `Head` ref → pinned trunk fallback →
+  // topmost row as last resort (detached HEAD with no resolvable pin).
+  const headRow = createMemo(() => {
+    const all = rows();
+    const withHead = all.find((r) => r.refs.some((ref) => ref.kind === "Head"));
+    if (withHead) return withHead;
+    const pin = pinnedSha();
+    if (pin) {
+      const pinned = all.find((r) => r.sha === pin);
+      if (pinned) return pinned;
+    }
+    return all[0];
+  });
   const headLane = createMemo(() => headRow()?.lane ?? 0);
   const headColorIdx = createMemo(() => (headRow()?.color_idx ?? 0) % 10);
   const headBranchName = createMemo(

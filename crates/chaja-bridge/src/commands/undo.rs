@@ -16,7 +16,7 @@ use std::path::PathBuf;
 
 use serde::Serialize;
 
-use crate::repo::undo::{apply_inverse, UndoOutcome};
+use crate::repo::undo::{apply_inverse, apply_redo, UndoOutcome};
 use crate::undo_log::{read_log, set_cursor};
 
 /// Snapshot of the toolbar's undo / redo state. Re-fetched by the
@@ -93,6 +93,34 @@ pub async fn undo_last_operation(repo_path: String) -> Result<UndoOutcome, Strin
             // the user redoes something forward.
             let next = if cursor == 0 { None } else { Some(cursor - 1) };
             set_cursor(&path, next).map_err(|e| e.to_string())?;
+        }
+        Ok::<_, String>(outcome)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn redo_last_undo(repo_path: String) -> Result<UndoOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = PathBuf::from(&repo_path);
+        let log = read_log(&path).map_err(|e| e.to_string())?;
+        // Redo target sits at cursor + 1 (or index 0 when the user has
+        // fully undone past the start and the log still has entries).
+        let target_idx = match log.cursor {
+            Some(c) => c + 1,
+            None if !log.ops.is_empty() => 0,
+            None => return Err("nothing to redo".to_string()),
+        };
+        let op = log
+            .ops
+            .get(target_idx)
+            .ok_or_else(|| "nothing to redo".to_string())?
+            .kind
+            .clone();
+        let outcome = apply_redo(&path, &op).map_err(|e| e.to_string())?;
+        if matches!(outcome, UndoOutcome::Applied { .. }) {
+            set_cursor(&path, Some(target_idx)).map_err(|e| e.to_string())?;
         }
         Ok::<_, String>(outcome)
     })

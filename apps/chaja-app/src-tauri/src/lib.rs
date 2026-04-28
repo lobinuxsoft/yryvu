@@ -59,6 +59,7 @@ pub fn run() {
             chaja_bridge::commands::force_pull,
             chaja_bridge::commands::get_undo_redo_state,
             chaja_bridge::commands::undo_last_operation,
+            chaja_bridge::commands::redo_last_undo,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

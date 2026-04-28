@@ -187,3 +187,45 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Loading skeleton — placeholder rows shown while the diff IPC resolves.
+   Shimmer animation keeps the band visually alive without claiming a
+   specific count or path; geometry mirrors real Row.tsx so the column
+   doesn't reflow when the data lands. */
+.file-list__items--skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+.file-list__row--skeleton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.file-list__skeleton-icon,
+.file-list__skeleton-bar {
+  display: inline-block;
+  height: 10px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-2) 0%,
+    var(--bg-3) 50%,
+    var(--bg-2) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: file-list-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.file-list__skeleton-icon {
+  width: 14px;
+  flex: 0 0 auto;
+}
+.file-list__skeleton-bar {
+  flex: 0 0 auto;
+}
+@keyframes file-list-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

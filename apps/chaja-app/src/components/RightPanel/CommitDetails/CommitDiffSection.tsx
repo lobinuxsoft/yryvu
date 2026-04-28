@@ -79,7 +79,19 @@ export function CommitDiffSection(props: {
   });
 
   return (
-    <div class="commit-diff__summary" data-testid="commit-detail-panel">
+    <div
+      class="commit-diff__summary"
+      classList={{ "is-loading": props.loading }}
+      data-testid="commit-detail-panel"
+    >
+      <Show when={props.loading}>
+        <span
+          class="commit-diff__spinner"
+          role="status"
+          aria-label="Computing diff"
+          title="Computing diff…"
+        />
+      </Show>
       <For each={CHIP_ORDER}>
         {(key) => (
           <Show when={counts()[key] > 0}>
@@ -96,14 +108,6 @@ export function CommitDiffSection(props: {
       <Show when={!props.loading && totalChanges() === 0}>
         <span class="commit-diff__chip commit-diff__chip--empty">
           No file changes
-        </span>
-      </Show>
-      <Show when={props.loading}>
-        <span
-          class="commit-diff__chip commit-diff__chip--loading"
-          aria-label="Computing diff"
-        >
-          …
         </span>
       </Show>
     </div>

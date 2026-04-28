@@ -29,13 +29,17 @@ import {
   graphNonce,
   hoveredRef,
   inspectorMode,
-  selectedCommit,
+  selectedShas,
+  selectRangeTo,
   setCommitMessage,
   setHiddenBySmartFilter,
   setInspectorMode,
   setPinnedSha,
   setSelectedCommit,
   smartBranchesEnabled,
+  toggleCommitInSelection,
+  toggleWorkdirInSelection,
+  workdirSelected,
 } from "../../state";
 import { isRowMemberOfHoveredRef } from "./hoverDim";
 import { ContextMenu } from "../ContextMenu";
@@ -380,6 +384,54 @@ export function CommitGraph(props: CommitGraphProps) {
     setInspectorMode("staging");
   }
 
+  /**
+   * Selection set used for `is-selected` / `data-selected` lookups across
+   * every zone. Memoized so the per-row `Set.has` cost stays O(1) and the
+   * render path doesn't reallocate the set on every row mount.
+   */
+  const selectedShasSet = createMemo(() => new Set(selectedShas()));
+
+  /**
+   * Click handler for committed rows. 1:1 with GitKraken's
+   * `onSelectCommit` saga:
+   *
+   *   - Plain click → single-select, anchor moves to this sha.
+   *   - Ctrl/Cmd+click → toggle this sha in/out of the selection;
+   *     anchor untouched.
+   *   - Shift+click → range-extend from anchor to this sha using the
+   *     graph's row order; anchor untouched.
+   *
+   * Always returns to inspector "details" so the right panel switches
+   * away from the staging composer when the user selects a commit.
+   */
+  function handleCommitClick(e: MouseEvent, sha: string): void {
+    if (e.shiftKey) {
+      const ordered = rows().map((r) => r.sha);
+      selectRangeTo(sha, ordered);
+    } else if (e.ctrlKey || e.metaKey) {
+      toggleCommitInSelection(sha);
+    } else {
+      setSelectedCommit(sha);
+    }
+    if (inspectorMode() !== "details") setInspectorMode("details");
+  }
+
+  /**
+   * Click handler for the WIP pseudo-row. Plain click keeps the legacy
+   * "open staging composer" behaviour (matches GitKraken's WIP row primary
+   * action). Ctrl/Cmd+click toggles the workdir bit alongside any existing
+   * commit selection so the inspector renders the commit-vs-WIP /
+   * multi-vs-WIP merged diff variants.
+   */
+  function handleWipClick(e: MouseEvent): void {
+    if (e.ctrlKey || e.metaKey) {
+      toggleWorkdirInSelection();
+      if (inspectorMode() !== "details") setInspectorMode("details");
+      return;
+    }
+    openStaging();
+  }
+
   return (
     <div class="commit-graph" ref={rootEl}>
       <Show when={error()}>
@@ -418,9 +470,9 @@ export function CommitGraph(props: CommitGraphProps) {
             <Show when={dirtyFileCount() > 0}>
               <li
                 class="commit-graph__wip-cell commit-graph__wip-cell--branch"
-                data-active={inspectorMode() === "staging" ? "true" : "false"}
+                data-active={workdirSelected() || inspectorMode() === "staging" ? "true" : "false"}
                 style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
-                onClick={() => openStaging()}
+                onClick={(e) => handleWipClick(e)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -442,12 +494,12 @@ export function CommitGraph(props: CommitGraphProps) {
                     class={rowWrapperClass(
                       r.is_merge ? "merge" : "commit",
                       hoveredCommit() === r.sha,
-                      selectedCommit() === r.sha,
+                      selectedShasSet().has(r.sha),
                     )}
                     classList={{
                       "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
                     }}
-                    data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                    data-selected={selectedShasSet().has(r.sha) ? "true" : "false"}
                     style={{
                       top: `${item.start + wipShift()}px`,
                       height: `${ROW_HEIGHT}px`,
@@ -512,13 +564,13 @@ export function CommitGraph(props: CommitGraphProps) {
               <Show when={dirtyFileCount() > 0}>
                 <li
                   class="commit-graph__wip-cell commit-graph__wip-cell--graph"
-                  data-active={inspectorMode() === "staging" ? "true" : "false"}
+                  data-active={workdirSelected() || inspectorMode() === "staging" ? "true" : "false"}
                   style={{
                     top: "0px",
                     height: `${ROW_HEIGHT}px`,
                     "--wip-lane-color": `var(--column-${headColorIdx()}-color)`,
                   }}
-                  onClick={() => openStaging()}
+                  onClick={(e) => handleWipClick(e)}
                   title="View working-directory changes"
                 >
                   <span
@@ -552,18 +604,18 @@ export function CommitGraph(props: CommitGraphProps) {
                       class={rowWrapperClass(
                         r.is_merge ? "merge" : "commit",
                         hoveredCommit() === r.sha,
-                        selectedCommit() === r.sha,
+                        selectedShasSet().has(r.sha),
                       )}
                       classList={{
                         "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
                       }}
-                      data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                      data-selected={selectedShasSet().has(r.sha) ? "true" : "false"}
                       style={{
                         top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
-                      onClick={() => setSelectedCommit(r.sha)}
+                      onClick={(e) => handleCommitClick(e, r.sha)}
                       onMouseEnter={() => setHoveredCommit(r.sha)}
                       onMouseLeave={() => {
                         if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
@@ -636,9 +688,9 @@ export function CommitGraph(props: CommitGraphProps) {
             <Show when={dirtyFileCount() > 0}>
               <li
                 class="commit-graph__wip-cell commit-graph__wip-cell--messages"
-                data-active={inspectorMode() === "staging" ? "true" : "false"}
+                data-active={workdirSelected() || inspectorMode() === "staging" ? "true" : "false"}
                 style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
-                onClick={() => openStaging()}
+                onClick={(e) => handleWipClick(e)}
                 title="View working-directory changes"
               >
                 <input
@@ -666,18 +718,18 @@ export function CommitGraph(props: CommitGraphProps) {
                     class={rowWrapperClass(
                       r.is_merge ? "merge" : "commit",
                       hoveredCommit() === r.sha,
-                      selectedCommit() === r.sha,
+                      selectedShasSet().has(r.sha),
                     )}
                     classList={{
                       "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
                     }}
-                    data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                    data-selected={selectedShasSet().has(r.sha) ? "true" : "false"}
                     style={{
                       top: `${item.start + wipShift()}px`,
                       height: `${ROW_HEIGHT}px`,
                       "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                     }}
-                    onClick={() => setSelectedCommit(r.sha)}
+                    onClick={(e) => handleCommitClick(e, r.sha)}
                     onMouseEnter={() => setHoveredCommit(r.sha)}
                     onMouseLeave={() => {
                       if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
@@ -723,18 +775,18 @@ export function CommitGraph(props: CommitGraphProps) {
                       class={rowWrapperClass(
                         r.is_merge ? "merge" : "commit",
                         hoveredCommit() === r.sha,
-                        selectedCommit() === r.sha,
+                        selectedShasSet().has(r.sha),
                       )}
                       classList={{
                         "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
                       }}
-                      data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                      data-selected={selectedShasSet().has(r.sha) ? "true" : "false"}
                       style={{
                         top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
-                      onClick={() => setSelectedCommit(r.sha)}
+                      onClick={(e) => handleCommitClick(e, r.sha)}
                       onMouseEnter={() => setHoveredCommit(r.sha)}
                       onMouseLeave={() => {
                         if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
@@ -800,18 +852,18 @@ export function CommitGraph(props: CommitGraphProps) {
                       class={rowWrapperClass(
                         r.is_merge ? "merge" : "commit",
                         hoveredCommit() === r.sha,
-                        selectedCommit() === r.sha,
+                        selectedShasSet().has(r.sha),
                       )}
                       classList={{
                         "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
                       }}
-                      data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                      data-selected={selectedShasSet().has(r.sha) ? "true" : "false"}
                       style={{
                         top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
-                      onClick={() => setSelectedCommit(r.sha)}
+                      onClick={(e) => handleCommitClick(e, r.sha)}
                       onMouseEnter={() => setHoveredCommit(r.sha)}
                       onMouseLeave={() => {
                         if (hoveredCommit() === r.sha) setHoveredCommit(undefined);
@@ -856,18 +908,18 @@ export function CommitGraph(props: CommitGraphProps) {
                       class={rowWrapperClass(
                         r.is_merge ? "merge" : "commit",
                         hoveredCommit() === r.sha,
-                        selectedCommit() === r.sha,
+                        selectedShasSet().has(r.sha),
                       )}
                       classList={{
                         "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
                       }}
-                      data-selected={selectedCommit() === r.sha ? "true" : "false"}
+                      data-selected={selectedShasSet().has(r.sha) ? "true" : "false"}
                       style={{
                         top: `${item.start + wipShift()}px`,
                         height: `${ROW_HEIGHT}px`,
                         "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
                       }}
-                      onClick={() => setSelectedCommit(r.sha)}
+                      onClick={(e) => handleCommitClick(e, r.sha)}
                       onMouseEnter={() => setHoveredCommit(r.sha)}
                       onMouseLeave={() => {
                         if (hoveredCommit() === r.sha) setHoveredCommit(undefined);

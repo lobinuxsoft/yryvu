@@ -19,7 +19,7 @@ use graph_core::Commit;
 
 use crate::backend::{
     BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff, GitBackend,
-    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, WorkingTreeStatus,
+    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, TagInfo, WorkingTreeStatus,
 };
 
 mod branches;
@@ -49,6 +49,10 @@ impl GitBackend for GixBackend {
 
     fn list_branches(&self, repo_path: &Path) -> Result<Vec<BranchInfo>, BackendError> {
         branches::list_branches(repo_path)
+    }
+
+    fn list_tags(&self, repo_path: &Path) -> Result<Vec<TagInfo>, BackendError> {
+        tags::list_tags(repo_path)
     }
 
     fn create_branch(

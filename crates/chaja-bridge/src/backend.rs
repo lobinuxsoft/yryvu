@@ -73,6 +73,23 @@ pub struct BranchInfo {
     pub behind: u32,
 }
 
+/// Tag information exposed to the UI. `target_sha` is always the *peeled*
+/// commit SHA — for annotated tags the wrapping object is decoded
+/// transparently so callers can resolve the underlying commit without a
+/// second round-trip. The annotated message + tagger fields are populated
+/// only when `is_annotated` is true.
+#[derive(Debug, Clone, Serialize)]
+pub struct TagInfo {
+    pub name: String,
+    pub full_name: String,
+    pub target_sha: String,
+    pub is_annotated: bool,
+    pub message: Option<String>,
+    pub tagger_name: Option<String>,
+    pub tagger_email: Option<String>,
+    pub tagger_date: Option<i64>,
+}
+
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ResetMode {
@@ -274,6 +291,11 @@ pub trait GitBackend: Send + Sync {
     ) -> Result<Box<dyn Iterator<Item = Result<Commit, BackendError>> + Send>, BackendError>;
 
     fn list_branches(&self, repo_path: &Path) -> Result<Vec<BranchInfo>, BackendError>;
+
+    /// List every tag (lightweight + annotated) under `refs/tags/`. See
+    /// [`TagInfo`] for the per-tag schema and [`crate::repo::tags::list_tags`]
+    /// for the gix-backed implementation.
+    fn list_tags(&self, repo_path: &Path) -> Result<Vec<TagInfo>, BackendError>;
 
     fn create_branch(
         &self,

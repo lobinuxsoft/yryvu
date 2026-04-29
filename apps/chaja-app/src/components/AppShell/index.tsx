@@ -11,6 +11,7 @@ import { FileDiffTab } from "../FileDiffTab";
 import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
 import { DialogsHost } from "../LeftSidebar/DialogsHost";
+import { PreferencesWindow } from "../PreferencesWindow";
 import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
@@ -167,6 +168,7 @@ export function AppShell() {
         />
       </Show>
       <DialogsHost ops={branchOps} />
+      <PreferencesWindow />
       <ToastContainer />
     </div>
     </BranchOpsProvider>

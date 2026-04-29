@@ -86,30 +86,16 @@ fn default_version() -> u32 {
     SCHEMA_VERSION
 }
 
-/// General preferences (issue #102). The single field shipped here
-/// validates the load/save path end-to-end; #102 extends this with the
-/// concrete settings GK exposes under `GeneralPreferences`.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+/// General preferences (issue #102). Empty in this PR — extended by #102
+/// with the concrete settings GK exposes under `GeneralPreferences`.
+///
+/// An earlier draft shipped a destructive-ops confirmation toggle
+/// claiming to mirror GK's `confirmDestructiveActions`, but that flag
+/// does not exist in the GK 12.0.1 bundle — see #195 for the rip and
+/// #196 for the per-dialog `doNotAskAgain` pattern that replaces it.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct GeneralPreferences {
-    /// Whether destructive ops (force push, reset --hard, discard
-    /// changes, drop stash, force pull) prompt for confirmation. Mirrors
-    /// GK's `confirmDestructiveActions`.
-    #[serde(default = "default_true")]
-    pub confirm_destructive_ops: bool,
-}
-
-impl Default for GeneralPreferences {
-    fn default() -> Self {
-        Self {
-            confirm_destructive_ops: true,
-        }
-    }
-}
-
-fn default_true() -> bool {
-    true
-}
+pub struct GeneralPreferences {}
 
 /// UI preferences (issue #103). Empty in this PR — extended by #103
 /// with theme, density, font scale, etc.

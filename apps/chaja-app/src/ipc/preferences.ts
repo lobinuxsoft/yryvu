@@ -2,12 +2,10 @@
 
 import { invoke } from "@tauri-apps/api/core";
 
-/// Mirrors `chaja_bridge::preferences::GeneralPreferences`. Each field
-/// matches its Rust counterpart 1:1; serde rewrites snake_case to
-/// camelCase on the wire.
-export interface GeneralPreferences {
-  confirmDestructiveOps: boolean;
-}
+/// Mirrors `chaja_bridge::preferences::GeneralPreferences`. Empty for
+/// now — extended by #102 (see #195 for why the previous toggle was rip'd).
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface GeneralPreferences {}
 
 /// Mirrors `chaja_bridge::preferences::UiPreferences`. Empty for now —
 /// extended by #103.

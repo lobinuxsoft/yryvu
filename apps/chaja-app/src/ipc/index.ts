@@ -12,6 +12,7 @@ export * from "./preferences";
 export * from "./remote";
 export * from "./smart_branches";
 export * from "./staging";
+export * from "./stashes";
 export * from "./tags";
 export * from "./undo";
 export * from "./worktree";

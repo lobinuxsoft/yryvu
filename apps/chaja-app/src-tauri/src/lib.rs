@@ -32,6 +32,7 @@ pub fn run() {
             chaja_bridge::commands::stash_push,
             chaja_bridge::commands::stash_pop,
             chaja_bridge::commands::stash_count,
+            chaja_bridge::commands::list_stashes,
             chaja_bridge::commands::merge_branch,
             chaja_bridge::commands::delete_remote_branch,
             chaja_bridge::commands::abort_merge,

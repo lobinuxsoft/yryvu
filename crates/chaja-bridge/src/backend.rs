@@ -90,6 +90,24 @@ pub struct TagInfo {
     pub tagger_date: Option<i64>,
 }
 
+/// Stash entry exposed to the UI. Mirrors the per-row shape GK builds
+/// in `mapStashToLeftPanelRow` — the renderer consumes `sha`, `message`,
+/// and `branch_name` directly; `parent_sha` / `index_sha` /
+/// `untracked_sha` come from the stash commit's parent slots so the
+/// inspector can diff index-only or untracked-only views without
+/// re-decoding the commit. `when` is the stash commit's committer
+/// timestamp in unix seconds.
+#[derive(Debug, Clone, Serialize)]
+pub struct StashInfo {
+    pub sha: String,
+    pub message: String,
+    pub branch_name: Option<String>,
+    pub parent_sha: String,
+    pub index_sha: Option<String>,
+    pub untracked_sha: Option<String>,
+    pub when: i64,
+}
+
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ResetMode {
@@ -296,6 +314,11 @@ pub trait GitBackend: Send + Sync {
     /// [`TagInfo`] for the per-tag schema and [`crate::repo::tags::list_tags`]
     /// for the gix-backed implementation.
     fn list_tags(&self, repo_path: &Path) -> Result<Vec<TagInfo>, BackendError>;
+
+    /// List every stash entry by walking the reflog of `refs/stash`,
+    /// newest-first. Returns an empty Vec when there is no `refs/stash`
+    /// (no stashes ever taken in this repo). See [`StashInfo`].
+    fn list_stashes(&self, repo_path: &Path) -> Result<Vec<StashInfo>, BackendError>;
 
     fn create_branch(
         &self,

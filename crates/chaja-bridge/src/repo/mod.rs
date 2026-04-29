@@ -19,7 +19,8 @@ use graph_core::Commit;
 
 use crate::backend::{
     BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff, GitBackend,
-    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, TagInfo, WorkingTreeStatus,
+    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, StashInfo, TagInfo,
+    WorkingTreeStatus,
 };
 
 mod branches;
@@ -32,6 +33,7 @@ pub(crate) mod reflog;
 mod remote;
 pub(crate) mod smart_branches;
 pub(crate) mod staging;
+mod stashes;
 mod tags;
 pub(crate) mod undo;
 mod worktree;
@@ -53,6 +55,10 @@ impl GitBackend for GixBackend {
 
     fn list_tags(&self, repo_path: &Path) -> Result<Vec<TagInfo>, BackendError> {
         tags::list_tags(repo_path)
+    }
+
+    fn list_stashes(&self, repo_path: &Path) -> Result<Vec<StashInfo>, BackendError> {
+        stashes::list_stashes(repo_path)
     }
 
     fn create_branch(

@@ -288,6 +288,29 @@
 .sidebar__branch-tracking span[data-dir="ahead"] { color: var(--success); }
 .sidebar__branch-tracking span[data-dir="behind"] { color: var(--warning); }
 
+/* Tag rows reuse `__branch-row` for hover/active styling but swap the
+   leading checkmark slot for an inline tag icon. The annotated variant
+   leans on the title attribute for the message tooltip — no custom
+   tooltip surface needed yet. */
+.sidebar__tag-row {
+  padding-left: 10px;
+}
+
+.sidebar__tag-row::before { content: none; }
+
+.sidebar__tag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--fg-2);
+}
+
+.sidebar__tag-row[data-annotated="true"] .sidebar__tag-icon {
+  color: var(--accent);
+}
+
 .sidebar__empty {
   padding: 6px 10px 6px 24px;
   color: var(--fg-3);

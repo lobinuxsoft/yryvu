@@ -2,7 +2,14 @@
 
 import { createResource, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
-import { listBranches, getRepoState, type BranchInfo, type RepoStateInfo } from "../../ipc";
+import {
+  getRepoState,
+  listBranches,
+  listTags,
+  type BranchInfo,
+  type RepoStateInfo,
+  type TagInfo,
+} from "../../ipc";
 import {
   branchesNonce,
   repoPath,
@@ -22,6 +29,7 @@ import {
 import { LocalBranchRow, RemoteBranchRow } from "./branchRows";
 import { SidebarSection } from "./SidebarSection";
 import { StateBanner } from "./StateBanner";
+import { TagRow } from "./tagRows";
 
 const matches = (name: string, q: string) =>
   q === "" || name.toLowerCase().includes(q.toLowerCase());
@@ -49,13 +57,29 @@ export function LeftSidebar() {
     { initialValue: { kind: "clean", conflict_paths: [] } },
   );
 
+  // Tags share the same `branchesNonce` source-key as branches so any
+  // ref-mutating op (including `createTag` via `useCommitOps`) refreshes
+  // the list without a dedicated tagsNonce.
+  const [tags] = createResource<TagInfo[], [string, number]>(
+    () => [repoPath() ?? "", branchesNonce()] as [string, number],
+    async ([path]) => {
+      if (!path) return [] as TagInfo[];
+      return await listTags(path);
+    },
+    { initialValue: [] },
+  );
+
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
   const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
+  const tagList = () => tags() ?? [];
   const filteredLocals = () => locals().filter((b) => matches(b.name, filterQuery()));
   const filteredRemotes = () => remotes().filter((b) => matches(b.name, filterQuery()));
+  const filteredTags = () => tagList().filter((t) => matches(t.name, filterQuery()));
   const isFiltering = () => filterQuery() !== "";
   const totalMatches = () =>
-    isFiltering() ? filteredLocals().length + filteredRemotes().length : -1;
+    isFiltering()
+      ? filteredLocals().length + filteredRemotes().length + filteredTags().length
+      : -1;
 
   const ops = useBranchOps();
 
@@ -200,8 +224,8 @@ export function LeftSidebar() {
         </SidebarSection>
 
         {/* Placeholder sections — hidden while filtering since they have no
-            wired data sources yet (Tags #71, PRs #112, etc.). They reappear
-            when the filter clears so layout matches GK at rest. */}
+            wired data sources yet (PRs #112, etc.). They reappear when the
+            filter clears so layout matches GK at rest. */}
         <Show when={!isFiltering()}>
           <SidebarSection title="Cloud Patches" icon={<IconArchive />} count={0}>
             <p class="sidebar__empty">—</p>
@@ -221,9 +245,35 @@ export function LeftSidebar() {
           >
             <p class="sidebar__empty">—</p>
           </SidebarSection>
-          <SidebarSection title="Tags" icon={<IconTag />} count={0}>
-            <p class="sidebar__empty">—</p>
-          </SidebarSection>
+        </Show>
+
+        <SidebarSection
+          title="Tags"
+          icon={<IconTag />}
+          count={isFiltering() ? filteredTags().length : tagList().length}
+        >
+          <Show
+            when={repoPath()}
+            fallback={<p class="sidebar__empty">Open a repo to list tags</p>}
+          >
+            <Show
+              when={filteredTags().length > 0}
+              fallback={
+                <p class="sidebar__empty">
+                  {isFiltering()
+                    ? "No matches"
+                    : tagList().length === 0
+                      ? "No tags"
+                      : ""}
+                </p>
+              }
+            >
+              <For each={filteredTags()}>{(t) => <TagRow tag={t} />}</For>
+            </Show>
+          </Show>
+        </SidebarSection>
+
+        <Show when={!isFiltering()}>
           <SidebarSection title="Teams" icon={<IconUsers />} count={0}>
             <p class="sidebar__empty">—</p>
           </SidebarSection>

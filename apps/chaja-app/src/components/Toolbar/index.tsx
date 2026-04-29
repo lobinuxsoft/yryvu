@@ -5,8 +5,6 @@ import {
   createResource,
   createSignal,
   type JSX,
-  onCleanup,
-  onMount,
   Show,
 } from "solid-js";
 
@@ -26,6 +24,7 @@ import { useBranchOps } from "../../branchOps";
 import {
   branchesNonce,
   dirtyFileCount,
+  openPreferences,
   pullType,
   refreshBranches,
   refreshGraph,
@@ -67,7 +66,6 @@ const PUSH_HEADER = "Push options";
 export function Toolbar(props: ToolbarProps) {
   const ops = useBranchOps();
   const [pending, setPending] = createSignal<string | null>(null);
-  const [actionsOpen, setActionsOpen] = createSignal(false);
   const [confirm, setConfirm] = createSignal<ConfirmKind | null>(null);
 
   // Active branch info — drives UpstreamIndicator and ahead/behind-aware
@@ -163,7 +161,6 @@ export function Toolbar(props: ToolbarProps) {
   }
 
   async function runFetchAll() {
-    setActionsOpen(false);
     await withOp("Fetch all", "Fetched all remotes", async () => {
       await fetchPrune(repoPath()!);
       refreshAfterRemoteOp();
@@ -403,18 +400,12 @@ export function Toolbar(props: ToolbarProps) {
       <div class="toolbar__actions toolbar__actions--trailing">
         <ToolbarBtn
           icon={<IconGear />}
-          label="Actions"
-          disabled={!hasRepo() || opInFlight()}
-          onClick={() => setActionsOpen((v) => !v)}
+          label="Preferences"
+          title="Open preferences"
+          onClick={() => openPreferences()}
         />
         <Bell />
         <ToolbarBtn icon={<IconSearch />} label="Search" disabled />
-        <Show when={actionsOpen()}>
-          <ActionsDropdown
-            onClose={() => setActionsOpen(false)}
-            onFetchAll={runFetchAll}
-          />
-        </Show>
       </div>
 
       <ConfirmDialog
@@ -435,70 +426,6 @@ export function Toolbar(props: ToolbarProps) {
         onConfirm={runForcePushWithLease}
         onCancel={() => setConfirm(null)}
       />
-    </div>
-  );
-}
-
-function ActionsDropdown(props: {
-  onClose: () => void;
-  onFetchAll: () => void;
-}) {
-  let dropdownEl: HTMLDivElement | undefined;
-
-  onMount(() => {
-    const onDocPointer = (e: MouseEvent) => {
-      if (dropdownEl && !dropdownEl.contains(e.target as Node)) {
-        props.onClose();
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") props.onClose();
-    };
-    document.addEventListener("mousedown", onDocPointer);
-    document.addEventListener("keydown", onKey);
-    onCleanup(() => {
-      document.removeEventListener("mousedown", onDocPointer);
-      document.removeEventListener("keydown", onKey);
-    });
-  });
-
-  return (
-    <div class="toolbar__actions-dropdown" ref={dropdownEl} role="menu">
-      <button
-        class="toolbar__actions-item"
-        type="button"
-        role="menuitem"
-        onClick={props.onFetchAll}
-      >
-        Fetch all
-      </button>
-      <button
-        class="toolbar__actions-item"
-        type="button"
-        role="menuitem"
-        disabled
-        title="Awaiting dedicated prune-only backend command"
-      >
-        Prune remotes
-      </button>
-      <button
-        class="toolbar__actions-item"
-        type="button"
-        role="menuitem"
-        disabled
-        title="Awaiting repo_gc backend command"
-      >
-        Run GC
-      </button>
-      <button
-        class="toolbar__actions-item"
-        type="button"
-        role="menuitem"
-        disabled
-        title="Awaiting git clean -fd backend command"
-      >
-        Clean untracked
-      </button>
     </div>
   );
 }

@@ -682,3 +682,49 @@ export function pushRecentRepo(path: string): RecentRepo[] {
   localStorage.setItem(STORAGE_RECENT_KEY, JSON.stringify(trimmed));
   return trimmed;
 }
+
+// =============================================================================
+// Preferences window (issue #136 — 1:1 port of GK's PreferenceView)
+// =============================================================================
+
+/// Section IDs accepted by chajá from GK's `tabTypes` enum. AGENTS / CLI /
+/// GITKRAKEN_AI / ORGANIZATION / TEAM_SETTINGS are filtered out as
+/// GK-proprietary per the coverage matrix in #136.
+export const PREFERENCE_SECTION_IDS = [
+  "general",
+  "ui",
+  "commit",
+  "editor",
+  "encoding",
+  "conflict_detection",
+  "experimental",
+  "gpg",
+  "gitflow",
+  "githooks",
+  "integrations",
+  "issue_tracker",
+  "lfs",
+  "notifications",
+  "profiles",
+  "sparse_checkout",
+  "ssh",
+  "submodules",
+  "tools",
+] as const;
+
+export type PreferenceSectionId = (typeof PREFERENCE_SECTION_IDS)[number];
+
+export const [preferencesOpen, setPreferencesOpen] = createSignal(false);
+
+export const [activePreferenceSection, setActivePreferenceSection] = persistedEnum<
+  PreferenceSectionId
+>("activePreferenceSection", "general", PREFERENCE_SECTION_IDS);
+
+export function openPreferences(section?: PreferenceSectionId): void {
+  if (section) setActivePreferenceSection(section);
+  setPreferencesOpen(true);
+}
+
+export function closePreferences(): void {
+  setPreferencesOpen(false);
+}

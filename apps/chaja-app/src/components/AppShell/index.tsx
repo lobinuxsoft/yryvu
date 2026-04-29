@@ -30,6 +30,17 @@ import {
   showRightPanel,
   theme,
 } from "../../state";
+import { runRedo, runUndo } from "../../undoOps";
+
+/// True when the keyboard event target is a text-editing element. The
+/// global Ctrl/Cmd+Z listener bails on those so the user's typing-level
+/// undo (browser default) survives intact.
+function isInsideEditable(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") return true;
+  return target.isContentEditable;
+}
 
 async function openRepoPicker() {
   const selected = await open({
@@ -51,6 +62,29 @@ export function AppShell() {
     unlisteners.push(await listen("menu:toggle-left-panel", () => setShowLeftPanel((v) => !v)));
     unlisteners.push(await listen("menu:toggle-right-panel", () => setShowRightPanel((v) => !v)));
     unlisteners.push(await listen("menu:toggle-terminal", () => setShowTerminalPanel((v) => !v)));
+
+    // Global Undo / Redo keyboard shortcuts (issue #187, sub-PR 3 of
+    // #130). Skip when focus is inside an editable element so the user
+    // can still Ctrl+Z inside the commit message editor and dialog
+    // inputs without triggering a repo-level undo. Tauri abstracts the
+    // platform — `metaKey || ctrlKey` covers Cmd on macOS and Ctrl on
+    // Linux / Windows. `Ctrl+Y` is also accepted as a Windows-style
+    // Redo alias.
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isInsideEditable(e.target)) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        void runUndo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        void runRedo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    onCleanup(() => window.removeEventListener("keydown", onKeyDown));
   });
 
   onCleanup(() => unlisteners.forEach((fn) => fn()));

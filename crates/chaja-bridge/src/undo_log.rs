@@ -42,6 +42,7 @@
 //! Wire the toolbar buttons. Bind keyboard shortcuts. Those are sub-PRs
 //! 2 and 3 — this module is a pure write surface for now.
 
+use std::cell::Cell;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -51,6 +52,36 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::backend::ResetMode;
+
+thread_local! {
+    /// Set by [`with_record_skipped`] while an undo / redo is replaying a
+    /// public op wrapper. The wrapper still runs the git work, but
+    /// `record_op_best_effort` short-circuits — without this guard a
+    /// `checkout_branch` called from inside `apply_inverse` would append
+    /// a fresh log entry, which would (a) compete with the cursor walk
+    /// the IPC layer just performed and (b) silently corrupt the redo
+    /// path.
+    ///
+    /// Thread-local is sufficient because Tauri commands run on
+    /// `spawn_blocking` worker threads — each command is single-threaded
+    /// inside, and concurrent commands on different threads carry their
+    /// own flag.
+    static SKIP_RECORD: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Run `f` with the undo-log writer suppressed. Used by
+/// [`crate::repo::undo::apply_inverse`] and the (sub-PR 3) `apply_redo`
+/// to call the existing public op wrappers without leaving phantom
+/// entries in the log.
+pub fn with_record_skipped<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    SKIP_RECORD.with(|c| c.set(true));
+    let result = f();
+    SKIP_RECORD.with(|c| c.set(false));
+    result
+}
 
 /// On-disk location of the sidecar log, relative to the repo's `.git`
 /// directory. Hidden by virtue of living inside `.git`, which standard
@@ -313,7 +344,14 @@ pub fn record_op(repo_path: &Path, kind: OpKind) -> Result<(), UndoLogError> {
 /// a sidecar write failure must NOT propagate — the only consequence of
 /// a log miss is "this op won't be undoable through the toolbar." Logged
 /// at warn so users with disk-full / permission issues see a trail.
+///
+/// Short-circuits when the calling thread has flipped the [`SKIP_RECORD`]
+/// guard via [`with_record_skipped`] — that's the path used by undo /
+/// redo to replay public op wrappers without ghost-recording.
 pub fn record_op_best_effort(repo_path: &Path, kind: OpKind) {
+    if SKIP_RECORD.with(|c| c.get()) {
+        return;
+    }
     if let Err(e) = record_op(repo_path, kind) {
         tracing::warn!(error = %e, "failed to record op in undo log");
     }

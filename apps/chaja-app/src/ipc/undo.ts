@@ -25,3 +25,7 @@ export function getUndoRedoState(repoPath: string): Promise<UndoRedoState> {
 export function undoLastOperation(repoPath: string): Promise<UndoOutcome> {
   return invoke<UndoOutcome>("undo_last_operation", { repoPath });
 }
+
+export function redoLastUndo(repoPath: string): Promise<UndoOutcome> {
+  return invoke<UndoOutcome>("redo_last_undo", { repoPath });
+}

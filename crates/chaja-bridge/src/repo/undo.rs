@@ -34,7 +34,7 @@
 use std::path::Path;
 
 use crate::backend::BackendError;
-use crate::undo_log::OpKind;
+use crate::undo_log::{with_record_skipped, OpKind};
 
 use super::common::{git2_err, open_git2};
 use super::worktree;
@@ -55,7 +55,16 @@ pub enum UndoOutcome {
 /// Apply the inverse of `op` against `repo_path`. Errors propagate as
 /// `BackendError` so the UI can surface them through its standard
 /// notification channel.
+///
+/// The whole match runs inside [`with_record_skipped`] so the public op
+/// wrappers we delegate to (`checkout_branch`, `reset_to_commit`, …)
+/// don't append fresh log entries — undo moves the cursor backwards,
+/// it doesn't synthesise a "undo of X" record.
 pub fn apply_inverse(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
+    with_record_skipped(|| apply_inverse_inner(repo_path, op))
+}
+
+fn apply_inverse_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
     match op {
         OpKind::Commit {
             parent_sha: Some(parent_sha),
@@ -180,4 +189,82 @@ fn head_minus_one_hard(repo_path: &Path) -> Result<(), BackendError> {
     repo.reset(&obj, git2::ResetType::Hard, None)
         .map_err(git2_err)?;
     Ok(())
+}
+
+/// Re-apply `op` after an undo (sub-PR 3 of #130). Mirrors `apply_inverse`
+/// but going forward: for any commit-creating op (Commit / Amend /
+/// CherryPick / Revert / Merge) the synthesised commit still lives in
+/// the reflog (and on disk), so a single `reset --hard <new_sha>` is
+/// enough to restore HEAD without reconstructing the tree. Checkout /
+/// reset / stash variants delegate to the public worktree helpers,
+/// silenced by `with_record_skipped` so the redo doesn't ghost-record.
+pub fn apply_redo(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
+    with_record_skipped(|| apply_redo_inner(repo_path, op))
+}
+
+fn apply_redo_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
+    match op {
+        OpKind::Commit { sha, .. } => {
+            hard_reset(repo_path, sha)?;
+            Ok(UndoOutcome::Applied {
+                kind_label: "commit".into(),
+            })
+        }
+        OpKind::Amend { new_sha, .. } => {
+            hard_reset(repo_path, new_sha)?;
+            Ok(UndoOutcome::Applied {
+                kind_label: "amend".into(),
+            })
+        }
+        OpKind::CheckoutBranch { to, .. } => {
+            worktree::checkout_branch(repo_path, to)?;
+            Ok(UndoOutcome::Applied {
+                kind_label: "checkout".into(),
+            })
+        }
+        OpKind::CheckoutCommit { to_sha, .. } => {
+            worktree::checkout_commit(repo_path, to_sha)?;
+            Ok(UndoOutcome::Applied {
+                kind_label: "checkout".into(),
+            })
+        }
+        OpKind::Reset { mode, to_sha, .. } => {
+            worktree::reset_to_commit(repo_path, to_sha, *mode)?;
+            Ok(UndoOutcome::Applied {
+                kind_label: "reset".into(),
+            })
+        }
+        OpKind::CherryPick { new_sha, .. } => {
+            hard_reset(repo_path, new_sha)?;
+            Ok(UndoOutcome::Applied {
+                kind_label: "cherry-pick".into(),
+            })
+        }
+        OpKind::Revert { new_sha, .. } => {
+            hard_reset(repo_path, new_sha)?;
+            Ok(UndoOutcome::Applied {
+                kind_label: "revert".into(),
+            })
+        }
+        OpKind::Merge { post_merge_sha, .. } => {
+            hard_reset(repo_path, post_merge_sha)?;
+            Ok(UndoOutcome::Applied {
+                kind_label: "merge".into(),
+            })
+        }
+        OpKind::StashPush { .. } => {
+            // Re-stashing the current working tree captures whatever's
+            // there now — assumed identical to the pre-undo state since
+            // the user just popped it back. Producing a different stash
+            // SHA than the original is fine: the cursor walk doesn't
+            // care about SHA equality.
+            worktree::stash_push(repo_path, None)?;
+            Ok(UndoOutcome::Applied {
+                kind_label: "stash push".into(),
+            })
+        }
+        OpKind::StashPop { .. } => Ok(UndoOutcome::Untrackable {
+            reason: "stash pop redo not supported (symmetric with undo)".into(),
+        }),
+    }
 }

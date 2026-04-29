@@ -8,6 +8,7 @@ export * from "./branches";
 export * from "./commits";
 export * from "./diff";
 export * from "./merge";
+export * from "./preferences";
 export * from "./remote";
 export * from "./smart_branches";
 export * from "./staging";

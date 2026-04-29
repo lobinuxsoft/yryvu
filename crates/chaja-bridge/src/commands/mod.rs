@@ -8,6 +8,7 @@
 mod branches;
 mod commits;
 mod merge;
+mod preferences;
 mod remote;
 mod smart_branches;
 mod staging;
@@ -18,6 +19,7 @@ mod worktree;
 pub use branches::*;
 pub use commits::*;
 pub use merge::*;
+pub use preferences::*;
 pub use remote::*;
 pub use smart_branches::*;
 pub use staging::*;

@@ -3,8 +3,14 @@
 import { createMemo, createResource, createSignal, type Signal } from "solid-js";
 
 import {
+  getPreferences,
   getUndoRedoState,
   getWorkingTreeStatus,
+  resetPreferences as ipcResetPreferences,
+  setPreferences as ipcSetPreferences,
+  type GeneralPreferences,
+  type Preferences,
+  type UiPreferences,
   type UndoRedoState,
   type WorkingTreeStatus,
 } from "./ipc";
@@ -727,4 +733,42 @@ export function openPreferences(section?: PreferenceSectionId): void {
 
 export function closePreferences(): void {
   setPreferencesOpen(false);
+}
+
+/// Backend-persisted preferences. Loaded once on app startup; subsequent
+/// edits go through `updatePreferences` / `resetPreferences` which save
+/// atomically backend-side and mutate this resource on success.
+const [preferences, { mutate: mutatePreferencesResource }] = createResource<Preferences>(
+  () => getPreferences(),
+);
+export { preferences };
+
+interface PreferencesPatch {
+  general?: Partial<GeneralPreferences>;
+  ui?: Partial<UiPreferences>;
+}
+
+/// Apply a partial update to the persisted preferences. Merges per
+/// section so the caller doesn't need to know about unrelated fields.
+/// Throws if preferences haven't loaded yet — components should guard
+/// with `preferences()` before offering a write surface.
+export async function updatePreferences(patch: PreferencesPatch): Promise<void> {
+  const current = preferences();
+  if (!current) {
+    throw new Error("preferences not loaded yet");
+  }
+  const next: Preferences = {
+    ...current,
+    general: { ...current.general, ...(patch.general ?? {}) },
+    ui: { ...current.ui, ...(patch.ui ?? {}) },
+  };
+  const saved = await ipcSetPreferences(next);
+  mutatePreferencesResource(saved);
+}
+
+/// Wipe persisted preferences and reload defaults. Used by the
+/// Preferences window's "Reset to defaults" affordance.
+export async function resetPreferences(): Promise<void> {
+  const fresh = await ipcResetPreferences();
+  mutatePreferencesResource(fresh);
 }

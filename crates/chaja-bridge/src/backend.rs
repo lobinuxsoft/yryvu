@@ -108,6 +108,25 @@ pub struct StashInfo {
     pub when: i64,
 }
 
+/// Worktree row exposed to the UI. Field set mirrors what GK's
+/// `parseWorktreeList` extracts from `git worktree list --porcelain -z`
+/// so the sidebar can render without massaging the data: `branch` is
+/// the short HEAD ref (or the literal `HEAD` for detached worktrees),
+/// `head` is the commit SHA. `is_main` flags the main worktree (the
+/// only one that can be bare and that cannot be removed). `locked` and
+/// `prunable` carry the raw git reasons when present.
+#[derive(Debug, Clone, Serialize)]
+pub struct WorktreeInfo {
+    pub workdir: String,
+    pub branch: String,
+    pub head: Option<String>,
+    pub is_main: bool,
+    pub is_bare: bool,
+    pub locked: Option<String>,
+    pub prunable: Option<String>,
+    pub main_repo_workdir: String,
+}
+
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ResetMode {
@@ -319,6 +338,11 @@ pub trait GitBackend: Send + Sync {
     /// newest-first. Returns an empty Vec when there is no `refs/stash`
     /// (no stashes ever taken in this repo). See [`StashInfo`].
     fn list_stashes(&self, repo_path: &Path) -> Result<Vec<StashInfo>, BackendError>;
+
+    /// Enumerate the main worktree plus every linked worktree under
+    /// `.git/worktrees/`. The first row is always the main worktree.
+    /// See [`WorktreeInfo`].
+    fn list_worktrees(&self, repo_path: &Path) -> Result<Vec<WorktreeInfo>, BackendError>;
 
     fn create_branch(
         &self,

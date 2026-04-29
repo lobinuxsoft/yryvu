@@ -16,6 +16,7 @@ mod stashes;
 mod tags;
 mod undo;
 mod worktree;
+mod worktrees;
 
 pub use branches::*;
 pub use commits::*;
@@ -28,3 +29,4 @@ pub use stashes::*;
 pub use tags::*;
 pub use undo::*;
 pub use worktree::*;
+pub use worktrees::*;

@@ -16,3 +16,4 @@ export * from "./stashes";
 export * from "./tags";
 export * from "./undo";
 export * from "./worktree";
+export * from "./worktrees";

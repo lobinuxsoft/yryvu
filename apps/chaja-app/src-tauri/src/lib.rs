@@ -24,6 +24,7 @@ pub fn run() {
             chaja_bridge::commands::checkout_branch,
             chaja_bridge::commands::checkout_commit,
             chaja_bridge::commands::create_tag,
+            chaja_bridge::commands::list_tags,
             chaja_bridge::commands::reset_to_commit,
             chaja_bridge::commands::cherry_pick_commit,
             chaja_bridge::commands::revert_commit,

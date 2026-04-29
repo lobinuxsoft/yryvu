@@ -127,6 +127,28 @@ pub struct WorktreeInfo {
     pub main_repo_workdir: String,
 }
 
+/// Submodule row exposed to the UI. Combines what GK pulls from
+/// `git submodule status` with the inner-repo open: `head_sha` is what
+/// the parent's HEAD tree pins the submodule to, `index_sha` is what
+/// the parent's index has staged. `ahead` / `behind` compare the
+/// submodule's checked-out commit against the parent-pinned commit
+/// (zero when the submodule is uninitialized or pinned matches HEAD).
+/// `is_initialized` reflects gix's `state.repository_exists &&
+/// state.worktree_checkout`; `is_deleted` flags the case where the
+/// parent still pins a commit but the working tree directory is gone.
+#[derive(Debug, Clone, Serialize)]
+pub struct SubmoduleInfo {
+    pub name: String,
+    pub path: String,
+    pub url: Option<String>,
+    pub head_sha: Option<String>,
+    pub index_sha: Option<String>,
+    pub is_initialized: bool,
+    pub is_deleted: bool,
+    pub ahead: u32,
+    pub behind: u32,
+}
+
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ResetMode {
@@ -343,6 +365,10 @@ pub trait GitBackend: Send + Sync {
     /// `.git/worktrees/`. The first row is always the main worktree.
     /// See [`WorktreeInfo`].
     fn list_worktrees(&self, repo_path: &Path) -> Result<Vec<WorktreeInfo>, BackendError>;
+
+    /// Enumerate every submodule declared in `.gitmodules`. Returns an
+    /// empty Vec for repos without submodules. See [`SubmoduleInfo`].
+    fn list_submodules(&self, repo_path: &Path) -> Result<Vec<SubmoduleInfo>, BackendError>;
 
     fn create_branch(
         &self,

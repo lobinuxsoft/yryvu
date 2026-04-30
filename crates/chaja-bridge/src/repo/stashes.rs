@@ -5,10 +5,10 @@
 //! commit in the stack (`stash@{0}`, `stash@{1}`, …). For each stash
 //! commit we decode the parents to surface the same triple GK exposes:
 //!
-//!   - `parent_sha`    — the WIP base commit (where HEAD was when stashed).
-//!   - `index_sha`     — the index state at stash time (parent 1).
+//!   - `parent_sha` — the WIP base commit (where HEAD was when stashed).
+//!   - `index_sha` — the index state at stash time (parent 1).
 //!   - `untracked_sha` — the untracked-files state (parent 2, present iff
-//!                       the stash was taken with `--include-untracked`).
+//!     the stash was taken with `--include-untracked`).
 //!
 //! `branch_name` is parsed from the stash message (git's canonical
 //! formats are `WIP on <branch>: <sha> <subject>` and

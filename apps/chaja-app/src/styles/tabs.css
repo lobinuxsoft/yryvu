@@ -127,6 +127,7 @@
   transition: opacity 80ms ease;
   margin-left: 2px;
   flex-shrink: 0;
+  font-size: 11px; /* sizes the .nf glyph inside */
 }
 
 .tab:hover .tab__close,

@@ -73,10 +73,15 @@ export function matchTabKeybind(input: {
   return null;
 }
 
-/// Dispatch the matched intent. Imports the ops module lazily so the
-/// matcher can be tested without a Tauri runtime.
-export async function runTabKeybind(intent: TabKeybind): Promise<void> {
-  const ops = await import("./ops");
+/// Dispatch the matched intent. Static-imports ops — an earlier draft used
+/// `await import("./ops")` to keep the matcher tree-shakeable from tests,
+/// but the async fence introduced a measurable latency between Cmd+T and
+/// the new pill landing (the import promise resolves on a microtask after
+/// preventDefault runs). The matcher is already pure; the dispatcher
+/// pulls in ops directly.
+import * as ops from "./ops";
+
+export function runTabKeybind(intent: TabKeybind): Promise<void> {
   switch (intent.op) {
     case "openNewTab":
       return ops.openNewTab();

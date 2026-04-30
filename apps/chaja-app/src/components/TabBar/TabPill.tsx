@@ -18,7 +18,6 @@
 
 import { Show } from "solid-js";
 
-import { IconClose } from "../Icons";
 import { type Tab } from "../../tabs/types";
 
 interface Props {
@@ -79,7 +78,8 @@ export function TabPill(props: Props) {
           title="Close tab"
           onClick={onClickClose}
         >
-          <IconClose width={10} height={10} />
+          {/* nf-fa-times (U+F00D) — Nerd Font close glyph. See fonts.css */}
+          <span class="nf" aria-hidden></span>
         </button>
       </Show>
     </div>

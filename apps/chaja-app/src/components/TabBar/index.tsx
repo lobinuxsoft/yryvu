@@ -14,13 +14,15 @@
  * a stub until #206 wires the menu — visible-but-disabled.
  */
 
-import { For, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 
 import { IconChevronDown, IconPlus } from "../Icons";
 import {
+  isTabDropdownOpen,
   permanentTabs,
   selectedTabId,
   tabs,
+  toggleTabDropdown,
 } from "../../tabs/state";
 import { closeRepoManagementTab, openNewTab } from "../../tabs/ops";
 import { performTabOperation } from "../../tabs/dispatcher";
@@ -28,11 +30,32 @@ import {
   NEW_TAB_BUTTON_ID,
   PERMANENT_REPO_MANAGEMENT_ID,
 } from "../../tabs/types";
+import { TabDropdown } from "./TabDropdown";
 import { TabPill } from "./TabPill";
 
 export function TabBar() {
+  let chevronEl: HTMLButtonElement | undefined;
+  const [anchor, setAnchor] = createSignal<{ top: number; left: number } | null>(
+    null,
+  );
+
   const onSelect = (id: string) =>
     void performTabOperation({ type: "SWITCH_TO", tabId: id });
+
+  const onChevronClick = () => {
+    if (chevronEl) {
+      const rect = chevronEl.getBoundingClientRect();
+      // Align the popover's right edge to the chevron's right edge so
+      // it doesn't overflow the viewport on narrow windows. The
+      // popover is 320 px wide (see tabs.css `.tab-dropdown`).
+      const POPOVER_WIDTH = 320;
+      setAnchor({
+        top: rect.bottom,
+        left: Math.max(8, rect.right - POPOVER_WIDTH),
+      });
+    }
+    toggleTabDropdown();
+  };
 
   const onClose = (id: string) =>
     void performTabOperation({ type: "CLOSE", tabId: id });
@@ -102,14 +125,20 @@ export function TabBar() {
       </button>
 
       <button
+        ref={chevronEl}
         class="tabs__dropdown"
         type="button"
         aria-label="Tab menu"
-        title="Tab menu (wired in #206)"
-        disabled
+        aria-expanded={isTabDropdownOpen()}
+        title="Tab menu"
+        onClick={onChevronClick}
       >
         <IconChevronDown />
       </button>
+
+      <Show when={isTabDropdownOpen() && anchor()}>
+        <TabDropdown anchor={anchor()!} />
+      </Show>
     </div>
   );
 }

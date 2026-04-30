@@ -18,7 +18,7 @@
  * flows through `performTabOperation`.
  */
 
-import { createMemo, createSignal } from "solid-js";
+import { createEffect, createMemo, createSignal } from "solid-js";
 
 import {
   getPreferences,
@@ -26,6 +26,7 @@ import {
   type PermanentTabs as PersistedPermanentTabs,
   type Preferences,
 } from "../ipc/preferences";
+import { preferencesOpen } from "../state";
 import {
   PERMANENT_REPO_MANAGEMENT_ID,
   type ClosedTab,
@@ -46,12 +47,39 @@ const [permanentTabsInternal, _internalSetPermanentTabs] =
 const [isTabBeingDraggedInternal, _internalSetIsTabBeingDragged] =
   createSignal(false);
 
+/// Dropdown chevron menu open/closed state. Lives on the tab system
+/// because every consumer of the menu (chevron click, ESC keydown,
+/// preferences-open auto-close, click-outside) cares about a single
+/// bit. GK keeps this in `state.ui.tabs.isTabDropdownOpen`
+/// (bundle:309860) — same shape, different store.
+const [isTabDropdownOpenInternal, setIsTabDropdownOpenInternal] =
+  createSignal(false);
+
 /// Read-only signal exports.
 export const tabs = tabsInternal;
 export const selectedTabId = selectedTabIdInternal;
 export const closedTabs = closedTabsInternal;
 export const permanentTabs = permanentTabsInternal;
 export const isTabBeingDragged = isTabBeingDraggedInternal;
+export const isTabDropdownOpen = isTabDropdownOpenInternal;
+
+/// Toggle the dropdown — used by the chevron click handler. Skips when
+/// the Preferences window is open (chajá's equivalent of GK's modal
+/// allowlist at bundle:2495-2511 — GK closes ABOUT/ACTIVITY_LOG/
+/// CREATE_FILE/FUZZY_FINDER first, but the chajá Preferences window
+/// owns enough state that closing it under the user's feet would be
+/// surprising; better to leave the dropdown closed and let the user
+/// dismiss the prefs first).
+export function toggleTabDropdown(): void {
+  if (preferencesOpen()) return;
+  setIsTabDropdownOpenInternal((v) => !v);
+}
+
+/// Close — explicit, used by ESC, click-outside, row click, and the
+/// auto-close-on-preferences-open effect.
+export function closeTabDropdown(): void {
+  setIsTabDropdownOpenInternal(false);
+}
 
 /// Re-exports for the dispatcher only. Keep the underscore prefix —
 /// importing these outside `dispatcher.ts` is a lint smell.
@@ -174,6 +202,13 @@ async function persistImmediate(): Promise<void> {
   cachedPreferences = await setPreferences(next);
 }
 
+/// Auto-close the dropdown when the Preferences window opens. Mirrors
+/// GK's reducer handler at bundle:309860+ where `PreferenceViewOpened`
+/// flips `isTabDropdownOpen` to false.
+createEffect(() => {
+  if (preferencesOpen()) setIsTabDropdownOpenInternal(false);
+});
+
 /// Test-only escape hatch — resets the hydration latch so tests can re-seed
 /// fresh state between runs. NOT exported from the public surface.
 export function _resetForTests(): void {
@@ -188,4 +223,5 @@ export function _resetForTests(): void {
   _internalSetClosedTabs([]);
   _internalSetPermanentTabs({});
   _internalSetIsTabBeingDragged(false);
+  setIsTabDropdownOpenInternal(false);
 }

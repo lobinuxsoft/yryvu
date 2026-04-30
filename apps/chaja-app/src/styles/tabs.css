@@ -46,6 +46,16 @@
 
 .tabs__leading-btn:hover { background: var(--bg-4); color: var(--fg-0); }
 
+/* Active state for the Repo Management button — bundle:330453
+   `isSelected` flag on makeTabIcon. The button stays highlighted while
+   currentTabType() === "REPO_MANAGEMENT" so the user has a visual
+   anchor matching the active viewport. */
+.tabs__leading-btn.is-active {
+  background: var(--bg-0);
+  color: var(--fg-0);
+  box-shadow: inset 0 -2px 0 var(--info);
+}
+
 /* Container for permanent + transient pills + + + chevron. Permanent
    pills come first (cited bundle:330605-330614). */
 .tabs__strip {

@@ -212,9 +212,13 @@ export function AppShell() {
         <div class="tabs__leading">
           <button
             class="tabs__leading-btn"
+            classList={{
+              "is-active": currentTabType() === "REPO_MANAGEMENT",
+            }}
             type="button"
             title="Repo Management"
             aria-label="Repo Management"
+            aria-pressed={currentTabType() === "REPO_MANAGEMENT"}
             onClick={() => void openRepoManagementTab()}
           >
             <IconOpenFolder />

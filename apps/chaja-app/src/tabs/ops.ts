@@ -17,7 +17,7 @@
  */
 
 import { performTabOperation } from "./dispatcher";
-import { closedTabs, currentTab, permanentTabs, selectedTabId, tabs } from "./state";
+import { closedTabs, currentTab, selectedTabId, tabs } from "./state";
 import { PERMANENT_REPO_MANAGEMENT_ID, type Tab } from "./types";
 
 function newId(): string {
@@ -225,24 +225,9 @@ export function reopenMostRecentlyClosedTab(): Promise<void> {
 
 /* ----------------------------------------------------------- Permanent tab */
 
-/// Toggle the permanent REPO_MANAGEMENT tab's `closed` flag. Closing a
-/// permanent tab doesn't push to closedTabs (singletons can't be reopened
-/// via the dropdown — they're toggled via menu).
-export function closeRepoManagementTab(): Promise<void> {
-  // Direct mutation via dispatcher MUTATE-style isn't right here — the
-  // permanent tab map isn't part of `tabs[]`. We need a small ad-hoc
-  // setter via the LOAD_TABS op shape.
-  const cur = permanentTabs();
-  return performTabOperation({
-    type: "LOAD_TABS",
-    tabs: tabs(),
-    selectedTabId:
-      selectedTabId() === PERMANENT_REPO_MANAGEMENT_ID
-        ? tabs()[0]?.id
-        : selectedTabId(),
-    permanentTabs: {
-      ...cur,
-      repoManagement: { closed: true },
-    },
-  });
-}
+// REPO_MANAGEMENT has no `close` op — it's not a tab pill, it's an icon
+// button in the tab leading area (bundle:330440-330465 makeTabIcon).
+// The button is always visible; activating it sets selectedTabId, the
+// user "leaves" the view by selecting any other tab. The
+// permanentTabs.repoManagement state slot is initialized empty `{}`
+// per bundle:2089 — there is no closed flag.

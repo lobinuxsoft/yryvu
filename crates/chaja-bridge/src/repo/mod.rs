@@ -154,6 +154,18 @@ impl GitBackend for GixBackend {
         worktree::stash_pop(repo_path)
     }
 
+    fn stash_pop_at(&self, repo_path: &Path, index: usize) -> Result<(), BackendError> {
+        worktree::stash_pop_at(repo_path, index)
+    }
+
+    fn stash_apply(&self, repo_path: &Path, index: usize) -> Result<(), BackendError> {
+        worktree::stash_apply(repo_path, index)
+    }
+
+    fn stash_drop(&self, repo_path: &Path, index: usize) -> Result<(), BackendError> {
+        worktree::stash_drop(repo_path, index)
+    }
+
     fn merge_branch(
         &self,
         repo_path: &Path,

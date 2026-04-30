@@ -27,3 +27,23 @@ export interface StashInfo {
 export function listStashes(repoPath: string): Promise<StashInfo[]> {
   return invoke<StashInfo[]>("list_stashes", { repoPath });
 }
+
+/// Pop a specific stash entry — applies to working tree AND removes
+/// from the queue. `index` is the LIFO position from `listStashes`
+/// (0 = top). Equivalent to `git stash pop stash@{index}`.
+export function stashPopAt(repoPath: string, index: number): Promise<void> {
+  return invoke<void>("stash_pop_at", { repoPath, index });
+}
+
+/// Apply a stash entry to the working tree without removing it from
+/// the queue. Equivalent to `git stash apply stash@{index}`.
+export function stashApply(repoPath: string, index: number): Promise<void> {
+  return invoke<void>("stash_apply", { repoPath, index });
+}
+
+/// Drop a stash entry without applying it. Equivalent to `git stash
+/// drop stash@{index}`. The stash sha lives in the objects DB until
+/// GC (~90 days) so undo can resurrect it.
+export function stashDrop(repoPath: string, index: number): Promise<void> {
+  return invoke<void>("stash_drop", { repoPath, index });
+}

@@ -50,6 +50,39 @@ pub async fn stash_pop(repo_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn stash_pop_at(repo_path: String, index: usize) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stash_pop_at(&PathBuf::from(&repo_path), index)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn stash_apply(repo_path: String, index: usize) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stash_apply(&PathBuf::from(&repo_path), index)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn stash_drop(repo_path: String, index: usize) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stash_drop(&PathBuf::from(&repo_path), index)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 pub async fn stash_count(repo_path: String) -> Result<u32, String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend

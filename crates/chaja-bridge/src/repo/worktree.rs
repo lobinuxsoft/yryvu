@@ -253,15 +253,61 @@ pub fn stash_push(repo_path: &Path, message: Option<&str>) -> Result<(), Backend
     Ok(())
 }
 
+/// Pop the top of the stash queue. Equivalent to `git stash pop` /
+/// `git stash pop --index 0`. Used by the toolbar Pop button.
 pub fn stash_pop(repo_path: &Path) -> Result<(), BackendError> {
+    stash_pop_at(repo_path, 0)
+}
+
+/// Pop a specific entry from the stash queue. Equivalent to `git stash
+/// pop stash@{index}` — applies the stash to the working tree AND
+/// removes it from the queue. The snapshot of the entry's sha is
+/// captured BEFORE the pop so the undo log can rebuild it later.
+pub fn stash_pop_at(repo_path: &Path, index: usize) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
-    // Capture the soon-to-be-popped stash sha BEFORE the pop —
-    // stash_foreach exposes the queue top at index 0. After pop the
-    // stash is gone from the queue, so the inverse builder needs the
-    // sha from this snapshot to reconstruct it.
+    let stash_sha = capture_stash_sha(&mut repo, index)?;
+    repo.stash_pop(index, None).map_err(git2_err)?;
+    if let Some(sha) = stash_sha {
+        record_op_best_effort(repo_path, OpKind::StashPop { stash_sha: sha });
+    }
+    Ok(())
+}
+
+/// Apply a stash entry to the working tree WITHOUT removing it from
+/// the queue. Equivalent to `git stash apply stash@{index}`. No undo
+/// op recorded — the stash is still in the queue, the user can drop
+/// it explicitly if they want to undo.
+pub fn stash_apply(repo_path: &Path, index: usize) -> Result<(), BackendError> {
+    let mut repo = open_git2(repo_path)?;
+    repo.stash_apply(index, None).map_err(git2_err)?;
+    Ok(())
+}
+
+/// Drop a stash entry without applying it. Equivalent to `git stash
+/// drop stash@{index}`. Records the dropped sha so undo can resurrect
+/// the stash from the objects DB (the commit lives until GC, ~90 days
+/// default).
+pub fn stash_drop(repo_path: &Path, index: usize) -> Result<(), BackendError> {
+    let mut repo = open_git2(repo_path)?;
+    let stash_sha = capture_stash_sha(&mut repo, index)?;
+    repo.stash_drop(index).map_err(git2_err)?;
+    if let Some(sha) = stash_sha {
+        record_op_best_effort(repo_path, OpKind::StashPop { stash_sha: sha });
+    }
+    Ok(())
+}
+
+/// Read the sha of `stash@{index}` from the queue without mutating it.
+/// Returns `None` when the index is out of range — the caller treats
+/// that as a "stash already gone" race (e.g. external git terminal
+/// dropped it between the list_stashes call and the menu click).
+fn capture_stash_sha(
+    repo: &mut git2::Repository,
+    index: usize,
+) -> Result<Option<String>, BackendError> {
     let mut stash_sha: Option<String> = None;
-    repo.stash_foreach(|index, _message, oid| {
-        if index == 0 {
+    repo.stash_foreach(|i, _message, oid| {
+        if i == index {
             stash_sha = Some(oid.to_string());
             false
         } else {
@@ -269,11 +315,7 @@ pub fn stash_pop(repo_path: &Path) -> Result<(), BackendError> {
         }
     })
     .map_err(git2_err)?;
-    repo.stash_pop(0, None).map_err(git2_err)?;
-    if let Some(stash_sha) = stash_sha {
-        record_op_best_effort(repo_path, OpKind::StashPop { stash_sha });
-    }
-    Ok(())
+    Ok(stash_sha)
 }
 
 /// Count the entries in the stash queue. The toolbar's Pop button gates

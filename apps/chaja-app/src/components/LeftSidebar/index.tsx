@@ -18,6 +18,7 @@ import {
 } from "../../ipc";
 import {
   branchesNonce,
+  hiddenSections,
   repoPath,
   setShowLeftPanel,
   showLeftPanel,
@@ -157,6 +158,13 @@ export function LeftSidebar() {
 
   const ops = useBranchOps();
 
+  // Wire the section context menu's Hide-all / Show-all enablement to
+  // our live resources. Done once at mount — the accessors stay valid
+  // for the component's lifetime; the resource itself updates the
+  // underlying signal so every subsequent menu open sees fresh data.
+  ops.setBranchSource(() => branches() ?? []);
+  ops.setTagSource(() => tags() ?? []);
+
   onMount(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
@@ -228,13 +236,15 @@ export function LeftSidebar() {
       </Show>
 
       <div class="sidebar__sections">
+        <Show when={!hiddenSections().has("LOCAL")}>
         <SidebarSection
+          sectionKey="LOCAL"
           title="Local"
           icon={<IconBranch />}
           count={isFiltering() ? filteredLocals().length : locals().length}
-          initialExpanded
           addable
           onAdd={() => ops.openCreateDialog()}
+          onContextMenu={ops.openSectionContextMenu}
         >
           <Show
             when={repoPath()}
@@ -266,13 +276,17 @@ export function LeftSidebar() {
             </Show>
           </Show>
         </SidebarSection>
+        </Show>
 
+        <Show when={!hiddenSections().has("REMOTE")}>
         <SidebarSection
+          sectionKey="REMOTE"
           title="Remote"
           icon={<IconCloud />}
           count={isFiltering() ? filteredRemotes().length : remotes().length}
           onRefresh={() => void ops.refreshRemote()}
           refreshing={ops.refreshingRemote()}
+          onContextMenu={ops.openSectionContextMenu}
         >
           <Show
             when={filteredRemotes().length > 0}
@@ -296,13 +310,17 @@ export function LeftSidebar() {
             </For>
           </Show>
         </SidebarSection>
+        </Show>
 
+        <Show when={!hiddenSections().has("WORKTREES")}>
         <SidebarSection
+          sectionKey="WORKTREES"
           title="Worktrees"
           icon={<IconBranch />}
           count={
             isFiltering() ? filteredWorktrees().length : worktreeList().length
           }
+          onContextMenu={ops.openSectionContextMenu}
         >
           <Show
             when={repoPath()}
@@ -328,13 +346,17 @@ export function LeftSidebar() {
             </Show>
           </Show>
         </SidebarSection>
+        </Show>
 
+        <Show when={!hiddenSections().has("STASHES")}>
         <SidebarSection
+          sectionKey="STASHES"
           title="Stashes"
           icon={<IconBranch />}
           count={
             isFiltering() ? filteredStashes().length : stashList().length
           }
+          onContextMenu={ops.openSectionContextMenu}
         >
           <Show
             when={repoPath()}
@@ -366,31 +388,41 @@ export function LeftSidebar() {
             </Show>
           </Show>
         </SidebarSection>
+        </Show>
 
         {/* Provider-backed sections — render bodies once #46 OAuth lands.
             Hidden during filter since no live data feeds them yet. */}
-        <Show when={!isFiltering()}>
+        <Show when={!isFiltering() && !hiddenSections().has("PULL_REQUESTS")}>
           <SidebarSection
+            sectionKey="PULL_REQUESTS"
             title="Pull Requests"
             icon={<IconPullRequest />}
             count={0}
             addable
+            onContextMenu={ops.openSectionContextMenu}
           >
             <p class="sidebar__empty">Connect a Git provider to list PRs</p>
           </SidebarSection>
+        </Show>
+        <Show when={!isFiltering() && !hiddenSections().has("ISSUES")}>
           <SidebarSection
+            sectionKey="ISSUES"
             title="Issues"
             icon={<IconCircleDot />}
             count={0}
+            onContextMenu={ops.openSectionContextMenu}
           >
             <p class="sidebar__empty">Connect a Git provider to list issues</p>
           </SidebarSection>
         </Show>
 
+        <Show when={!hiddenSections().has("TAGS")}>
         <SidebarSection
+          sectionKey="TAGS"
           title="Tags"
           icon={<IconTag />}
           count={isFiltering() ? filteredTags().length : tagList().length}
+          onContextMenu={ops.openSectionContextMenu}
         >
           <Show
             when={repoPath()}
@@ -412,8 +444,11 @@ export function LeftSidebar() {
             </Show>
           </Show>
         </SidebarSection>
+        </Show>
 
+        <Show when={!hiddenSections().has("SUBMODULES")}>
         <SidebarSection
+          sectionKey="SUBMODULES"
           title="Submodules"
           icon={<IconBranch />}
           count={
@@ -421,6 +456,7 @@ export function LeftSidebar() {
               ? filteredSubmodules().length
               : submoduleList().length
           }
+          onContextMenu={ops.openSectionContextMenu}
         >
           <Show
             when={repoPath()}
@@ -446,6 +482,7 @@ export function LeftSidebar() {
             </Show>
           </Show>
         </SidebarSection>
+        </Show>
 
         <Show when={isFiltering() && totalMatches() === 0 && repoPath()}>
           <p class="sidebar__no-matches">

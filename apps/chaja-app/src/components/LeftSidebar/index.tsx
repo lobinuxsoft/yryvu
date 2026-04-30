@@ -341,7 +341,12 @@ export function LeftSidebar() {
               }
             >
               <For each={filteredWorktrees()}>
-                {(w) => <WorktreeRow worktree={w} />}
+                {(w) => (
+                  <WorktreeRow
+                    worktree={w}
+                    onContextMenu={ops.openWorktreeContextMenu}
+                  />
+                )}
               </For>
             </Show>
           </Show>

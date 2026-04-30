@@ -8,6 +8,7 @@ import { openRepoInAnotherTab } from "../../tabs/ops";
 
 interface WorktreeRowProps {
   worktree: WorktreeInfo;
+  onContextMenu: (e: MouseEvent, w: WorktreeInfo) => void;
 }
 
 /// Strip the conventional `refs/heads/` prefix when present so the row
@@ -42,6 +43,7 @@ export function WorktreeRow(props: WorktreeRowProps) {
       tabindex={0}
       title={wt().workdir}
       onClick={onClick}
+      onContextMenu={(e) => props.onContextMenu(e, wt())}
     >
       <span class="sidebar__branch-name">{branchLabel(wt().branch)}</span>
       <span class="sidebar__row-meta">{workdirTail(wt().workdir)}</span>

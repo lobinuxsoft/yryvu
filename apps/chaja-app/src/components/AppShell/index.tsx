@@ -14,6 +14,7 @@ import { LeftSidebar } from "../LeftSidebar";
 import { DialogsHost } from "../LeftSidebar/DialogsHost";
 import { PreferencesWindow } from "../PreferencesWindow";
 import { ReleaseNotesBody } from "../ReleaseNotes";
+import { RepoManagementBody } from "../RepoManagement";
 import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
@@ -40,6 +41,7 @@ import {
   openNewTab,
   openReleaseNotes,
   openRepoInAnotherTab,
+  openRepoManagementTab,
 } from "../../tabs/ops";
 import {
   currentTab,
@@ -116,6 +118,9 @@ export function AppShell() {
         const version = await getVersion();
         void openReleaseNotes(version);
       }),
+    );
+    unlisteners.push(
+      await listen("menu:repo-management", () => void openRepoManagementTab()),
     );
 
     // Global Undo / Redo keyboard shortcuts (issue #187, sub-PR 3 of
@@ -205,7 +210,17 @@ export function AppShell() {
     >
       <div class="shell__tabs tabs">
         <div class="tabs__leading">
-          <button class="tabs__leading-btn" type="button" title="Open repository" onClick={openRepoPicker}>
+          <button
+            class="tabs__leading-btn"
+            classList={{
+              "is-active": currentTabType() === "REPO_MANAGEMENT",
+            }}
+            type="button"
+            title="Repo Management"
+            aria-label="Repo Management"
+            aria-pressed={currentTabType() === "REPO_MANAGEMENT"}
+            onClick={() => void openRepoManagementTab()}
+          >
             <IconOpenFolder />
           </button>
           <button class="tabs__leading-btn" type="button" title="Favorites" disabled>
@@ -234,10 +249,7 @@ export function AppShell() {
           />
         </Show>
         <Show when={currentTabType() === "REPO_MANAGEMENT"}>
-          <TabPlaceholder
-            title="Repo Management"
-            note="Repo list + bulk actions land in #209."
-          />
+          <RepoManagementBody />
         </Show>
         <Show
           when={
@@ -282,20 +294,4 @@ export function AppShell() {
   );
 }
 
-/// Placeholder body for tab types whose viewport hasn't shipped yet. The
-/// pill renders, the strip works, the user can switch — but the body
-/// shows a "coming in #XXX" note instead of crashing or rendering blank.
-/// Removed once the corresponding sub-PR (#208 / #209) lands its real
-/// body component.
-function TabPlaceholder(props: { title: string; note: string }) {
-  return (
-    <section
-      class="cold-start"
-      style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;"
-    >
-      <h2 class="cold-start__title">{props.title}</h2>
-      <p class="cold-start__recent-item-path">{props.note}</p>
-    </section>
-  );
-}
 

@@ -19,17 +19,13 @@ import { createSignal, For, onCleanup, Show } from "solid-js";
 import { IconChevronDown, IconPlus } from "../Icons";
 import {
   isTabDropdownOpen,
-  permanentTabs,
   selectedTabId,
   tabs,
   toggleTabDropdown,
 } from "../../tabs/state";
-import { closeRepoManagementTab, openNewTab } from "../../tabs/ops";
+import { openNewTab } from "../../tabs/ops";
 import { performTabOperation } from "../../tabs/dispatcher";
-import {
-  NEW_TAB_BUTTON_ID,
-  PERMANENT_REPO_MANAGEMENT_ID,
-} from "../../tabs/types";
+import { NEW_TAB_BUTTON_ID } from "../../tabs/types";
 import { computeTargetIndex, DRAG_THRESHOLD_PX } from "./dragMath";
 import { TabDropdown } from "./TabDropdown";
 import { TabPill } from "./TabPill";
@@ -73,17 +69,6 @@ export function TabBar() {
 
   const onClose = (id: string) =>
     void performTabOperation({ type: "CLOSE", tabId: id });
-
-  const onSelectPermanent = () =>
-    void performTabOperation({
-      type: "SWITCH_TO",
-      tabId: PERMANENT_REPO_MANAGEMENT_ID,
-    });
-
-  const onClosePermanent = (e: MouseEvent) => {
-    e.stopPropagation();
-    void closeRepoManagementTab();
-  };
 
   /// Pointer-down on a transient pill. Captures bounding rects of every
   /// transient pill in the strip — the pillRects array is what feeds
@@ -172,34 +157,11 @@ export function TabBar() {
       classList={{ "is-dragging": !!drag()?.dragging }}
       role="tablist"
     >
-      <Show when={permanentTabs().repoManagement?.closed === false}>
-        <div
-          class="tab tab--permanent"
-          classList={{
-            "is-active":
-              selectedTabId() === PERMANENT_REPO_MANAGEMENT_ID,
-          }}
-          role="tab"
-          aria-selected={selectedTabId() === PERMANENT_REPO_MANAGEMENT_ID}
-          title="Repo Management"
-          onMouseDown={onSelectPermanent}
-        >
-          <span class="tab__title">Repo Management</span>
-          {/* Permanent tabs DO close — the per-pill × stays visible
-              because closeRepoManagementTab uses LOAD_TABS to flip the
-              `closed` flag without entering closedTabs. */}
-          <button
-            class="tab__close"
-            type="button"
-            aria-label="Close Repo Management"
-            title="Close"
-            onClick={onClosePermanent}
-            style="opacity: 1"
-          >
-            <span aria-hidden>×</span>
-          </button>
-        </div>
-      </Show>
+      {/* REPO_MANAGEMENT renders as an icon button in the tab leading
+          area (AppShell), NOT as a pill in the strip — matches GK
+          (bundle:330440-330465 makeTabIcon, NOT a pill). The
+          `permanentTabs.repoManagement` state slot is initialized with
+          `{}` per bundle:2089; there is no `closed` flag for it. */}
 
       <For each={tabs()}>
         {(tab, i) => (

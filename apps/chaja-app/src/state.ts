@@ -689,6 +689,15 @@ export function pushRecentRepo(path: string): RecentRepo[] {
   return trimmed;
 }
 
+/// Remove one path from the recent-repos cache. Used by Repo Management
+/// when the user clears a stale entry (deleted directory, moved repo)
+/// or bulk-removes a selection.
+export function removeRecentRepo(path: string): RecentRepo[] {
+  const list = loadRecentRepos().filter((r) => r.path !== path);
+  localStorage.setItem(STORAGE_RECENT_KEY, JSON.stringify(list));
+  return list;
+}
+
 // =============================================================================
 // Preferences window (issue #136 — 1:1 port of GK's PreferenceView)
 // =============================================================================

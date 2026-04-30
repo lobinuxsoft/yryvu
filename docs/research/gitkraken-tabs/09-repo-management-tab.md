@@ -31,7 +31,7 @@ at.openRepoManagementTab = (Ve, at) => ({
 
 Two phases:
 
-1. **Switch-or-no-op**: if not already on REPO_MANAGEMENT tab, `SWITCH_TO` it (the tab always exists as a permanent singleton, only its `closed` flag flips).
+1. **Switch-or-no-op**: if not already on REPO_MANAGEMENT tab, `SWITCH_TO` it. **Correction (2026-04-30):** unlike FOCUS_VIEW (which has a `closed` flag toggled by the user), REPO_MANAGEMENT initializes its permanent-tab state slot as `{}` (bundle:2089) — no `closed` flag, no toggle. The icon button is always available; the user "leaves" the view by selecting any other tab.
 2. **Workspace scroll**: if `projectId` arg provided, scroll the matching workspace section into view + add to recent-projects list + fire metric. **Skip the workspace logic for chajá** — no workspaces.
 
 ## View modes (bundle:182648)
@@ -84,16 +84,17 @@ Actions bar at the bottom enables bulk ops on multi-selected repos. v1 can ship 
 
 ## Permanent tab semantics
 
-Reminder from `01-tab-types-and-store.md`: the REPO_MANAGEMENT tab is a singleton stored in `state.tabs.permanentTabs[REPO_MANAGEMENT]` with shape `{closed: boolean}`. It does NOT live in the `tabs[]` array (which is transient tabs only). Implications:
+The REPO_MANAGEMENT slot lives in `state.tabs.permanentTabs[REPO_MANAGEMENT]`, but unlike FOCUS_VIEW it carries an empty record `{}` rather than `{closed: boolean}` — confirmed at bundle:2089 vs bundle:2083. It does NOT live in the `tabs[]` array. Implications:
 
-- It doesn't show up in the strip unless `closed: false`.
-- Closing it just sets `closed: true` — the tab record is preserved.
-- Reopening uses `SWITCH_TO permanentTabIds.REPO_MANAGEMENT` which both un-closes and selects.
-- The strip render places permanent tabs at the **LEFT edge** of the strip, before all transient tabs and before the `+` button. Confirmed by the JSX at `bundle:330605-330614` (see `03-tab-bar-chrome.md` for the full layout diagram).
+- The Repo Management surface is reached via an **icon button** in the tab leading area (folder glyph), NOT via a tab pill in the strip.
+- The icon button is always visible — no closed/open toggle.
+- Click on the icon button → `SWITCH_TO permanentTabIds.REPO_MANAGEMENT`. Clicking another tab leaves the view.
+- The icon button gets a visual `is-selected` highlight when `selectedTabId === permanentTabIds.REPO_MANAGEMENT` (bundle:330453 `isSelected: xa === Ea.permanentTabIds.REPO_MANAGEMENT`).
 
 ## Cross-validation
 
-Two claims worth re-grepping:
+Three claims worth re-grepping:
 
-1. **Permanent tabs render position is LEFT-of-transient** — confirmed at bundle:330605-330614 where `Ti` (REPO_MANAGEMENT pill, defined at bundle:330445) is the first child of the `tabs-bar` div, before the nested flex container that holds the sortable transient strip + `+` button. (An earlier draft of this audit claimed right-edge — that was inverted.)
+1. **REPO_MANAGEMENT renders as `makeTabIcon`, not a pill** — confirmed at bundle:330440-330465. `Ti = makeTabIcon({ icon: ["far","folder"], onClick: ..., isSelected: ... })`. `makeTabIcon` produces an icon button (no label, no × close). An earlier draft of this audit applied the FOCUS_VIEW pill+closed pattern to REPO_MANAGEMENT — that was wrong, corrected via #209.
 2. **Permanent tab ID is the literal string** `"REPO_MANAGEMENT"` — confirmed at bundle:228940 (`permanentTabIds = permanentTabTypes`). Don't generate a UUID for it.
+3. **Initialization is `{}`, not `{closed: ...}`** — confirmed bundle:2089 vs FOCUS_VIEW at bundle:2083 which sets `{closed: ...}`. The `closed` flag belongs to FOCUS_VIEW only.

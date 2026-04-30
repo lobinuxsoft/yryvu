@@ -64,6 +64,20 @@ export function ensureInitialized(): void {
   void refreshKnownRepos();
 }
 
+/// Drop a path from the in-memory + persisted snapshot, no re-fetch.
+/// Used by the per-row × and bulk Remove flows — the call site has
+/// already mutated localStorage via removeRecentRepo, so we just
+/// mirror the deletion in the rendered list. Skipping the IPC keeps
+/// the UI instant; the rest of the rows are already correct in the
+/// cache and don't need a fresh scan.
+export function removeFromCache(paths: string[]): void {
+  if (paths.length === 0) return;
+  const drop = new Set(paths);
+  const next = repos().filter((r) => !drop.has(r.path));
+  setRepos(next);
+  saveSnapshot(next);
+}
+
 /// Force a re-scan. Re-reads recent-repo paths from localStorage (a
 /// repo may have been added) and dispatches the backend call. Returns
 /// the in-flight promise — concurrent calls deduplicate so a UI burst

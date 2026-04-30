@@ -21,7 +21,13 @@ import { type KnownRepoInfo } from "../../ipc";
 import { pushRecentRepo, removeRecentRepo, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
-import { ensureInitialized, loading, refreshKnownRepos, repos } from "./store";
+import {
+  ensureInitialized,
+  loading,
+  refreshKnownRepos,
+  removeFromCache,
+  repos,
+} from "./store";
 
 export function RepoManagementBody() {
   // The resource lives in store.ts, not here — see that module's header
@@ -76,17 +82,18 @@ export function RepoManagementBody() {
   };
 
   const onBulkRemove = () => {
-    for (const path of selected()) {
+    const paths = Array.from(selected());
+    for (const path of paths) {
       removeRecentRepo(path);
     }
+    removeFromCache(paths);
     clearSelection();
-    void refreshKnownRepos();
   };
 
   const onRemoveSingle = (path: string, e: MouseEvent) => {
     e.stopPropagation();
     removeRecentRepo(path);
-    void refreshKnownRepos();
+    removeFromCache([path]);
   };
 
   const onOpenClick = async () => {

@@ -18,7 +18,7 @@ import { createMemo, createSignal, For, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 
 import { type KnownRepoInfo } from "../../ipc";
-import { pushRecentRepo, setRepoPath } from "../../state";
+import { pushRecentRepo, removeRecentRepo, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
 import { ensureInitialized, loading, refreshKnownRepos, repos } from "./store";
@@ -73,6 +73,20 @@ export function RepoManagementBody() {
       void openRepoInAnotherTab(r.path);
     }
     clearSelection();
+  };
+
+  const onBulkRemove = () => {
+    for (const path of selected()) {
+      removeRecentRepo(path);
+    }
+    clearSelection();
+    void refreshKnownRepos();
+  };
+
+  const onRemoveSingle = (path: string, e: MouseEvent) => {
+    e.stopPropagation();
+    removeRecentRepo(path);
+    void refreshKnownRepos();
   };
 
   const onOpenClick = async () => {
@@ -214,6 +228,15 @@ export function RepoManagementBody() {
                       missing
                     </div>
                   </Show>
+                  <button
+                    class="repo-management__row-remove"
+                    type="button"
+                    aria-label={`Remove ${repo.name} from recents`}
+                    title="Remove from recents"
+                    onClick={(e) => onRemoveSingle(repo.path, e)}
+                  >
+                    <NfIcon code="f00d" />
+                  </button>
                 </div>
               )}
             </For>
@@ -247,6 +270,14 @@ export function RepoManagementBody() {
             title="Wire after backend bulk pull lands"
           >
             Pull
+          </button>
+          <button
+            class="repo-management__btn repo-management__btn--danger"
+            type="button"
+            onClick={onBulkRemove}
+            title="Remove the selected entries from the recents list"
+          >
+            Remove from recents
           </button>
           <button
             class="repo-management__btn repo-management__btn--ghost"

@@ -61,6 +61,45 @@
   border-color: transparent;
 }
 
+.repo-management__btn--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.repo-management__btn--danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--bg-0);
+}
+
+/* Hover-only × on each row for "remove from recents". Same opacity-
+   transition pattern as .tab__close so muscle memory carries between
+   the tab pills and the Repo Management list. */
+.repo-management__row-remove {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: var(--fg-3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 80ms ease;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.repo-management__row:hover .repo-management__row-remove {
+  opacity: 1;
+}
+
+.repo-management__row-remove:hover {
+  background: var(--bg-3);
+  color: var(--danger);
+}
+
 .repo-management__filter {
   display: flex;
   align-items: center;

@@ -6,9 +6,11 @@ import {
   getRepoState,
   listBranches,
   listTags,
+  listWorktrees,
   type BranchInfo,
   type RepoStateInfo,
   type TagInfo,
+  type WorktreeInfo,
 } from "../../ipc";
 import {
   branchesNonce,
@@ -28,6 +30,7 @@ import { LocalBranchRow, RemoteBranchRow } from "./branchRows";
 import { SidebarSection } from "./SidebarSection";
 import { StateBanner } from "./StateBanner";
 import { TagRow } from "./tagRows";
+import { WorktreeRow } from "./worktreeRows";
 
 const matches = (name: string, q: string) =>
   q === "" || name.toLowerCase().includes(q.toLowerCase());
@@ -67,16 +70,37 @@ export function LeftSidebar() {
     { initialValue: [] },
   );
 
+  // Worktrees use branchesNonce too — checking out a branch in another
+  // worktree, removing one, or adding one all flow through ref-mutating
+  // ops that bump the nonce. No dedicated worktreesNonce needed.
+  const [worktrees] = createResource<WorktreeInfo[], [string, number]>(
+    () => [repoPath() ?? "", branchesNonce()] as [string, number],
+    async ([path]) => {
+      if (!path) return [] as WorktreeInfo[];
+      return await listWorktrees(path);
+    },
+    { initialValue: [] },
+  );
+
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
   const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
   const tagList = () => tags() ?? [];
+  const worktreeList = () => worktrees() ?? [];
   const filteredLocals = () => locals().filter((b) => matches(b.name, filterQuery()));
   const filteredRemotes = () => remotes().filter((b) => matches(b.name, filterQuery()));
   const filteredTags = () => tagList().filter((t) => matches(t.name, filterQuery()));
+  // Filter worktrees by branch name OR path tail — both are searchable signals.
+  const filteredWorktrees = () =>
+    worktreeList().filter(
+      (w) => matches(w.branch, filterQuery()) || matches(w.workdir, filterQuery()),
+    );
   const isFiltering = () => filterQuery() !== "";
   const totalMatches = () =>
     isFiltering()
-      ? filteredLocals().length + filteredRemotes().length + filteredTags().length
+      ? filteredLocals().length +
+        filteredRemotes().length +
+        filteredTags().length +
+        filteredWorktrees().length
       : -1;
 
   const ops = useBranchOps();
@@ -218,6 +242,38 @@ export function LeftSidebar() {
                 />
               )}
             </For>
+          </Show>
+        </SidebarSection>
+
+        <SidebarSection
+          title="Worktrees"
+          icon={<IconBranch />}
+          count={
+            isFiltering() ? filteredWorktrees().length : worktreeList().length
+          }
+        >
+          <Show
+            when={repoPath()}
+            fallback={
+              <p class="sidebar__empty">Open a repo to list worktrees</p>
+            }
+          >
+            <Show
+              when={filteredWorktrees().length > 0}
+              fallback={
+                <p class="sidebar__empty">
+                  {isFiltering()
+                    ? "No matches"
+                    : worktreeList().length === 0
+                      ? "No worktrees"
+                      : ""}
+                </p>
+              }
+            >
+              <For each={filteredWorktrees()}>
+                {(w) => <WorktreeRow worktree={w} />}
+              </For>
+            </Show>
           </Show>
         </SidebarSection>
 

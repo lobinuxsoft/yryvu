@@ -29,7 +29,7 @@ import { NfIcon } from "../NfIcon";
 import { performTabOperation } from "../../tabs/dispatcher";
 import { closeTabDropdown, closedTabs, tabs } from "../../tabs/state";
 import { type ClosedTab, type Tab } from "../../tabs/types";
-import { titleOf } from "./tabTitle";
+import { filterByTitle, titleOf } from "./tabTitle";
 
 interface Props {
   /// Coordinates of the chevron's bottom-left edge in viewport space —
@@ -64,15 +64,10 @@ export function TabDropdown(props: Props) {
   // Filter both sections by case-insensitive substring on the title.
   // Using a single memo keeps both sections re-derived in lockstep when
   // the query changes.
-  const filtered = createMemo(() => {
-    const q = query().trim().toLowerCase();
-    const matches = (label: string) =>
-      q.length === 0 || label.toLowerCase().includes(q);
-    return {
-      open: tabs().filter((t) => matches(titleOf(t))),
-      closed: closedTabs().filter((c) => matches(titleOf(c.tab))),
-    };
-  });
+  const filtered = createMemo(() => ({
+    open: filterByTitle(tabs(), titleOf, query()),
+    closed: filterByTitle(closedTabs(), (c) => titleOf(c.tab), query()),
+  }));
 
   const handleSelectOpen = (tabId: string) => {
     void performTabOperation({ type: "SWITCH_TO", tabId });

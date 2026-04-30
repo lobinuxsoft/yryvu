@@ -14,38 +14,21 @@
  * openRepoManagementTab).
  */
 
-import {
-  createMemo,
-  createResource,
-  createSignal,
-  For,
-  onMount,
-  Show,
-} from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 
-import { listKnownRepos, type KnownRepoInfo } from "../../ipc";
-import { loadRecentRepos, pushRecentRepo, setRepoPath } from "../../state";
+import { type KnownRepoInfo } from "../../ipc";
+import { pushRecentRepo, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
+import { ensureInitialized, refreshKnownRepos, repos } from "./store";
 
 export function RepoManagementBody() {
-  const [paths, setPaths] = createSignal<string[]>([]);
+  // The resource lives in store.ts, not here — see that module's header
+  // for why (tab unmount / remount otherwise re-fires the IPC).
+  ensureInitialized();
   const [query, setQuery] = createSignal("");
   const [selected, setSelected] = createSignal<Set<string>>(new Set());
-
-  // Seed the path list from the recent-repos cache. Refresh on mount —
-  // the user may have added a repo since the last visit. The resource
-  // re-runs whenever `paths()` changes, which is exactly when the
-  // backend has new metadata to fetch.
-  onMount(() => {
-    setPaths(loadRecentRepos().map((r) => r.path));
-  });
-
-  const [repos, { refetch }] = createResource(paths, async (ps) => {
-    if (ps.length === 0) return [] as KnownRepoInfo[];
-    return listKnownRepos(ps);
-  });
 
   const filtered = createMemo<KnownRepoInfo[]>(() => {
     const list = repos() ?? [];
@@ -102,11 +85,7 @@ export function RepoManagementBody() {
       pushRecentRepo(selected);
       setRepoPath(selected);
       void openRepoInAnotherTab(selected);
-      // Refresh the list so the just-opened repo lands at the top of
-      // the recents next time the user comes back to this tab. The
-      // dispatcher already SWITCH_TOs the new REPO tab so the user
-      // sees their repo immediately.
-      setPaths(loadRecentRepos().map((r) => r.path));
+      refreshKnownRepos();
     }
   };
 
@@ -157,7 +136,7 @@ export function RepoManagementBody() {
           <button
             class="repo-management__refresh"
             type="button"
-            onClick={() => void refetch()}
+            onClick={refreshKnownRepos}
             title="Refresh"
             aria-label="Refresh"
           >

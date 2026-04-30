@@ -35,14 +35,27 @@ pub struct KnownRepoInfo {
 
 #[tauri::command]
 pub async fn list_known_repos(paths: Vec<String>) -> Result<Vec<KnownRepoInfo>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        Ok(paths
-            .into_iter()
-            .map(|p| describe_repo(&PathBuf::from(p)))
-            .collect())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    // Parallelize per-repo work — gix open + working_tree_status are
+    // both blocking I/O-heavy. Sequential walk on a list of 10 repos
+    // is ~500-2000 ms; spawning each describe onto the tokio blocking
+    // pool brings the total down to roughly the slowest single repo.
+    //
+    // Order of the result Vec preserves the input order — collect the
+    // JoinHandles in declaration order, then await them in sequence.
+    // Awaiting in order doesn't serialize the work (the spawns already
+    // started in parallel), it just rendezvous with each completion.
+    let handles: Vec<_> = paths
+        .into_iter()
+        .map(|p| {
+            tauri::async_runtime::spawn_blocking(move || describe_repo(&PathBuf::from(p)))
+        })
+        .collect();
+
+    let mut results = Vec::with_capacity(handles.len());
+    for h in handles {
+        results.push(h.await.map_err(|e| e.to_string())?);
+    }
+    Ok(results)
 }
 
 fn describe_repo(path: &Path) -> KnownRepoInfo {

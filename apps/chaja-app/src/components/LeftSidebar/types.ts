@@ -17,4 +17,6 @@ export type DialogState =
   | { kind: "merge-pick"; source: string }
   | { kind: "merge-result"; result: MergeResult }
   | { kind: "delete-remote"; remote: string; name: string }
+  | { kind: "submodule-add" }
+  | { kind: "submodule-remove"; name: string; path: string }
   | null;

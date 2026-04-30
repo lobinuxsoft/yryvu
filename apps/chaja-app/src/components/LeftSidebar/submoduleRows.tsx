@@ -8,6 +8,7 @@ import { openRepoInAnotherTab } from "../../tabs/ops";
 
 interface SubmoduleRowProps {
   sub: SubmoduleInfo;
+  onContextMenu: (e: MouseEvent, sub: SubmoduleInfo) => void;
 }
 
 export function SubmoduleRow(props: SubmoduleRowProps) {
@@ -33,6 +34,7 @@ export function SubmoduleRow(props: SubmoduleRowProps) {
       tabindex={isClickable() ? 0 : -1}
       title={sub().url ?? sub().path}
       onClick={onClick}
+      onContextMenu={(e) => props.onContextMenu(e, sub())}
     >
       <span class="sidebar__branch-name">{sub().name}</span>
       <span class="sidebar__row-meta">{sub().path}</span>

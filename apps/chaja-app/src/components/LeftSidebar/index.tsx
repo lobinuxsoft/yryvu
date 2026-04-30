@@ -461,6 +461,8 @@ export function LeftSidebar() {
               ? filteredSubmodules().length
               : submoduleList().length
           }
+          addable
+          onAdd={() => ops.openSubmoduleAddDialog()}
           onContextMenu={ops.openSectionContextMenu}
         >
           <Show
@@ -482,7 +484,12 @@ export function LeftSidebar() {
               }
             >
               <For each={filteredSubmodules()}>
-                {(s) => <SubmoduleRow sub={s} />}
+                {(s) => (
+                  <SubmoduleRow
+                    sub={s}
+                    onContextMenu={ops.openSubmoduleContextMenu}
+                  />
+                )}
               </For>
             </Show>
           </Show>

@@ -18,13 +18,11 @@ import {
 } from "../../state";
 import { useBranchOps } from "../../branchOps";
 import {
-  IconArchive,
   IconBranch,
   IconCircleDot,
   IconCloud,
   IconPullRequest,
   IconTag,
-  IconUsers,
 } from "../Icons";
 import { LocalBranchRow, RemoteBranchRow } from "./branchRows";
 import { SidebarSection } from "./SidebarSection";
@@ -223,27 +221,23 @@ export function LeftSidebar() {
           </Show>
         </SidebarSection>
 
-        {/* Placeholder sections — hidden while filtering since they have no
-            wired data sources yet (PRs #112, etc.). They reappear when the
-            filter clears so layout matches GK at rest. */}
+        {/* Provider-backed sections — render bodies once #46 OAuth lands.
+            Hidden during filter since no live data feeds them yet. */}
         <Show when={!isFiltering()}>
-          <SidebarSection title="Cloud Patches" icon={<IconArchive />} count={0}>
-            <p class="sidebar__empty">—</p>
-          </SidebarSection>
           <SidebarSection
             title="Pull Requests"
             icon={<IconPullRequest />}
             count={0}
             addable
           >
-            <p class="sidebar__empty">—</p>
+            <p class="sidebar__empty">Connect a Git provider to list PRs</p>
           </SidebarSection>
           <SidebarSection
-            title="GitHub Issues"
+            title="Issues"
             icon={<IconCircleDot />}
             count={0}
           >
-            <p class="sidebar__empty">—</p>
+            <p class="sidebar__empty">Connect a Git provider to list issues</p>
           </SidebarSection>
         </Show>
 
@@ -272,12 +266,6 @@ export function LeftSidebar() {
             </Show>
           </Show>
         </SidebarSection>
-
-        <Show when={!isFiltering()}>
-          <SidebarSection title="Teams" icon={<IconUsers />} count={0}>
-            <p class="sidebar__empty">—</p>
-          </SidebarSection>
-        </Show>
 
         <Show when={isFiltering() && totalMatches() === 0 && repoPath()}>
           <p class="sidebar__no-matches">

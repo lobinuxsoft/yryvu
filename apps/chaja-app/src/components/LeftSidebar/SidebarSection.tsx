@@ -1,30 +1,46 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createSignal, type JSX, Show } from "solid-js";
+import { type JSX, Show } from "solid-js";
 
+import {
+  expandedSections,
+  toggleSectionExpanded,
+  type SectionKey,
+} from "../../state";
 import { IconRefresh } from "../Icons";
 
 export interface SidebarSectionProps {
+  /// Stable identity for this section. Drives shared expand state +
+  /// context-menu wiring. Each section's key matches GK's HEADER_KEYS
+  /// (audit doc 00) so the persistence shape is portable.
+  sectionKey: SectionKey;
   title: string;
   icon: JSX.Element;
   count?: number;
-  initialExpanded?: boolean;
   addable?: boolean;
   onAdd?: () => void;
   onRefresh?: () => void;
   refreshing?: boolean;
+  /// Right-click on the header → builder for the section context menu
+  /// (#220 / audit doc 10). Optional so consumers that don't pass one
+  /// just drop the right-click affordance silently.
+  onContextMenu?: (e: MouseEvent, key: SectionKey) => void;
   children: JSX.Element;
 }
 
 export function SidebarSection(props: SidebarSectionProps) {
-  const [expanded, setExpanded] = createSignal(props.initialExpanded ?? false);
+  const expanded = () => expandedSections().has(props.sectionKey);
   return (
     <div class="sidebar__section" data-expanded={expanded() ? "true" : "false"}>
       <button
         class="sidebar__section-header"
         type="button"
         title={props.title}
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => toggleSectionExpanded(props.sectionKey)}
+        onContextMenu={(e) => {
+          if (!props.onContextMenu) return;
+          props.onContextMenu(e, props.sectionKey);
+        }}
       >
         <span class="sidebar__section-caret">›</span>
         <span class="sidebar__section-icon">{props.icon}</span>

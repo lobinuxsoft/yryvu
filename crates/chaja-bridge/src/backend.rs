@@ -447,6 +447,25 @@ pub trait GitBackend: Send + Sync {
 
     fn stash_drop(&self, repo_path: &Path, index: usize) -> Result<(), BackendError>;
 
+    fn worktree_lock(
+        &self,
+        repo_path: &Path,
+        target_workdir: &Path,
+        reason: Option<&str>,
+    ) -> Result<(), BackendError>;
+
+    fn worktree_unlock(
+        &self,
+        repo_path: &Path,
+        target_workdir: &Path,
+    ) -> Result<(), BackendError>;
+
+    fn worktree_remove(
+        &self,
+        repo_path: &Path,
+        target_workdir: &Path,
+    ) -> Result<(), BackendError>;
+
     fn merge_branch(
         &self,
         repo_path: &Path,

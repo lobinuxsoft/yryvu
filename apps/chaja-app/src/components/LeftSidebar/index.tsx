@@ -355,7 +355,13 @@ export function LeftSidebar() {
               }
             >
               <For each={filteredStashes()}>
-                {(s, i) => <StashRow stash={s} index={i()} />}
+                {(s, i) => (
+                  <StashRow
+                    stash={s}
+                    index={i()}
+                    onContextMenu={ops.openStashContextMenu}
+                  />
+                )}
               </For>
             </Show>
           </Show>

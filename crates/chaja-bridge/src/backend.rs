@@ -441,6 +441,12 @@ pub trait GitBackend: Send + Sync {
 
     fn stash_pop(&self, repo_path: &Path) -> Result<(), BackendError>;
 
+    fn stash_pop_at(&self, repo_path: &Path, index: usize) -> Result<(), BackendError>;
+
+    fn stash_apply(&self, repo_path: &Path, index: usize) -> Result<(), BackendError>;
+
+    fn stash_drop(&self, repo_path: &Path, index: usize) -> Result<(), BackendError>;
+
     fn merge_branch(
         &self,
         repo_path: &Path,

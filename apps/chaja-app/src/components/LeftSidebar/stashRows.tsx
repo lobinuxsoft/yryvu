@@ -7,6 +7,7 @@ import { type StashInfo } from "../../ipc";
 interface StashRowProps {
   stash: StashInfo;
   index: number;
+  onContextMenu: (e: MouseEvent, stash: StashInfo, index: number) => void;
 }
 
 /// Pull the first line of the stash message — git stash messages are
@@ -36,13 +37,13 @@ function relativeTime(unixSeconds: number): string {
 
 export function StashRow(props: StashRowProps) {
   const stash = () => props.stash;
-  // Click is a no-op for v1 — the stash inspector + Apply/Pop/Drop
-  // context menu live in #173 and #172. Row presence here lets the
-  // user see and filter their stash queue; actions follow.
+  // Right-click → context menu (#224). Body click is still a no-op for
+  // v1; the inspector lives in #173.
   return (
     <div
       class="sidebar__branch-row sidebar__row--stash"
       title={`stash@{${props.index}} — ${stash().message}`}
+      onContextMenu={(e) => props.onContextMenu(e, stash(), props.index)}
     >
       <span class="sidebar__row-counter">{`@{${props.index}}`}</span>
       <span class="sidebar__branch-name">{shortMessage(stash().message)}</span>

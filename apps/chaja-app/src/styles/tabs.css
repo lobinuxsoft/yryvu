@@ -97,12 +97,29 @@
 
 .tab.is-active:hover { background: var(--bg-0); }
 
-/* During drag (sub-PR 8 = #39) sibling pills suppress hover effects so
-   the user feels "pushing the pill into a slot" without random hover
-   highlights flashing under the cursor. The class is set on the parent
-   strip, individual pills inherit via :where. */
-.tabs__strip.is-resizing :where(.tab):hover { background: transparent; }
-.tab.is-being-dragged { z-index: 2; }
+/* Drag-reorder (#39). is-dragging lives on the strip while a drag is
+   active; sibling pills suppress hover/active background while the
+   pointer is captured on the dragged pill — the user feels "pushing
+   the pill into a slot" without random hover highlights flashing
+   under the cursor.
+
+   Sibling pills also get a smooth transform transition so they slide
+   into place when the dragged pill crosses a midpoint (computeTargetIndex
+   in dragMath.ts). The dragged pill itself OPTS OUT of the transition
+   (transform: translateX is set every pointermove — adding a transition
+   would lag the cursor visibly). */
+.tabs__strip.is-dragging :where(.tab):not(.is-being-dragged):hover {
+  background: transparent;
+}
+.tabs__strip.is-dragging .tab:not(.is-being-dragged) {
+  transition: transform 140ms ease;
+}
+.tab.is-being-dragged {
+  z-index: 2;
+  opacity: 0.85;
+  cursor: grabbing;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
 
 /* Permanent tab pill — visually distinct from transient pills via a
    subtle leading icon slot. Same close behavior is suppressed (permanent

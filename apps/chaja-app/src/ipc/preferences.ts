@@ -12,12 +12,40 @@ export interface GeneralPreferences {}
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface UiPreferences {}
 
+/// Mirrors `chaja_bridge::preferences::Tab`. Discriminated by `type`.
+/// Wire format is camelCase per the backend's `serde(rename_all = "camelCase")`.
+export type PersistedTab =
+  | { type: "REPO"; id: string; repoPath: string; isWorktree: boolean }
+  | { type: "NEW"; id: string }
+  | { type: "RELEASE_NOTES"; id: string; version: string };
+
+/// Mirrors `chaja_bridge::preferences::PermanentTabState`.
+export interface PermanentTabState {
+  closed: boolean;
+}
+
+/// Mirrors `chaja_bridge::preferences::PermanentTabs`. Currently only
+/// REPO_MANAGEMENT (FOCUS_VIEW skipped — proprietary).
+export interface PermanentTabs {
+  repoManagement?: PermanentTabState;
+}
+
+/// Mirrors `chaja_bridge::preferences::TabsPreferences`. Three fields
+/// persist; `closedTabs` is in-memory only and lives in `tabs/state.ts`,
+/// not in this envelope (matches GK at bundle:2373-2381).
+export interface TabsPreferences {
+  tabs: PersistedTab[];
+  selectedTabId?: string;
+  permanentTabs: PermanentTabs;
+}
+
 /// Mirrors `chaja_bridge::preferences::Preferences`. The `version`
 /// field is owned by the backend; never mutate it from the frontend.
 export interface Preferences {
   version: number;
   general: GeneralPreferences;
   ui: UiPreferences;
+  tabs: TabsPreferences;
 }
 
 export function getPreferences(): Promise<Preferences> {

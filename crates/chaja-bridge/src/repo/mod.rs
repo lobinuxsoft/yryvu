@@ -76,19 +76,11 @@ impl GitBackend for GixBackend {
         worktrees::worktree_lock(repo_path, target_workdir, reason)
     }
 
-    fn worktree_unlock(
-        &self,
-        repo_path: &Path,
-        target_workdir: &Path,
-    ) -> Result<(), BackendError> {
+    fn worktree_unlock(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError> {
         worktrees::worktree_unlock(repo_path, target_workdir)
     }
 
-    fn worktree_remove(
-        &self,
-        repo_path: &Path,
-        target_workdir: &Path,
-    ) -> Result<(), BackendError> {
+    fn worktree_remove(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError> {
         worktrees::worktree_remove(repo_path, target_workdir)
     }
 

@@ -454,17 +454,9 @@ pub trait GitBackend: Send + Sync {
         reason: Option<&str>,
     ) -> Result<(), BackendError>;
 
-    fn worktree_unlock(
-        &self,
-        repo_path: &Path,
-        target_workdir: &Path,
-    ) -> Result<(), BackendError>;
+    fn worktree_unlock(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError>;
 
-    fn worktree_remove(
-        &self,
-        repo_path: &Path,
-        target_workdir: &Path,
-    ) -> Result<(), BackendError>;
+    fn worktree_remove(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError>;
 
     fn merge_branch(
         &self,

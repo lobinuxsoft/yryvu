@@ -127,10 +127,7 @@ pub fn worktree_lock(
 
 /// Unlock a linked worktree. No-op when it wasn't locked — git2 returns
 /// `Unlocked` either way; the caller doesn't care.
-pub fn worktree_unlock(
-    repo_path: &Path,
-    target_workdir: &Path,
-) -> Result<(), BackendError> {
+pub fn worktree_unlock(repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError> {
     let main_repo = super::common::open_git2(repo_path)?;
     let wt = find_worktree_by_path(&main_repo, target_workdir)?;
     wt.unlock().map_err(super::common::git2_err)?;
@@ -142,10 +139,7 @@ pub fn worktree_unlock(
 /// administrative dir is pruned. The undo log is cleared on success
 /// because none of the recorded inverses can be replayed against a
 /// disappeared worktree.
-pub fn worktree_remove(
-    repo_path: &Path,
-    target_workdir: &Path,
-) -> Result<(), BackendError> {
+pub fn worktree_remove(repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError> {
     let main_repo = super::common::open_git2(repo_path)?;
     let wt = find_worktree_by_path(&main_repo, target_workdir)?;
 

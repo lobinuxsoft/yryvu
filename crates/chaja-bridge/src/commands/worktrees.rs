@@ -36,10 +36,7 @@ pub async fn worktree_lock(
 }
 
 #[tauri::command]
-pub async fn worktree_unlock(
-    repo_path: String,
-    target_workdir: String,
-) -> Result<(), String> {
+pub async fn worktree_unlock(repo_path: String, target_workdir: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .worktree_unlock(&PathBuf::from(&repo_path), &PathBuf::from(&target_workdir))
@@ -50,10 +47,7 @@ pub async fn worktree_unlock(
 }
 
 #[tauri::command]
-pub async fn worktree_remove(
-    repo_path: String,
-    target_workdir: String,
-) -> Result<(), String> {
+pub async fn worktree_remove(repo_path: String, target_workdir: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .worktree_remove(&PathBuf::from(&repo_path), &PathBuf::from(&target_workdir))

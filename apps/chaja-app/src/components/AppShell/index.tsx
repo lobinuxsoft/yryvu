@@ -31,6 +31,7 @@ import {
   showRightPanel,
   theme,
 } from "../../state";
+import { matchTabKeybind, runTabKeybind } from "../../tabs/keybinds";
 import { runRedo, runUndo } from "../../undoOps";
 
 /// True when the keyboard event target is a text-editing element. The
@@ -76,12 +77,30 @@ export function AppShell() {
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
       const key = e.key.toLowerCase();
+
+      // Undo / Redo (issue #187, #130 cluster).
       if (key === "z" && !e.shiftKey) {
         e.preventDefault();
         void runUndo();
-      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        return;
+      }
+      if ((key === "z" && e.shiftKey) || key === "y") {
         e.preventDefault();
         void runRedo();
+        return;
+      }
+
+      // Tab keybinds (issue #207, #135 cluster). Matcher is pure — see
+      // tabs/keybinds.ts for the full table + cross-app default rationale.
+      const tabIntent = matchTabKeybind({
+        key: e.key,
+        metaKey: e.metaKey,
+        ctrlKey: e.ctrlKey,
+        shiftKey: e.shiftKey,
+      });
+      if (tabIntent) {
+        e.preventDefault();
+        void runTabKeybind(tabIntent);
       }
     };
     window.addEventListener("keydown", onKeyDown);

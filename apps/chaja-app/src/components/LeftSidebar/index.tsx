@@ -461,6 +461,8 @@ export function LeftSidebar() {
               ? filteredSubmodules().length
               : submoduleList().length
           }
+          addable
+          onAdd={() => ops.openSubmoduleAddDialog()}
           onContextMenu={ops.openSectionContextMenu}
         >
           <Show

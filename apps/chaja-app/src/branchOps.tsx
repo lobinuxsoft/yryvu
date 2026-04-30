@@ -21,7 +21,9 @@ import {
   type RefTag,
   type StashInfo,
   type SubmoduleInfo,
+  submoduleAdd,
   submoduleInit,
+  submoduleRemove,
   submoduleUpdate,
   type TagInfo,
   type WorktreeInfo,
@@ -72,6 +74,10 @@ export function createBranchOps(deps: BranchOpsDeps) {
   const [dialog, setDialog] = createSignal<DialogState>(null);
   const [dialogError, setDialogError] = createSignal<string | null>(null);
   const [dialogNameInput, setDialogNameInput] = createSignal("");
+  /// Secondary text input shared by multi-field dialogs (currently only
+  /// the Add Submodule dialog: name = URL, path = target dir). Kept on
+  /// the ops surface so dialog components stay stateless wrappers.
+  const [dialogPathInput, setDialogPathInput] = createSignal("");
   const [mergeStrategy, setMergeStrategy] =
     createSignal<MergeStrategy>("fast-forward-or-merge");
   const [refreshingRemote, setRefreshingRemote] = createSignal(false);
@@ -79,6 +85,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
   function closeDialog() {
     setDialog(null);
     setDialogError(null);
+    setDialogPathInput("");
   }
 
   function openCreateDialog(from?: string) {
@@ -107,6 +114,18 @@ export function createBranchOps(deps: BranchOpsDeps) {
   function openDeleteRemoteDialog(remote: string, name: string) {
     setDialogError(null);
     setDialog({ kind: "delete-remote", remote, name });
+  }
+
+  function openSubmoduleAddDialog() {
+    setDialogError(null);
+    setDialogNameInput("");
+    setDialogPathInput("");
+    setDialog({ kind: "submodule-add" });
+  }
+
+  function openSubmoduleRemoveDialog(name: string, path: string) {
+    setDialogError(null);
+    setDialog({ kind: "submodule-remove", name, path });
   }
 
   async function tryCheckout(target: string) {
@@ -207,6 +226,42 @@ export function createBranchOps(deps: BranchOpsDeps) {
     } catch (err) {
       setDialogError(String(err));
       notify.error("Delete remote branch failed", { message: String(err) });
+    }
+  }
+
+  async function submitSubmoduleRemove() {
+    const state = dialog();
+    if (state?.kind !== "submodule-remove") return;
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await submoduleRemove(path, state.name);
+      closeDialog();
+      deps.refresh();
+      refreshWorkingTree();
+      notify.success("Submodule removed", { message: state.path });
+    } catch (err) {
+      setDialogError(String(err));
+      notify.error("Remove submodule failed", { message: String(err) });
+    }
+  }
+
+  async function submitSubmoduleAdd() {
+    const state = dialog();
+    if (state?.kind !== "submodule-add") return;
+    const path = repoPath();
+    const url = dialogNameInput().trim();
+    const target = dialogPathInput().trim();
+    if (!path || !url || !target) return;
+    try {
+      await submoduleAdd(path, url, target);
+      closeDialog();
+      deps.refresh();
+      refreshWorkingTree();
+      notify.success("Submodule added", { message: target });
+    } catch (err) {
+      setDialogError(String(err));
+      notify.error("Add submodule failed", { message: String(err) });
     }
   }
 
@@ -552,6 +607,11 @@ export function createBranchOps(deps: BranchOpsDeps) {
           notify.info("Path copied", { message: absPath });
         },
       },
+      { type: "separator" },
+      {
+        label: "Remove submodule…",
+        onSelect: () => openSubmoduleRemoveDialog(info.name, info.path),
+      },
     ];
 
     setMenu({ x: e.clientX, y: e.clientY, items });
@@ -829,6 +889,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     dialogError,
     dialogNameInput,
     setDialogNameInput,
+    dialogPathInput,
+    setDialogPathInput,
     mergeStrategy,
     setMergeStrategy,
     refreshingRemote,
@@ -838,6 +900,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openDeleteDialog,
     openMergePickDialog,
     openDeleteRemoteDialog,
+    openSubmoduleAddDialog,
+    openSubmoduleRemoveDialog,
     closeDialog,
     // context menu
     openBranchContextMenu,
@@ -857,6 +921,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     submitDelete,
     submitMerge,
     submitDeleteRemote,
+    submitSubmoduleAdd,
+    submitSubmoduleRemove,
     doAbortMerge,
     refreshRemote,
   };

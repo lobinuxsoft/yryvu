@@ -37,3 +37,33 @@ pub async fn submodule_update(repo_path: String, name: String) -> Result<(), Str
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn submodule_add(
+    repo_path: String,
+    url: String,
+    target_path: String,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .submodule_add(
+                &PathBuf::from(&repo_path),
+                &url,
+                &PathBuf::from(&target_path),
+            )
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn submodule_remove(repo_path: String, name: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .submodule_remove(&PathBuf::from(&repo_path), &name)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { createEffect, onCleanup, onMount, Show } from "solid-js";
+import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -12,6 +13,7 @@ import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
 import { DialogsHost } from "../LeftSidebar/DialogsHost";
 import { PreferencesWindow } from "../PreferencesWindow";
+import { ReleaseNotesBody } from "../ReleaseNotes";
 import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
@@ -36,6 +38,7 @@ import { matchTabKeybind, runTabKeybind } from "../../tabs/keybinds";
 import {
   handleCloseTabShortcut,
   openNewTab,
+  openReleaseNotes,
   openRepoInAnotherTab,
 } from "../../tabs/ops";
 import {
@@ -104,6 +107,16 @@ export function AppShell() {
     // window keydown listener since GTK doesn't reserve those.
     unlisteners.push(await listen("menu:new-tab", () => void openNewTab()));
     unlisteners.push(await listen("menu:close-tab", () => void handleCloseTabShortcut()));
+    // Help → Release Notes — captures the current app version at click
+    // time, matching GK at bundle:2614 (the version is captured at tab
+    // create time so an in-place GK auto-update doesn't drift the open
+    // tab). Tauri's `getVersion()` reads from tauri.conf.json.
+    unlisteners.push(
+      await listen("menu:release-notes", async () => {
+        const version = await getVersion();
+        void openReleaseNotes(version);
+      }),
+    );
 
     // Global Undo / Redo keyboard shortcuts (issue #187, sub-PR 3 of
     // #130). Skip when focus is inside an editable element so the user
@@ -212,9 +225,12 @@ export function AppShell() {
 
       <div class="shell__main">
         <Show when={currentTabType() === "RELEASE_NOTES"}>
-          <TabPlaceholder
-            title="Release Notes"
-            note="Content lands in #208."
+          <ReleaseNotesBody
+            version={
+              currentTab()?.type === "RELEASE_NOTES"
+                ? (currentTab() as { version: string }).version
+                : ""
+            }
           />
         </Show>
         <Show when={currentTabType() === "REPO_MANAGEMENT"}>

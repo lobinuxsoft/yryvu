@@ -89,6 +89,10 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 .enabled(false)
                 .build(app)?,
         )
+        .item(
+            &MenuItemBuilder::with_id("help_release_notes", "Release Notes")
+                .build(app)?,
+        )
         .separator()
         .item(&MenuItemBuilder::with_id("help_about", "About Chajá").build(app)?)
         .build()?;
@@ -112,6 +116,7 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: tauri::menu::MenuEven
         "view_toggle_terminal" => Some("menu:toggle-terminal"),
         "help_command_palette" => Some("menu:command-palette"),
         "help_shortcuts" => Some("menu:shortcuts"),
+        "help_release_notes" => Some("menu:release-notes"),
         "help_about" => Some("menu:about"),
         _ => None,
     };

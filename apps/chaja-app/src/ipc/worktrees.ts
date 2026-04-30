@@ -27,3 +27,35 @@ export interface WorktreeInfo {
 export function listWorktrees(repoPath: string): Promise<WorktreeInfo[]> {
   return invoke<WorktreeInfo[]>("list_worktrees", { repoPath });
 }
+
+/// Lock a linked worktree. Reason is optional (shows up in
+/// `git worktree list` and the LeftPanel locked badge tooltip).
+/// Refuses to lock the main worktree — the menu hides Lock for
+/// is_main rows.
+export function worktreeLock(
+  repoPath: string,
+  targetWorkdir: string,
+  reason: string | null,
+): Promise<void> {
+  return invoke<void>("worktree_lock", { repoPath, targetWorkdir, reason });
+}
+
+/// Unlock a linked worktree.
+export function worktreeUnlock(
+  repoPath: string,
+  targetWorkdir: string,
+): Promise<void> {
+  return invoke<void>("worktree_unlock", { repoPath, targetWorkdir });
+}
+
+/// Remove a linked worktree. Force-equivalent: prunes the admin dir
+/// AND deletes the working-copy directory. Refuses to remove the
+/// main worktree — the menu hides Remove for is_main rows. The undo
+/// log is cleared on success since the worktree disappearance
+/// invalidates every recorded inverse.
+export function worktreeRemove(
+  repoPath: string,
+  targetWorkdir: string,
+): Promise<void> {
+  return invoke<void>("worktree_remove", { repoPath, targetWorkdir });
+}

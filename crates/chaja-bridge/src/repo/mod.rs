@@ -67,6 +67,23 @@ impl GitBackend for GixBackend {
         worktrees::list_worktrees(repo_path)
     }
 
+    fn worktree_lock(
+        &self,
+        repo_path: &Path,
+        target_workdir: &Path,
+        reason: Option<&str>,
+    ) -> Result<(), BackendError> {
+        worktrees::worktree_lock(repo_path, target_workdir, reason)
+    }
+
+    fn worktree_unlock(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError> {
+        worktrees::worktree_unlock(repo_path, target_workdir)
+    }
+
+    fn worktree_remove(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError> {
+        worktrees::worktree_remove(repo_path, target_workdir)
+    }
+
     fn list_submodules(&self, repo_path: &Path) -> Result<Vec<SubmoduleInfo>, BackendError> {
         submodules::list_submodules(repo_path)
     }

@@ -106,3 +106,88 @@ fn head_branch(repo: &gix::Repository) -> (String, Option<String>) {
     let head = repo.head_id().ok().map(|id| id.to_string());
     (branch, head)
 }
+
+/// Lock a linked worktree so other repos can't touch it (`git worktree
+/// lock`). `reason` shows up in `git worktree list` and in chajá's
+/// LeftPanel locked badge.
+///
+/// Operates on git2 because gix's worktree mutation surface is still
+/// behind unstable feature gates as of 0.68. The main worktree itself
+/// can't be locked — caller filters by `is_main` upstream.
+pub fn worktree_lock(
+    repo_path: &Path,
+    target_workdir: &Path,
+    reason: Option<&str>,
+) -> Result<(), BackendError> {
+    let main_repo = super::common::open_git2(repo_path)?;
+    let wt = find_worktree_by_path(&main_repo, target_workdir)?;
+    wt.lock(reason).map_err(super::common::git2_err)?;
+    Ok(())
+}
+
+/// Unlock a linked worktree. No-op when it wasn't locked — git2 returns
+/// `Unlocked` either way; the caller doesn't care.
+pub fn worktree_unlock(repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError> {
+    let main_repo = super::common::open_git2(repo_path)?;
+    let wt = find_worktree_by_path(&main_repo, target_workdir)?;
+    wt.unlock().map_err(super::common::git2_err)?;
+    Ok(())
+}
+
+/// Remove a linked worktree. Equivalent to `git worktree remove --force`
+/// — the underlying directory is deleted and the `.git/worktrees/<name>`
+/// administrative dir is pruned. The undo log is cleared on success
+/// because none of the recorded inverses can be replayed against a
+/// disappeared worktree.
+pub fn worktree_remove(repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError> {
+    let main_repo = super::common::open_git2(repo_path)?;
+    let wt = find_worktree_by_path(&main_repo, target_workdir)?;
+
+    // git2 prune validates by default — pass `valid` + `working_tree`
+    // flags to get the equivalent of `--force`. The user already
+    // confirmed via the menu.
+    let mut opts = git2::WorktreePruneOptions::new();
+    opts.valid(true).working_tree(true).locked(true);
+    wt.prune(Some(&mut opts)).map_err(super::common::git2_err)?;
+
+    // Remove the worktree directory itself — git2's prune only touches
+    // the admin dir under .git/worktrees/<name>, not the user's working
+    // copy. `git worktree remove` does both, so match that contract.
+    if target_workdir.exists() {
+        std::fs::remove_dir_all(target_workdir).map_err(|e| {
+            BackendError::Git(anyhow!(
+                "removed worktree admin dir but failed to delete {}: {}",
+                target_workdir.display(),
+                e
+            ))
+        })?;
+    }
+
+    crate::undo_log::clear_log_best_effort(repo_path);
+    Ok(())
+}
+
+/// Walk every linked worktree on `repo` and return the one whose path
+/// matches `target` byte-for-byte. Used by lock / unlock / remove —
+/// the frontend ships the workdir string from the row click, the
+/// backend resolves it to a `git2::Worktree` handle here.
+fn find_worktree_by_path(
+    repo: &git2::Repository,
+    target: &Path,
+) -> Result<git2::Worktree, BackendError> {
+    let names = repo.worktrees().map_err(super::common::git2_err)?;
+    for i in 0..names.len() {
+        let name = match names.get(i) {
+            Some(n) => n,
+            None => continue,
+        };
+        let wt = repo.find_worktree(name).map_err(super::common::git2_err)?;
+        if wt.path() == target {
+            return Ok(wt);
+        }
+    }
+    Err(BackendError::Git(anyhow!(
+        "no linked worktree found at {}",
+        target.display()
+    )))
+}

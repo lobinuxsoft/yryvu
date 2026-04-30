@@ -5,10 +5,12 @@ import { createResource, createSignal, For, onCleanup, onMount, Show } from "sol
 import {
   getRepoState,
   listBranches,
+  listStashes,
   listTags,
   listWorktrees,
   type BranchInfo,
   type RepoStateInfo,
+  type StashInfo,
   type TagInfo,
   type WorktreeInfo,
 } from "../../ipc";
@@ -17,6 +19,7 @@ import {
   repoPath,
   setShowLeftPanel,
   showLeftPanel,
+  workingTreeNonce,
 } from "../../state";
 import { useBranchOps } from "../../branchOps";
 import {
@@ -28,6 +31,7 @@ import {
 } from "../Icons";
 import { LocalBranchRow, RemoteBranchRow } from "./branchRows";
 import { SidebarSection } from "./SidebarSection";
+import { StashRow } from "./stashRows";
 import { StateBanner } from "./StateBanner";
 import { TagRow } from "./tagRows";
 import { WorktreeRow } from "./worktreeRows";
@@ -82,10 +86,23 @@ export function LeftSidebar() {
     { initialValue: [] },
   );
 
+  // Stashes are working-tree mutations (push/pop/drop) — workingTreeNonce
+  // is the right source-key. Refs aren't involved unless the stash is
+  // saved with a branch_name (informational only).
+  const [stashes] = createResource<StashInfo[], [string, number]>(
+    () => [repoPath() ?? "", workingTreeNonce()] as [string, number],
+    async ([path]) => {
+      if (!path) return [] as StashInfo[];
+      return await listStashes(path);
+    },
+    { initialValue: [] },
+  );
+
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
   const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
   const tagList = () => tags() ?? [];
   const worktreeList = () => worktrees() ?? [];
+  const stashList = () => stashes() ?? [];
   const filteredLocals = () => locals().filter((b) => matches(b.name, filterQuery()));
   const filteredRemotes = () => remotes().filter((b) => matches(b.name, filterQuery()));
   const filteredTags = () => tagList().filter((t) => matches(t.name, filterQuery()));
@@ -94,13 +111,22 @@ export function LeftSidebar() {
     worktreeList().filter(
       (w) => matches(w.branch, filterQuery()) || matches(w.workdir, filterQuery()),
     );
+  // Stashes filter by message OR branch_name — branch is what users
+  // remember when looking for a stash they took on a feature branch.
+  const filteredStashes = () =>
+    stashList().filter(
+      (s) =>
+        matches(s.message, filterQuery()) ||
+        matches(s.branch_name ?? "", filterQuery()),
+    );
   const isFiltering = () => filterQuery() !== "";
   const totalMatches = () =>
     isFiltering()
       ? filteredLocals().length +
         filteredRemotes().length +
         filteredTags().length +
-        filteredWorktrees().length
+        filteredWorktrees().length +
+        filteredStashes().length
       : -1;
 
   const ops = useBranchOps();
@@ -272,6 +298,38 @@ export function LeftSidebar() {
             >
               <For each={filteredWorktrees()}>
                 {(w) => <WorktreeRow worktree={w} />}
+              </For>
+            </Show>
+          </Show>
+        </SidebarSection>
+
+        <SidebarSection
+          title="Stashes"
+          icon={<IconBranch />}
+          count={
+            isFiltering() ? filteredStashes().length : stashList().length
+          }
+        >
+          <Show
+            when={repoPath()}
+            fallback={
+              <p class="sidebar__empty">Open a repo to list stashes</p>
+            }
+          >
+            <Show
+              when={filteredStashes().length > 0}
+              fallback={
+                <p class="sidebar__empty">
+                  {isFiltering()
+                    ? "No matches"
+                    : stashList().length === 0
+                      ? "No stashes"
+                      : ""}
+                </p>
+              }
+            >
+              <For each={filteredStashes()}>
+                {(s, i) => <StashRow stash={s} index={i()} />}
               </For>
             </Show>
           </Show>

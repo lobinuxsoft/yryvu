@@ -1,0 +1,50 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   FiraCode Nerd Font Mono — provides the ~10k PUA-region icon glyphs.
+
+   Loaded as a single Regular face (Medium / Bold can be added later if
+   commit-message rendering ever needs them — stripped from this PR to
+   keep the bundle weight at one ~2.6 MB asset).
+
+   Why a Nerd Font instead of inline SVGs for static icons (per #204
+   discussion 2026-04-30): when the icon has no animation and ships in
+   a mono context (commit message prefixes, file-type badges, close
+   buttons), a single text glyph beats an SVG component on every axis —
+   weight (1 codepoint vs ~200 bytes of path data), styling (inherits
+   color + size from text rules instead of needing prop wiring), and
+   theming (`color: var(--accent)` works without component churn).
+
+   The .nf class is the canonical wrapper. Use `<span class="nf"></span>`
+   inline. The character is a Unicode glyph in the Private Use Area
+   (PUA) — copy the literal codepoint from a Nerd Font cheat-sheet, not
+   a markdown rendering of this file (markdown editors strip PUA chars
+   silently).
+
+   License: SIL OFL — see /fonts/SIL-OFL-LICENSE.txt.
+   ======================================================================== */
+
+@font-face {
+  font-family: "FiraCodeNF";
+  src: url("/fonts/FiraCodeNerdFontMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Inline icon utility. Use on `<span>` / `<i>` etc. that wraps a single
+   PUA codepoint. Matches text color + cascades font-size from the parent
+   so a 12 px tab title and a 14 px sidebar item both Just Work. */
+.nf {
+  font-family: "FiraCodeNF", monospace;
+  font-style: normal;
+  font-weight: 400;
+  /* Tighter line-height + nudged baseline keep the glyph centered with
+     adjacent text. Without this, Nerd Font glyphs sit slightly low. */
+  line-height: 1;
+  display: inline-block;
+  vertical-align: -0.05em;
+  /* Disable ligatures inside icon spans — Fira Code's `>=` / `=>` ligas
+     don't help here and can collide with adjacent text. */
+  font-variant-ligatures: none;
+}

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 
 @import "./tokens.css";
+@import "./fonts.css";
 @import "./shell.css";
 @import "./tabs.css";
 @import "./toolbar.css";

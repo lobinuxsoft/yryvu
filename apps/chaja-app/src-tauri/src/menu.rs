@@ -15,7 +15,6 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(
             &MenuItemBuilder::with_id("file_close_tab", "Close Tab")
                 .accelerator("CmdOrCtrl+W")
-                .enabled(false)
                 .build(app)?,
         )
         .separator()
@@ -103,6 +102,7 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: tauri::menu::MenuEven
     let id = event.id().as_ref();
     let channel = match id {
         "file_new_tab" => Some("menu:new-tab"),
+        "file_close_tab" => Some("menu:close-tab"),
         "file_open_repo" => Some("menu:open-repo"),
         "file_clone_repo" => Some("menu:clone-repo"),
         "file_init_repo" => Some("menu:init-repo"),

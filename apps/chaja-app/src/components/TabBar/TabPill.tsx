@@ -20,25 +20,13 @@ import { Show } from "solid-js";
 
 import { NfIcon } from "../NfIcon";
 import { type Tab } from "../../tabs/types";
+import { titleOf } from "./tabTitle";
 
 interface Props {
   tab: Tab;
   isActive: boolean;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
-}
-
-function titleOf(tab: Tab): string {
-  switch (tab.type) {
-    case "REPO": {
-      const seg = tab.repoPath.split("/").filter(Boolean).pop();
-      return seg ?? "Repo";
-    }
-    case "NEW":
-      return "New Tab";
-    case "RELEASE_NOTES":
-      return "Release Notes";
-  }
 }
 
 export function TabPill(props: Props) {

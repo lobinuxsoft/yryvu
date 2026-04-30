@@ -5,31 +5,39 @@ import { createResource, createSignal, For, onCleanup, onMount, Show } from "sol
 import {
   getRepoState,
   listBranches,
+  listStashes,
+  listSubmodules,
   listTags,
+  listWorktrees,
   type BranchInfo,
   type RepoStateInfo,
+  type StashInfo,
+  type SubmoduleInfo,
   type TagInfo,
+  type WorktreeInfo,
 } from "../../ipc";
 import {
   branchesNonce,
   repoPath,
   setShowLeftPanel,
   showLeftPanel,
+  workingTreeNonce,
 } from "../../state";
 import { useBranchOps } from "../../branchOps";
 import {
-  IconArchive,
   IconBranch,
   IconCircleDot,
   IconCloud,
   IconPullRequest,
   IconTag,
-  IconUsers,
 } from "../Icons";
 import { LocalBranchRow, RemoteBranchRow } from "./branchRows";
 import { SidebarSection } from "./SidebarSection";
+import { StashRow } from "./stashRows";
 import { StateBanner } from "./StateBanner";
+import { SubmoduleRow } from "./submoduleRows";
 import { TagRow } from "./tagRows";
+import { WorktreeRow } from "./worktreeRows";
 
 const matches = (name: string, q: string) =>
   q === "" || name.toLowerCase().includes(q.toLowerCase());
@@ -69,16 +77,82 @@ export function LeftSidebar() {
     { initialValue: [] },
   );
 
+  // Worktrees use branchesNonce too — checking out a branch in another
+  // worktree, removing one, or adding one all flow through ref-mutating
+  // ops that bump the nonce. No dedicated worktreesNonce needed.
+  const [worktrees] = createResource<WorktreeInfo[], [string, number]>(
+    () => [repoPath() ?? "", branchesNonce()] as [string, number],
+    async ([path]) => {
+      if (!path) return [] as WorktreeInfo[];
+      return await listWorktrees(path);
+    },
+    { initialValue: [] },
+  );
+
+  // Stashes are working-tree mutations (push/pop/drop) — workingTreeNonce
+  // is the right source-key. Refs aren't involved unless the stash is
+  // saved with a branch_name (informational only).
+  const [stashes] = createResource<StashInfo[], [string, number]>(
+    () => [repoPath() ?? "", workingTreeNonce()] as [string, number],
+    async ([path]) => {
+      if (!path) return [] as StashInfo[];
+      return await listStashes(path);
+    },
+    { initialValue: [] },
+  );
+
+  // Submodules can shift on init/deinit/update, AND on parent commits
+  // changing the pinned SHA. Both source signals matter.
+  const [submodules] = createResource<SubmoduleInfo[], [string, number, number]>(
+    () =>
+      [repoPath() ?? "", branchesNonce(), workingTreeNonce()] as [
+        string,
+        number,
+        number,
+      ],
+    async ([path]) => {
+      if (!path) return [] as SubmoduleInfo[];
+      return await listSubmodules(path);
+    },
+    { initialValue: [] },
+  );
+
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
   const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
   const tagList = () => tags() ?? [];
+  const worktreeList = () => worktrees() ?? [];
+  const stashList = () => stashes() ?? [];
+  const submoduleList = () => submodules() ?? [];
   const filteredLocals = () => locals().filter((b) => matches(b.name, filterQuery()));
   const filteredRemotes = () => remotes().filter((b) => matches(b.name, filterQuery()));
   const filteredTags = () => tagList().filter((t) => matches(t.name, filterQuery()));
+  // Filter worktrees by branch name OR path tail — both are searchable signals.
+  const filteredWorktrees = () =>
+    worktreeList().filter(
+      (w) => matches(w.branch, filterQuery()) || matches(w.workdir, filterQuery()),
+    );
+  // Stashes filter by message OR branch_name — branch is what users
+  // remember when looking for a stash they took on a feature branch.
+  const filteredStashes = () =>
+    stashList().filter(
+      (s) =>
+        matches(s.message, filterQuery()) ||
+        matches(s.branch_name ?? "", filterQuery()),
+    );
+  // Submodules filter on name and path — both are user-facing strings.
+  const filteredSubmodules = () =>
+    submoduleList().filter(
+      (s) => matches(s.name, filterQuery()) || matches(s.path, filterQuery()),
+    );
   const isFiltering = () => filterQuery() !== "";
   const totalMatches = () =>
     isFiltering()
-      ? filteredLocals().length + filteredRemotes().length + filteredTags().length
+      ? filteredLocals().length +
+        filteredRemotes().length +
+        filteredTags().length +
+        filteredWorktrees().length +
+        filteredStashes().length +
+        filteredSubmodules().length
       : -1;
 
   const ops = useBranchOps();
@@ -223,27 +297,87 @@ export function LeftSidebar() {
           </Show>
         </SidebarSection>
 
-        {/* Placeholder sections — hidden while filtering since they have no
-            wired data sources yet (PRs #112, etc.). They reappear when the
-            filter clears so layout matches GK at rest. */}
+        <SidebarSection
+          title="Worktrees"
+          icon={<IconBranch />}
+          count={
+            isFiltering() ? filteredWorktrees().length : worktreeList().length
+          }
+        >
+          <Show
+            when={repoPath()}
+            fallback={
+              <p class="sidebar__empty">Open a repo to list worktrees</p>
+            }
+          >
+            <Show
+              when={filteredWorktrees().length > 0}
+              fallback={
+                <p class="sidebar__empty">
+                  {isFiltering()
+                    ? "No matches"
+                    : worktreeList().length === 0
+                      ? "No worktrees"
+                      : ""}
+                </p>
+              }
+            >
+              <For each={filteredWorktrees()}>
+                {(w) => <WorktreeRow worktree={w} />}
+              </For>
+            </Show>
+          </Show>
+        </SidebarSection>
+
+        <SidebarSection
+          title="Stashes"
+          icon={<IconBranch />}
+          count={
+            isFiltering() ? filteredStashes().length : stashList().length
+          }
+        >
+          <Show
+            when={repoPath()}
+            fallback={
+              <p class="sidebar__empty">Open a repo to list stashes</p>
+            }
+          >
+            <Show
+              when={filteredStashes().length > 0}
+              fallback={
+                <p class="sidebar__empty">
+                  {isFiltering()
+                    ? "No matches"
+                    : stashList().length === 0
+                      ? "No stashes"
+                      : ""}
+                </p>
+              }
+            >
+              <For each={filteredStashes()}>
+                {(s, i) => <StashRow stash={s} index={i()} />}
+              </For>
+            </Show>
+          </Show>
+        </SidebarSection>
+
+        {/* Provider-backed sections — render bodies once #46 OAuth lands.
+            Hidden during filter since no live data feeds them yet. */}
         <Show when={!isFiltering()}>
-          <SidebarSection title="Cloud Patches" icon={<IconArchive />} count={0}>
-            <p class="sidebar__empty">—</p>
-          </SidebarSection>
           <SidebarSection
             title="Pull Requests"
             icon={<IconPullRequest />}
             count={0}
             addable
           >
-            <p class="sidebar__empty">—</p>
+            <p class="sidebar__empty">Connect a Git provider to list PRs</p>
           </SidebarSection>
           <SidebarSection
-            title="GitHub Issues"
+            title="Issues"
             icon={<IconCircleDot />}
             count={0}
           >
-            <p class="sidebar__empty">—</p>
+            <p class="sidebar__empty">Connect a Git provider to list issues</p>
           </SidebarSection>
         </Show>
 
@@ -273,11 +407,39 @@ export function LeftSidebar() {
           </Show>
         </SidebarSection>
 
-        <Show when={!isFiltering()}>
-          <SidebarSection title="Teams" icon={<IconUsers />} count={0}>
-            <p class="sidebar__empty">—</p>
-          </SidebarSection>
-        </Show>
+        <SidebarSection
+          title="Submodules"
+          icon={<IconBranch />}
+          count={
+            isFiltering()
+              ? filteredSubmodules().length
+              : submoduleList().length
+          }
+        >
+          <Show
+            when={repoPath()}
+            fallback={
+              <p class="sidebar__empty">Open a repo to list submodules</p>
+            }
+          >
+            <Show
+              when={filteredSubmodules().length > 0}
+              fallback={
+                <p class="sidebar__empty">
+                  {isFiltering()
+                    ? "No matches"
+                    : submoduleList().length === 0
+                      ? "No submodules"
+                      : ""}
+                </p>
+              }
+            >
+              <For each={filteredSubmodules()}>
+                {(s) => <SubmoduleRow sub={s} />}
+              </For>
+            </Show>
+          </Show>
+        </SidebarSection>
 
         <Show when={isFiltering() && totalMatches() === 0 && repoPath()}>
           <p class="sidebar__no-matches">

@@ -373,3 +373,48 @@
   font-size: 11px;
   font-style: italic;
 }
+
+/* ========================================================================
+   Multi-purpose rows for non-branch sections (#133): worktrees, stashes,
+   submodules. Inherit .sidebar__branch-row for layout/typography; add
+   meta + badge slots for the additional metadata each surface needs.
+   ======================================================================== */
+
+.sidebar__row-meta {
+  flex-shrink: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--fg-3);
+  font-family: "FiraCodeNF", monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__row-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  color: var(--fg-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sidebar__row-badge--warn {
+  background: var(--warning);
+  color: var(--bg-0);
+}
+
+.sidebar__row-badge--accent {
+  background: var(--info);
+  color: var(--bg-0);
+}
+
+.sidebar__row-counter {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--fg-3);
+  font-family: "FiraCodeNF", monospace;
+}

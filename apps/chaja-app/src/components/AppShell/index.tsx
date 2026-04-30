@@ -16,7 +16,8 @@ import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
 import { ToastContainer } from "../Notifications";
-import { IconOpenFolder, IconPlus, IconStar } from "../Icons";
+import { IconOpenFolder, IconStar } from "../Icons";
+import { TabBar } from "../TabBar";
 import { BranchOpsProvider, createBranchOps } from "../../branchOps";
 import {
   mainView,
@@ -32,6 +33,13 @@ import {
   theme,
 } from "../../state";
 import { matchTabKeybind, runTabKeybind } from "../../tabs/keybinds";
+import { openNewTab, openRepoInAnotherTab } from "../../tabs/ops";
+import {
+  currentTab,
+  currentTabType,
+  hydrateTabsFromPreferences,
+  tabs,
+} from "../../tabs/state";
 import { runRedo, runUndo } from "../../undoOps";
 
 /// True when the keyboard event target is a text-editing element. The
@@ -53,6 +61,10 @@ async function openRepoPicker() {
   if (typeof selected === "string") {
     pushRecentRepo(selected);
     setRepoPath(selected);
+    // Also create or switch to a REPO tab for the picked path. The ops
+    // layer dedupes via switchToRepoTabIfItExists so picking a path
+    // that's already open just switches to its existing tab.
+    void openRepoInAnotherTab(selected);
   }
 }
 
@@ -60,6 +72,23 @@ export function AppShell() {
   const unlisteners: UnlistenFn[] = [];
 
   onMount(async () => {
+    // Hydrate the tab system store from preferences.json. This must run
+    // before anything that reads tabs() / selectedTabId() to avoid an
+    // empty-then-replace flicker. After hydration, if the persisted
+    // legacy repoPath() points at a repo but no REPO tab exists in the
+    // store (e.g. first launch of a chajá build that has tabs), back-
+    // fill a REPO tab so the user sees the strip in sync. If both
+    // stores are empty, open a NEW tab so the strip isn't blank.
+    await hydrateTabsFromPreferences();
+    if (tabs().length === 0) {
+      const persistedRepo = repoPath();
+      if (persistedRepo) {
+        await openRepoInAnotherTab(persistedRepo);
+      } else {
+        await openNewTab();
+      }
+    }
+
     unlisteners.push(await listen("menu:open-repo", () => void openRepoPicker()));
     unlisteners.push(await listen("menu:toggle-left-panel", () => setShowLeftPanel((v) => !v)));
     unlisteners.push(await listen("menu:toggle-right-panel", () => setShowRightPanel((v) => !v)));
@@ -114,6 +143,29 @@ export function AppShell() {
     document.documentElement.setAttribute("data-theme", theme());
   });
 
+  // Sync the active tab into the legacy repoPath() signal so the rest of
+  // the app (CommitGraph, sidebar, inspector — all built before the tab
+  // system) keeps working unchanged. One-way: tabs → repoPath. The other
+  // direction is handled at the call sites of setRepoPath (openRepoPicker
+  // here, ColdStart, RepoSwitcher) which also fire openRepoInAnotherTab.
+  createEffect(() => {
+    const t = currentTab();
+    const tType = currentTabType();
+    if (tType === "REPO_MANAGEMENT") {
+      // Permanent tab visible — no repo viewport, leave repoPath as-is.
+      return;
+    }
+    if (t?.type === "REPO" && t.repoPath !== repoPath()) {
+      setRepoPath(t.repoPath);
+    } else if (t?.type === "NEW" && repoPath() !== undefined) {
+      // Switching into a NEW tab clears the repo viewport so the
+      // welcome screen can render.
+      setRepoPath(undefined);
+    } else if (t?.type === "RELEASE_NOTES" && repoPath() !== undefined) {
+      setRepoPath(undefined);
+    }
+  });
+
   // Single shared BranchOps instance. LeftSidebar and CommitGraph (ref pills)
   // both consume it via `useBranchOps()` so dialogs and the context menu
   // overlay live at the shell level — opening a menu from a ref pill in the
@@ -136,14 +188,7 @@ export function AppShell() {
             <IconStar />
           </button>
         </div>
-        <div class="tabs__list">
-          <Show when={repoPath()} fallback={<SingleTab label="New Tab" active />}>
-            <SingleTab label={repoPath()!.split("/").filter(Boolean).pop() ?? "Repo"} active />
-          </Show>
-          <button class="tabs__leading-btn tabs__new" type="button" title="New tab" aria-label="New tab">
-            <IconPlus />
-          </button>
-        </div>
+        <TabBar />
       </div>
 
       <div class="shell__toolbar">
@@ -194,10 +239,3 @@ export function AppShell() {
   );
 }
 
-function SingleTab(props: { label: string; active?: boolean }) {
-  return (
-    <button class="tab" type="button" data-active={props.active ? "true" : "false"}>
-      {props.label}
-    </button>
-  );
-}

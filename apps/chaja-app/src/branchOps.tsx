@@ -12,10 +12,14 @@ import {
   isWorkingTreeDirty,
   mergeBranch,
   renameBranch,
+  stashApply,
+  stashDrop,
+  stashPopAt,
   stashPush,
   type BranchInfo,
   type MergeStrategy,
   type RefTag,
+  type StashInfo,
 } from "./ipc";
 import { refreshWorkingTree, repoPath, setHiddenRef } from "./state";
 import type { ContextMenuItem } from "./components/ContextMenu";
@@ -299,6 +303,77 @@ export function createBranchOps(deps: BranchOpsDeps) {
     setMenu({ x: e.clientX, y: e.clientY, items });
   }
 
+  /**
+   * Right-click menu for a stash row in the LeftPanel STASHES section.
+   * Shape mirrors GitKraken's `popupStashMenu` (audit doc 10): Apply,
+   * Pop, Drop, Amend message. Amend stays disabled until the rewrite-
+   * stash flow lands in a follow-up.
+   *
+   * `index` is the LIFO position from `listStashes` (0 = top). Apply
+   * keeps the entry in the queue; Pop applies + removes; Drop removes
+   * without applying. Drop records the dropped sha in the undo log so
+   * the stash survives in the objects DB until GC.
+   */
+  function openStashContextMenu(e: MouseEvent, info: StashInfo, index: number) {
+    e.preventDefault();
+    const path = repoPath();
+    if (!path) return;
+
+    const label = info.message.split("\n")[0] || `stash@{${index}}`;
+    const items: ContextMenuItem[] = [
+      {
+        label: "Apply",
+        onSelect: async () => {
+          try {
+            await stashApply(path, index);
+            refreshWorkingTree();
+            notify.success("Stash applied", { message: label });
+          } catch (err) {
+            notify.error("Apply failed", { message: String(err) });
+          }
+        },
+      },
+      {
+        label: "Pop",
+        onSelect: async () => {
+          try {
+            await stashPopAt(path, index);
+            refreshWorkingTree();
+            notify.success("Stash popped", { message: label });
+          } catch (err) {
+            notify.error("Pop failed", { message: String(err) });
+          }
+        },
+      },
+      {
+        label: "Drop",
+        danger: true,
+        onSelect: async () => {
+          try {
+            await stashDrop(path, index);
+            refreshWorkingTree();
+            notify.success("Stash dropped", {
+              message: `${label} — undo with Cmd/Ctrl+Z`,
+            });
+          } catch (err) {
+            notify.error("Drop failed", { message: String(err) });
+          }
+        },
+      },
+      { type: "separator" },
+      {
+        label: "Amend message…",
+        disabled: true,
+        // TODO: wire stash message rewrite — needs a small backend op
+        // that reads the stash commit, re-creates with the new message,
+        // and updates refs/stash. Tracked as part of the #224 follow-up
+        // (deferred per the issue body).
+        onSelect: () => {},
+      },
+    ];
+    setMenu({ x: e.clientX, y: e.clientY, items });
+  }
+
   function openRemoteContextMenu(e: MouseEvent, b: BranchInfo) {
     e.preventDefault();
     const parsed = parseRemoteBranchName(b.name);
@@ -419,6 +494,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openBranchContextMenu,
     openRemoteContextMenu,
     openRefContextMenu,
+    openStashContextMenu,
     // async operations
     tryCheckout,
     stashAndCheckout,

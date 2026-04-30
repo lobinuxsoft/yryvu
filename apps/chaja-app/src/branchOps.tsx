@@ -352,9 +352,13 @@ export function createBranchOps(deps: BranchOpsDeps) {
           try {
             await stashDrop(path, index);
             refreshWorkingTree();
-            notify.success("Stash dropped", {
-              message: `${label} — undo with Cmd/Ctrl+Z`,
-            });
+            // Note: stash drop is NOT undoable via the chajá undo log
+            // (crates/chaja-bridge/src/repo/undo.rs:22 — re-stashing
+            // needs a heavier snapshot than libgit2 exposes). The sha
+            // does live in the objects DB until git GC (~90 days), so
+            // a determined user can `git stash apply <sha>` from a
+            // terminal — but from chajá's UI it's gone for good.
+            notify.info("Stash dropped", { message: label });
           } catch (err) {
             notify.error("Drop failed", { message: String(err) });
           }

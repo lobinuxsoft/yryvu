@@ -4,6 +4,7 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 
 import { loadRecentRepos, pushRecentRepo, setRepoPath, type RecentRepo } from "../../state";
+import { openRepoInAnotherTab } from "../../tabs/ops";
 
 export function ColdStart() {
   const [recent, setRecent] = createSignal<RecentRepo[]>([]);
@@ -15,12 +16,14 @@ export function ColdStart() {
     if (typeof selected === "string") {
       setRecent(pushRecentRepo(selected));
       setRepoPath(selected);
+      void openRepoInAnotherTab(selected);
     }
   }
 
   function openFromRecent(path: string) {
     setRecent(pushRecentRepo(path));
     setRepoPath(path);
+    void openRepoInAnotherTab(path);
   }
 
   return (

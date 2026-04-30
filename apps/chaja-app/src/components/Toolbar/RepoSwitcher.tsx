@@ -10,6 +10,7 @@ import {
   setRepoPath,
   type RecentRepo,
 } from "../../state";
+import { openRepoInAnotherTab } from "../../tabs/ops";
 
 interface RepoSwitcherProps {
   /** Triggered by the "Open another…" item — opens the file picker. */
@@ -58,6 +59,7 @@ export function RepoSwitcher(props: RepoSwitcherProps) {
     setOpen(false);
     pushRecentRepo(entry.path);
     setRepoPath(entry.path);
+    void openRepoInAnotherTab(entry.path);
   }
 
   function onTrigger() {

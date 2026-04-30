@@ -367,6 +367,23 @@ pub fn set_cursor(repo_path: &Path, cursor: Option<usize>) -> Result<(), UndoLog
     write_log(repo_path, &log)
 }
 
+/// Clear the undo log entirely. Used by ops that can't be undone AND
+/// invalidate the previous history (stash apply / pop / drop — they
+/// mutate the working tree in ways that make the prior recorded ops
+/// unreplayable). Without this, Cmd+Z after such an op would try to
+/// reverse a step whose preconditions no longer hold and surface a
+/// confusing error.
+///
+/// Best-effort: a write failure leaves the log as-is, the worst that
+/// can happen is the user sees "Cannot undo" once instead of the
+/// log-cleared "Nothing to undo" — both honest but the latter is
+/// less surprising.
+pub fn clear_log_best_effort(repo_path: &Path) {
+    if let Err(e) = write_log(repo_path, &UndoLog::default()) {
+        tracing::warn!(error = %e, "failed to clear undo log");
+    }
+}
+
 fn write_log(repo_path: &Path, log: &UndoLog) -> Result<(), UndoLogError> {
     let final_path = sidecar_path(repo_path);
     let parent = final_path.parent().ok_or_else(|| UndoLogError::Io {

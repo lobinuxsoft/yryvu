@@ -263,41 +263,45 @@ pub fn stash_pop(repo_path: &Path) -> Result<(), BackendError> {
 /// pop stash@{index}` — applies the stash to the working tree AND
 /// removes it from the queue.
 ///
-/// **Not recorded in the undo log.** Re-stashing safely needs a heavier
-/// index/working-tree snapshot than libgit2's `stash_save2` exposes
-/// (see `undo.rs:22`). Recording an unrecoverable op only confuses the
-/// user — Cmd+Z would surface "Cannot undo, stash pop not supported"
-/// and skip past it to the previous op anyway. Better to leave it out.
+/// **Clears the undo log on success.** The pop mutates the working
+/// tree in a way that invalidates the preconditions of every prior
+/// recorded op — Cmd+Z after a pop would try to reverse a step whose
+/// state no longer holds. Wiping the log keeps the undo history
+/// honest. (See `undo.rs:22` for why pop itself isn't reversible.)
 pub fn stash_pop_at(repo_path: &Path, index: usize) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
     repo.stash_pop(index, None).map_err(git2_err)?;
+    crate::undo_log::clear_log_best_effort(repo_path);
     Ok(())
 }
 
 /// Apply a stash entry to the working tree WITHOUT removing it from
 /// the queue. Equivalent to `git stash apply stash@{index}`.
 ///
-/// **Not recorded in the undo log.** The stash is still in the queue
-/// — the user can drop it explicitly if they want to undo, and the
-/// working-tree changes the apply produced are reachable through the
-/// regular discard-paths surface.
+/// **Clears the undo log on success.** Apply overwrites working-tree
+/// state too — the same staleness argument as `stash_pop_at` applies.
 pub fn stash_apply(repo_path: &Path, index: usize) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
     repo.stash_apply(index, None).map_err(git2_err)?;
+    crate::undo_log::clear_log_best_effort(repo_path);
     Ok(())
 }
 
 /// Drop a stash entry without applying it. Equivalent to `git stash
 /// drop stash@{index}`.
 ///
-/// **Not recorded in the undo log.** Same reason as `stash_pop_at` —
-/// the inverse op (resurrect a dropped stash from a sha) isn't
-/// supported. The dropped sha still lives in the git objects DB until
-/// GC (~90 days), so a determined user can `git stash apply <sha>`
-/// from a terminal.
+/// **Clears the undo log on success.** Drop is the lightest of the
+/// three — it doesn't touch the working tree — but earlier recorded
+/// ops may have referenced the stash sha (e.g. a `StashPush` whose
+/// undo is "drop the stash"). Wiping keeps the log coherent.
+///
+/// The dropped sha still lives in the git objects DB until GC
+/// (~90 days), so a determined user can `git stash apply <sha>` from
+/// a terminal.
 pub fn stash_drop(repo_path: &Path, index: usize) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
     repo.stash_drop(index).map_err(git2_err)?;
+    crate::undo_log::clear_log_best_effort(repo_path);
     Ok(())
 }
 

@@ -33,14 +33,19 @@ export type Block =
   | { kind: "pre"; lang: string; code: string }
   | { kind: "hr" };
 
-/// Convert a heading's plain text to an anchor id slug.
+/// Convert a heading's plain text to an anchor id slug. Periods and
+/// whitespace runs collapse to a single dash, so version numbers like
+/// "0.4.2" don't lose their separators (the naive `[^a-z0-9-]` strip
+/// would output "042"). Brackets, parens, and other punctuation become
+/// gaps before the collapse, matching GitHub's anchor convention.
+///
 /// "## [0.4.2] (2026-04-30)" → "0-4-2-2026-04-30"
 export function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
+    .replace(/[^a-z0-9\s._-]/g, " ")
+    .replace(/[\s._]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 /// Block-level parser. Splits by blank lines, classifies each chunk by

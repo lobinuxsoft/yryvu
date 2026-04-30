@@ -90,6 +90,65 @@ pub struct TagInfo {
     pub tagger_date: Option<i64>,
 }
 
+/// Stash entry exposed to the UI. Mirrors the per-row shape GK builds
+/// in `mapStashToLeftPanelRow` — the renderer consumes `sha`, `message`,
+/// and `branch_name` directly; `parent_sha` / `index_sha` /
+/// `untracked_sha` come from the stash commit's parent slots so the
+/// inspector can diff index-only or untracked-only views without
+/// re-decoding the commit. `when` is the stash commit's committer
+/// timestamp in unix seconds.
+#[derive(Debug, Clone, Serialize)]
+pub struct StashInfo {
+    pub sha: String,
+    pub message: String,
+    pub branch_name: Option<String>,
+    pub parent_sha: String,
+    pub index_sha: Option<String>,
+    pub untracked_sha: Option<String>,
+    pub when: i64,
+}
+
+/// Worktree row exposed to the UI. Field set mirrors what GK's
+/// `parseWorktreeList` extracts from `git worktree list --porcelain -z`
+/// so the sidebar can render without massaging the data: `branch` is
+/// the short HEAD ref (or the literal `HEAD` for detached worktrees),
+/// `head` is the commit SHA. `is_main` flags the main worktree (the
+/// only one that can be bare and that cannot be removed). `locked` and
+/// `prunable` carry the raw git reasons when present.
+#[derive(Debug, Clone, Serialize)]
+pub struct WorktreeInfo {
+    pub workdir: String,
+    pub branch: String,
+    pub head: Option<String>,
+    pub is_main: bool,
+    pub is_bare: bool,
+    pub locked: Option<String>,
+    pub prunable: Option<String>,
+    pub main_repo_workdir: String,
+}
+
+/// Submodule row exposed to the UI. Combines what GK pulls from
+/// `git submodule status` with the inner-repo open: `head_sha` is what
+/// the parent's HEAD tree pins the submodule to, `index_sha` is what
+/// the parent's index has staged. `ahead` / `behind` compare the
+/// submodule's checked-out commit against the parent-pinned commit
+/// (zero when the submodule is uninitialized or pinned matches HEAD).
+/// `is_initialized` reflects gix's `state.repository_exists &&
+/// state.worktree_checkout`; `is_deleted` flags the case where the
+/// parent still pins a commit but the working tree directory is gone.
+#[derive(Debug, Clone, Serialize)]
+pub struct SubmoduleInfo {
+    pub name: String,
+    pub path: String,
+    pub url: Option<String>,
+    pub head_sha: Option<String>,
+    pub index_sha: Option<String>,
+    pub is_initialized: bool,
+    pub is_deleted: bool,
+    pub ahead: u32,
+    pub behind: u32,
+}
+
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ResetMode {
@@ -296,6 +355,20 @@ pub trait GitBackend: Send + Sync {
     /// [`TagInfo`] for the per-tag schema and [`crate::repo::tags::list_tags`]
     /// for the gix-backed implementation.
     fn list_tags(&self, repo_path: &Path) -> Result<Vec<TagInfo>, BackendError>;
+
+    /// List every stash entry by walking the reflog of `refs/stash`,
+    /// newest-first. Returns an empty Vec when there is no `refs/stash`
+    /// (no stashes ever taken in this repo). See [`StashInfo`].
+    fn list_stashes(&self, repo_path: &Path) -> Result<Vec<StashInfo>, BackendError>;
+
+    /// Enumerate the main worktree plus every linked worktree under
+    /// `.git/worktrees/`. The first row is always the main worktree.
+    /// See [`WorktreeInfo`].
+    fn list_worktrees(&self, repo_path: &Path) -> Result<Vec<WorktreeInfo>, BackendError>;
+
+    /// Enumerate every submodule declared in `.gitmodules`. Returns an
+    /// empty Vec for repos without submodules. See [`SubmoduleInfo`].
+    fn list_submodules(&self, repo_path: &Path) -> Result<Vec<SubmoduleInfo>, BackendError>;
 
     fn create_branch(
         &self,

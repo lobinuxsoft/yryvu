@@ -6,11 +6,13 @@ import {
   getRepoState,
   listBranches,
   listStashes,
+  listSubmodules,
   listTags,
   listWorktrees,
   type BranchInfo,
   type RepoStateInfo,
   type StashInfo,
+  type SubmoduleInfo,
   type TagInfo,
   type WorktreeInfo,
 } from "../../ipc";
@@ -33,6 +35,7 @@ import { LocalBranchRow, RemoteBranchRow } from "./branchRows";
 import { SidebarSection } from "./SidebarSection";
 import { StashRow } from "./stashRows";
 import { StateBanner } from "./StateBanner";
+import { SubmoduleRow } from "./submoduleRows";
 import { TagRow } from "./tagRows";
 import { WorktreeRow } from "./worktreeRows";
 
@@ -98,11 +101,28 @@ export function LeftSidebar() {
     { initialValue: [] },
   );
 
+  // Submodules can shift on init/deinit/update, AND on parent commits
+  // changing the pinned SHA. Both source signals matter.
+  const [submodules] = createResource<SubmoduleInfo[], [string, number, number]>(
+    () =>
+      [repoPath() ?? "", branchesNonce(), workingTreeNonce()] as [
+        string,
+        number,
+        number,
+      ],
+    async ([path]) => {
+      if (!path) return [] as SubmoduleInfo[];
+      return await listSubmodules(path);
+    },
+    { initialValue: [] },
+  );
+
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
   const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
   const tagList = () => tags() ?? [];
   const worktreeList = () => worktrees() ?? [];
   const stashList = () => stashes() ?? [];
+  const submoduleList = () => submodules() ?? [];
   const filteredLocals = () => locals().filter((b) => matches(b.name, filterQuery()));
   const filteredRemotes = () => remotes().filter((b) => matches(b.name, filterQuery()));
   const filteredTags = () => tagList().filter((t) => matches(t.name, filterQuery()));
@@ -119,6 +139,11 @@ export function LeftSidebar() {
         matches(s.message, filterQuery()) ||
         matches(s.branch_name ?? "", filterQuery()),
     );
+  // Submodules filter on name and path — both are user-facing strings.
+  const filteredSubmodules = () =>
+    submoduleList().filter(
+      (s) => matches(s.name, filterQuery()) || matches(s.path, filterQuery()),
+    );
   const isFiltering = () => filterQuery() !== "";
   const totalMatches = () =>
     isFiltering()
@@ -126,7 +151,8 @@ export function LeftSidebar() {
         filteredRemotes().length +
         filteredTags().length +
         filteredWorktrees().length +
-        filteredStashes().length
+        filteredStashes().length +
+        filteredSubmodules().length
       : -1;
 
   const ops = useBranchOps();
@@ -377,6 +403,40 @@ export function LeftSidebar() {
               }
             >
               <For each={filteredTags()}>{(t) => <TagRow tag={t} />}</For>
+            </Show>
+          </Show>
+        </SidebarSection>
+
+        <SidebarSection
+          title="Submodules"
+          icon={<IconBranch />}
+          count={
+            isFiltering()
+              ? filteredSubmodules().length
+              : submoduleList().length
+          }
+        >
+          <Show
+            when={repoPath()}
+            fallback={
+              <p class="sidebar__empty">Open a repo to list submodules</p>
+            }
+          >
+            <Show
+              when={filteredSubmodules().length > 0}
+              fallback={
+                <p class="sidebar__empty">
+                  {isFiltering()
+                    ? "No matches"
+                    : submoduleList().length === 0
+                      ? "No submodules"
+                      : ""}
+                </p>
+              }
+            >
+              <For each={filteredSubmodules()}>
+                {(s) => <SubmoduleRow sub={s} />}
+              </For>
             </Show>
           </Show>
         </SidebarSection>

@@ -482,7 +482,12 @@ export function LeftSidebar() {
               }
             >
               <For each={filteredSubmodules()}>
-                {(s) => <SubmoduleRow sub={s} />}
+                {(s) => (
+                  <SubmoduleRow
+                    sub={s}
+                    onContextMenu={ops.openSubmoduleContextMenu}
+                  />
+                )}
               </For>
             </Show>
           </Show>

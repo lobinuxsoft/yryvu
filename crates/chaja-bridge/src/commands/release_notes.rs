@@ -49,9 +49,8 @@ pub async fn read_changelog(app: AppHandle) -> Result<ChangelogContents, String>
             });
         }
     };
-    let markdown = std::fs::read_to_string(&path).map_err(|e| {
-        format!("read CHANGELOG.md at {}: {}", path.display(), e)
-    })?;
+    let markdown = std::fs::read_to_string(&path)
+        .map_err(|e| format!("read CHANGELOG.md at {}: {}", path.display(), e))?;
     Ok(ChangelogContents {
         present: true,
         markdown,

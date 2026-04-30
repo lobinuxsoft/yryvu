@@ -46,9 +46,7 @@ pub async fn list_known_repos(paths: Vec<String>) -> Result<Vec<KnownRepoInfo>, 
     // started in parallel), it just rendezvous with each completion.
     let handles: Vec<_> = paths
         .into_iter()
-        .map(|p| {
-            tauri::async_runtime::spawn_blocking(move || describe_repo(&PathBuf::from(p)))
-        })
+        .map(|p| tauri::async_runtime::spawn_blocking(move || describe_repo(&PathBuf::from(p))))
         .collect();
 
     let mut results = Vec::with_capacity(handles.len());

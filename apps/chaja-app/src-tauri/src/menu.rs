@@ -75,10 +75,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 .build(app)?,
         )
         .separator()
-        .item(
-            &MenuItemBuilder::with_id("view_repo_management", "Repo Management")
-                .build(app)?,
-        )
+        .item(&MenuItemBuilder::with_id("view_repo_management", "Repo Management").build(app)?)
         .build()?;
 
     let help = SubmenuBuilder::new(app, "Help")
@@ -94,10 +91,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 .enabled(false)
                 .build(app)?,
         )
-        .item(
-            &MenuItemBuilder::with_id("help_release_notes", "Release Notes")
-                .build(app)?,
-        )
+        .item(&MenuItemBuilder::with_id("help_release_notes", "Release Notes").build(app)?)
         .separator()
         .item(&MenuItemBuilder::with_id("help_about", "About Chajá").build(app)?)
         .build()?;

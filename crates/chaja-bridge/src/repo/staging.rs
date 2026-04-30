@@ -105,7 +105,6 @@ pub fn dirty_summary(repo_path: &Path) -> Result<u32, BackendError> {
         // — that activates a content compare per add+delete pair. The
         // dirty-summary surface doesn't care whether a file was
         // "renamed" or "added + deleted", just that something changed.
-
         // Don't recurse into untracked directories. A directory full
         // of new files (e.g. fresh `node_modules`) reports as ONE
         // entry instead of N. The count loses precision, but the

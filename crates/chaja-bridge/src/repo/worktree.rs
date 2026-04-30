@@ -261,22 +261,26 @@ pub fn stash_pop(repo_path: &Path) -> Result<(), BackendError> {
 
 /// Pop a specific entry from the stash queue. Equivalent to `git stash
 /// pop stash@{index}` — applies the stash to the working tree AND
-/// removes it from the queue. The snapshot of the entry's sha is
-/// captured BEFORE the pop so the undo log can rebuild it later.
+/// removes it from the queue.
+///
+/// **Not recorded in the undo log.** Re-stashing safely needs a heavier
+/// index/working-tree snapshot than libgit2's `stash_save2` exposes
+/// (see `undo.rs:22`). Recording an unrecoverable op only confuses the
+/// user — Cmd+Z would surface "Cannot undo, stash pop not supported"
+/// and skip past it to the previous op anyway. Better to leave it out.
 pub fn stash_pop_at(repo_path: &Path, index: usize) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
-    let stash_sha = capture_stash_sha(&mut repo, index)?;
     repo.stash_pop(index, None).map_err(git2_err)?;
-    if let Some(sha) = stash_sha {
-        record_op_best_effort(repo_path, OpKind::StashPop { stash_sha: sha });
-    }
     Ok(())
 }
 
 /// Apply a stash entry to the working tree WITHOUT removing it from
-/// the queue. Equivalent to `git stash apply stash@{index}`. No undo
-/// op recorded — the stash is still in the queue, the user can drop
-/// it explicitly if they want to undo.
+/// the queue. Equivalent to `git stash apply stash@{index}`.
+///
+/// **Not recorded in the undo log.** The stash is still in the queue
+/// — the user can drop it explicitly if they want to undo, and the
+/// working-tree changes the apply produced are reachable through the
+/// regular discard-paths surface.
 pub fn stash_apply(repo_path: &Path, index: usize) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
     repo.stash_apply(index, None).map_err(git2_err)?;
@@ -284,38 +288,17 @@ pub fn stash_apply(repo_path: &Path, index: usize) -> Result<(), BackendError> {
 }
 
 /// Drop a stash entry without applying it. Equivalent to `git stash
-/// drop stash@{index}`. Records the dropped sha so undo can resurrect
-/// the stash from the objects DB (the commit lives until GC, ~90 days
-/// default).
+/// drop stash@{index}`.
+///
+/// **Not recorded in the undo log.** Same reason as `stash_pop_at` —
+/// the inverse op (resurrect a dropped stash from a sha) isn't
+/// supported. The dropped sha still lives in the git objects DB until
+/// GC (~90 days), so a determined user can `git stash apply <sha>`
+/// from a terminal.
 pub fn stash_drop(repo_path: &Path, index: usize) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
-    let stash_sha = capture_stash_sha(&mut repo, index)?;
     repo.stash_drop(index).map_err(git2_err)?;
-    if let Some(sha) = stash_sha {
-        record_op_best_effort(repo_path, OpKind::StashPop { stash_sha: sha });
-    }
     Ok(())
-}
-
-/// Read the sha of `stash@{index}` from the queue without mutating it.
-/// Returns `None` when the index is out of range — the caller treats
-/// that as a "stash already gone" race (e.g. external git terminal
-/// dropped it between the list_stashes call and the menu click).
-fn capture_stash_sha(
-    repo: &mut git2::Repository,
-    index: usize,
-) -> Result<Option<String>, BackendError> {
-    let mut stash_sha: Option<String> = None;
-    repo.stash_foreach(|i, _message, oid| {
-        if i == index {
-            stash_sha = Some(oid.to_string());
-            false
-        } else {
-            true
-        }
-    })
-    .map_err(git2_err)?;
-    Ok(stash_sha)
 }
 
 /// Count the entries in the stash queue. The toolbar's Pop button gates

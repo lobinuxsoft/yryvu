@@ -21,7 +21,7 @@ import { type KnownRepoInfo } from "../../ipc";
 import { pushRecentRepo, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
-import { ensureInitialized, refreshKnownRepos, repos } from "./store";
+import { ensureInitialized, loading, refreshKnownRepos, repos } from "./store";
 
 export function RepoManagementBody() {
   // The resource lives in store.ts, not here — see that module's header
@@ -146,25 +146,28 @@ export function RepoManagementBody() {
       </header>
 
       <Show
-        when={!repos.loading}
+        when={repos().length > 0}
         fallback={
-          <div class="repo-management__empty">Loading repositories…</div>
+          <div class="repo-management__empty">
+            <Show
+              when={loading()}
+              fallback={
+                <>
+                  <h2>No known repositories yet</h2>
+                  <p>
+                    Open a repo from the welcome tab and it'll show up here
+                    for quick switching.
+                  </p>
+                </>
+              }
+            >
+              Loading repositories…
+            </Show>
+          </div>
         }
       >
-        <Show
-          when={(repos() ?? []).length > 0}
-          fallback={
-            <div class="repo-management__empty">
-              <h2>No known repositories yet</h2>
-              <p>
-                Open a repo from the welcome tab and it'll show up here for
-                quick switching.
-              </p>
-            </div>
-          }
-        >
-          <div class="repo-management__list" role="list">
-            <For each={filtered()}>
+        <div class="repo-management__list" role="list" classList={{ "is-loading": loading() }}>
+          <For each={filtered()}>
               {(repo) => (
                 <div
                   class="repo-management__row"
@@ -214,8 +217,7 @@ export function RepoManagementBody() {
                 </div>
               )}
             </For>
-          </div>
-        </Show>
+        </div>
       </Show>
 
       <Show when={selected().size > 0}>

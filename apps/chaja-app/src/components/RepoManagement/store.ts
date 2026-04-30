@@ -2,55 +2,91 @@
 
 /**
  * Module-level cache for the Repo Management list. Lives outside the
- * RepoManagementBody component so the createResource fetch survives
- * tab-switch unmount/remount cycles — without this, the IPC call
- * (list_known_repos walks every recent repo with gix open + status
- * scan) re-runs every time the user comes back to the tab. On a list
- * of 10 repos that's ~500-2000 ms of perceived lag.
+ * RepoManagementBody component so the IPC fetch survives tab-switch
+ * unmount/remount cycles. Two layers of caching:
  *
- * Two lifecycle moments mutate the cache:
- *   - First call to ensureInitialized() (lazy seed from localStorage).
- *   - refreshKnownRepos() — explicit user action (header refresh
- *     button) or an external "I just opened a repo, please update".
+ *   1. **In-memory signal** — survives mount/remount within a session.
+ *   2. **localStorage snapshot** — survives app restart. Stale-while-
+ *      revalidate: render the persisted snapshot immediately so the
+ *      tab body shows data on first paint, then refresh in background
+ *      and replace.
  *
- * The createResource is shared across all consumers, so multiple
- * RepoManagementBody mounts (theoretical — the tab is a singleton) all
- * read the same data without duplicating work.
+ * The "stale" rendering is fine — the data is up-to-date as of the
+ * last session close; the in-flight refresh updates it within ~100-
+ * 500 ms after the tab opens. Compared to "wait for fetch then show",
+ * the perceived load time drops to zero.
+ *
+ * Storage key namespaced under STORAGE_PREFIX to match the rest of
+ * the app's localStorage scheme.
  */
 
-import { createResource, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 
 import { listKnownRepos, type KnownRepoInfo } from "../../ipc";
 import { loadRecentRepos } from "../../state";
 
-const [pathsInternal, setPathsInternal] = createSignal<string[]>([]);
+const SNAPSHOT_KEY = "chaja.knownReposSnapshot";
+
+function loadSnapshot(): KnownRepoInfo[] {
+  const raw = localStorage.getItem(SNAPSHOT_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as KnownRepoInfo[];
+  } catch {
+    return [];
+  }
+}
+
+function saveSnapshot(snapshot: KnownRepoInfo[]): void {
+  try {
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
+  } catch {
+    // localStorage quota exceeded or disabled — ignore. Worst case
+    // the next session loses the stale-render benefit.
+  }
+}
+
+const [repos, setRepos] = createSignal<KnownRepoInfo[]>(loadSnapshot());
+const [loading, setLoading] = createSignal(false);
 let initialized = false;
+let inFlight: Promise<void> | undefined;
 
-export const [repos, { refetch }] = createResource(
-  pathsInternal,
-  async (ps): Promise<KnownRepoInfo[]> => {
-    if (ps.length === 0) return [];
-    return listKnownRepos(ps);
-  },
-);
+export { repos, loading };
 
-/// Lazy seed from localStorage. Idempotent — calling more than once is
-/// a no-op after the first invocation. The component calls this from
-/// its top-level body so the resource starts loading the first time
-/// the Repo Management tab gets selected.
+/// Lazy seed. First call kicks off a background revalidation against
+/// the live recent-repos list. Subsequent calls within the same
+/// session are no-ops (the in-flight + cache cover them).
 export function ensureInitialized(): void {
   if (initialized) return;
   initialized = true;
-  setPathsInternal(loadRecentRepos().map((r) => r.path));
+  void refreshKnownRepos();
 }
 
-/// Refresh the list. Re-reads localStorage (a repo may have been added
-/// since last load) and re-fires the backend call so dirty status +
-/// branch updates show up after work in another tab.
-export function refreshKnownRepos(): void {
-  setPathsInternal(loadRecentRepos().map((r) => r.path));
-  // If the path list didn't change, the resource won't re-fire because
-  // its source signal didn't update. Force-refetch covers the "same
-  // repos but their branch/dirty changed" case.
-  void refetch();
+/// Force a re-scan. Re-reads recent-repo paths from localStorage (a
+/// repo may have been added) and dispatches the backend call. Returns
+/// the in-flight promise — concurrent calls deduplicate so a UI burst
+/// (open repo + refresh button click + …) only fires once.
+export function refreshKnownRepos(): Promise<void> {
+  if (inFlight) return inFlight;
+  setLoading(true);
+  const paths = loadRecentRepos().map((r) => r.path);
+  inFlight = (async () => {
+    try {
+      const fresh = paths.length === 0 ? [] : await listKnownRepos(paths);
+      setRepos(fresh);
+      saveSnapshot(fresh);
+    } catch {
+      // Backend errored — keep the stale snapshot so the user still
+      // sees something. Per-row errors come back inside KnownRepoInfo
+      // so a wholesale catch only fires on IPC-level failures (e.g.
+      // Tauri runtime not ready), which the component-level fallback
+      // can't differentiate from "no data" anyway.
+    } finally {
+      setLoading(false);
+      inFlight = undefined;
+    }
+  })();
+  return inFlight;
 }

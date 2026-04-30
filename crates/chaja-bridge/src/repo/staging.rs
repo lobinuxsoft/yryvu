@@ -100,11 +100,31 @@ pub struct WorkingTreeStatus {
 pub fn dirty_summary(repo_path: &Path) -> Result<u32, BackendError> {
     let repo = open_git2(repo_path)?;
     let mut opts = git2::StatusOptions::new();
-    opts.include_untracked(true).recurse_untracked_dirs(true);
-    // Deliberately NOT calling .renames_head_to_index / .renames_index_to_workdir
-    // — that activates a content compare per add+delete pair. The
-    // dirty-summary surface doesn't care whether a file was "renamed"
-    // or "added + deleted", just that something changed.
+    opts.include_untracked(true)
+        // Deliberately NOT calling .renames_head_to_index / .renames_index_to_workdir
+        // — that activates a content compare per add+delete pair. The
+        // dirty-summary surface doesn't care whether a file was
+        // "renamed" or "added + deleted", just that something changed.
+
+        // Don't recurse into untracked directories. A directory full
+        // of new files (e.g. fresh `node_modules`) reports as ONE
+        // entry instead of N. The count loses precision, but the
+        // boolean "dirty / clean" stays correct, and the walk skips a
+        // huge amount of stat() per file — biggest win on large
+        // generated dirs.
+        .recurse_untracked_dirs(false)
+        // Skip the index refresh that git2 normally runs at the start
+        // of statuses(). Refresh updates mtime/size cache entries when
+        // they're stale — without it, racy mtimes can occasionally
+        // false-positive on freshly-touched-but-unmodified files.
+        // Acceptable trade-off for a dirty SUMMARY (the user can hit
+        // refresh; the Commit Panel uses working_tree_status which
+        // still refreshes).
+        .no_refresh(true)
+        // Don't write index updates back to disk after the status read.
+        // Prevents a small disk write per repo on every Repo Management
+        // load.
+        .update_index(false);
 
     let statuses = repo.statuses(Some(&mut opts)).map_err(git2_err)?;
     let mut count: u32 = 0;

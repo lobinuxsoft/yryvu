@@ -200,17 +200,33 @@ export function AppShell() {
       </div>
 
       <div class="shell__main">
-        <Show when={repoPath()} fallback={<ColdStart />}>
-          <Show
-            when={mainView() === "graph"}
-            fallback={<FileDiffTab />}
-          >
-            <div class="main">
-              <GraphColumnHeaders />
-              <div class="main__graph-host">
-                <CommitGraph repoPath={repoPath()!} />
+        <Show when={currentTabType() === "RELEASE_NOTES"}>
+          <TabPlaceholder
+            title="Release Notes"
+            note="Content lands in #208."
+          />
+        </Show>
+        <Show when={currentTabType() === "REPO_MANAGEMENT"}>
+          <TabPlaceholder
+            title="Repo Management"
+            note="Repo list + bulk actions land in #209."
+          />
+        </Show>
+        <Show
+          when={
+            currentTabType() !== "RELEASE_NOTES" &&
+            currentTabType() !== "REPO_MANAGEMENT"
+          }
+        >
+          <Show when={repoPath()} fallback={<ColdStart />}>
+            <Show when={mainView() === "graph"} fallback={<FileDiffTab />}>
+              <div class="main">
+                <GraphColumnHeaders />
+                <div class="main__graph-host">
+                  <CommitGraph repoPath={repoPath()!} />
+                </div>
               </div>
-            </div>
+            </Show>
           </Show>
         </Show>
       </div>
@@ -236,6 +252,23 @@ export function AppShell() {
       <ToastContainer />
     </div>
     </BranchOpsProvider>
+  );
+}
+
+/// Placeholder body for tab types whose viewport hasn't shipped yet. The
+/// pill renders, the strip works, the user can switch — but the body
+/// shows a "coming in #XXX" note instead of crashing or rendering blank.
+/// Removed once the corresponding sub-PR (#208 / #209) lands its real
+/// body component.
+function TabPlaceholder(props: { title: string; note: string }) {
+  return (
+    <section
+      class="cold-start"
+      style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;"
+    >
+      <h2 class="cold-start__title">{props.title}</h2>
+      <p class="cold-start__recent-item-path">{props.note}</p>
+    </section>
   );
 }
 

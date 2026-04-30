@@ -210,7 +210,13 @@ export function AppShell() {
     >
       <div class="shell__tabs tabs">
         <div class="tabs__leading">
-          <button class="tabs__leading-btn" type="button" title="Open repository" onClick={openRepoPicker}>
+          <button
+            class="tabs__leading-btn"
+            type="button"
+            title="Repo Management"
+            aria-label="Repo Management"
+            onClick={() => void openRepoManagementTab()}
+          >
             <IconOpenFolder />
           </button>
           <button class="tabs__leading-btn" type="button" title="Favorites" disabled>

@@ -7,8 +7,11 @@
  * + multi-select + bulk "Open in tabs" action.
  *
  * Out of scope (audit doc 09): workspaces (proprietary), repo grouping,
- * color tagging. Open / Clone / Init buttons depend on #100 — render
- * disabled with a tooltip until that lands.
+ * color tagging. Clone / Init buttons depend on #100 — render disabled
+ * with a tooltip until that lands. "Open" works today: it calls the
+ * Tauri directory picker (the same one the legacy folder button used
+ * to call from the tab leading area before #209 reassigned it to
+ * openRepoManagementTab).
  */
 
 import {
@@ -19,9 +22,10 @@ import {
   onMount,
   Show,
 } from "solid-js";
+import { open } from "@tauri-apps/plugin-dialog";
 
 import { listKnownRepos, type KnownRepoInfo } from "../../ipc";
-import { loadRecentRepos } from "../../state";
+import { loadRecentRepos, pushRecentRepo, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
 
@@ -88,6 +92,24 @@ export function RepoManagementBody() {
     clearSelection();
   };
 
+  const onOpenClick = async () => {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: "Open a Git repository",
+    });
+    if (typeof selected === "string") {
+      pushRecentRepo(selected);
+      setRepoPath(selected);
+      void openRepoInAnotherTab(selected);
+      // Refresh the list so the just-opened repo lands at the top of
+      // the recents next time the user comes back to this tab. The
+      // dispatcher already SWITCH_TOs the new REPO tab so the user
+      // sees their repo immediately.
+      setPaths(loadRecentRepos().map((r) => r.path));
+    }
+  };
+
   const breadcrumbOf = (path: string): string => {
     const segs = path.split("/").filter(Boolean);
     if (segs.length <= 1) return "/";
@@ -101,8 +123,8 @@ export function RepoManagementBody() {
           <button
             class="repo-management__btn"
             type="button"
-            disabled
-            title="Wire after #100"
+            onClick={onOpenClick}
+            title="Open a local repository"
           >
             <NfIcon code="f07c" /> Open
           </button>

@@ -458,6 +458,10 @@ pub trait GitBackend: Send + Sync {
 
     fn worktree_remove(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError>;
 
+    fn submodule_init(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    fn submodule_update(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
     fn merge_branch(
         &self,
         repo_path: &Path,

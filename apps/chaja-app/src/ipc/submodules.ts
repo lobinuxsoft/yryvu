@@ -29,3 +29,15 @@ export interface SubmoduleInfo {
 export function listSubmodules(repoPath: string): Promise<SubmoduleInfo[]> {
   return invoke<SubmoduleInfo[]>("list_submodules", { repoPath });
 }
+
+/// Initialize a submodule + clone its working tree to the parent-pinned
+/// commit. Equivalent to `git submodule update --init <name>`.
+export function submoduleInit(repoPath: string, name: string): Promise<void> {
+  return invoke<void>("submodule_init", { repoPath, name });
+}
+
+/// Fetch + checkout the parent-pinned commit in an already-initialized
+/// submodule. Equivalent to `git submodule update <name>`.
+export function submoduleUpdate(repoPath: string, name: string): Promise<void> {
+  return invoke<void>("submodule_update", { repoPath, name });
+}

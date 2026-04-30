@@ -41,6 +41,8 @@ pub fn run() {
             chaja_bridge::commands::worktree_unlock,
             chaja_bridge::commands::worktree_remove,
             chaja_bridge::commands::list_submodules,
+            chaja_bridge::commands::submodule_init,
+            chaja_bridge::commands::submodule_update,
             chaja_bridge::commands::merge_branch,
             chaja_bridge::commands::delete_remote_branch,
             chaja_bridge::commands::abort_merge,

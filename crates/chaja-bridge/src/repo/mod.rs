@@ -88,6 +88,14 @@ impl GitBackend for GixBackend {
         submodules::list_submodules(repo_path)
     }
 
+    fn submodule_init(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        submodules::submodule_init(repo_path, name)
+    }
+
+    fn submodule_update(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        submodules::submodule_update(repo_path, name)
+    }
+
     fn create_branch(
         &self,
         repo_path: &Path,

@@ -20,7 +20,7 @@ use anyhow::anyhow;
 use crate::backend::{BackendError, SubmoduleInfo};
 
 use super::branches::ahead_behind;
-use super::common::open_repo;
+use super::common::{git2_err, open_git2, open_repo};
 
 pub fn list_submodules(repo_path: &Path) -> Result<Vec<SubmoduleInfo>, BackendError> {
     let repo = open_repo(repo_path)?;
@@ -92,4 +92,42 @@ fn submodule_ahead_behind(
         return Some((0, 0));
     }
     ahead_behind(&inner, inner_head, pinned_oid).ok()
+}
+
+/// Initialize a submodule and clone its working tree if missing.
+/// Wraps `git2::Submodule::init(false)` (registers `.gitmodules` →
+/// `.git/config`) followed by `update(init: true)` which clones the
+/// inner repo + checks out the parent-pinned commit.
+///
+/// Already-initialized submodules see this as a no-op on the registry
+/// step but still get a fresh clone if the inner dir is missing.
+///
+/// Backend choice: git2 — gix's submodule mutation surface is still
+/// experimental. The mutation entry points (init / update / reset)
+/// all live on git2 until gix catches up, matching the worktree
+/// pattern we settled on in #225.
+pub fn submodule_init(repo_path: &Path, name: &str) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let mut sub = repo
+        .find_submodule(name)
+        .map_err(|e| BackendError::Git(anyhow!("find submodule '{name}': {e}")))?;
+    sub.init(false).map_err(git2_err)?;
+    let mut opts = git2::SubmoduleUpdateOptions::new();
+    sub.update(true, Some(&mut opts)).map_err(git2_err)?;
+    Ok(())
+}
+
+/// Fetch + checkout the parent-pinned SHA in the inner submodule
+/// working tree. Equivalent to `git submodule update <name>`. Assumes
+/// the submodule is already initialized — for a fresh clone use
+/// `submodule_init` instead. Errors if the submodule was never
+/// initialized.
+pub fn submodule_update(repo_path: &Path, name: &str) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let mut sub = repo
+        .find_submodule(name)
+        .map_err(|e| BackendError::Git(anyhow!("find submodule '{name}': {e}")))?;
+    let mut opts = git2::SubmoduleUpdateOptions::new();
+    sub.update(false, Some(&mut opts)).map_err(git2_err)?;
+    Ok(())
 }

@@ -15,3 +15,25 @@ pub async fn list_submodules(repo_path: String) -> Result<Vec<SubmoduleInfo>, St
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn submodule_init(repo_path: String, name: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .submodule_init(&PathBuf::from(&repo_path), &name)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn submodule_update(repo_path: String, name: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .submodule_update(&PathBuf::from(&repo_path), &name)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

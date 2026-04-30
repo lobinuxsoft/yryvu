@@ -21,7 +21,7 @@ pub(super) fn short_sha(oid: &git2::Oid) -> String {
     oid.to_string().chars().take(7).collect()
 }
 
-pub(super) fn open_repo(path: &Path) -> Result<gix::Repository, BackendError> {
+pub(crate) fn open_repo(path: &Path) -> Result<gix::Repository, BackendError> {
     gix::open(path).map_err(|e| BackendError::Open {
         path: path.display().to_string(),
         source: anyhow::Error::new(e),

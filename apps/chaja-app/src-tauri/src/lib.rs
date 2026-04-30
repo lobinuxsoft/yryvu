@@ -68,6 +68,7 @@ pub fn run() {
             chaja_bridge::commands::set_preferences,
             chaja_bridge::commands::reset_preferences,
             chaja_bridge::commands::read_changelog,
+            chaja_bridge::commands::list_known_repos,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

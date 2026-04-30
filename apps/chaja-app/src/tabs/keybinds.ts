@@ -22,8 +22,6 @@
  */
 
 export type TabKeybind =
-  | { op: "openNewTab" }
-  | { op: "closeSelectedTab" }
   | { op: "selectNextTab" }
   | { op: "selectPreviousTab" }
   | { op: "selectTabIndex"; index: number }
@@ -34,6 +32,12 @@ export type TabKeybind =
 ///
 /// Accepts a plain shape rather than `KeyboardEvent` so tests can pass
 /// literal objects without faking a DOM event.
+///
+/// Cmd/Ctrl+T (openNewTab) and Cmd/Ctrl+W (closeSelectedTab) are NOT in
+/// this table — they're routed through the native Tauri menu in
+/// `apps/chaja-app/src-tauri/src/menu.rs`. WebKit2GTK reserves both at
+/// the WebView level so a `keydown` listener never sees them; menu
+/// accelerators capture before GTK gets the chance.
 export function matchTabKeybind(input: {
   key: string;
   metaKey: boolean;
@@ -50,11 +54,6 @@ export function matchTabKeybind(input: {
   if (input.shiftKey && (input.key === "T" || input.key === "t")) {
     return { op: "reopenMostRecentlyClosedTab" };
   }
-
-  const k = input.key.toLowerCase();
-
-  if (k === "t" && !input.shiftKey) return { op: "openNewTab" };
-  if (k === "w") return { op: "closeSelectedTab" };
 
   // Cmd+Tab / Cmd+Shift+Tab → next / previous. Ctrl+Tab is the same
   // gesture cross-platform (browser convention). Note: macOS reserves
@@ -83,14 +82,6 @@ import * as ops from "./ops";
 
 export function runTabKeybind(intent: TabKeybind): Promise<void> {
   switch (intent.op) {
-    case "openNewTab":
-      return ops.openNewTab();
-    case "closeSelectedTab":
-      // The audit doc 05 cascade (file-history → file-view → tab) lives
-      // in `handleCloseTabShortcut`. v1 collapses to closeSelectedTab,
-      // but route through the cascade saga so future widgets slot in
-      // without re-wiring this handler.
-      return ops.handleCloseTabShortcut();
     case "selectNextTab":
       return ops.selectNextTab();
     case "selectPreviousTab":

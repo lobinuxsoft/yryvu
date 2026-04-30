@@ -33,7 +33,11 @@ import {
   theme,
 } from "../../state";
 import { matchTabKeybind, runTabKeybind } from "../../tabs/keybinds";
-import { openNewTab, openRepoInAnotherTab } from "../../tabs/ops";
+import {
+  handleCloseTabShortcut,
+  openNewTab,
+  openRepoInAnotherTab,
+} from "../../tabs/ops";
 import {
   currentTab,
   currentTabType,
@@ -93,6 +97,13 @@ export function AppShell() {
     unlisteners.push(await listen("menu:toggle-left-panel", () => setShowLeftPanel((v) => !v)));
     unlisteners.push(await listen("menu:toggle-right-panel", () => setShowRightPanel((v) => !v)));
     unlisteners.push(await listen("menu:toggle-terminal", () => setShowTerminalPanel((v) => !v)));
+    // Tab keybinds that GTK/WebKit2GTK reserves at the WebView level
+    // (Cmd/Ctrl+T, Cmd/Ctrl+W) come through the native Tauri menu —
+    // accelerators on menu items capture before GTK gets to it. The
+    // remaining tab keybinds (Tab/Shift+Tab/1-9/Shift+T) live in the
+    // window keydown listener since GTK doesn't reserve those.
+    unlisteners.push(await listen("menu:new-tab", () => void openNewTab()));
+    unlisteners.push(await listen("menu:close-tab", () => void handleCloseTabShortcut()));
 
     // Global Undo / Redo keyboard shortcuts (issue #187, sub-PR 3 of
     // #130). Skip when focus is inside an editable element so the user

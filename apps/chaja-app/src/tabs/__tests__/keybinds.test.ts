@@ -25,23 +25,22 @@ describe("matchTabKeybind — modifier required", () => {
   });
 });
 
-describe("matchTabKeybind — 6 default mappings", () => {
-  it("Ctrl+T → openNewTab", () => {
-    expect(matchTabKeybind(key("t", { ctrl: true }))).toEqual({
-      op: "openNewTab",
-    });
+describe("matchTabKeybind — 4 window-keydown mappings", () => {
+  // Ctrl+T (openNewTab) and Ctrl+W (closeSelectedTab) live in the native
+  // Tauri menu (src-tauri/src/menu.rs) — WebKit2GTK reserves both at the
+  // WebView level so the window keydown listener never sees them. Menu
+  // accelerators capture before GTK gets the chance.
+
+  it("Ctrl+T → null (handled by Tauri menu)", () => {
+    expect(matchTabKeybind(key("t", { ctrl: true }))).toBeNull();
   });
 
-  it("Cmd+T → openNewTab (macOS)", () => {
-    expect(matchTabKeybind(key("t", { meta: true }))).toEqual({
-      op: "openNewTab",
-    });
+  it("Cmd+T → null (handled by Tauri menu)", () => {
+    expect(matchTabKeybind(key("t", { meta: true }))).toBeNull();
   });
 
-  it("Ctrl+W → closeSelectedTab", () => {
-    expect(matchTabKeybind(key("w", { ctrl: true }))).toEqual({
-      op: "closeSelectedTab",
-    });
+  it("Ctrl+W → null (handled by Tauri menu)", () => {
+    expect(matchTabKeybind(key("w", { ctrl: true }))).toBeNull();
   });
 
   it("Ctrl+Tab → selectNextTab", () => {
@@ -100,13 +99,5 @@ describe("matchTabKeybind — unrelated keys", () => {
 
   it("Ctrl+Enter returns null", () => {
     expect(matchTabKeybind(key("Enter", { ctrl: true }))).toBeNull();
-  });
-});
-
-describe("matchTabKeybind — both modifiers don't double-fire", () => {
-  it("Cmd+Ctrl+T still matches openNewTab once (mod = either)", () => {
-    expect(matchTabKeybind(key("t", { ctrl: true, meta: true }))).toEqual({
-      op: "openNewTab",
-    });
   });
 });

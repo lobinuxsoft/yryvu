@@ -34,6 +34,14 @@ export function createTag(
 }
 
 /**
+ * Delete a local tag (`refs/tags/<name>`). Doesn't touch any remote;
+ * use the remote-tag IPCs for that.
+ */
+export function deleteTag(repoPath: string, name: string): Promise<void> {
+  return invoke<void>("delete_tag", { repoPath, name });
+}
+
+/**
  * List every tag (lightweight + annotated) under `refs/tags/` for the
  * sidebar Tags section. Sorted alphabetically by short name.
  */

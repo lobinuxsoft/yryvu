@@ -92,6 +92,10 @@ pub trait GitBackend: Send + Sync {
         message: Option<&str>,
     ) -> Result<(), BackendError>;
 
+    /// Delete a local tag (`refs/tags/<name>`). Doesn't touch remotes —
+    /// see backend impl notes for the remote-side counterpart.
+    fn delete_tag(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
     /// Reset the current branch tip to the given commit. `Hard` is destructive
     /// — callers MUST confirm with the user before invoking it.
     fn reset_to_commit(

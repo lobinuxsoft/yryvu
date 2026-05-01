@@ -184,6 +184,10 @@ impl GitBackend for GixBackend {
         tags::create_tag(repo_path, name, sha, message)
     }
 
+    fn delete_tag(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        tags::delete_tag(repo_path, name)
+    }
+
     fn reset_to_commit(
         &self,
         repo_path: &Path,

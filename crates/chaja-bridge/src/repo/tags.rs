@@ -129,3 +129,21 @@ pub fn create_tag(
 
     Ok(())
 }
+
+/// Delete a local tag — drops `refs/tags/<name>` from the repo. Errors
+/// `BranchNotFound` (reused for tags) when the tag doesn't exist; the
+/// frontend is expected to filter that case before calling, but the
+/// typed error means a stale UI surfaces "tag not found" instead of an
+/// opaque libgit2 string.
+///
+/// Doesn't touch any remote — the tag may still exist on `origin` (or
+/// any other remote). Use [`delete_tag_remote`] for the remote-side
+/// counterpart.
+pub fn delete_tag(repo_path: &Path, name: &str) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    repo.tag_delete(name)
+        .map_err(|_| BackendError::BranchNotFound {
+            name: format!("tag '{name}'"),
+        })?;
+    Ok(())
+}

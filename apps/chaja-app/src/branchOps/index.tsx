@@ -117,6 +117,9 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openSetUpstreamDialog: openers.openSetUpstreamDialog,
     openDeleteTagDialog: openers.openDeleteTagDialog,
     openAnnotateTagDialog: openers.openAnnotateTagDialog,
+    openAddRemoteDialog: openers.openAddRemoteDialog,
+    openEditRemoteDialog: openers.openEditRemoteDialog,
+    openRemoveRemoteDialog: openers.openRemoveRemoteDialog,
     closeDialog: state.closeDialog,
 
     // context menus (bound to local menuDeps)
@@ -158,6 +161,10 @@ export function createBranchOps(deps: BranchOpsDeps) {
     pushTagTo: handlers.pushTagTo,
     doAbortMerge: handlers.doAbortMerge,
     refreshRemote: handlers.refreshRemote,
+    fetchRemote: handlers.fetchRemote,
+    submitAddRemote: handlers.submitAddRemote,
+    submitEditRemote: handlers.submitEditRemote,
+    submitRemoveRemote: handlers.submitRemoveRemote,
   };
 }
 

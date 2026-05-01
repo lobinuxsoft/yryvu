@@ -4,6 +4,7 @@ import { createSignal, Show, type JSX } from "solid-js";
 import { notify } from "../../../Notifications";
 import { ConnectButton } from "./ConnectButton";
 import { DisconnectButton } from "./DisconnectButton";
+import { PatEntryDialog } from "./PatEntryDialog";
 import { SelfHostedConfigurationDialog } from "./SelfHostedConfigurationDialog";
 import { StatusPill } from "./StatusPill";
 import { UserInfo } from "./UserInfo";
@@ -39,6 +40,22 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
   const state = () => integrationState(props.provider.type)();
   const hostname = () => selfHostedHostname(props.provider.type)();
   const [dialogOpen, setDialogOpen] = createSignal(false);
+  const [patDialogOpen, setPatDialogOpen] = createSignal(false);
+
+  const tokenLabel = () =>
+    props.provider.tokenIsAppPassword ? "App Password" : "Personal Access Token";
+  const acceptsPat = () => props.provider.cohort !== "skip";
+  const patBlocked = () => props.provider.isSelfHosted && !hostname();
+
+  const handleUsePat = () => {
+    if (!acceptsPat() || patBlocked()) return;
+    setPatDialogOpen(true);
+  };
+
+  const onPatSubmit = () => {
+    setPatDialogOpen(false);
+    startMockedConnect();
+  };
 
   const startMockedConnect = () => {
     setIntegrationState(props.provider.type, { tag: "connecting" });
@@ -111,7 +128,7 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
                 </Show>
               </Show>
               <span class="integrations-form__sep">•</span>
-              {props.provider.authType === "OAUTH" ? "OAuth" : "Personal Access Token"}
+              {props.provider.authType === "OAUTH" ? "OAuth" : tokenLabel()}
             </span>
           </div>
         </div>
@@ -128,6 +145,22 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
             <DisconnectButton state={state()} onDisconnect={handleDisconnect} />
           </div>
         </div>
+
+        <Show when={acceptsPat() && state().tag === "disconnected"}>
+          <button
+            class="integrations-form__pat-link"
+            type="button"
+            disabled={patBlocked()}
+            title={
+              patBlocked()
+                ? "Configure the instance URL first"
+                : undefined
+            }
+            onClick={handleUsePat}
+          >
+            Use {props.provider.tokenIsAppPassword ? "an" : "a"} {tokenLabel()} instead
+          </button>
+        </Show>
 
         <p class="integrations-form__hint">
           {props.provider.cohort === "skip"
@@ -148,6 +181,15 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
           provider={props.provider}
           onClose={() => setDialogOpen(false)}
           onSubmit={onDialogSubmit}
+        />
+      </Show>
+
+      <Show when={acceptsPat()}>
+        <PatEntryDialog
+          open={patDialogOpen()}
+          provider={props.provider}
+          onClose={() => setPatDialogOpen(false)}
+          onSubmit={onPatSubmit}
         />
       </Show>
     </>

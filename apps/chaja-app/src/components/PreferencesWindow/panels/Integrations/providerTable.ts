@@ -68,6 +68,32 @@ export interface ProviderInfo {
   cohort: "v1" | "v2" | "skip";
   /** PR/MR character (`"#"` GitHub-style, `"!"` GitLab MRs). */
   prCharacter: "#" | "!" | null;
+  /**
+   * URL of the provider's "create a Personal Access Token" page,
+   * deep-linked from the PAT entry dialog. For `.com` providers this is
+   * an absolute URL; for self-hosted variants it's a relative path that
+   * gets concatenated to the user-supplied hostname.
+   *
+   * **chajá deviation**: GK leaves this `null` for `.com` providers
+   * (`bundle:166381`+) — the user is expected to know the path. chajá
+   * fills these in with public, well-known URLs for a less friction-y
+   * UX. Where GK has the path verbatim (self-hosted), chajá mirrors it
+   * 1:1.
+   */
+  tokenGenPath: string | null;
+  /**
+   * Querystring appended to `tokenGenPath` to pre-select the right
+   * scopes. Verbatim from `bundle:166446` (GitHub Enterprise) where
+   * applicable. `null` when the provider's PAT page doesn't accept
+   * URL-driven scope selection (Atlassian, Bitbucket, Azure).
+   */
+  tokenGenParams: string | null;
+  /**
+   * Bitbucket calls Personal Access Tokens "App Passwords"
+   * (`PATsAreCalledAppPasswords` flag, `bundle:166682`). Drives the
+   * relabeling in the PAT entry dialog and the Connect form copy.
+   */
+  tokenIsAppPassword: boolean;
 }
 
 /**
@@ -89,6 +115,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#181717",
     cohort: "v1",
     prCharacter: "#",
+    tokenGenPath: "https://github.com/settings/tokens/new",
+    tokenGenParams: "scopes=repo,admin:org,admin:public_key,workflow&description=chaja",
+    tokenIsAppPassword: false,
   },
   {
     type: "githubEnterprise",
@@ -103,6 +132,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#2b3137",
     cohort: "v2",
     prCharacter: "#",
+    tokenGenPath: "/settings/tokens/new",
+    tokenGenParams: "scopes=repo,admin:org,admin:public_key,workflow&description=chaja",
+    tokenIsAppPassword: false,
   },
   {
     type: "gitlab",
@@ -117,6 +149,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#fc6d26",
     cohort: "v1",
     prCharacter: "!",
+    tokenGenPath: "https://gitlab.com/-/user_settings/personal_access_tokens",
+    tokenGenParams: null,
+    tokenIsAppPassword: false,
   },
   {
     type: "gitlabSelfHosted",
@@ -131,6 +166,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#e24329",
     cohort: "v2",
     prCharacter: "!",
+    tokenGenPath: "/-/user_settings/personal_access_tokens",
+    tokenGenParams: null,
+    tokenIsAppPassword: false,
   },
   {
     type: "bitbucket",
@@ -145,6 +183,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#0052cc",
     cohort: "v1",
     prCharacter: "#",
+    tokenGenPath: "https://bitbucket.org/account/settings/app-passwords/new",
+    tokenGenParams: null,
+    tokenIsAppPassword: true,
   },
   {
     type: "bitbucketServer",
@@ -159,6 +200,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#172b4d",
     cohort: "v2",
     prCharacter: "#",
+    tokenGenPath: "/account",
+    tokenGenParams: null,
+    tokenIsAppPassword: true,
   },
   {
     type: "azureDevops",
@@ -173,6 +217,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#0078d4",
     cohort: "v1",
     prCharacter: "#",
+    tokenGenPath: "https://dev.azure.com/_usersSettings/tokens",
+    tokenGenParams: null,
+    tokenIsAppPassword: false,
   },
   {
     type: "jiraCloud",
@@ -187,6 +234,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#0052cc",
     cohort: "v1",
     prCharacter: null,
+    tokenGenPath: "https://id.atlassian.com/manage-profile/security/api-tokens",
+    tokenGenParams: null,
+    tokenIsAppPassword: false,
   },
   {
     type: "jiraServer",
@@ -201,6 +251,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#172b4d",
     cohort: "v2",
     prCharacter: null,
+    tokenGenPath: "/plugins/servlet/access-tokens/add",
+    tokenGenParams: null,
+    tokenIsAppPassword: false,
   },
   {
     type: "trello",
@@ -215,6 +268,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     colorAccent: "#0079bf",
     cohort: "skip",
     prCharacter: null,
+    tokenGenPath: null,
+    tokenGenParams: null,
+    tokenIsAppPassword: false,
   },
 ];
 

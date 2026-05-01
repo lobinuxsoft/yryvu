@@ -38,6 +38,10 @@ pub enum BackendError {
     MergeConflict { paths: Vec<String> },
     #[error("remote '{name}' not found")]
     RemoteNotFound { name: String },
+    #[error("remote '{name}' already exists")]
+    RemoteExists { name: String },
+    #[error("invalid remote name: '{name}'")]
+    InvalidRemoteName { name: String },
     #[error("push failed: {0}")]
     PushFailed(String),
     #[error("force-with-lease aborted: remote {ref_name} moved since the last fetch")]

@@ -219,6 +219,23 @@ impl GitBackend for GixBackend {
         remote::list_remotes(repo_path)
     }
 
+    fn add_remote(&self, repo_path: &Path, name: &str, url: &str) -> Result<(), BackendError> {
+        remote::add_remote(repo_path, name, url)
+    }
+
+    fn remove_remote(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        remote::remove_remote(repo_path, name)
+    }
+
+    fn set_remote_url(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        url: &str,
+    ) -> Result<(), BackendError> {
+        remote::set_remote_url(repo_path, name, url)
+    }
+
     fn reset_to_commit(
         &self,
         repo_path: &Path,

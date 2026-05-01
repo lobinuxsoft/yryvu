@@ -39,6 +39,41 @@ export function listRemotes(repoPath: string): Promise<string[]> {
 }
 
 /**
+ * Register a new remote pointing at `url`. Powers the `Add remote…`
+ * action on the REMOTE-header context menu (#227). Backend validates
+ * the name shape and rejects duplicates with typed errors.
+ */
+export function addRemote(
+  repoPath: string,
+  name: string,
+  url: string,
+): Promise<void> {
+  return invoke<void>("add_remote", { repoPath, name, url });
+}
+
+/**
+ * Remove a configured remote. Drops the config entry AND the local
+ * `refs/remotes/<name>/*` tracking refs in one call so the sidebar
+ * reflects the change without a follow-up fetch cycle.
+ */
+export function removeRemote(repoPath: string, name: string): Promise<void> {
+  return invoke<void>("remove_remote", { repoPath, name });
+}
+
+/**
+ * Update the fetch URL of an existing remote. Push URL is left
+ * untouched — git falls back to the fetch URL when no push URL is set,
+ * which keeps single-URL repos correct after the edit.
+ */
+export function setRemoteUrl(
+  repoPath: string,
+  name: string,
+  url: string,
+): Promise<void> {
+  return invoke<void>("set_remote_url", { repoPath, name, url });
+}
+
+/**
  * Push customisation surface. Mirrors the backend `PushOptions` struct.
  * Bare `--force` is intentionally absent — chajá refuses to expose it
  * from the UI; use {@link push} with `forceWithLease` instead.

@@ -126,6 +126,17 @@ pub trait GitBackend: Send + Sync {
     /// all remotes` and `Push to remote` items branch on the count.
     fn list_remotes(&self, repo_path: &Path) -> Result<Vec<String>, BackendError>;
 
+    /// Register a new remote pointing at `url`. Powers the
+    /// `Add remote…` action on the REMOTE-header context menu (#227).
+    fn add_remote(&self, repo_path: &Path, name: &str, url: &str) -> Result<(), BackendError>;
+
+    /// Remove a configured remote (entry + local tracking refs).
+    fn remove_remote(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Update the fetch URL of an existing remote.
+    fn set_remote_url(&self, repo_path: &Path, name: &str, url: &str)
+        -> Result<(), BackendError>;
+
     /// Reset the current branch tip to the given commit. `Hard` is destructive
     /// — callers MUST confirm with the user before invoking it.
     fn reset_to_commit(

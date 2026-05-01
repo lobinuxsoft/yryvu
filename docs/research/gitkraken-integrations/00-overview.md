@@ -98,6 +98,22 @@ hosting services. GitHub Issues + Jira Cloud as issue trackers.
 Data Center (the on-prem variants). Adds custom-hostname plumbing.
 PAT-only auth — simpler than v1's OAuth.
 
+### Auth modes — chajá v1 decision
+
+GK supports 3 enums (`OAUTH` / `PAT` / `USERNAME_AND_PASSWORD`).
+chajá ships **2**:
+
+- **Primary**: OAuth via PKCE, direct to each provider (chajá registers
+  its own OAuth apps; no GK auth proxy — see `03-oauth-flow.md`).
+- **Fallback**: PAT — universal across every provider chajá supports.
+- **Dropped**: `USERNAME_AND_PASSWORD`. Only Jira Server / Data Center
+  on-prem still accepts it, and PAT is the upstream-recommended
+  replacement. SSH is not an API auth mode (transport-only) and stays
+  on the existing `build_credentials_callbacks` path for git ops.
+
+See `02-providers-table.md` "Auth modes — provider reality vs GK enum
+vs chajá v1" for the full per-provider matrix.
+
 **Skip outright (proprietary, see `09-out-of-scope-proprietary.md`):**
 
 - `google` and `sso` integration entries (GK account login, not

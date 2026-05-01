@@ -4,6 +4,15 @@ PAT entry is the universal fallback. Even providers whose primary
 `authType` is `OAUTH` accept PAT input via the same dialog
 machinery (`handleManualIntegrationTokenInput` at `bundle:146636`).
 
+> **chajá v1 decision (cross-cuts every provider)**: OAuth primary
+> + PAT fallback. **Drop `USERNAME_AND_PASSWORD` entirely** — only
+> Jira Server / Data Center on-prem still accepts it, and PAT is the
+> upstream-recommended replacement. The `04-pat-fallback.md` flow
+> below becomes the universal fallback for **every** provider chajá
+> ships, not just the ones GK marks `authType: "PAT"`. See
+> `02-providers-table.md` "Auth modes — provider reality vs GK enum
+> vs chajá v1" section for the per-provider matrix.
+
 ## When PAT is the *only* mode
 
 Providers with `authType: "PAT"` or `"USERNAME_AND_PASSWORD"` from

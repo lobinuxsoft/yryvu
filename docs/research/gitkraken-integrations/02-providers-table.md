@@ -311,3 +311,50 @@ The single biggest architectural win in GK's design is that
 character glyphs, supported features, etc. Don't fork into per-provider
 hardcoded UI components; build one rendering pass that reads the
 table.
+
+## Auth modes — provider reality vs GK enum vs chajá v1
+
+GK collapses every auth combination into 3 enums (`bundle:201657`):
+
+```js
+at.authTypes = { OAUTH: "OAUTH", PAT: "PAT", USERNAME_AND_PASSWORD: "USERNAME_AND_PASSWORD" };
+```
+
+But the table below tracks what each provider's *actual REST/GraphQL
+API* accepts (info from each provider's official docs, not the
+bundle):
+
+| Provider | OAuth | PAT / API token | user+pass | Notes |
+|----------|-------|-----------------|-----------|-------|
+| GitHub.com | ✅ | ✅ | ❌ | user+pass deprecated for API in 2020 |
+| GitHub Enterprise | ✅ | ✅ | ❌ | self-hosted ≥ 2.20 |
+| GitLab.com | ✅ | ✅ | ❌ | |
+| GitLab self-hosted | ✅ | ✅ | ❌ | |
+| Bitbucket Cloud | ✅ | ✅ App Password | ❌ | basic auth deprecated 2018 |
+| Bitbucket Data Center | ✅ | ✅ | ⚠️ legacy | self-hosted only, on-prem |
+| Azure DevOps | ✅ Entra ID | ✅ | ❌ | |
+| Jira Cloud | ✅ | ✅ API Token | ❌ | |
+| Jira Server / Data Center | ❌ | ✅ | ⚠️ legacy | self-hosted only |
+| Trello | ❌ | custom app-key+token | ❌ | not OAuth2 — chajá skips v1 |
+
+**SSH is not in this table** — SSH is a git transport for push/fetch,
+not an API auth mode. chajá already handles SSH via
+`build_credentials_callbacks` (SSH agent → credential helper →
+default) for git ops. Provider integrations live entirely on top of
+HTTPS APIs; the SSH layer is orthogonal.
+
+### chajá v1 decision: OAuth primary + PAT fallback. Skip user+pass.
+
+- **Primary path**: OAuth (PKCE direct to provider, no GK auth proxy).
+- **Fallback path**: PAT — universal, every provider that matters
+  supports it.
+- **Drop entirely**: `USERNAME_AND_PASSWORD` mode. Only Jira Server /
+  Data Center on-prem still accepts it, and even there PAT is the
+  recommended replacement. The two `⚠️ legacy` entries above are
+  niche enough that chajá v1 punts; reintroduce only if a real user
+  asks.
+
+Effect on the data-driven rendering: chajá's local copy of the
+provider table replaces GK's `authType: "USERNAME_AND_PASSWORD"`
+entries with `authType: "PAT"`. The `04-pat-fallback.md` PAT-entry
+flow then covers them transparently.

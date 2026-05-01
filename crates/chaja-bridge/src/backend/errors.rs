@@ -50,4 +50,10 @@ pub enum BackendError {
     FetchFailed(String),
     #[error("git operation failed: {0}")]
     Git(#[source] anyhow::Error),
+    #[error("'{name}' CLI not found on PATH")]
+    CliNotFound { name: String },
+    #[error("'{name}' CLI is not authenticated")]
+    CliNotAuthenticated { name: String },
+    #[error("'{name}' CLI failed: {stderr}")]
+    CliFailed { name: String, stderr: String },
 }

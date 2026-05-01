@@ -35,6 +35,7 @@ pub fn run() {
             chaja_bridge::commands::add_remote,
             chaja_bridge::commands::remove_remote,
             chaja_bridge::commands::set_remote_url,
+            chaja_bridge::commands::import_gh_token,
             chaja_bridge::commands::list_tags,
             chaja_bridge::commands::reset_to_commit,
             chaja_bridge::commands::cherry_pick_commit,

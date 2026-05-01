@@ -27,6 +27,7 @@ export function LeftSidebar() {
   // underlying signal so every subsequent menu open sees fresh data.
   ops.setBranchSource(() => data.branches() ?? []);
   ops.setTagSource(() => data.tags() ?? []);
+  ops.setRemotesSource(() => data.remoteNames() ?? []);
 
   onMount(() => {
     const onKeyDown = (e: KeyboardEvent) => {

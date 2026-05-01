@@ -8,6 +8,7 @@ import { IconTag, IconTagAnnotated } from "../Icons";
 
 export interface TagRowProps {
   tag: TagInfo;
+  onContextMenu?: (e: MouseEvent, tag: TagInfo) => void;
 }
 
 /// Sidebar row for a single tag. Annotated tags get a distinct icon and a
@@ -28,6 +29,7 @@ export function TagRow(props: TagRowProps) {
         setHoveredRef({ kind: "tag", name: props.tag.name })
       }
       onMouseLeave={clearHoveredRef}
+      onContextMenu={(e) => props.onContextMenu?.(e, props.tag)}
     >
       <span class="sidebar__tag-icon">
         <Show when={props.tag.is_annotated} fallback={<IconTag />}>

@@ -39,4 +39,19 @@ export interface MenuDeps {
   // section-menu data sources (set by LeftSidebar onMount)
   branchSource: () => BranchInfo[] | undefined;
   tagSource: () => TagInfo[] | undefined;
+  /// List of configured remote names. Tag menu uses it to render
+  /// per-remote Push / Delete entries; section menu may use it later.
+  remotesSource: () => string[] | undefined;
+
+  // tag-menu specific openers / handlers
+  openDeleteTagDialog: (
+    name: string,
+    scope:
+      | { type: "local" }
+      | { type: "remote"; remote: string }
+      | { type: "all-remotes"; remotes: string[] },
+  ) => void;
+  openAnnotateTagDialog: (name: string) => void;
+  pushTagTo: (remote: string, name: string) => Promise<void>;
+  tryCheckoutTagSha: (tagName: string, sha: string) => Promise<void>;
 }

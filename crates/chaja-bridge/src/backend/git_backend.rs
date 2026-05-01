@@ -96,6 +96,15 @@ pub trait GitBackend: Send + Sync {
     /// see backend impl notes for the remote-side counterpart.
     fn delete_tag(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
 
+    /// Convert a lightweight tag to an annotated one (or rewrite an
+    /// existing annotated tag) at the same target SHA.
+    fn annotate_tag(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        message: &str,
+    ) -> Result<(), BackendError>;
+
     /// Push a local tag to a remote (`refs/tags/<name>:refs/tags/<name>`).
     fn push_tag(
         &self,

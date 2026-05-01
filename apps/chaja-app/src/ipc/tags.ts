@@ -42,6 +42,20 @@ export function deleteTag(repoPath: string, name: string): Promise<void> {
 }
 
 /**
+ * Convert a lightweight tag into an annotated one with `message`.
+ * Re-annotates an already-annotated tag in place if called on one.
+ * Errors with `invalid-tag-name` when the message is empty after
+ * trimming.
+ */
+export function annotateTag(
+  repoPath: string,
+  name: string,
+  message: string,
+): Promise<void> {
+  return invoke<void>("annotate_tag", { repoPath, name, message });
+}
+
+/**
  * Push a local tag to a named remote
  * (`refs/tags/<name>:refs/tags/<name>`). Annotated and lightweight tags
  * use the same wire format.

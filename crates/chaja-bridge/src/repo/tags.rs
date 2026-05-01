@@ -137,13 +137,56 @@ pub fn create_tag(
 /// opaque libgit2 string.
 ///
 /// Doesn't touch any remote — the tag may still exist on `origin` (or
-/// any other remote). Use [`delete_tag_remote`] for the remote-side
-/// counterpart.
+/// any other remote). Use [`super::remote::delete_tag_remote`] for the
+/// remote-side counterpart.
 pub fn delete_tag(repo_path: &Path, name: &str) -> Result<(), BackendError> {
     let repo = open_git2(repo_path)?;
     repo.tag_delete(name)
         .map_err(|_| BackendError::BranchNotFound {
             name: format!("tag '{name}'"),
         })?;
+    Ok(())
+}
+
+/// Convert an existing lightweight tag into an annotated one with
+/// `message`. Powers GK's `Annotate` action on the tag context menu
+/// (#223): delete the lightweight ref and re-create as annotated at
+/// the same target SHA so the conversion is observable as a single
+/// "the tag now has metadata" change rather than a two-step
+/// disappear-and-reappear race.
+///
+/// Errors `BranchNotFound` (reused for tags) when the tag doesn't
+/// exist. Errors `InvalidTagName` when the user-supplied message is
+/// empty after trimming — annotated tags require a message body.
+///
+/// Idempotent in the no-op direction: if the user re-annotates an
+/// already-annotated tag (which the menu disables today, but might
+/// surface later as Edit annotation), the old annotated object is
+/// replaced with the new one. The git plumbing is the same.
+pub fn annotate_tag(repo_path: &Path, name: &str, message: &str) -> Result<(), BackendError> {
+    let trimmed = message.trim();
+    if trimmed.is_empty() {
+        return Err(BackendError::InvalidTagName {
+            name: name.to_string(),
+        });
+    }
+    let repo = open_git2(repo_path)?;
+    let full_ref = format!("refs/tags/{name}");
+    let target = repo
+        .find_reference(&full_ref)
+        .map_err(|_| BackendError::BranchNotFound {
+            name: format!("tag '{name}'"),
+        })?
+        .peel(git2::ObjectType::Any)
+        .map_err(git2_err)?;
+
+    repo.tag_delete(name)
+        .map_err(|_| BackendError::BranchNotFound {
+            name: format!("tag '{name}'"),
+        })?;
+
+    let sig = repo.signature().map_err(git2_err)?;
+    repo.tag(name, &target, &sig, trimmed, true)
+        .map_err(git2_err)?;
     Ok(())
 }

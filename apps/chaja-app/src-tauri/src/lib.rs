@@ -28,6 +28,7 @@ pub fn run() {
             chaja_bridge::commands::checkout_commit,
             chaja_bridge::commands::create_tag,
             chaja_bridge::commands::delete_tag,
+            chaja_bridge::commands::annotate_tag,
             chaja_bridge::commands::push_tag,
             chaja_bridge::commands::delete_tag_remote,
             chaja_bridge::commands::list_remotes,

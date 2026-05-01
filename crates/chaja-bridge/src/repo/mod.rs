@@ -188,6 +188,15 @@ impl GitBackend for GixBackend {
         tags::delete_tag(repo_path, name)
     }
 
+    fn annotate_tag(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        message: &str,
+    ) -> Result<(), BackendError> {
+        tags::annotate_tag(repo_path, name, message)
+    }
+
     fn push_tag(
         &self,
         repo_path: &Path,

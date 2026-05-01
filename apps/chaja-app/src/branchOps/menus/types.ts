@@ -18,6 +18,7 @@ export interface MenuDeps {
 
   // handlers
   tryCheckout: (target: string) => Promise<void>;
+  tryCheckoutRemoteTracking: (fullRemoteName: string) => Promise<void>;
   doRebaseCurrentOnto: (target: string) => Promise<void>;
   doPullCurrent: () => Promise<void>;
   doPushCurrent: () => Promise<void>;

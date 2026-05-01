@@ -13,7 +13,14 @@ export type DialogState =
   | { kind: "create"; from?: string }
   | { kind: "rename"; oldName: string }
   | { kind: "delete"; name: string; unmerged?: boolean }
-  | { kind: "checkout-dirty"; target: string }
+  | {
+      kind: "checkout-dirty";
+      target: string;
+      /// `true` when `target` is a remote-tracking ref (`origin/feature-x`)
+      /// and the resolved action should create-or-switch to a local
+      /// tracking branch instead of plain switch (#222).
+      remoteTracking?: boolean;
+    }
   | { kind: "merge-pick"; source: string }
   | { kind: "merge-result"; result: MergeResult }
   | { kind: "delete-remote"; remote: string; name: string }

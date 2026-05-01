@@ -7,10 +7,12 @@ import type { BranchOps } from "../../../branchOps";
 
 export function CheckoutDirtyDialog(props: { ops: BranchOps }) {
   const { ops } = props;
-  const target = () =>
-    ops.dialog()?.kind === "checkout-dirty"
-      ? (ops.dialog() as { target: string }).target
-      : undefined;
+  const dialogState = () => {
+    const d = ops.dialog();
+    return d?.kind === "checkout-dirty" ? d : undefined;
+  };
+  const target = () => dialogState()?.target;
+  const isRemoteTracking = () => dialogState()?.remoteTracking === true;
 
   return (
     <Dialog
@@ -32,7 +34,12 @@ export function CheckoutDirtyDialog(props: { ops: BranchOps }) {
             type="button"
             onClick={() => {
               const t = target();
-              if (t) void ops.stashAndCheckout(t);
+              if (!t) return;
+              if (isRemoteTracking()) {
+                void ops.stashAndCheckoutRemoteTracking(t);
+              } else {
+                void ops.stashAndCheckout(t);
+              }
             }}
           >
             Stash & Checkout

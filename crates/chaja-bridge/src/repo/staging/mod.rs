@@ -7,7 +7,7 @@
 //! - [`status`]  — `dirty_summary`, `working_tree_status`.
 //! - [`stage`]   — `stage_*` / `unstage_*` / `discard_paths`.
 //! - [`commit`]  — `create_commit` + thin wrappers + `commit_and_push` +
-//!                 `head_commit_message`.
+//!   `head_commit_message`.
 //! - [`diff`]    — single-file `diff_unstaged` / `diff_staged`.
 //!
 //! **Backend choice — why git2 dominates this module (as of gix 0.68)**:

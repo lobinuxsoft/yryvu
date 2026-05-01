@@ -21,9 +21,9 @@
 //! See `docs/research/gitkraken-graph/25-smart-branch-visibility.md`.
 //!
 //! Submodules:
-//!   - [`parser`] — pure-string Pass A / Pass B / shorthand helpers.
-//!   - [`cache`]  — bounded LRU keyed on `(repo_path, head_full_name)`,
-//!                  invalidated by `mtime(logs/HEAD)`.
+//! - [`parser`] — pure-string Pass A / Pass B / shorthand helpers.
+//! - [`cache`] — bounded LRU keyed on `(repo_path, head_full_name)`,
+//!   invalidated by `mtime(logs/HEAD)`.
 
 mod cache;
 mod parser;

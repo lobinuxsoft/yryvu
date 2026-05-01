@@ -41,7 +41,7 @@
 //! - [`errors`]  — `UndoLogError` + `UNDO_LOG_FILENAME` + `REFLOG_TAG_PREFIX`.
 //! - [`op_kind`] — `OpKind` enum + `Op` + `UndoLog` data shapes.
 //! - [`record`]  — IO surface (`read_log` / `record_op` / `set_cursor` /
-//!                 `clear_log_best_effort` / `with_record_skipped`).
+//!   `clear_log_best_effort` / `with_record_skipped`).
 
 mod errors;
 mod op_kind;

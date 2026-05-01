@@ -7,6 +7,11 @@
   position: fixed;
   min-width: 180px;
   max-width: 320px;
+  /* Cap at viewport height minus the 8px gutter the JS clamp uses on
+     each side. Menus taller than the viewport scroll inside the panel
+     instead of spilling off the bottom edge. */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   background: var(--bg-1);
   border: 1px solid var(--bg-3);
   border-radius: var(--radius-md);

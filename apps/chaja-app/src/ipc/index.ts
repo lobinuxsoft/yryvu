@@ -5,6 +5,7 @@
 //! internals are organised.
 
 export * from "./branches";
+export * from "./cliImport";
 export * from "./commits";
 export * from "./diff";
 export * from "./merge";

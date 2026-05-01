@@ -4,6 +4,7 @@ import { createSignal, Show, type JSX } from "solid-js";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Dialog } from "../../../Dialog";
 import { notify } from "../../../Notifications";
+import { importGhToken } from "../../../../ipc";
 import type { ProviderInfo } from "./providerTable";
 import { selfHostedHostname } from "./selfHostedHostnames";
 import { buildTokenGenUrl, setIntegrationToken } from "./tokenStorage";
@@ -57,6 +58,40 @@ export function PatEntryDialog(props: {
     }
   };
 
+  // GitHub-only: pull the token from the user's existing `gh` CLI
+  // session. For GHE, pass the configured self-hosted hostname so
+  // `gh --hostname <h>` queries the right session.
+  const supportsGhImport = () =>
+    props.provider.type === "github" || props.provider.type === "githubEnterprise";
+
+  const onImportFromGh = async () => {
+    const hostname =
+      props.provider.type === "githubEnterprise"
+        ? selfHostedHostname(props.provider.type)()
+        : undefined;
+    try {
+      const fetched = await importGhToken(hostname || undefined);
+      setToken(fetched);
+      notify.success("Imported from gh CLI", {
+        message: "Review the token below and click Save to continue.",
+      });
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("not found on PATH")) {
+        notify.error("gh CLI not installed", {
+          message:
+            "Install GitHub CLI from https://cli.github.com/ or paste a token manually.",
+        });
+      } else if (msg.includes("not authenticated")) {
+        notify.error("gh CLI not authenticated", {
+          message: "Run `gh auth login` in a terminal first, then retry.",
+        });
+      } else {
+        notify.error("gh import failed", { message: msg });
+      }
+    }
+  };
+
   const submit = () => {
     const trimmed = token().trim();
     if (!trimmed) return;
@@ -107,16 +142,28 @@ export function PatEntryDialog(props: {
           {" "}
           {props.provider.label}.
         </p>
-        <Show when={tokenGenUrl()}>
-          <button
-            class="pat-entry__generate-link"
-            type="button"
-            data-testid="pat-entry-generate-link"
-            onClick={() => void onGenerateClick()}
-          >
-            Generate {tokenLabel()} on {props.provider.label} →
-          </button>
-        </Show>
+        <div class="pat-entry__actions">
+          <Show when={supportsGhImport()}>
+            <button
+              class="pat-entry__generate-link"
+              type="button"
+              data-testid="pat-entry-import-gh"
+              onClick={() => void onImportFromGh()}
+            >
+              Import from <code>gh</code> CLI
+            </button>
+          </Show>
+          <Show when={tokenGenUrl()}>
+            <button
+              class="pat-entry__generate-link"
+              type="button"
+              data-testid="pat-entry-generate-link"
+              onClick={() => void onGenerateClick()}
+            >
+              Generate {tokenLabel()} on {props.provider.label} →
+            </button>
+          </Show>
+        </div>
         <input
           type="password"
           autofocus

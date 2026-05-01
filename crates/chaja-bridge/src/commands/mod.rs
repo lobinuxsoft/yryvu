@@ -6,6 +6,7 @@
 //! caller continues to reach them as `chaja_bridge::commands::foo`.
 
 mod branches;
+mod cli_import;
 mod commits;
 mod merge;
 mod preferences;
@@ -22,6 +23,7 @@ mod worktree;
 mod worktrees;
 
 pub use branches::*;
+pub use cli_import::*;
 pub use commits::*;
 pub use merge::*;
 pub use preferences::*;

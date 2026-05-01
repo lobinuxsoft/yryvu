@@ -1,169 +1,32 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createResource, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, onMount, Show } from "solid-js";
 
 import {
-  getRepoState,
-  listBranches,
-  listStashes,
-  listSubmodules,
-  listTags,
-  listWorktrees,
-  type BranchInfo,
-  type RepoStateInfo,
-  type StashInfo,
-  type SubmoduleInfo,
-  type TagInfo,
-  type WorktreeInfo,
-} from "../../ipc";
-import {
-  branchesNonce,
-  hiddenSections,
   repoPath,
   setShowLeftPanel,
   showLeftPanel,
-  workingTreeNonce,
 } from "../../state";
 import { useBranchOps } from "../../branchOps";
-import {
-  IconBranch,
-  IconCircleDot,
-  IconCloud,
-  IconPullRequest,
-  IconTag,
-} from "../Icons";
-import { LocalBranchRow, RemoteBranchRow } from "./branchRows";
-import { SidebarSection } from "./SidebarSection";
-import { StashRow } from "./stashRows";
+import { AuxSections } from "./sections/AuxSections";
+import { RefsSections } from "./sections/RefsSections";
 import { StateBanner } from "./StateBanner";
-import { SubmoduleRow } from "./submoduleRows";
-import { TagRow } from "./tagRows";
-import { WorktreeRow } from "./worktreeRows";
-
-const matches = (name: string, q: string) =>
-  q === "" || name.toLowerCase().includes(q.toLowerCase());
+import { useSidebarData } from "./useSidebarData";
 
 export function LeftSidebar() {
   const [collapsed, setCollapsed] = createSignal(false);
   const [filterQuery, setFilterQuery] = createSignal("");
   let filterInputEl: HTMLInputElement | undefined;
 
-  const [branches] = createResource<BranchInfo[], [string, number]>(
-    () => [repoPath() ?? "", branchesNonce()] as [string, number],
-    async ([path]) => {
-      if (!path) return [] as BranchInfo[];
-      return await listBranches(path);
-    },
-    { initialValue: [] },
-  );
-
-  const [repoState] = createResource<RepoStateInfo, [string, number]>(
-    () => [repoPath() ?? "", branchesNonce()] as [string, number],
-    async ([path]) => {
-      if (!path) return { kind: "clean", conflict_paths: [] };
-      return await getRepoState(path);
-    },
-    { initialValue: { kind: "clean", conflict_paths: [] } },
-  );
-
-  // Tags share the same `branchesNonce` source-key as branches so any
-  // ref-mutating op (including `createTag` via `useCommitOps`) refreshes
-  // the list without a dedicated tagsNonce.
-  const [tags] = createResource<TagInfo[], [string, number]>(
-    () => [repoPath() ?? "", branchesNonce()] as [string, number],
-    async ([path]) => {
-      if (!path) return [] as TagInfo[];
-      return await listTags(path);
-    },
-    { initialValue: [] },
-  );
-
-  // Worktrees use branchesNonce too — checking out a branch in another
-  // worktree, removing one, or adding one all flow through ref-mutating
-  // ops that bump the nonce. No dedicated worktreesNonce needed.
-  const [worktrees] = createResource<WorktreeInfo[], [string, number]>(
-    () => [repoPath() ?? "", branchesNonce()] as [string, number],
-    async ([path]) => {
-      if (!path) return [] as WorktreeInfo[];
-      return await listWorktrees(path);
-    },
-    { initialValue: [] },
-  );
-
-  // Stashes are working-tree mutations (push/pop/drop) — workingTreeNonce
-  // is the right source-key. Refs aren't involved unless the stash is
-  // saved with a branch_name (informational only).
-  const [stashes] = createResource<StashInfo[], [string, number]>(
-    () => [repoPath() ?? "", workingTreeNonce()] as [string, number],
-    async ([path]) => {
-      if (!path) return [] as StashInfo[];
-      return await listStashes(path);
-    },
-    { initialValue: [] },
-  );
-
-  // Submodules can shift on init/deinit/update, AND on parent commits
-  // changing the pinned SHA. Both source signals matter.
-  const [submodules] = createResource<SubmoduleInfo[], [string, number, number]>(
-    () =>
-      [repoPath() ?? "", branchesNonce(), workingTreeNonce()] as [
-        string,
-        number,
-        number,
-      ],
-    async ([path]) => {
-      if (!path) return [] as SubmoduleInfo[];
-      return await listSubmodules(path);
-    },
-    { initialValue: [] },
-  );
-
-  const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
-  const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
-  const tagList = () => tags() ?? [];
-  const worktreeList = () => worktrees() ?? [];
-  const stashList = () => stashes() ?? [];
-  const submoduleList = () => submodules() ?? [];
-  const filteredLocals = () => locals().filter((b) => matches(b.name, filterQuery()));
-  const filteredRemotes = () => remotes().filter((b) => matches(b.name, filterQuery()));
-  const filteredTags = () => tagList().filter((t) => matches(t.name, filterQuery()));
-  // Filter worktrees by branch name OR path tail — both are searchable signals.
-  const filteredWorktrees = () =>
-    worktreeList().filter(
-      (w) => matches(w.branch, filterQuery()) || matches(w.workdir, filterQuery()),
-    );
-  // Stashes filter by message OR branch_name — branch is what users
-  // remember when looking for a stash they took on a feature branch.
-  const filteredStashes = () =>
-    stashList().filter(
-      (s) =>
-        matches(s.message, filterQuery()) ||
-        matches(s.branch_name ?? "", filterQuery()),
-    );
-  // Submodules filter on name and path — both are user-facing strings.
-  const filteredSubmodules = () =>
-    submoduleList().filter(
-      (s) => matches(s.name, filterQuery()) || matches(s.path, filterQuery()),
-    );
-  const isFiltering = () => filterQuery() !== "";
-  const totalMatches = () =>
-    isFiltering()
-      ? filteredLocals().length +
-        filteredRemotes().length +
-        filteredTags().length +
-        filteredWorktrees().length +
-        filteredStashes().length +
-        filteredSubmodules().length
-      : -1;
-
+  const data = useSidebarData(filterQuery);
   const ops = useBranchOps();
 
   // Wire the section context menu's Hide-all / Show-all enablement to
   // our live resources. Done once at mount — the accessors stay valid
   // for the component's lifetime; the resource itself updates the
   // underlying signal so every subsequent menu open sees fresh data.
-  ops.setBranchSource(() => branches() ?? []);
-  ops.setTagSource(() => tags() ?? []);
+  ops.setBranchSource(() => data.branches() ?? []);
+  ops.setTagSource(() => data.tags() ?? []);
 
   onMount(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -189,11 +52,14 @@ export function LeftSidebar() {
           {collapsed() ? "›" : "‹"}
         </button>
         <span>Viewing</span>
-        <span class="sidebar__item-badge">{branches()?.length ?? 0}</span>
+        <span class="sidebar__item-badge">{data.branches()?.length ?? 0}</span>
       </div>
 
       <Show when={!collapsed()}>
-        <div class="sidebar__filter" data-has-text={isFiltering() ? "true" : "false"}>
+        <div
+          class="sidebar__filter"
+          data-has-text={data.isFiltering() ? "true" : "false"}
+        >
           <input
             ref={filterInputEl}
             type="text"
@@ -201,13 +67,13 @@ export function LeftSidebar() {
             value={filterQuery()}
             onInput={(e) => setFilterQuery(e.currentTarget.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape" && isFiltering()) {
+              if (e.key === "Escape" && data.isFiltering()) {
                 e.preventDefault();
                 setFilterQuery("");
               }
             }}
           />
-          <Show when={isFiltering()}>
+          <Show when={data.isFiltering()}>
             <button
               type="button"
               class="sidebar__filter-clear"
@@ -226,283 +92,27 @@ export function LeftSidebar() {
 
       <Show
         when={
-          !collapsed() && repoState() && repoState()!.kind !== "clean"
+          !collapsed() && data.repoState() && data.repoState()!.kind !== "clean"
         }
       >
         <StateBanner
-          state={repoState()!}
+          state={data.repoState()!}
           onAbortMerge={() => void ops.doAbortMerge()}
         />
       </Show>
 
       <div class="sidebar__sections">
-        <Show when={!hiddenSections().has("LOCAL")}>
-        <SidebarSection
-          sectionKey="LOCAL"
-          title="Local"
-          icon={<IconBranch />}
-          count={isFiltering() ? filteredLocals().length : locals().length}
-          addable
-          onAdd={() => ops.openCreateDialog()}
-          onContextMenu={ops.openSectionContextMenu}
+        <RefsSections data={data} ops={ops} />
+        <AuxSections data={data} ops={ops} />
+
+        <Show
+          when={data.isFiltering() && data.totalMatches() === 0 && repoPath()}
         >
-          <Show
-            when={repoPath()}
-            fallback={
-              <p class="sidebar__empty">Open a repo to list branches</p>
-            }
-          >
-            <Show
-              when={filteredLocals().length > 0}
-              fallback={
-                <p class="sidebar__empty">
-                  {isFiltering()
-                    ? "No matches"
-                    : locals().length === 0
-                      ? "No local branches"
-                      : ""}
-                </p>
-              }
-            >
-              <For each={filteredLocals()}>
-                {(b) => (
-                  <LocalBranchRow
-                    branch={b}
-                    onContextMenu={ops.openBranchContextMenu}
-                    onCheckout={(n) => void ops.tryCheckout(n)}
-                  />
-                )}
-              </For>
-            </Show>
-          </Show>
-        </SidebarSection>
-        </Show>
-
-        <Show when={!hiddenSections().has("REMOTE")}>
-        <SidebarSection
-          sectionKey="REMOTE"
-          title="Remote"
-          icon={<IconCloud />}
-          count={isFiltering() ? filteredRemotes().length : remotes().length}
-          onRefresh={() => void ops.refreshRemote()}
-          refreshing={ops.refreshingRemote()}
-          onContextMenu={ops.openSectionContextMenu}
-        >
-          <Show
-            when={filteredRemotes().length > 0}
-            fallback={
-              <p class="sidebar__empty">
-                {isFiltering()
-                  ? "No matches"
-                  : remotes().length === 0
-                    ? "No remote branches"
-                    : ""}
-              </p>
-            }
-          >
-            <For each={filteredRemotes()}>
-              {(b) => (
-                <RemoteBranchRow
-                  branch={b}
-                  onContextMenu={ops.openRemoteContextMenu}
-                />
-              )}
-            </For>
-          </Show>
-        </SidebarSection>
-        </Show>
-
-        <Show when={!hiddenSections().has("WORKTREES")}>
-        <SidebarSection
-          sectionKey="WORKTREES"
-          title="Worktrees"
-          icon={<IconBranch />}
-          count={
-            isFiltering() ? filteredWorktrees().length : worktreeList().length
-          }
-          onContextMenu={ops.openSectionContextMenu}
-        >
-          <Show
-            when={repoPath()}
-            fallback={
-              <p class="sidebar__empty">Open a repo to list worktrees</p>
-            }
-          >
-            <Show
-              when={filteredWorktrees().length > 0}
-              fallback={
-                <p class="sidebar__empty">
-                  {isFiltering()
-                    ? "No matches"
-                    : worktreeList().length === 0
-                      ? "No worktrees"
-                      : ""}
-                </p>
-              }
-            >
-              <For each={filteredWorktrees()}>
-                {(w) => (
-                  <WorktreeRow
-                    worktree={w}
-                    onContextMenu={ops.openWorktreeContextMenu}
-                  />
-                )}
-              </For>
-            </Show>
-          </Show>
-        </SidebarSection>
-        </Show>
-
-        <Show when={!hiddenSections().has("STASHES")}>
-        <SidebarSection
-          sectionKey="STASHES"
-          title="Stashes"
-          icon={<IconBranch />}
-          count={
-            isFiltering() ? filteredStashes().length : stashList().length
-          }
-          onContextMenu={ops.openSectionContextMenu}
-        >
-          <Show
-            when={repoPath()}
-            fallback={
-              <p class="sidebar__empty">Open a repo to list stashes</p>
-            }
-          >
-            <Show
-              when={filteredStashes().length > 0}
-              fallback={
-                <p class="sidebar__empty">
-                  {isFiltering()
-                    ? "No matches"
-                    : stashList().length === 0
-                      ? "No stashes"
-                      : ""}
-                </p>
-              }
-            >
-              <For each={filteredStashes()}>
-                {(s, i) => (
-                  <StashRow
-                    stash={s}
-                    index={i()}
-                    onContextMenu={ops.openStashContextMenu}
-                  />
-                )}
-              </For>
-            </Show>
-          </Show>
-        </SidebarSection>
-        </Show>
-
-        {/* Provider-backed sections — render bodies once #46 OAuth lands.
-            Hidden during filter since no live data feeds them yet. */}
-        <Show when={!isFiltering() && !hiddenSections().has("PULL_REQUESTS")}>
-          <SidebarSection
-            sectionKey="PULL_REQUESTS"
-            title="Pull Requests"
-            icon={<IconPullRequest />}
-            count={0}
-            addable
-            onContextMenu={ops.openSectionContextMenu}
-          >
-            <p class="sidebar__empty">Connect a Git provider to list PRs</p>
-          </SidebarSection>
-        </Show>
-        <Show when={!isFiltering() && !hiddenSections().has("ISSUES")}>
-          <SidebarSection
-            sectionKey="ISSUES"
-            title="Issues"
-            icon={<IconCircleDot />}
-            count={0}
-            onContextMenu={ops.openSectionContextMenu}
-          >
-            <p class="sidebar__empty">Connect a Git provider to list issues</p>
-          </SidebarSection>
-        </Show>
-
-        <Show when={!hiddenSections().has("TAGS")}>
-        <SidebarSection
-          sectionKey="TAGS"
-          title="Tags"
-          icon={<IconTag />}
-          count={isFiltering() ? filteredTags().length : tagList().length}
-          onContextMenu={ops.openSectionContextMenu}
-        >
-          <Show
-            when={repoPath()}
-            fallback={<p class="sidebar__empty">Open a repo to list tags</p>}
-          >
-            <Show
-              when={filteredTags().length > 0}
-              fallback={
-                <p class="sidebar__empty">
-                  {isFiltering()
-                    ? "No matches"
-                    : tagList().length === 0
-                      ? "No tags"
-                      : ""}
-                </p>
-              }
-            >
-              <For each={filteredTags()}>{(t) => <TagRow tag={t} />}</For>
-            </Show>
-          </Show>
-        </SidebarSection>
-        </Show>
-
-        <Show when={!hiddenSections().has("SUBMODULES")}>
-        <SidebarSection
-          sectionKey="SUBMODULES"
-          title="Submodules"
-          icon={<IconBranch />}
-          count={
-            isFiltering()
-              ? filteredSubmodules().length
-              : submoduleList().length
-          }
-          addable
-          onAdd={() => ops.openSubmoduleAddDialog()}
-          onContextMenu={ops.openSectionContextMenu}
-        >
-          <Show
-            when={repoPath()}
-            fallback={
-              <p class="sidebar__empty">Open a repo to list submodules</p>
-            }
-          >
-            <Show
-              when={filteredSubmodules().length > 0}
-              fallback={
-                <p class="sidebar__empty">
-                  {isFiltering()
-                    ? "No matches"
-                    : submoduleList().length === 0
-                      ? "No submodules"
-                      : ""}
-                </p>
-              }
-            >
-              <For each={filteredSubmodules()}>
-                {(s) => (
-                  <SubmoduleRow
-                    sub={s}
-                    onContextMenu={ops.openSubmoduleContextMenu}
-                  />
-                )}
-              </For>
-            </Show>
-          </Show>
-        </SidebarSection>
-        </Show>
-
-        <Show when={isFiltering() && totalMatches() === 0 && repoPath()}>
           <p class="sidebar__no-matches">
             No refs match "<span>{filterQuery()}</span>"
           </p>
         </Show>
       </div>
-
     </aside>
   );
 }

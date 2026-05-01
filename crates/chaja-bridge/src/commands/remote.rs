@@ -76,11 +76,7 @@ pub async fn remove_remote(repo_path: String, name: String) -> Result<(), String
 }
 
 #[tauri::command]
-pub async fn set_remote_url(
-    repo_path: String,
-    name: String,
-    url: String,
-) -> Result<(), String> {
+pub async fn set_remote_url(repo_path: String, name: String, url: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .set_remote_url(&PathBuf::from(&repo_path), &name, &url)

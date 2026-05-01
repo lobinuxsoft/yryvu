@@ -98,20 +98,11 @@ pub trait GitBackend: Send + Sync {
 
     /// Convert a lightweight tag to an annotated one (or rewrite an
     /// existing annotated tag) at the same target SHA.
-    fn annotate_tag(
-        &self,
-        repo_path: &Path,
-        name: &str,
-        message: &str,
-    ) -> Result<(), BackendError>;
+    fn annotate_tag(&self, repo_path: &Path, name: &str, message: &str)
+        -> Result<(), BackendError>;
 
     /// Push a local tag to a remote (`refs/tags/<name>:refs/tags/<name>`).
-    fn push_tag(
-        &self,
-        repo_path: &Path,
-        remote: &str,
-        name: &str,
-    ) -> Result<(), BackendError>;
+    fn push_tag(&self, repo_path: &Path, remote: &str, name: &str) -> Result<(), BackendError>;
 
     /// Delete a tag on a remote (`:refs/tags/<name>`). Doesn't touch
     /// the local copy.
@@ -134,8 +125,7 @@ pub trait GitBackend: Send + Sync {
     fn remove_remote(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
 
     /// Update the fetch URL of an existing remote.
-    fn set_remote_url(&self, repo_path: &Path, name: &str, url: &str)
-        -> Result<(), BackendError>;
+    fn set_remote_url(&self, repo_path: &Path, name: &str, url: &str) -> Result<(), BackendError>;
 
     /// Reset the current branch tip to the given commit. `Hard` is destructive
     /// — callers MUST confirm with the user before invoking it.

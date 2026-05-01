@@ -197,12 +197,7 @@ impl GitBackend for GixBackend {
         tags::annotate_tag(repo_path, name, message)
     }
 
-    fn push_tag(
-        &self,
-        repo_path: &Path,
-        remote: &str,
-        name: &str,
-    ) -> Result<(), BackendError> {
+    fn push_tag(&self, repo_path: &Path, remote: &str, name: &str) -> Result<(), BackendError> {
         remote::push_tag(repo_path, remote, name)
     }
 
@@ -227,12 +222,7 @@ impl GitBackend for GixBackend {
         remote::remove_remote(repo_path, name)
     }
 
-    fn set_remote_url(
-        &self,
-        repo_path: &Path,
-        name: &str,
-        url: &str,
-    ) -> Result<(), BackendError> {
+    fn set_remote_url(&self, repo_path: &Path, name: &str, url: &str) -> Result<(), BackendError> {
         remote::set_remote_url(repo_path, name, url)
     }
 
@@ -312,11 +302,7 @@ impl GitBackend for GixBackend {
         remote::fetch_prune(repo_path, remote)
     }
 
-    fn get_remote_url(
-        &self,
-        repo_path: &Path,
-        remote_name: &str,
-    ) -> Result<String, BackendError> {
+    fn get_remote_url(&self, repo_path: &Path, remote_name: &str) -> Result<String, BackendError> {
         remote::get_remote_url(repo_path, remote_name)
     }
 

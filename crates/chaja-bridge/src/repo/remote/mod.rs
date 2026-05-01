@@ -21,8 +21,6 @@ mod management;
 mod push;
 mod sync;
 
-pub use management::{
-    add_remote, get_remote_url, list_remotes, remove_remote, set_remote_url,
-};
+pub use management::{add_remote, get_remote_url, list_remotes, remove_remote, set_remote_url};
 pub use push::{delete_remote_branch, delete_tag_remote, push_current_branch, push_tag};
 pub use sync::{fetch_prune, force_pull, pull};

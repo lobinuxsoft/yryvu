@@ -25,10 +25,7 @@ pub fn get_remote_url(repo_path: &Path, remote_name: &str) -> Result<String, Bac
 pub fn list_remotes(repo_path: &Path) -> Result<Vec<String>, BackendError> {
     let repo = open_git2(repo_path)?;
     let names = repo.remotes().map_err(git2_err)?;
-    Ok(names
-        .iter()
-        .filter_map(|s| s.map(String::from))
-        .collect())
+    Ok(names.iter().filter_map(|s| s.map(String::from)).collect())
 }
 
 /// Validate a remote name client-side before calling git2 — git2 rejects

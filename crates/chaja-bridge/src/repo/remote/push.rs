@@ -204,11 +204,7 @@ pub fn push_tag(repo_path: &Path, remote: &str, name: &str) -> Result<(), Backen
 /// `:refs/tags/<name>` — the empty source tells the remote to drop the
 /// ref. Doesn't touch the local tag (the local copy may still be
 /// useful even after the remote deletion, e.g. for review workflows).
-pub fn delete_tag_remote(
-    repo_path: &Path,
-    remote: &str,
-    name: &str,
-) -> Result<(), BackendError> {
+pub fn delete_tag_remote(repo_path: &Path, remote: &str, name: &str) -> Result<(), BackendError> {
     let repo = open_git2(repo_path)?;
     let mut remote_obj = repo
         .find_remote(remote)

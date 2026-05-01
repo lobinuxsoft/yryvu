@@ -43,8 +43,12 @@ pub fn rebase_current_onto(repo_path: &Path, target_branch: &str) -> Result<(), 
         )));
     }
 
+    // Try Local first, fall back to Remote so the same op handles both
+    // sub-PR 2 (#221: Rebase current onto a local branch) and sub-PR 3
+    // (#222: Rebase current onto a remote-tracking ref like origin/main).
     let upstream_ref = repo
         .find_branch(target_branch, git2::BranchType::Local)
+        .or_else(|_| repo.find_branch(target_branch, git2::BranchType::Remote))
         .map_err(|_| BackendError::BranchNotFound {
             name: target_branch.to_string(),
         })?

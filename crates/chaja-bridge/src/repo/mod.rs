@@ -162,6 +162,14 @@ impl GitBackend for GixBackend {
         worktree::checkout_branch(repo_path, name)
     }
 
+    fn checkout_remote_tracking(
+        &self,
+        repo_path: &Path,
+        full_remote_name: &str,
+    ) -> Result<(), BackendError> {
+        worktree::checkout_remote_tracking(repo_path, full_remote_name)
+    }
+
     fn checkout_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError> {
         worktree::checkout_commit(repo_path, sha)
     }

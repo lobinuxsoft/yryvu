@@ -28,6 +28,20 @@ pub async fn checkout_branch(repo_path: String, name: String) -> Result<(), Stri
 }
 
 #[tauri::command]
+pub async fn checkout_remote_tracking(
+    repo_path: String,
+    full_remote_name: String,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .checkout_remote_tracking(&PathBuf::from(&repo_path), &full_remote_name)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 pub async fn stash_push(repo_path: String, message: Option<String>) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend

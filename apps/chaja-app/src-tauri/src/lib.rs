@@ -24,6 +24,7 @@ pub fn run() {
             chaja_bridge::commands::set_upstream,
             chaja_bridge::commands::is_working_tree_dirty,
             chaja_bridge::commands::checkout_branch,
+            chaja_bridge::commands::checkout_remote_tracking,
             chaja_bridge::commands::checkout_commit,
             chaja_bridge::commands::create_tag,
             chaja_bridge::commands::list_tags,

@@ -131,6 +131,20 @@
   margin-top: 8px;
 }
 
+.dialog__hint {
+  margin: 0 0 12px;
+  color: var(--fg-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.dialog__hint code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg-2);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+}
+
 .dialog__path-list {
   max-height: 160px;
   overflow-y: auto;

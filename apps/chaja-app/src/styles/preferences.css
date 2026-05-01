@@ -332,6 +332,27 @@
   color: var(--fg-3);
 }
 
+.integrations-form__hostname {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-1);
+}
+
+.integrations-form__edit {
+  margin-left: 6px;
+  background: transparent;
+  border: 0;
+  color: var(--bg-accent);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.integrations-form__edit:hover {
+  filter: brightness(1.15);
+}
+
 .integrations-form__row {
   display: flex;
   align-items: center;

@@ -38,6 +38,7 @@ import { Placeholder } from "./panels/Placeholder";
 import { GeneralPanel } from "./panels/General";
 import { UiPanel } from "./panels/Ui";
 import { ExperimentalPanel } from "./panels/Experimental";
+import { IntegrationsPanel } from "./panels/Integrations";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -108,8 +109,8 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "integrations",
     label: "Integrations",
     icon: IconPuzzle,
-    panel: () => Placeholder({ section: "Integrations", issue: 44 }),
-    issue: 44,
+    panel: IntegrationsPanel,
+    issue: 242,
   },
   {
     id: "issue_tracker",

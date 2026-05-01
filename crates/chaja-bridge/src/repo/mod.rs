@@ -29,6 +29,7 @@ pub(crate) mod common;
 pub(crate) mod hosting;
 mod merge;
 mod patches;
+mod rebase;
 pub(crate) mod reflog;
 mod remote;
 pub(crate) mod smart_branches;
@@ -107,6 +108,23 @@ impl GitBackend for GixBackend {
 
     fn submodule_remove(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
         submodules::submodule_remove(repo_path, name)
+    }
+
+    fn rebase_current_onto(
+        &self,
+        repo_path: &Path,
+        target_branch: &str,
+    ) -> Result<(), BackendError> {
+        rebase::rebase_current_onto(repo_path, target_branch)
+    }
+
+    fn set_upstream(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+        upstream: Option<&str>,
+    ) -> Result<(), BackendError> {
+        branches::set_upstream(repo_path, branch_name, upstream)
     }
 
     fn create_branch(

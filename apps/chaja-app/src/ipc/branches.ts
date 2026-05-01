@@ -42,3 +42,22 @@ export function renameBranch(
 ): Promise<void> {
   return invoke<void>("rename_branch", { repoPath, oldName, newName });
 }
+
+/// Rebase the current branch onto `targetBranch`. Aborts on conflict
+/// (chajá doesn't yet expose per-step resolution).
+export function rebaseCurrentOnto(
+  repoPath: string,
+  targetBranch: string,
+): Promise<void> {
+  return invoke<void>("rebase_current_onto", { repoPath, targetBranch });
+}
+
+/// Set or clear the upstream tracking config for a local branch.
+/// Pass `null` to clear, or `"origin/main"` to track that ref.
+export function setUpstream(
+  repoPath: string,
+  branchName: string,
+  upstream: string | null,
+): Promise<void> {
+  return invoke<void>("set_upstream", { repoPath, branchName, upstream });
+}

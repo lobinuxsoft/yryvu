@@ -7,6 +7,7 @@ import { DeleteRemoteDialog } from "./dialogs/DeleteRemoteDialog";
 import { MergePickDialog } from "./dialogs/MergePickDialog";
 import { MergeResultDialog } from "./dialogs/MergeResultDialog";
 import { RenameDialog } from "./dialogs/RenameDialog";
+import { SetUpstreamDialog } from "./dialogs/SetUpstreamDialog";
 import { SubmoduleAddDialog } from "./dialogs/SubmoduleAddDialog";
 import { SubmoduleRemoveDialog } from "./dialogs/SubmoduleRemoveDialog";
 import type { BranchOps } from "../../branchOps";
@@ -28,6 +29,7 @@ export function DialogsHost(props: { ops: BranchOps }) {
       <DeleteRemoteDialog ops={props.ops} />
       <SubmoduleAddDialog ops={props.ops} />
       <SubmoduleRemoveDialog ops={props.ops} />
+      <SetUpstreamDialog ops={props.ops} />
     </>
   );
 }

@@ -19,4 +19,5 @@ export type DialogState =
   | { kind: "delete-remote"; remote: string; name: string }
   | { kind: "submodule-add" }
   | { kind: "submodule-remove"; name: string; path: string }
+  | { kind: "set-upstream"; branchName: string; currentUpstream: string | null }
   | null;

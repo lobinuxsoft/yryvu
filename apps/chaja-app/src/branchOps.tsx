@@ -11,7 +11,12 @@ import {
   fetchPrune,
   isWorkingTreeDirty,
   mergeBranch,
+  pull,
+  push,
+  rebaseCurrentOnto,
   renameBranch,
+  resetToCommit,
+  setUpstream,
   stashApply,
   stashDrop,
   stashPopAt,
@@ -19,6 +24,7 @@ import {
   type BranchInfo,
   type MergeStrategy,
   type RefTag,
+  type ResetMode,
   type StashInfo,
   type SubmoduleInfo,
   submoduleAdd,
@@ -38,10 +44,13 @@ import {
   hiddenSections,
   maximizeSection,
   refreshBranches,
+  refreshGraph,
   refreshWorkingTree,
   repoPath,
   setHiddenRef,
+  setInspectorMode,
   setRepoPath,
+  setSelection,
   toggleSectionHidden,
   type SectionKey,
 } from "./state";
@@ -126,6 +135,12 @@ export function createBranchOps(deps: BranchOpsDeps) {
   function openSubmoduleRemoveDialog(name: string, path: string) {
     setDialogError(null);
     setDialog({ kind: "submodule-remove", name, path });
+  }
+
+  function openSetUpstreamDialog(branchName: string, currentUpstream: string | null) {
+    setDialogError(null);
+    setDialogNameInput(currentUpstream ?? "");
+    setDialog({ kind: "set-upstream", branchName, currentUpstream });
   }
 
   async function tryCheckout(target: string) {
@@ -226,6 +241,94 @@ export function createBranchOps(deps: BranchOpsDeps) {
     } catch (err) {
       setDialogError(String(err));
       notify.error("Delete remote branch failed", { message: String(err) });
+    }
+  }
+
+  async function doRebaseCurrentOnto(target: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await rebaseCurrentOnto(path, target);
+      // Rebase rewrites HEAD's history with new SHAs — graph must
+      // restream so the new linear chain replaces the old one.
+      refreshGraph();
+      deps.refresh();
+      refreshWorkingTree();
+      notify.success("Rebased", { message: `onto ${target}` });
+    } catch (err) {
+      notify.error("Rebase failed", { message: String(err) });
+    }
+  }
+
+  async function doPullCurrent() {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      const result = await pull(path, mergeStrategy());
+      // Pull may FF HEAD or write a merge commit; either way the graph
+      // gains rows and HEAD pill jumps.
+      refreshGraph();
+      deps.refresh();
+      refreshWorkingTree();
+      if (result.kind === "conflict") {
+        setDialog({ kind: "merge-result", result });
+      } else {
+        notify.success("Pulled");
+      }
+    } catch (err) {
+      notify.error("Pull failed", { message: String(err) });
+    }
+  }
+
+  async function doPushCurrent() {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await push(path);
+      // Push doesn't move HEAD, but the remote pill catches up to it;
+      // refreshGraph so the remote-tracking ref renders at the new tip.
+      refreshGraph();
+      deps.refresh();
+      notify.success("Pushed");
+    } catch (err) {
+      notify.error("Push failed", { message: String(err) });
+    }
+  }
+
+  async function doResetTo(sha: string, mode: ResetMode) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await resetToCommit(path, sha, mode);
+      // Reset moves HEAD (and pops commits) — graph must restream so
+      // the HEAD pill lands on the target sha and the dropped commits
+      // disappear (or stay, if any branch still tips them).
+      refreshGraph();
+      deps.refresh();
+      refreshWorkingTree();
+      notify.success("Reset HEAD", { message: `${mode} → ${sha.slice(0, 7)}` });
+    } catch (err) {
+      notify.error("Reset failed", { message: String(err) });
+    }
+  }
+
+  async function submitSetUpstream() {
+    const state = dialog();
+    if (state?.kind !== "set-upstream") return;
+    const path = repoPath();
+    if (!path) return;
+    const next = dialogNameInput().trim();
+    const upstream = next.length > 0 ? next : null;
+    try {
+      await setUpstream(path, state.branchName, upstream);
+      closeDialog();
+      deps.refresh();
+      notify.success("Upstream updated", {
+        message: upstream ?? "(cleared)",
+      });
+    } catch (err) {
+      setDialogError(String(err));
+      notify.error("Set upstream failed", { message: String(err) });
     }
   }
 
@@ -362,18 +465,94 @@ export function createBranchOps(deps: BranchOpsDeps) {
     }
   }
 
+  /**
+   * Right-click menu for a local branch row in the LeftPanel
+   * (#221). Mirrors GK's `popupRefMenu` → `getRefGroupItems` shape
+   * (bundle:232395), trimmed to the surfaces chajá actually wraps:
+   *
+   *   Checkout / Merge into current / Rebase current onto    — operate
+   *                                                            on the
+   *                                                            right-clicked
+   *                                                            ref.
+   *   Pull / Push / Set Upstream                             — operate
+   *                                                            on HEAD;
+   *                                                            disabled
+   *                                                            when the
+   *                                                            right-clicked
+   *                                                            row isn't
+   *                                                            HEAD so the
+   *                                                            user has a
+   *                                                            single
+   *                                                            unambiguous
+   *                                                            target.
+   *   Push and start PR                                      — disabled,
+   *                                                            blocked by
+   *                                                            #46 (OAuth).
+   *   Create branch here / Reset HEAD here (Soft|Mixed|Hard) — Reset 3-way
+   *                                                            flattens GK's
+   *                                                            submenu since
+   *                                                            chajá's
+   *                                                            ContextMenu
+   *                                                            doesn't yet
+   *                                                            wrap submenus.
+   *   Rename / Delete                                        — already
+   *                                                            wired before
+   *                                                            this PR.
+   *   Compare against working copy / Copy branch name        — UI ops; no
+   *                                                            backend call.
+   *
+   * "Pin to left" lives in #233 — it needs graph-lane rendering work
+   * beyond a menu item.
+   */
   function openBranchContextMenu(e: MouseEvent, b: BranchInfo) {
     e.preventDefault();
+    const isHead = b.is_head;
+    const hasUpstream = !!b.upstream;
+    const headOnly = !isHead;
     const items: ContextMenuItem[] = [
       {
         label: "Checkout",
-        disabled: b.is_head,
+        disabled: isHead,
         onSelect: () => void tryCheckout(b.name),
       },
       {
         label: `Merge '${b.name}' into current`,
-        disabled: b.is_head,
+        disabled: isHead,
         onSelect: () => openMergePickDialog(b.name),
+      },
+      {
+        label: `Rebase current onto '${b.name}'`,
+        disabled: isHead,
+        onSelect: () => void doRebaseCurrentOnto(b.name),
+      },
+      { type: "separator" },
+      {
+        label: "Pull",
+        disabled: headOnly || !hasUpstream,
+        title: headOnly
+          ? "Checkout this branch to pull"
+          : !hasUpstream
+            ? "Branch has no upstream — set one first"
+            : undefined,
+        onSelect: () => void doPullCurrent(),
+      },
+      {
+        label: "Push",
+        disabled: headOnly,
+        title: headOnly ? "Checkout this branch to push" : undefined,
+        onSelect: () => void doPushCurrent(),
+      },
+      {
+        label: "Set Upstream…",
+        disabled: headOnly,
+        title: headOnly ? "Checkout this branch to set its upstream" : undefined,
+        onSelect: () => openSetUpstreamDialog(b.name, b.upstream),
+      },
+      {
+        label: "Push and start PR",
+        disabled: true,
+        title: "Requires OAuth (#46)",
+        onSelect: () => {},
       },
       { type: "separator" },
       {
@@ -381,14 +560,46 @@ export function createBranchOps(deps: BranchOpsDeps) {
         onSelect: () => openCreateDialog(b.tip_sha),
       },
       {
+        label: `Reset HEAD to '${b.name}' (Soft)`,
+        disabled: isHead,
+        onSelect: () => void doResetTo(b.tip_sha, "soft"),
+      },
+      {
+        label: `Reset HEAD to '${b.name}' (Mixed)`,
+        disabled: isHead,
+        onSelect: () => void doResetTo(b.tip_sha, "mixed"),
+      },
+      {
+        label: `Reset HEAD to '${b.name}' (Hard)`,
+        danger: true,
+        disabled: isHead,
+        onSelect: () => void doResetTo(b.tip_sha, "hard"),
+      },
+      { type: "separator" },
+      {
         label: `Rename '${b.name}'…`,
         onSelect: () => openRenameDialog(b.name),
       },
       {
         label: `Delete '${b.name}'…`,
         danger: true,
-        disabled: b.is_head,
+        disabled: isHead,
         onSelect: () => openDeleteDialog(b.name),
+      },
+      { type: "separator" },
+      {
+        label: "Compare against working copy",
+        onSelect: () => {
+          setSelection([b.tip_sha], true);
+          setInspectorMode("details");
+        },
+      },
+      {
+        label: "Copy branch name",
+        onSelect: () => {
+          void navigator.clipboard.writeText(b.name);
+          notify.info("Branch name copied", { message: b.name });
+        },
       },
     ];
     setMenu({ x: e.clientX, y: e.clientY, items });
@@ -902,6 +1113,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openDeleteRemoteDialog,
     openSubmoduleAddDialog,
     openSubmoduleRemoveDialog,
+    openSetUpstreamDialog,
     closeDialog,
     // context menu
     openBranchContextMenu,
@@ -923,6 +1135,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
     submitDeleteRemote,
     submitSubmoduleAdd,
     submitSubmoduleRemove,
+    submitSetUpstream,
     doAbortMerge,
     refreshRemote,
   };

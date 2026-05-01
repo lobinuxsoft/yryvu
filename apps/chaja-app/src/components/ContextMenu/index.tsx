@@ -16,6 +16,10 @@ export type ContextMenuItem =
       label: string;
       disabled?: boolean;
       danger?: boolean;
+      /// Native tooltip surfaced via the button's `title` attribute.
+      /// Use it to explain WHY a disabled item is disabled (e.g. a
+      /// blocking issue link), not to duplicate the label.
+      title?: string;
       onSelect: () => void;
     }
   | { type: "separator" };
@@ -123,6 +127,7 @@ export function ContextMenu(props: ContextMenuProps) {
                 data-active={activeIndex() === index() ? "true" : "false"}
                 data-danger={"danger" in item && item.danger ? "true" : "false"}
                 disabled={"disabled" in item ? item.disabled : false}
+                title={"title" in item ? item.title : undefined}
                 onMouseEnter={() => setActiveIndex(index())}
                 onClick={() => {
                   if (item.type === "separator" || item.disabled) return;

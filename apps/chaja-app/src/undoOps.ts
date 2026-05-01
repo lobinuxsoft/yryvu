@@ -49,11 +49,17 @@ async function runWithToast(
 }
 
 export async function runUndo(): Promise<void> {
-  if (!undoRedoState()?.can_undo) return;
+  if (!undoRedoState()?.can_undo) {
+    notify.info("Nothing to undo");
+    return;
+  }
   await runWithToast("undo", undoRedoState()?.undo_label ?? undefined);
 }
 
 export async function runRedo(): Promise<void> {
-  if (!undoRedoState()?.can_redo) return;
+  if (!undoRedoState()?.can_redo) {
+    notify.info("Nothing to redo");
+    return;
+  }
   await runWithToast("redo", undoRedoState()?.redo_label ?? undefined);
 }

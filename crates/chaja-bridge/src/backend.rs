@@ -471,6 +471,24 @@ pub trait GitBackend: Send + Sync {
 
     fn submodule_remove(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
 
+    /// Rebase the current branch onto `target_branch`. Aborts on
+    /// conflict (chajá doesn't yet expose per-step rebase resolution).
+    fn rebase_current_onto(
+        &self,
+        repo_path: &Path,
+        target_branch: &str,
+    ) -> Result<(), BackendError>;
+
+    /// Set or clear the upstream tracking config for `branch_name`.
+    /// `Some("origin/main")` tracks a specific remote ref; `None`
+    /// clears the tracking config.
+    fn set_upstream(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+        upstream: Option<&str>,
+    ) -> Result<(), BackendError>;
+
     fn merge_branch(
         &self,
         repo_path: &Path,

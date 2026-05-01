@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context};
 
 use crate::backend::{BackendError, BranchInfo, BranchKind};
 
-use super::common::{open_repo, validate_branch_name};
+use super::common::{git2_err, open_git2, open_repo, validate_branch_name};
 
 pub fn list_branches(repo_path: &Path) -> Result<Vec<BranchInfo>, BackendError> {
     let repo = open_repo(repo_path)?;
@@ -212,6 +212,26 @@ pub fn rename_branch(repo_path: &Path, old_name: &str, new_name: &str) -> Result
         .delete()
         .map_err(|e| BackendError::Branch(anyhow::Error::new(e)))?;
 
+    Ok(())
+}
+
+/// Set or clear the upstream for `branch_name`. Pass
+/// `Some("origin/main")` to track a specific remote ref, or `None` to
+/// clear the tracking config. Equivalent to
+/// `git branch --set-upstream-to=<upstream> <branch>` /
+/// `git branch --unset-upstream <branch>`.
+pub fn set_upstream(
+    repo_path: &Path,
+    branch_name: &str,
+    upstream: Option<&str>,
+) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let mut local = repo
+        .find_branch(branch_name, git2::BranchType::Local)
+        .map_err(|_| BackendError::BranchNotFound {
+            name: branch_name.to_string(),
+        })?;
+    local.set_upstream(upstream).map_err(git2_err)?;
     Ok(())
 }
 

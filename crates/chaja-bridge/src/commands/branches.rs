@@ -60,3 +60,33 @@ pub async fn rename_branch(
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn rebase_current_onto(repo_path: String, target_branch: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .rebase_current_onto(&PathBuf::from(&repo_path), &target_branch)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn set_upstream(
+    repo_path: String,
+    branch_name: String,
+    upstream: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .set_upstream(
+                &PathBuf::from(&repo_path),
+                &branch_name,
+                upstream.as_deref(),
+            )
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

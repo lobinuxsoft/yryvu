@@ -20,6 +20,8 @@ pub fn run() {
             chaja_bridge::commands::create_branch,
             chaja_bridge::commands::delete_local_branch,
             chaja_bridge::commands::rename_branch,
+            chaja_bridge::commands::rebase_current_onto,
+            chaja_bridge::commands::set_upstream,
             chaja_bridge::commands::is_working_tree_dirty,
             chaja_bridge::commands::checkout_branch,
             chaja_bridge::commands::checkout_commit,

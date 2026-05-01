@@ -42,6 +42,31 @@ export function deleteTag(repoPath: string, name: string): Promise<void> {
 }
 
 /**
+ * Push a local tag to a named remote
+ * (`refs/tags/<name>:refs/tags/<name>`). Annotated and lightweight tags
+ * use the same wire format.
+ */
+export function pushTag(
+  repoPath: string,
+  remote: string,
+  name: string,
+): Promise<void> {
+  return invoke<void>("push_tag", { repoPath, remote, name });
+}
+
+/**
+ * Delete a tag on a named remote (`:refs/tags/<name>`). Leaves the
+ * local copy intact.
+ */
+export function deleteTagRemote(
+  repoPath: string,
+  remote: string,
+  name: string,
+): Promise<void> {
+  return invoke<void>("delete_tag_remote", { repoPath, remote, name });
+}
+
+/**
  * List every tag (lightweight + annotated) under `refs/tags/` for the
  * sidebar Tags section. Sorted alphabetically by short name.
  */

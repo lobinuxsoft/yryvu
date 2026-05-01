@@ -80,6 +80,71 @@ pub fn delete_remote_branch(
     Ok(())
 }
 
+/// Push a local tag to a remote. Refspec is `refs/tags/<name>:refs/tags/<name>`
+/// — annotated and lightweight tags use the same wire format.
+///
+/// Powers the `Push to remote` action on the tag context menu (#223).
+/// The frontend resolves which remote(s) to push to (single-remote
+/// repos go silently; multi-remote repos surface a picker dialog).
+pub fn push_tag(repo_path: &Path, remote: &str, name: &str) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let mut remote_obj = repo
+        .find_remote(remote)
+        .map_err(|_| BackendError::RemoteNotFound {
+            name: remote.to_string(),
+        })?;
+
+    let refspec = format!("refs/tags/{name}:refs/tags/{name}");
+
+    let mut push_opts = git2::PushOptions::new();
+    push_opts.remote_callbacks(build_credentials_callbacks());
+
+    remote_obj
+        .push(&[&refspec], Some(&mut push_opts))
+        .map_err(|e| BackendError::PushFailed(e.to_string()))?;
+    Ok(())
+}
+
+/// Delete a tag on a remote. Pushes a delete refspec
+/// `:refs/tags/<name>` — the empty source tells the remote to drop the
+/// ref. Doesn't touch the local tag (the local copy may still be
+/// useful even after the remote deletion, e.g. for review workflows).
+pub fn delete_tag_remote(
+    repo_path: &Path,
+    remote: &str,
+    name: &str,
+) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let mut remote_obj = repo
+        .find_remote(remote)
+        .map_err(|_| BackendError::RemoteNotFound {
+            name: remote.to_string(),
+        })?;
+
+    let refspec = format!(":refs/tags/{name}");
+
+    let mut push_opts = git2::PushOptions::new();
+    push_opts.remote_callbacks(build_credentials_callbacks());
+
+    remote_obj
+        .push(&[&refspec], Some(&mut push_opts))
+        .map_err(|e| BackendError::PushFailed(e.to_string()))?;
+    Ok(())
+}
+
+/// Enumerate every configured remote name (e.g. `origin`, `upstream`).
+/// Frontend uses this to decide whether the tag context menu's
+/// `Push to remote` and `Delete from remote` actions need a remote-picker
+/// dialog (>1 remote) or can fire silently (==1 remote).
+pub fn list_remotes(repo_path: &Path) -> Result<Vec<String>, BackendError> {
+    let repo = open_git2(repo_path)?;
+    let names = repo.remotes().map_err(git2_err)?;
+    Ok(names
+        .iter()
+        .filter_map(|s| s.map(String::from))
+        .collect())
+}
+
 /// Push HEAD's branch to its configured upstream. When no upstream is
 /// configured, pushes to `origin/<current-branch>` and sets it as the
 /// upstream so the next push doesn't need the same nudge.

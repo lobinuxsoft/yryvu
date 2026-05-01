@@ -53,6 +53,7 @@ pub fn run() {
             chaja_bridge::commands::abort_merge,
             chaja_bridge::commands::repo_state,
             chaja_bridge::commands::fetch_prune,
+            chaja_bridge::commands::get_remote_url,
             chaja_bridge::commands::commit_diff,
             chaja_bridge::commands::combined_commit_diff,
             chaja_bridge::commands::commit_details,

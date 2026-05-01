@@ -5,8 +5,21 @@ use std::sync::{Arc, Mutex};
 
 use crate::backend::{BackendError, MergeResult, MergeStrategy, PushOptions};
 
-use super::common::{git2_err, open_git2};
+use super::common::{git2_err, open_git2, open_repo};
+use super::hosting::remote_url;
 use super::merge;
+
+/// Resolve the fetch URL configured for `remote_name`. Powers the
+/// `Copy URL` action on remote-branch and remote-header context menus.
+/// Errors with `RemoteNotFound` when the remote is missing or has no
+/// fetch URL configured (rare but possible: `git remote add` with
+/// `--mirror=push` only).
+pub fn get_remote_url(repo_path: &Path, remote_name: &str) -> Result<String, BackendError> {
+    let repo = open_repo(repo_path)?;
+    remote_url(&repo, remote_name).ok_or_else(|| BackendError::RemoteNotFound {
+        name: remote_name.to_string(),
+    })
+}
 
 pub fn build_credentials_callbacks() -> git2::RemoteCallbacks<'static> {
     let mut callbacks = git2::RemoteCallbacks::new();

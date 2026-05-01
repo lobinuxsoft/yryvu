@@ -68,7 +68,10 @@ fn pick_remote_url(repo: &gix::Repository) -> Option<String> {
     None
 }
 
-fn remote_url(repo: &gix::Repository, name: &str) -> Option<String> {
+/// Resolve the fetch URL configured for a named remote. `pub(crate)`
+/// because [`crate::repo::remote::get_remote_url`] needs the same
+/// resolver — keeping it here avoids duplicating the gix dance.
+pub(crate) fn remote_url(repo: &gix::Repository, name: &str) -> Option<String> {
     let remote = repo.find_remote(name).ok()?;
     let url = remote.url(gix::remote::Direction::Fetch)?;
     Some(url.to_bstring().to_string())

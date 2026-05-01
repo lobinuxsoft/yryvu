@@ -190,6 +190,10 @@ pub trait GitBackend: Send + Sync {
 
     fn fetch_prune(&self, repo_path: &Path, remote: Option<&str>) -> Result<(), BackendError>;
 
+    /// Resolve the fetch URL of a configured remote. Powers the
+    /// `Copy URL` action on remote-branch / remote-header context menus.
+    fn get_remote_url(&self, repo_path: &Path, remote_name: &str) -> Result<String, BackendError>;
+
     fn commit_diff(&self, repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError>;
 
     /// Multi-revision / WIP-aware diff for the right-panel inspector.

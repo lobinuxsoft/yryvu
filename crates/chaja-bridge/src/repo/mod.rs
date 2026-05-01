@@ -260,6 +260,14 @@ impl GitBackend for GixBackend {
         remote::fetch_prune(repo_path, remote)
     }
 
+    fn get_remote_url(
+        &self,
+        repo_path: &Path,
+        remote_name: &str,
+    ) -> Result<String, BackendError> {
+        remote::get_remote_url(repo_path, remote_name)
+    }
+
     fn commit_diff(&self, repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError> {
         commits::commit_diff(repo_path, sha)
     }

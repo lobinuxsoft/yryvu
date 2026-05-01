@@ -104,6 +104,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openSubmoduleAddDialog: openers.openSubmoduleAddDialog,
     openSubmoduleRemoveDialog: openers.openSubmoduleRemoveDialog,
     openSetUpstreamDialog: openers.openSetUpstreamDialog,
+    openDeleteTagDialog: openers.openDeleteTagDialog,
+    openAnnotateTagDialog: openers.openAnnotateTagDialog,
     closeDialog: state.closeDialog,
 
     // context menus (bound to local menuDeps)
@@ -137,6 +139,9 @@ export function createBranchOps(deps: BranchOpsDeps) {
     submitSubmoduleAdd: handlers.submitSubmoduleAdd,
     submitSubmoduleRemove: handlers.submitSubmoduleRemove,
     submitSetUpstream: handlers.submitSetUpstream,
+    submitDeleteTag: handlers.submitDeleteTag,
+    submitAnnotateTag: handlers.submitAnnotateTag,
+    pushTagTo: handlers.pushTagTo,
     doAbortMerge: handlers.doAbortMerge,
     refreshRemote: handlers.refreshRemote,
   };

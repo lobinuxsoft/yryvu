@@ -67,6 +67,23 @@ export function createDialogOpeners(state: BranchOpsState) {
     setDialog({ kind: "set-upstream", branchName, currentUpstream });
   }
 
+  function openDeleteTagDialog(
+    name: string,
+    scope:
+      | { type: "local" }
+      | { type: "remote"; remote: string }
+      | { type: "all-remotes"; remotes: string[] },
+  ) {
+    setDialogError(null);
+    setDialog({ kind: "delete-tag", name, scope });
+  }
+
+  function openAnnotateTagDialog(name: string) {
+    setDialogError(null);
+    setDialogNameInput("");
+    setDialog({ kind: "annotate-tag", name });
+  }
+
   return {
     openCreateDialog,
     openRenameDialog,
@@ -76,6 +93,8 @@ export function createDialogOpeners(state: BranchOpsState) {
     openSubmoduleAddDialog,
     openSubmoduleRemoveDialog,
     openSetUpstreamDialog,
+    openDeleteTagDialog,
+    openAnnotateTagDialog,
   };
 }
 

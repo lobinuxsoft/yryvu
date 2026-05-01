@@ -21,6 +21,7 @@ import { openRefContextMenu } from "./menus/ref";
 import { openSectionContextMenu } from "./menus/section";
 import { openStashContextMenu } from "./menus/stash";
 import { openSubmoduleContextMenu } from "./menus/submodule";
+import { openTagContextMenu } from "./menus/tag";
 import { openWorktreeContextMenu } from "./menus/worktree";
 import type { MenuDeps } from "./menus/types";
 
@@ -47,19 +48,24 @@ export function createBranchOps(deps: BranchOpsDeps) {
   const openers = createDialogOpeners(state);
   const handlers = createHandlers({ state, refresh: deps.refresh });
 
-  /// Live accessors the section context menu reads to compute Hide-all
-  /// / Show-all enablement. Wired by the LeftSidebar in onMount via
-  /// `setBranchSource` / `setTagSource` — the resources live there and
-  /// we'd lose reactivity if AppShell tried to thread them through
-  /// props ahead of mount. While unset (e.g. in unit tests) the menu
-  /// silently drops the Hide-all / Show-all group.
+  /// Live accessors the section / tag context menus read to compute
+  /// Hide-all / Show-all enablement and per-remote tag actions. Wired
+  /// by the LeftSidebar in onMount via `setBranchSource` /
+  /// `setTagSource` / `setRemotesSource` — the resources live there
+  /// and we'd lose reactivity if AppShell tried to thread them
+  /// through props ahead of mount. While unset (e.g. in unit tests)
+  /// the menu silently drops the dependent group.
   let branchSource: (() => BranchInfo[]) | undefined;
   let tagSource: (() => TagInfo[]) | undefined;
+  let remotesSource: (() => string[]) | undefined;
   function setBranchSource(fn: () => BranchInfo[]): void {
     branchSource = fn;
   }
   function setTagSource(fn: () => TagInfo[]): void {
     tagSource = fn;
+  }
+  function setRemotesSource(fn: () => string[]): void {
+    remotesSource = fn;
   }
 
   const menuDeps: MenuDeps = {
@@ -79,6 +85,11 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openSetUpstreamDialog: openers.openSetUpstreamDialog,
     branchSource: () => branchSource?.(),
     tagSource: () => tagSource?.(),
+    remotesSource: () => remotesSource?.(),
+    openDeleteTagDialog: openers.openDeleteTagDialog,
+    openAnnotateTagDialog: openers.openAnnotateTagDialog,
+    pushTagTo: handlers.pushTagTo,
+    tryCheckoutTagSha: handlers.tryCheckoutTagSha,
   };
 
   return {
@@ -104,6 +115,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openSubmoduleAddDialog: openers.openSubmoduleAddDialog,
     openSubmoduleRemoveDialog: openers.openSubmoduleRemoveDialog,
     openSetUpstreamDialog: openers.openSetUpstreamDialog,
+    openDeleteTagDialog: openers.openDeleteTagDialog,
+    openAnnotateTagDialog: openers.openAnnotateTagDialog,
     closeDialog: state.closeDialog,
 
     // context menus (bound to local menuDeps)
@@ -121,8 +134,11 @@ export function createBranchOps(deps: BranchOpsDeps) {
       openSubmoduleContextMenu(menuDeps, e, info),
     openWorktreeContextMenu: (e: MouseEvent, info: WorktreeInfo) =>
       openWorktreeContextMenu(menuDeps, e, info),
+    openTagContextMenu: (e: MouseEvent, tag: TagInfo) =>
+      openTagContextMenu(menuDeps, e, tag),
     setBranchSource,
     setTagSource,
+    setRemotesSource,
 
     // async operations
     tryCheckout: handlers.tryCheckout,
@@ -137,6 +153,9 @@ export function createBranchOps(deps: BranchOpsDeps) {
     submitSubmoduleAdd: handlers.submitSubmoduleAdd,
     submitSubmoduleRemove: handlers.submitSubmoduleRemove,
     submitSetUpstream: handlers.submitSetUpstream,
+    submitDeleteTag: handlers.submitDeleteTag,
+    submitAnnotateTag: handlers.submitAnnotateTag,
+    pushTagTo: handlers.pushTagTo,
     doAbortMerge: handlers.doAbortMerge,
     refreshRemote: handlers.refreshRemote,
   };

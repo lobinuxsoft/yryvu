@@ -5,6 +5,7 @@ import { createResource, type Accessor } from "solid-js";
 import {
   getRepoState,
   listBranches,
+  listRemotes,
   listStashes,
   listSubmodules,
   listTags,
@@ -109,6 +110,19 @@ export function useSidebarData(filterQuery: Accessor<string>) {
     { initialValue: [] },
   );
 
+  // Remotes list keys off branchesNonce because any branch CRUD that
+  // adds/removes a remote bumps it through `git remote add/remove`
+  // followed by a fetch. Tag context-menu reads this to render
+  // per-remote Push / Delete entries.
+  const [remoteNames] = createResource<string[], [string, number]>(
+    () => [repoPath() ?? "", branchesNonce()] as [string, number],
+    async ([path]) => {
+      if (!path) return [] as string[];
+      return await listRemotes(path);
+    },
+    { initialValue: [] },
+  );
+
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
   const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
   const tagList = () => tags() ?? [];
@@ -155,6 +169,7 @@ export function useSidebarData(filterQuery: Accessor<string>) {
     branches,
     repoState,
     tags,
+    remoteNames,
     locals,
     remotes,
     tagList,

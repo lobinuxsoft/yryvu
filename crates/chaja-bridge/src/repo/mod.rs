@@ -184,6 +184,41 @@ impl GitBackend for GixBackend {
         tags::create_tag(repo_path, name, sha, message)
     }
 
+    fn delete_tag(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        tags::delete_tag(repo_path, name)
+    }
+
+    fn annotate_tag(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        message: &str,
+    ) -> Result<(), BackendError> {
+        tags::annotate_tag(repo_path, name, message)
+    }
+
+    fn push_tag(
+        &self,
+        repo_path: &Path,
+        remote: &str,
+        name: &str,
+    ) -> Result<(), BackendError> {
+        remote::push_tag(repo_path, remote, name)
+    }
+
+    fn delete_tag_remote(
+        &self,
+        repo_path: &Path,
+        remote: &str,
+        name: &str,
+    ) -> Result<(), BackendError> {
+        remote::delete_tag_remote(repo_path, remote, name)
+    }
+
+    fn list_remotes(&self, repo_path: &Path) -> Result<Vec<String>, BackendError> {
+        remote::list_remotes(repo_path)
+    }
+
     fn reset_to_commit(
         &self,
         repo_path: &Path,

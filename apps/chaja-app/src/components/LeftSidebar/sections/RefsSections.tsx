@@ -138,7 +138,9 @@ export function RefsSections(props: Props) {
               }
             >
               <For each={props.data.filteredTags()}>
-                {(t) => <TagRow tag={t} />}
+                {(t) => (
+                  <TagRow tag={t} onContextMenu={props.ops.openTagContextMenu} />
+                )}
               </For>
             </Show>
           </Show>

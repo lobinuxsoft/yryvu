@@ -2,6 +2,7 @@
 
 import {
   checkoutBranch,
+  checkoutCommit,
   checkoutRemoteTracking,
   isWorkingTreeDirty,
   stashPush,
@@ -134,6 +135,25 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
     }
   }
 
+  /**
+   * Tag checkout — detached HEAD on the tag's peeled commit. Dirty
+   * trees surface the libgit2 "would overwrite" error as an inline
+   * toast for now; the dirty-escalation dialog flow only covers
+   * branch/remote checkout today (#223 follow-up).
+   */
+  async function tryCheckoutTagSha(tagName: string, sha: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await checkoutCommit(path, sha);
+      refresh();
+      refreshWorkingTree();
+      notify.success("Checked out tag", { message: tagName });
+    } catch (err) {
+      notify.error("Checkout tag failed", { message: String(err) });
+    }
+  }
+
   return {
     tryCheckout,
     doCheckout,
@@ -141,5 +161,6 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
     tryCheckoutRemoteTracking,
     doCheckoutRemoteTracking,
     stashAndCheckoutRemoteTracking,
+    tryCheckoutTagSha,
   };
 }

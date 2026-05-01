@@ -8,6 +8,7 @@ import { createMergeHandlers } from "./merge";
 import { createRefHandlers } from "./refs";
 import { createRemoteHandlers } from "./remote";
 import { createSubmoduleHandlers } from "./submodule";
+import { createTagHandlers } from "./tags";
 
 export interface HandlersDeps {
   state: BranchOpsState;
@@ -28,6 +29,7 @@ export function createHandlers(deps: HandlersDeps) {
     ...createMergeHandlers(deps),
     ...createSubmoduleHandlers(deps),
     ...createRemoteHandlers(deps),
+    ...createTagHandlers(deps),
   };
 }
 

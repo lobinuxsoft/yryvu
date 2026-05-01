@@ -92,6 +92,40 @@ pub trait GitBackend: Send + Sync {
         message: Option<&str>,
     ) -> Result<(), BackendError>;
 
+    /// Delete a local tag (`refs/tags/<name>`). Doesn't touch remotes —
+    /// see backend impl notes for the remote-side counterpart.
+    fn delete_tag(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Convert a lightweight tag to an annotated one (or rewrite an
+    /// existing annotated tag) at the same target SHA.
+    fn annotate_tag(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        message: &str,
+    ) -> Result<(), BackendError>;
+
+    /// Push a local tag to a remote (`refs/tags/<name>:refs/tags/<name>`).
+    fn push_tag(
+        &self,
+        repo_path: &Path,
+        remote: &str,
+        name: &str,
+    ) -> Result<(), BackendError>;
+
+    /// Delete a tag on a remote (`:refs/tags/<name>`). Doesn't touch
+    /// the local copy.
+    fn delete_tag_remote(
+        &self,
+        repo_path: &Path,
+        remote: &str,
+        name: &str,
+    ) -> Result<(), BackendError>;
+
+    /// Enumerate configured remote names. The tag-menu `Delete from
+    /// all remotes` and `Push to remote` items branch on the count.
+    fn list_remotes(&self, repo_path: &Path) -> Result<Vec<String>, BackendError>;
+
     /// Reset the current branch tip to the given commit. `Hard` is destructive
     /// — callers MUST confirm with the user before invoking it.
     fn reset_to_commit(

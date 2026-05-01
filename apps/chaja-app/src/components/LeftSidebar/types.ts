@@ -27,4 +27,17 @@ export type DialogState =
   | { kind: "submodule-add" }
   | { kind: "submodule-remove"; name: string; path: string }
   | { kind: "set-upstream"; branchName: string; currentUpstream: string | null }
+  | {
+      /// Tag deletion — `scope` discriminates between local-only,
+      /// single-remote, and all-remotes flows so the dialog body
+      /// surfaces the right copy and the submitter routes to the
+      /// right backend op.
+      kind: "delete-tag";
+      name: string;
+      scope:
+        | { type: "local" }
+        | { type: "remote"; remote: string }
+        | { type: "all-remotes"; remotes: string[] };
+    }
+  | { kind: "annotate-tag"; name: string }
   | null;

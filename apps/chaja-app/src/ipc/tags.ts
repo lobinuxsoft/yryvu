@@ -34,6 +34,53 @@ export function createTag(
 }
 
 /**
+ * Delete a local tag (`refs/tags/<name>`). Doesn't touch any remote;
+ * use the remote-tag IPCs for that.
+ */
+export function deleteTag(repoPath: string, name: string): Promise<void> {
+  return invoke<void>("delete_tag", { repoPath, name });
+}
+
+/**
+ * Convert a lightweight tag into an annotated one with `message`.
+ * Re-annotates an already-annotated tag in place if called on one.
+ * Errors with `invalid-tag-name` when the message is empty after
+ * trimming.
+ */
+export function annotateTag(
+  repoPath: string,
+  name: string,
+  message: string,
+): Promise<void> {
+  return invoke<void>("annotate_tag", { repoPath, name, message });
+}
+
+/**
+ * Push a local tag to a named remote
+ * (`refs/tags/<name>:refs/tags/<name>`). Annotated and lightweight tags
+ * use the same wire format.
+ */
+export function pushTag(
+  repoPath: string,
+  remote: string,
+  name: string,
+): Promise<void> {
+  return invoke<void>("push_tag", { repoPath, remote, name });
+}
+
+/**
+ * Delete a tag on a named remote (`:refs/tags/<name>`). Leaves the
+ * local copy intact.
+ */
+export function deleteTagRemote(
+  repoPath: string,
+  remote: string,
+  name: string,
+): Promise<void> {
+  return invoke<void>("delete_tag_remote", { repoPath, remote, name });
+}
+
+/**
  * List every tag (lightweight + annotated) under `refs/tags/` for the
  * sidebar Tags section. Sorted alphabetically by short name.
  */

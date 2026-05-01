@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { checkoutBranch, isWorkingTreeDirty, stashPush } from "../../ipc";
+import {
+  checkoutBranch,
+  checkoutRemoteTracking,
+  isWorkingTreeDirty,
+  stashPush,
+} from "../../ipc";
 import { refreshWorkingTree, repoPath } from "../../state";
 import { notify } from "../../components/Notifications";
 import type { BranchOpsState } from "../state";
@@ -66,5 +71,75 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
     }
   }
 
-  return { tryCheckout, doCheckout, stashAndCheckout };
+  async function stashAndCheckoutRemoteTracking(fullRemoteName: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await stashPush(
+        path,
+        `chaja: auto-stash before checkout to ${fullRemoteName}`,
+      );
+      await checkoutRemoteTracking(path, fullRemoteName);
+      closeDialog();
+      refresh();
+      refreshWorkingTree();
+      notify.success("Checked out", {
+        message: `Auto-stashed → ${fullRemoteName}`,
+      });
+    } catch (err) {
+      setDialogError(String(err));
+      notify.error("Checkout failed", { message: String(err) });
+    }
+  }
+
+  /**
+   * Remote-branch checkout — creates-or-switches to a local tracking
+   * branch (#222). Same dirty-tree guard as `tryCheckout`: dirty trees
+   * escalate to the CheckoutDirty dialog, which then routes through
+   * `doCheckoutRemoteTracking` once the user picks Stash & Switch /
+   * Discard / Cancel.
+   */
+  async function tryCheckoutRemoteTracking(fullRemoteName: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      const dirty = await isWorkingTreeDirty(path);
+      if (dirty) {
+        setDialogError(null);
+        setDialog({
+          kind: "checkout-dirty",
+          target: fullRemoteName,
+          remoteTracking: true,
+        });
+        return;
+      }
+      await doCheckoutRemoteTracking(fullRemoteName);
+    } catch (err) {
+      setDialogError(String(err));
+    }
+  }
+
+  async function doCheckoutRemoteTracking(fullRemoteName: string) {
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await checkoutRemoteTracking(path, fullRemoteName);
+      closeDialog();
+      refresh();
+      refreshWorkingTree();
+      notify.success("Checked out", { message: fullRemoteName });
+    } catch (err) {
+      setDialogError(String(err));
+      notify.error("Checkout failed", { message: String(err) });
+    }
+  }
+
+  return {
+    tryCheckout,
+    doCheckout,
+    stashAndCheckout,
+    tryCheckoutRemoteTracking,
+    doCheckoutRemoteTracking,
+    stashAndCheckoutRemoteTracking,
+  };
 }

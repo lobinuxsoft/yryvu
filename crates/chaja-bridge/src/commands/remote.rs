@@ -32,6 +32,17 @@ pub async fn fetch_prune(repo_path: String, remote: Option<String>) -> Result<()
 }
 
 #[tauri::command]
+pub async fn get_remote_url(repo_path: String, remote_name: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .get_remote_url(&PathBuf::from(&repo_path), &remote_name)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 pub async fn push(repo_path: String, options: Option<PushOptions>) -> Result<(), String> {
     let opts = options.unwrap_or_default();
     tauri::async_runtime::spawn_blocking(move || {

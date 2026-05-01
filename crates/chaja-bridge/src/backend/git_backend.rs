@@ -67,6 +67,15 @@ pub trait GitBackend: Send + Sync {
 
     fn checkout_branch(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
 
+    /// Checkout a remote-tracking branch by creating-or-switching to a
+    /// local branch that tracks it. Powers `Checkout` on a remote
+    /// branch row.
+    fn checkout_remote_tracking(
+        &self,
+        repo_path: &Path,
+        full_remote_name: &str,
+    ) -> Result<(), BackendError>;
+
     /// Detach HEAD to the given commit SHA. Caller is expected to prompt on a
     /// dirty working tree beforehand; the default git2 checkout refuses to
     /// overwrite uncommitted changes.
@@ -180,6 +189,10 @@ pub trait GitBackend: Send + Sync {
     fn repo_state(&self, repo_path: &Path) -> Result<RepoStateInfo, BackendError>;
 
     fn fetch_prune(&self, repo_path: &Path, remote: Option<&str>) -> Result<(), BackendError>;
+
+    /// Resolve the fetch URL of a configured remote. Powers the
+    /// `Copy URL` action on remote-branch / remote-header context menus.
+    fn get_remote_url(&self, repo_path: &Path, remote_name: &str) -> Result<String, BackendError>;
 
     fn commit_diff(&self, repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError>;
 

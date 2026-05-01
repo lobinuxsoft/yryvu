@@ -10,6 +10,22 @@ export function checkoutBranch(repoPath: string, name: string): Promise<void> {
   return invoke<void>("checkout_branch", { repoPath, name });
 }
 
+/**
+ * Checkout a remote-tracking ref by creating-or-switching to a local
+ * branch that tracks it. `fullRemoteName` is the short form returned by
+ * `listBranches` for `kind: "remote"` rows — e.g. `origin/feature-x`
+ * (no `refs/remotes/` prefix).
+ */
+export function checkoutRemoteTracking(
+  repoPath: string,
+  fullRemoteName: string,
+): Promise<void> {
+  return invoke<void>("checkout_remote_tracking", {
+    repoPath,
+    fullRemoteName,
+  });
+}
+
 export function stashPush(repoPath: string, message?: string): Promise<void> {
   return invoke<void>("stash_push", { repoPath, message });
 }

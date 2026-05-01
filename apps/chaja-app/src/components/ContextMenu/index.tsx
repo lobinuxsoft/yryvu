@@ -36,19 +36,34 @@ export function ContextMenu(props: ContextMenuProps) {
   const [position, setPosition] = createSignal({ x: props.x, y: props.y });
   const [activeIndex, setActiveIndex] = createSignal(-1);
 
-  // Flip inside viewport after mount (measure real size, then reposition).
-  onMount(() => {
-    if (!menuRef) return;
+  /**
+   * Clamp a (x, y) anchor inside the viewport using the menu's measured
+   * size. With CSS `max-height: calc(100vh - 16px)` plus this clamp, a
+   * menu can never spill outside the viewport: tall menus get an
+   * inner scroll, wide menus hug the right edge, and anchors near the
+   * bottom-right corner reflow up-and-left to fit.
+   */
+  function clampToViewport(x: number, y: number): { x: number; y: number } {
+    if (!menuRef) return { x, y };
     const rect = menuRef.getBoundingClientRect();
-    let nx = props.x;
-    let ny = props.y;
-    if (nx + rect.width > window.innerWidth - 8) {
-      nx = Math.max(8, window.innerWidth - rect.width - 8);
+    const margin = 8;
+    let nx = x;
+    let ny = y;
+    if (nx + rect.width > window.innerWidth - margin) {
+      nx = Math.max(margin, window.innerWidth - rect.width - margin);
     }
-    if (ny + rect.height > window.innerHeight - 8) {
-      ny = Math.max(8, window.innerHeight - rect.height - 8);
+    if (ny + rect.height > window.innerHeight - margin) {
+      ny = Math.max(margin, window.innerHeight - rect.height - margin);
     }
-    setPosition({ x: nx, y: ny });
+    return { x: nx, y: ny };
+  }
+
+  // Initial clamp once the DOM is connected (we need a real rect to
+  // measure). Re-clamp on prop changes happens in the createEffect
+  // below — without it, the previous version restored raw click coords
+  // every time props updated, dropping the clamp the user expected.
+  onMount(() => {
+    setPosition(clampToViewport(props.x, props.y));
   });
 
   const onDocPointerDown = (e: PointerEvent) => {
@@ -102,8 +117,13 @@ export function ContextMenu(props: ContextMenuProps) {
     document.removeEventListener("keydown", onDocKeyDown, true);
   });
 
+  // Re-clamp when the parent feeds new (x, y) without unmounting. Skipped
+  // on the very first run because `menuRef` isn't connected yet — onMount
+  // covers that path.
   createEffect(() => {
-    setPosition({ x: props.x, y: props.y });
+    if (menuRef) {
+      setPosition(clampToViewport(props.x, props.y));
+    }
   });
 
   return (

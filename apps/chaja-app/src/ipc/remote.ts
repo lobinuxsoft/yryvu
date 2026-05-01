@@ -17,6 +17,18 @@ export function fetchPrune(repoPath: string, remote?: string): Promise<void> {
 }
 
 /**
+ * Resolve the fetch URL configured for a named remote. Errors with a
+ * `remote-not-found` message when the remote is missing or has no
+ * fetch URL — both surface as a generic toast on the caller side.
+ */
+export function getRemoteUrl(
+  repoPath: string,
+  remoteName: string,
+): Promise<string> {
+  return invoke<string>("get_remote_url", { repoPath, remoteName });
+}
+
+/**
  * Push customisation surface. Mirrors the backend `PushOptions` struct.
  * Bare `--force` is intentionally absent — chajá refuses to expose it
  * from the UI; use {@link push} with `forceWithLease` instead.

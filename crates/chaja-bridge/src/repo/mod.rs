@@ -162,6 +162,14 @@ impl GitBackend for GixBackend {
         worktree::checkout_branch(repo_path, name)
     }
 
+    fn checkout_remote_tracking(
+        &self,
+        repo_path: &Path,
+        full_remote_name: &str,
+    ) -> Result<(), BackendError> {
+        worktree::checkout_remote_tracking(repo_path, full_remote_name)
+    }
+
     fn checkout_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError> {
         worktree::checkout_commit(repo_path, sha)
     }
@@ -250,6 +258,14 @@ impl GitBackend for GixBackend {
 
     fn fetch_prune(&self, repo_path: &Path, remote: Option<&str>) -> Result<(), BackendError> {
         remote::fetch_prune(repo_path, remote)
+    }
+
+    fn get_remote_url(
+        &self,
+        repo_path: &Path,
+        remote_name: &str,
+    ) -> Result<String, BackendError> {
+        remote::get_remote_url(repo_path, remote_name)
     }
 
     fn commit_diff(&self, repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError> {

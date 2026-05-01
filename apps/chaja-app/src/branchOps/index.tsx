@@ -65,6 +65,7 @@ export function createBranchOps(deps: BranchOpsDeps) {
   const menuDeps: MenuDeps = {
     setMenu: state.setMenu,
     tryCheckout: handlers.tryCheckout,
+    tryCheckoutRemoteTracking: handlers.tryCheckoutRemoteTracking,
     doRebaseCurrentOnto: handlers.doRebaseCurrentOnto,
     doPullCurrent: handlers.doPullCurrent,
     doPushCurrent: handlers.doPushCurrent,
@@ -126,6 +127,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     // async operations
     tryCheckout: handlers.tryCheckout,
     stashAndCheckout: handlers.stashAndCheckout,
+    tryCheckoutRemoteTracking: handlers.tryCheckoutRemoteTracking,
+    stashAndCheckoutRemoteTracking: handlers.stashAndCheckoutRemoteTracking,
     submitCreate: handlers.submitCreate,
     submitRename: handlers.submitRename,
     submitDelete: handlers.submitDelete,

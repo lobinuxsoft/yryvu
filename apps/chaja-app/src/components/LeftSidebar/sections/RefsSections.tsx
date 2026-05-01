@@ -83,7 +83,7 @@ export function RefsSections(props: Props) {
           }
           onRefresh={() => void props.ops.refreshRemote()}
           refreshing={props.ops.refreshingRemote()}
-          onContextMenu={props.ops.openSectionContextMenu}
+          onContextMenu={(e) => props.ops.openRemoteHeaderContextMenu(e)}
         >
           <Show
             when={props.data.filteredRemotes().length > 0}

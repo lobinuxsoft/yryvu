@@ -17,6 +17,7 @@ import { createDialogOpeners } from "./dialogs";
 import { createHandlers } from "./handlers";
 import { openBranchContextMenu } from "./menus/branch";
 import { openRemoteContextMenu } from "./menus/remote";
+import { openRemoteHeaderContextMenu } from "./menus/remote-header";
 import { openRefContextMenu } from "./menus/ref";
 import { openSectionContextMenu } from "./menus/section";
 import { openStashContextMenu } from "./menus/stash";
@@ -90,6 +91,11 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openAnnotateTagDialog: openers.openAnnotateTagDialog,
     pushTagTo: handlers.pushTagTo,
     tryCheckoutTagSha: handlers.tryCheckoutTagSha,
+    openAddRemoteDialog: openers.openAddRemoteDialog,
+    openEditRemoteDialog: openers.openEditRemoteDialog,
+    openRemoveRemoteDialog: openers.openRemoveRemoteDialog,
+    fetchRemote: handlers.fetchRemote,
+    refreshRemote: handlers.refreshRemote,
   };
 
   return {
@@ -127,6 +133,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
       openBranchContextMenu(menuDeps, e, b),
     openRemoteContextMenu: (e: MouseEvent, b: BranchInfo) =>
       openRemoteContextMenu(menuDeps, e, b),
+    openRemoteHeaderContextMenu: (e: MouseEvent) =>
+      openRemoteHeaderContextMenu(menuDeps, e),
     openRefContextMenu: (e: MouseEvent, tag: RefTag, sha: string) =>
       openRefContextMenu(menuDeps, e, tag, sha),
     openSectionContextMenu: (e: MouseEvent, key: SectionKey) =>

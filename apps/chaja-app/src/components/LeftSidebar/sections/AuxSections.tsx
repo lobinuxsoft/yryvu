@@ -4,6 +4,7 @@ import { For, Show } from "solid-js";
 
 import type { BranchOps } from "../../../branchOps";
 import { hiddenSections, repoPath } from "../../../state";
+import { InlineConnectCta } from "../../CallToActions/InlineConnectCta";
 import {
   IconBranch,
   IconCircleDot,
@@ -130,7 +131,7 @@ export function AuxSections(props: Props) {
           addable
           onContextMenu={props.ops.openSectionContextMenu}
         >
-          <p class="sidebar__empty">Connect a Git provider to list PRs</p>
+          <InlineConnectCta kind="pull-requests" />
         </SidebarSection>
       </Show>
       <Show when={!props.data.isFiltering() && !hiddenSections().has("ISSUES")}>
@@ -141,7 +142,7 @@ export function AuxSections(props: Props) {
           count={0}
           onContextMenu={props.ops.openSectionContextMenu}
         >
-          <p class="sidebar__empty">Connect a Git provider to list issues</p>
+          <InlineConnectCta kind="issues" />
         </SidebarSection>
       </Show>
 

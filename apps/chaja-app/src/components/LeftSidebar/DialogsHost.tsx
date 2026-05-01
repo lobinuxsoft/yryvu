@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { AddRemoteDialog } from "./dialogs/AddRemoteDialog";
 import { AnnotateTagDialog } from "./dialogs/AnnotateTagDialog";
 import { CheckoutDirtyDialog } from "./dialogs/CheckoutDirtyDialog";
 import { CreateDialog } from "./dialogs/CreateDialog";
 import { DeleteDialog } from "./dialogs/DeleteDialog";
 import { DeleteRemoteDialog } from "./dialogs/DeleteRemoteDialog";
 import { DeleteTagDialog } from "./dialogs/DeleteTagDialog";
+import { EditRemoteDialog } from "./dialogs/EditRemoteDialog";
 import { MergePickDialog } from "./dialogs/MergePickDialog";
 import { MergeResultDialog } from "./dialogs/MergeResultDialog";
+import { RemoveRemoteDialog } from "./dialogs/RemoveRemoteDialog";
 import { RenameDialog } from "./dialogs/RenameDialog";
 import { SetUpstreamDialog } from "./dialogs/SetUpstreamDialog";
 import { SubmoduleAddDialog } from "./dialogs/SubmoduleAddDialog";
@@ -34,6 +37,9 @@ export function DialogsHost(props: { ops: BranchOps }) {
       <SetUpstreamDialog ops={props.ops} />
       <DeleteTagDialog ops={props.ops} />
       <AnnotateTagDialog ops={props.ops} />
+      <AddRemoteDialog ops={props.ops} />
+      <EditRemoteDialog ops={props.ops} />
+      <RemoveRemoteDialog ops={props.ops} />
     </>
   );
 }

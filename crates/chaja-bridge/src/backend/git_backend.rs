@@ -98,20 +98,11 @@ pub trait GitBackend: Send + Sync {
 
     /// Convert a lightweight tag to an annotated one (or rewrite an
     /// existing annotated tag) at the same target SHA.
-    fn annotate_tag(
-        &self,
-        repo_path: &Path,
-        name: &str,
-        message: &str,
-    ) -> Result<(), BackendError>;
+    fn annotate_tag(&self, repo_path: &Path, name: &str, message: &str)
+        -> Result<(), BackendError>;
 
     /// Push a local tag to a remote (`refs/tags/<name>:refs/tags/<name>`).
-    fn push_tag(
-        &self,
-        repo_path: &Path,
-        remote: &str,
-        name: &str,
-    ) -> Result<(), BackendError>;
+    fn push_tag(&self, repo_path: &Path, remote: &str, name: &str) -> Result<(), BackendError>;
 
     /// Delete a tag on a remote (`:refs/tags/<name>`). Doesn't touch
     /// the local copy.
@@ -125,6 +116,16 @@ pub trait GitBackend: Send + Sync {
     /// Enumerate configured remote names. The tag-menu `Delete from
     /// all remotes` and `Push to remote` items branch on the count.
     fn list_remotes(&self, repo_path: &Path) -> Result<Vec<String>, BackendError>;
+
+    /// Register a new remote pointing at `url`. Powers the
+    /// `Add remote…` action on the REMOTE-header context menu (#227).
+    fn add_remote(&self, repo_path: &Path, name: &str, url: &str) -> Result<(), BackendError>;
+
+    /// Remove a configured remote (entry + local tracking refs).
+    fn remove_remote(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Update the fetch URL of an existing remote.
+    fn set_remote_url(&self, repo_path: &Path, name: &str, url: &str) -> Result<(), BackendError>;
 
     /// Reset the current branch tip to the given commit. `Hard` is destructive
     /// — callers MUST confirm with the user before invoking it.

@@ -40,4 +40,13 @@ export type DialogState =
         | { type: "all-remotes"; remotes: string[] };
     }
   | { kind: "annotate-tag"; name: string }
+  | { kind: "add-remote" }
+  | {
+      /// Edit a remote's fetch URL. `name` is rendered immutable in the
+      /// dialog body since libgit2 lacks a single-call rename op (would
+      /// need delete+add and that re-fetches local tracking refs).
+      kind: "edit-remote";
+      name: string;
+    }
+  | { kind: "remove-remote"; name: string }
   | null;

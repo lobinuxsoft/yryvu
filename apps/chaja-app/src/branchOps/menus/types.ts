@@ -54,4 +54,11 @@ export interface MenuDeps {
   openAnnotateTagDialog: (name: string) => void;
   pushTagTo: (remote: string, name: string) => Promise<void>;
   tryCheckoutTagSha: (tagName: string, sha: string) => Promise<void>;
+
+  // remote-header-menu specific openers / handlers (#227)
+  openAddRemoteDialog: () => void;
+  openEditRemoteDialog: (name: string, currentUrl: string) => void;
+  openRemoveRemoteDialog: (name: string) => void;
+  fetchRemote: (remote: string) => Promise<void>;
+  refreshRemote: () => Promise<void>;
 }

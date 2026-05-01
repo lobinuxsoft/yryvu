@@ -33,11 +33,7 @@ pub async fn delete_tag(repo_path: String, name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn annotate_tag(
-    repo_path: String,
-    name: String,
-    message: String,
-) -> Result<(), String> {
+pub async fn annotate_tag(repo_path: String, name: String, message: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .annotate_tag(&PathBuf::from(&repo_path), &name, &message)
@@ -48,11 +44,7 @@ pub async fn annotate_tag(
 }
 
 #[tauri::command]
-pub async fn push_tag(
-    repo_path: String,
-    remote: String,
-    name: String,
-) -> Result<(), String> {
+pub async fn push_tag(repo_path: String, remote: String, name: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .push_tag(&PathBuf::from(&repo_path), &remote, &name)

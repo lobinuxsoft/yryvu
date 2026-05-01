@@ -84,6 +84,26 @@ export function createDialogOpeners(state: BranchOpsState) {
     setDialog({ kind: "annotate-tag", name });
   }
 
+  function openAddRemoteDialog() {
+    setDialogError(null);
+    setDialogNameInput("");
+    setDialogPathInput("");
+    setDialog({ kind: "add-remote" });
+  }
+
+  function openEditRemoteDialog(name: string, currentUrl: string) {
+    setDialogError(null);
+    // Single-input dialog — repurpose dialogNameInput for the URL so we
+    // can reuse the existing input plumbing without a third signal.
+    setDialogNameInput(currentUrl);
+    setDialog({ kind: "edit-remote", name });
+  }
+
+  function openRemoveRemoteDialog(name: string) {
+    setDialogError(null);
+    setDialog({ kind: "remove-remote", name });
+  }
+
   return {
     openCreateDialog,
     openRenameDialog,
@@ -95,6 +115,9 @@ export function createDialogOpeners(state: BranchOpsState) {
     openSetUpstreamDialog,
     openDeleteTagDialog,
     openAnnotateTagDialog,
+    openAddRemoteDialog,
+    openEditRemoteDialog,
+    openRemoveRemoteDialog,
   };
 }
 

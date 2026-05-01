@@ -26,14 +26,15 @@ import type { MenuDeps } from "./types";
  *   3. Visibility checkboxes — every section keyed in ALL_SECTION_KEYS,
  *      with a ✓ prefix when visible. LOCAL is always-on (audit doc 00),
  *      so its row is disabled.
+ *
+ * The pure-builder split lets the REMOTE-header menu (#227) compose
+ * these items underneath its own remote-management entries without
+ * duplicating the three-group logic.
  */
-export function openSectionContextMenu(
+export function buildSectionMenuItems(
   deps: MenuDeps,
-  e: MouseEvent,
   key: SectionKey,
-) {
-  e.preventDefault();
-
+): ContextMenuItem[] {
   const items: ContextMenuItem[] = [];
   const branchSrc = deps.branchSource();
   const tagSrc = deps.tagSource();
@@ -113,5 +114,18 @@ export function openSectionContextMenu(
     });
   }
 
-  deps.setMenu({ x: e.clientX, y: e.clientY, items });
+  return items;
+}
+
+export function openSectionContextMenu(
+  deps: MenuDeps,
+  e: MouseEvent,
+  key: SectionKey,
+) {
+  e.preventDefault();
+  deps.setMenu({
+    x: e.clientX,
+    y: e.clientY,
+    items: buildSectionMenuItems(deps, key),
+  });
 }

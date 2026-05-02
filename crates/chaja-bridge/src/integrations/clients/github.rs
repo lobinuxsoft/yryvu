@@ -23,6 +23,37 @@ use super::types::UserInfo;
 
 const REQUIRED_SCOPES_V1: &[&str] = &["repo", "read:org"];
 
+/// Honour the GitHub OAuth scope hierarchy: `admin:X` implies
+/// `write:X` implies `read:X`. A token with `admin:org` satisfies a
+/// `read:org` requirement even though the literal string isn't in
+/// the granted list.
+///
+/// Non-prefixed scopes like `repo` and `gist` only satisfy themselves
+/// (no implied `read:repo` etc — the GitHub docs treat `repo` as the
+/// monolithic root). `repo` does NOT imply the more granular
+/// `repo:status` / `public_repo` etc; we accept `repo` as the
+/// canonical literal in our required set so the question doesn't
+/// arise in practice.
+fn scope_satisfies(granted: &[&str], required: &str) -> bool {
+    if granted.iter().any(|g| *g == required) {
+        return true;
+    }
+    if let Some(target) = required.strip_prefix("read:") {
+        let write_form = format!("write:{target}");
+        let admin_form = format!("admin:{target}");
+        if granted.iter().any(|g| *g == write_form || *g == admin_form) {
+            return true;
+        }
+    }
+    if let Some(target) = required.strip_prefix("write:") {
+        let admin_form = format!("admin:{target}");
+        if granted.iter().any(|g| *g == admin_form) {
+            return true;
+        }
+    }
+    false
+}
+
 /// Raw shape of GitHub's `GET /user` response — only the fields we
 /// care about. `name` can be null for users who haven't set a
 /// display name; we fall back to `login` in that case.
@@ -115,7 +146,10 @@ pub async fn preflight_github(
     }
 
     // Scope check: GitHub returns granted scopes as a comma-separated
-    // list in `X-OAuth-Scopes`. Compare against our v1 minimum set.
+    // list in `X-OAuth-Scopes`. Honour OAuth hierarchy when matching:
+    // `admin:X` implies `write:X` implies `read:X`. So a token with
+    // `admin:org` satisfies a `read:org` requirement even though the
+    // literal string isn't in the granted list.
     let granted: Vec<&str> = granted_scopes
         .split(',')
         .map(|s| s.trim())
@@ -123,7 +157,7 @@ pub async fn preflight_github(
         .collect();
     let missing: Vec<&&str> = REQUIRED_SCOPES_V1
         .iter()
-        .filter(|req| !granted.iter().any(|g| g == *req))
+        .filter(|req| !scope_satisfies(&granted, req))
         .collect();
     if !missing.is_empty() {
         return Err(BackendError::InsufficientScopes {
@@ -177,5 +211,70 @@ mod tests {
             api_base(Some("/")),
             Err(BackendError::NetworkError { .. })
         ));
+    }
+
+    #[test]
+    fn scope_admin_implies_read() {
+        let granted = vec!["admin:org", "repo"];
+        assert!(scope_satisfies(&granted, "read:org"));
+        assert!(scope_satisfies(&granted, "write:org"));
+        assert!(scope_satisfies(&granted, "admin:org"));
+    }
+
+    #[test]
+    fn scope_write_implies_read() {
+        let granted = vec!["write:org"];
+        assert!(scope_satisfies(&granted, "read:org"));
+        assert!(scope_satisfies(&granted, "write:org"));
+        assert!(!scope_satisfies(&granted, "admin:org"));
+    }
+
+    #[test]
+    fn scope_literal_match() {
+        let granted = vec!["repo", "gist"];
+        assert!(scope_satisfies(&granted, "repo"));
+        assert!(scope_satisfies(&granted, "gist"));
+        assert!(!scope_satisfies(&granted, "user"));
+    }
+
+    #[test]
+    fn scope_no_cross_target_match() {
+        // admin:org should NOT satisfy read:user (different target).
+        let granted = vec!["admin:org"];
+        assert!(!scope_satisfies(&granted, "read:user"));
+    }
+
+    #[test]
+    fn scope_real_world_gh_token() {
+        // Reproduces the bug: `gh auth token` returns a token with
+        // these scopes; the literal "read:org" isn't there but
+        // "admin:org" is, so chajá v1's required scopes should be
+        // satisfied.
+        let granted = vec![
+            "admin:enterprise",
+            "admin:gpg_key",
+            "admin:org",
+            "admin:org_hook",
+            "admin:public_key",
+            "admin:repo_hook",
+            "admin:ssh_signing_key",
+            "audit_log",
+            "codespace",
+            "copilot",
+            "delete:packages",
+            "delete_repo",
+            "gist",
+            "notifications",
+            "project",
+            "repo",
+            "user",
+            "workflow",
+        ];
+        for required in REQUIRED_SCOPES_V1 {
+            assert!(
+                scope_satisfies(&granted, required),
+                "scope {required} should be satisfied"
+            );
+        }
     }
 }

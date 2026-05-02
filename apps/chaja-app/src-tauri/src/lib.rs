@@ -42,6 +42,7 @@ pub fn run() {
             chaja_bridge::commands::list_configured_integrations,
             chaja_bridge::commands::set_integration_hostname,
             chaja_bridge::commands::get_integration_hostname,
+            chaja_bridge::commands::integration_preflight,
             chaja_bridge::commands::list_tags,
             chaja_bridge::commands::reset_to_commit,
             chaja_bridge::commands::cherry_pick_commit,

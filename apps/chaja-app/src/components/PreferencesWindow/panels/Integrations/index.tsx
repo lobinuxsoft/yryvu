@@ -5,7 +5,8 @@ import { ConnectionForm } from "./ConnectionForm";
 import { SubTabSidebar } from "./SubTabSidebar";
 import { findProvider, PROVIDERS, type IntegrationType } from "./providerTable";
 import { hydrateHostname } from "./selfHostedHostnames";
-import { hydrateConfigured } from "./tokenStorage";
+import { hydrateConfigured, hydrateConnectedState } from "./tokenStorage";
+import { listConfiguredIntegrations } from "../../../../ipc";
 
 /**
  * Preferences > Integrations panel root. Composes the provider
@@ -31,12 +32,23 @@ export function IntegrationsPanel(): JSX.Element {
   const provider = () => findProvider(active());
 
   onMount(() => {
-    void hydrateConfigured();
-    for (const p of PROVIDERS) {
-      if (p.isSelfHosted) {
-        void hydrateHostname(p.type);
+    void (async () => {
+      // Sequential: hydrateConfigured first so the indicator dots
+      // light up immediately; per-provider preflight runs after and
+      // populates the real UserInfo lazily.
+      await hydrateConfigured();
+      for (const p of PROVIDERS) {
+        if (p.isSelfHosted) {
+          void hydrateHostname(p.type);
+        }
       }
-    }
+      const configured = await listConfiguredIntegrations().catch(
+        () => [] as string[],
+      );
+      for (const type of configured) {
+        void hydrateConnectedState(type as IntegrationType);
+      }
+    })();
   });
 
   return (

@@ -7,6 +7,7 @@
 export * from "./branches";
 export * from "./cliImport";
 export * from "./commits";
+export * from "./integrationStorage";
 export * from "./diff";
 export * from "./merge";
 export * from "./preferences";

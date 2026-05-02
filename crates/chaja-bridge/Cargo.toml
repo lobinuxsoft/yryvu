@@ -18,6 +18,7 @@ thiserror.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 tauri.workspace = true
+keyring.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 

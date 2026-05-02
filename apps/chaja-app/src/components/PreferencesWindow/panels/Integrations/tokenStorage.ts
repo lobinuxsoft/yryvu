@@ -1,43 +1,83 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { createSignal, type Accessor } from "solid-js";
+import {
+  listConfiguredIntegrations,
+  removeIntegrationToken,
+  saveIntegrationToken,
+} from "../../../../ipc";
 import type { IntegrationType } from "./providerTable";
 
 /**
- * Per-integration PAT (Personal Access Token) storage. Mirror of
- * GK's `getCredentialsByIntegrationType` (`bundle:203622`) — the
- * map of `integrationType → token` for users who chose the PAT
- * fallback path.
+ * Reactive cache for "is integration X configured?" queries. The
+ * source of truth is the backend sidecar's `configured` flag; this
+ * signal is hydrated on Preferences mount via `hydrateConfigured` and
+ * kept in sync by the save / remove helpers below.
  *
- * Signal-only this PR; persistence lands with the backend cluster
- * via the keyring crate (audit doc 06). Tokens never persist to disk
- * in plaintext — when the backend lands, swap this in-memory signal
- * for a `keyring`-backed store.
- *
- * **Security note (current state)**: tokens live in memory only.
- * Reloading chajá clears them. Do NOT lift this signal to disk
- * persistence until the keyring wrapper exists.
+ * Tokens themselves are never cached in JS heap — they go straight
+ * from `saveIntegrationToken` IPC to the keyring without lingering
+ * in this module. Callers that need the actual token value
+ * (auth flows, future API clients) call `getIntegrationToken` from
+ * the IPC module on-demand.
  */
-const SIGNALS = new Map<
-  IntegrationType,
-  ReturnType<typeof createSignal<string>>
->();
+const [configured, setConfigured] = createSignal<Set<IntegrationType>>(new Set());
 
-function getSignal(type: IntegrationType) {
-  let entry = SIGNALS.get(type);
-  if (!entry) {
-    entry = createSignal<string>("");
-    SIGNALS.set(type, entry);
+/**
+ * Reactive accessor for "is `type` configured in the backend?".
+ * Drives the sub-tab sidebar's "connected" indicator dot.
+ */
+export function isIntegrationConfigured(type: IntegrationType): Accessor<boolean> {
+  return () => configured().has(type);
+}
+
+/**
+ * Pull the list of configured integrations from the backend into the
+ * in-memory signal. Call once on Preferences mount; subsequent state
+ * changes go through the save / remove helpers below.
+ */
+export async function hydrateConfigured(): Promise<void> {
+  try {
+    const list = await listConfiguredIntegrations();
+    setConfigured(new Set<IntegrationType>(list as IntegrationType[]));
+  } catch {
+    // Soft-fail: empty set means no "connected" indicators light up.
+    // The user can still configure integrations; backend errors will
+    // surface from the save flow itself.
+    setConfigured(new Set<IntegrationType>());
   }
-  return entry;
 }
 
-export function integrationToken(type: IntegrationType): Accessor<string> {
-  return getSignal(type)[0];
+/**
+ * Save a token (and optional hostname for self-hosted) to the backend.
+ * Updates the local "configured" cache on success so the UI reflects
+ * immediately. On failure, the cache is unchanged and the promise
+ * rejects — callers should toast the backend error.
+ */
+export async function saveToken(
+  type: IntegrationType,
+  token: string,
+  hostname?: string,
+): Promise<void> {
+  await saveIntegrationToken(type, token, hostname);
+  setConfigured((prev) => {
+    const next = new Set(prev);
+    next.add(type);
+    return next;
+  });
 }
 
-export function setIntegrationToken(type: IntegrationType, token: string): void {
-  getSignal(type)[1](token);
+/**
+ * Remove a token from the backend. The hostname (sidecar) is preserved
+ * — the `configured` flag is cleared but a future re-connect doesn't
+ * lose the user's URL config.
+ */
+export async function removeToken(type: IntegrationType): Promise<void> {
+  await removeIntegrationToken(type);
+  setConfigured((prev) => {
+    const next = new Set(prev);
+    next.delete(type);
+    return next;
+  });
 }
 
 /**

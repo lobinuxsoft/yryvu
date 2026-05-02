@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createSignal, type JSX } from "solid-js";
+import { createSignal, onMount, type JSX } from "solid-js";
 import { ConnectionForm } from "./ConnectionForm";
 import { SubTabSidebar } from "./SubTabSidebar";
 import { findProvider, PROVIDERS, type IntegrationType } from "./providerTable";
+import { hydrateHostname } from "./selfHostedHostnames";
+import { hydrateConfigured } from "./tokenStorage";
 
 /**
  * Preferences > Integrations panel root. Composes the provider
@@ -18,10 +20,24 @@ import { findProvider, PROVIDERS, type IntegrationType } from "./providerTable";
  * yet. When the cluster grows real connections, lift to
  * `state/preferences.ts` so reopening Preferences lands on the
  * last-visited provider.
+ *
+ * **Hydration**: on mount, fetch the list of configured integrations
+ * and the saved hostnames for self-hosted variants from the backend
+ * sidecar so the UI reflects the persisted state. Tokens themselves
+ * stay in the OS keyring; this panel never holds them.
  */
 export function IntegrationsPanel(): JSX.Element {
   const [active, setActive] = createSignal<IntegrationType>(PROVIDERS[0].type);
   const provider = () => findProvider(active());
+
+  onMount(() => {
+    void hydrateConfigured();
+    for (const p of PROVIDERS) {
+      if (p.isSelfHosted) {
+        void hydrateHostname(p.type);
+      }
+    }
+  });
 
   return (
     <div class="integrations">

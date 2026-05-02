@@ -1,23 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { createSignal, type Accessor } from "solid-js";
+import { getIntegrationHostname, setIntegrationHostname } from "../../../../ipc";
 import type { IntegrationType } from "./providerTable";
 
 /**
- * Per-integration custom hostname storage. Mirror of GK's
- * `getHostnamesByIntegrationType` selector (`bundle:203670`) — the
- * map of `integrationType → user-supplied URL` for self-hosted
- * providers (GHE, GitLab self-managed, Bitbucket Data Center, Jira
- * Data Center).
+ * Per-integration custom hostname storage. Backed by the Rust sidecar
+ * (`integrations.json` in the app's local data dir) — the in-memory
+ * signal map is a reactive cache that survives via the backend.
  *
- * Signal-only this PR; persistence lands with the backend foundation
- * cluster. Once the Rust crate exists, swap the signal for a
- * `createResource` keyed off the persisted config.
+ * Hidration happens on demand: the first call to `hydrateHostname`
+ * fetches from the backend and populates the signal. Subsequent reads
+ * return the cached value reactively.
+ *
+ * `setSelfHostedHostname` writes through to the backend AND updates
+ * the cache so callers see the change immediately. If the backend
+ * write fails, the function rejects — callers should toast the error.
  */
 const SIGNALS = new Map<
   IntegrationType,
   ReturnType<typeof createSignal<string>>
 >();
+const HYDRATED = new Set<IntegrationType>();
 
 function getSignal(type: IntegrationType) {
   let entry = SIGNALS.get(type);
@@ -32,8 +36,40 @@ export function selfHostedHostname(type: IntegrationType): Accessor<string> {
   return getSignal(type)[0];
 }
 
-export function setSelfHostedHostname(type: IntegrationType, url: string): void {
+/**
+ * Pull the hostname from the backend sidecar into the in-memory
+ * signal. Idempotent — only fetches the first time per
+ * `integrationType`. Subsequent calls are no-ops (the signal is
+ * already populated and reactive).
+ *
+ * Returns the hydrated value (or empty string when the backend has
+ * nothing stored).
+ */
+export async function hydrateHostname(type: IntegrationType): Promise<string> {
+  if (HYDRATED.has(type)) {
+    return getSignal(type)[0]();
+  }
+  try {
+    const value = (await getIntegrationHostname(type)) ?? "";
+    getSignal(type)[1](value);
+    HYDRATED.add(type);
+    return value;
+  } catch {
+    // Soft-fail: keep the empty signal, mark hydrated so we don't
+    // hammer the backend on every re-render. The caller may surface
+    // the error elsewhere.
+    HYDRATED.add(type);
+    return "";
+  }
+}
+
+export async function setSelfHostedHostname(
+  type: IntegrationType,
+  url: string,
+): Promise<void> {
+  await setIntegrationHostname(type, url);
   getSignal(type)[1](url);
+  HYDRATED.add(type);
 }
 
 /**

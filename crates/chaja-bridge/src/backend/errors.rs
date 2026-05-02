@@ -56,4 +56,10 @@ pub enum BackendError {
     CliNotAuthenticated { name: String },
     #[error("'{name}' CLI failed: {stderr}")]
     CliFailed { name: String, stderr: String },
+    #[error("OS keyring service unavailable (libsecret/Keychain/Credential Vault not running)")]
+    KeyringUnavailable,
+    #[error("keyring failed: {detail}")]
+    KeyringFailed { detail: String },
+    #[error("integrations sidecar schema version {found} not supported (max {supported})")]
+    UnsupportedSidecarVersion { found: u32, supported: u32 },
 }

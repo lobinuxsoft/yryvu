@@ -3,6 +3,7 @@
 import { For, type JSX } from "solid-js";
 import { PROVIDERS, type IntegrationType } from "./providerTable";
 import { integrationState } from "./state";
+import { isIntegrationConfigured } from "./tokenStorage";
 
 /**
  * Provider sub-tab sidebar — the left rail inside Preferences >
@@ -21,8 +22,13 @@ export function SubTabSidebar(props: {
       <For each={PROVIDERS}>
         {(provider) => {
           const isActive = () => props.active === provider.type;
+          // "Connected" indicator dot reflects either the live mocked
+          // state (just-connected, before persistence completes) OR
+          // the persisted backend `configured` flag — whichever fires
+          // first wins, which gives a snappy response on save.
           const isConnected = () =>
-            integrationState(provider.type)().tag === "connected";
+            integrationState(provider.type)().tag === "connected" ||
+            isIntegrationConfigured(provider.type)();
           return (
             <button
               type="button"

@@ -8,6 +8,7 @@
 mod branches;
 mod cli_import;
 mod commits;
+mod integrations;
 mod merge;
 mod preferences;
 mod release_notes;
@@ -25,6 +26,7 @@ mod worktrees;
 pub use branches::*;
 pub use cli_import::*;
 pub use commits::*;
+pub use integrations::*;
 pub use merge::*;
 pub use preferences::*;
 pub use release_notes::*;

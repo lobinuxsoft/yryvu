@@ -45,21 +45,25 @@ export function SelfHostedConfigurationDialog(props: {
   // mount; the dialog unmounts on close (Show), so a fresh open gets
   // a fresh signal — no manual sync needed beyond the `open` toggle.
 
-  const submit = () => {
+  const submit = async () => {
     const result = normalizeHostnameUrl(input());
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    setSelfHostedHostname(props.provider.type, result.url);
-    setError(null);
-    props.onSubmit();
+    try {
+      await setSelfHostedHostname(props.provider.type, result.url);
+      setError(null);
+      props.onSubmit();
+    } catch (err) {
+      setError(`Failed to save: ${String(err)}`);
+    }
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      submit();
+      void submit();
     }
   };
 
@@ -82,7 +86,7 @@ export function SelfHostedConfigurationDialog(props: {
             class="dialog__btn dialog__btn--primary"
             type="button"
             disabled={input().trim().length === 0}
-            onClick={submit}
+            onClick={() => void submit()}
           >
             Save
           </button>

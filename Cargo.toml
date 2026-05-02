@@ -28,6 +28,7 @@ tauri = { version = "2", features = [] }
 tauri-build = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "vendored"] }
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

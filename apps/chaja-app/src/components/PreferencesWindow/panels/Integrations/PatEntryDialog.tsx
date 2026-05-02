@@ -7,7 +7,7 @@ import { notify } from "../../../Notifications";
 import { importGhToken } from "../../../../ipc";
 import type { ProviderInfo } from "./providerTable";
 import { selfHostedHostname } from "./selfHostedHostnames";
-import { buildTokenGenUrl, setIntegrationToken } from "./tokenStorage";
+import { buildTokenGenUrl, saveToken } from "./tokenStorage";
 
 /**
  * Personal Access Token entry dialog. Mirror of GK's
@@ -92,18 +92,33 @@ export function PatEntryDialog(props: {
     }
   };
 
-  const submit = () => {
+  const submit = async () => {
     const trimmed = token().trim();
     if (!trimmed) return;
-    setIntegrationToken(props.provider.type, trimmed);
-    setToken("");
-    props.onSubmit();
+    const hostname = props.provider.isSelfHosted
+      ? selfHostedHostname(props.provider.type)() || undefined
+      : undefined;
+    try {
+      await saveToken(props.provider.type, trimmed, hostname);
+      setToken("");
+      props.onSubmit();
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("keyring service unavailable")) {
+        notify.error("OS keyring unavailable", {
+          message:
+            "Start your keyring service (e.g. gnome-keyring on Linux) and retry.",
+        });
+      } else {
+        notify.error("Failed to save token", { message: msg });
+      }
+    }
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && token().trim().length > 0) {
       e.preventDefault();
-      submit();
+      void submit();
     }
   };
 
@@ -127,7 +142,7 @@ export function PatEntryDialog(props: {
             type="button"
             data-testid="pat-entry-submit"
             disabled={token().trim().length === 0}
-            onClick={submit}
+            onClick={() => void submit()}
           >
             Save
           </button>

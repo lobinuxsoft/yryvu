@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Main area (hosts CommitGraph or empty state). Hosts the graph
+   column-width CSS vars + the lane palette CSS vars used by both the
+   layout and the WebGL renderer. */
+
+.main {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-0);
+}
+
+/* Column layout shared between the header row and the CommitGraph body
+   (kept in CSS vars so both stay in sync). */
+.main {
+  /* Defaults — overridden inline by CommitGraph on mount from
+     `graphColumnWidths` (the persisted user preferences). These match
+     the GitKraken bundle's REF_ZONE_DEFAULT_WIDTH / arbitrary 200 px
+     graph-zone default so the first paint isn't dramatically wrong. */
+  --graph-col-branch: 130px;
+  --graph-col-graph: 200px;
+  --graph-col-gap: 8px;
+  --graph-col-padding: 12px;
+
+  /* Lane color palette — mirrored into renderer/palette.ts for WebGL upload.
+     Themes can override these to recolor the graph without touching JS. */
+  --column-0-color: #15a0bf; /* teal cyan */
+  --column-1-color: #0669f7; /* blue */
+  --column-2-color: #8e00c2; /* purple */
+  --column-3-color: #c517b6; /* magenta */
+  --column-4-color: #d90171; /* pink */
+  --column-5-color: #cd0101; /* red */
+  --column-6-color: #f25d2e; /* orange */
+  --column-7-color: #f2ca33; /* yellow */
+  --column-8-color: #7bd938; /* green */
+  --column-9-color: #2ece9d; /* mint */
+}
+
+.main__graph-host {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}

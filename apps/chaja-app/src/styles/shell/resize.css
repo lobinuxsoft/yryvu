@@ -1,0 +1,65 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Graph-column resize handle — 1:1 port of GK's
+   `.table-list-resize-handle` (extracted from `app/src/css/styles.css`,
+   2026-04-25):
+   - 6 px hit area anchored at right: -3px so the cursor straddles the
+     column boundary.
+   - Inner ::after stripe is 2 px wide with rounded ends.
+   - Hidden by default (opacity 0). Surfaces at 0.4 when the user
+     hovers anywhere on the header strip, brightens to 1.0 on the
+     handle itself, and stays at 1.0 + brighter colour while
+     dragging. */
+
+.graph-column-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s ease-in;
+  pointer-events: auto;
+}
+
+.graph-column-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background-color: var(--fg-3);
+  opacity: 0.3;
+  border-radius: 1px;
+  transition: opacity 0.3s ease-in;
+}
+
+.main__graph-column-headers:hover .graph-column-resizer {
+  opacity: 0.4;
+}
+
+.graph-column-resizer:hover {
+  opacity: 1;
+}
+
+.graph-column-resizer:hover::after {
+  opacity: 0.6;
+}
+
+body.is-resizing-column .graph-column-resizer {
+  opacity: 1;
+}
+
+body.is-resizing-column .graph-column-resizer::after {
+  background-color: var(--fg-1);
+  opacity: 0.85;
+}
+
+body.is-resizing-column {
+  cursor: col-resize;
+  user-select: none;
+}

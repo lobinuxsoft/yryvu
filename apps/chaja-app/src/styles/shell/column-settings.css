@@ -1,0 +1,92 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Column-settings ⚙ button + popover — anchored at the right edge of
+   the column header strip; popover renders via Portal at fixed coords
+   so it can escape the strip's overflow:hidden. */
+
+.graph-col-settings__btn {
+  order: 200;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Without `flex-shrink: 0` the button collapsed to width 0 inside
+     the flex strip when the headers' fixed widths summed close to the
+     container's width — the gear vanished. */
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-2);
+  cursor: pointer;
+  align-self: center;
+}
+
+.graph-col-settings__btn:hover {
+  background: var(--bg-3);
+  color: var(--fg-0);
+  border-color: var(--border);
+}
+
+.graph-col-settings__menu {
+  position: fixed;
+  min-width: 240px;
+  padding: 4px 0;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px color-mix(in srgb, black 40%, transparent);
+  z-index: 100;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg-1);
+}
+
+.graph-col-settings__group {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0;
+}
+
+.graph-col-settings__separator {
+  height: 1px;
+  background: var(--bg-3);
+  margin: 2px 0;
+}
+
+.graph-col-settings__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font-size: inherit;
+}
+
+.graph-col-settings__item:hover:not(.is-disabled) {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+
+.graph-col-settings__item.is-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.graph-col-settings__check {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-1);
+}

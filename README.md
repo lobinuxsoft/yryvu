@@ -8,7 +8,7 @@ The chajá is a sentinel bird from the South American pampas that screams at the
 
 ## Why another Git client?
 
-Chajá is a 1:1 visual + interaction port of GitKraken Desktop, with the proprietary cloud bits replaced by direct provider integrations (GitHub / GitLab / Bitbucket / Azure DevOps / Jira) and the missing parts (OAuth, AGPL license) added. The point isn't to clone GK forever — it's to start from a UX that's already proven and iterate from there.
+Chajá takes visual and interaction inspiration from GitKraken Desktop — a UX that's already proven — and pairs it with direct provider integrations (GitHub / GitLab / Bitbucket / Azure DevOps / Jira) and a permissive AGPL license. The point isn't to mirror GK forever; it's to start from a familiar baseline and iterate from there.
 
 ## Stack
 
@@ -39,7 +39,7 @@ For the OAuth integrations panel, copy `.env.local.example` to `.env.local` at t
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — workflow, code standards, dev setup
 - [`SECURITY.md`](SECURITY.md) — vulnerability disclosure policy
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant 3.0
-- [`docs/research/`](docs/research/) — durable specs of the GitKraken behaviour we port
+- [`docs/research/`](docs/research/) — durable specs of the GitKraken behaviour we draw inspiration from
 
 ## License
 

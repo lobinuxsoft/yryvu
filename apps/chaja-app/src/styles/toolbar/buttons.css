@@ -1,0 +1,76 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Toolbar buttons — action group, individual button (icon over label),
+   and the Undo/Redo numeric badge. */
+
+.toolbar__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.toolbar__btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 56px;
+  height: 48px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--fg-1);
+}
+
+.toolbar__btn:hover:not(:disabled) { background: var(--bg-2); color: var(--fg-0); }
+.toolbar__btn:disabled { color: var(--fg-3); cursor: not-allowed; }
+
+.toolbar__btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: 16px;
+  line-height: 1;
+}
+
+/* Numeric overlay on Undo / Redo (issue #185 follow-up). Positioned
+   top-right of the icon; mirrors GitKraken's stash-count chip on its
+   own toolbar buttons. Hidden via the parent's <Show> when the count
+   is 0 or undefined. */
+.toolbar__btn-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 16px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  letter-spacing: 0;
+  pointer-events: none;
+  /* Subtle outline so the chip reads against the accent background even
+     when the toolbar's own bg is similar in luminance. */
+  box-shadow: 0 0 0 1px var(--bg-1);
+}
+.toolbar__btn:disabled .toolbar__btn-badge {
+  background: var(--bg-3);
+  color: var(--fg-1);
+}
+
+.toolbar__btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.toolbar__actions--trailing { position: relative; }

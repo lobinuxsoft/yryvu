@@ -1,0 +1,35 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* UpstreamIndicator — ahead/behind pills displayed next to the branch
+   selector. Two coloured pills (info for behind, success for ahead). */
+
+.upstream-indicator {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.upstream-indicator__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 9px;
+  line-height: 1;
+}
+
+.upstream-indicator__pill--behind {
+  background: color-mix(in srgb, var(--info, #4a8ec9) 18%, var(--bg-2));
+  color: var(--info, #4a8ec9);
+}
+
+.upstream-indicator__pill--ahead {
+  background: color-mix(in srgb, var(--success, #4e9a5a) 18%, var(--bg-2));
+  color: var(--success, #4e9a5a);
+}
+
+.upstream-indicator__count {
+  font-variant-numeric: tabular-nums;
+}

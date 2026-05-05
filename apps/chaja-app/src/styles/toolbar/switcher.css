@@ -1,0 +1,171 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Toolbar switchers (Repo + Branch dropdowns) — trigger row with caret,
+   panel popover with filter input, list, items and counts. */
+
+.toolbar-switcher {
+  position: relative;
+}
+
+.toolbar-switcher__trigger {
+  cursor: pointer;
+}
+
+.toolbar-switcher__active {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-switcher__caret {
+  display: inline-flex;
+  align-items: center;
+  color: var(--fg-3);
+  transition: transform 150ms ease-out;
+}
+
+.toolbar-switcher__caret--open {
+  transform: rotate(180deg);
+}
+
+.toolbar-switcher__panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 280px;
+  max-width: 480px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  overflow: hidden;
+}
+
+.toolbar-switcher__panel--branches {
+  min-width: 320px;
+}
+
+.toolbar-switcher__filter {
+  flex-shrink: 0;
+  margin: 8px;
+  padding: 6px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg-0);
+  font-size: 12px;
+  outline: none;
+}
+
+.toolbar-switcher__filter:focus {
+  border-color: var(--info, #4a8ec9);
+}
+
+.toolbar-switcher__list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.toolbar-switcher__empty {
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--fg-3);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.toolbar-switcher__separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--bg-3);
+  flex-shrink: 0;
+}
+
+.toolbar-switcher__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-1);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toolbar-switcher__item:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
+.toolbar-switcher__item--active {
+  background: color-mix(in srgb, var(--info, #4a8ec9) 18%, var(--bg-1));
+  color: var(--fg-0);
+}
+
+.toolbar-switcher__item--active:hover {
+  background: color-mix(in srgb, var(--info, #4a8ec9) 26%, var(--bg-1));
+}
+
+.toolbar-switcher__item--branch {
+  justify-content: space-between;
+}
+
+.toolbar-switcher__item-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--fg-2);
+  flex-shrink: 0;
+}
+
+.toolbar-switcher__item-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.toolbar-switcher__item-path {
+  font-size: 11px;
+  color: var(--fg-3);
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 50%;
+  flex-shrink: 0;
+  font-family: var(--font-mono, monospace);
+}
+
+.toolbar-switcher__counts {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.toolbar-switcher__behind {
+  color: var(--info, #4a8ec9);
+}
+
+.toolbar-switcher__ahead {
+  color: var(--success, #4e9a5a);
+}
+
+.toolbar-switcher__item--action {
+  color: var(--info, #4a8ec9);
+  font-weight: 500;
+}

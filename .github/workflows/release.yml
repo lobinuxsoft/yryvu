@@ -31,14 +31,17 @@ jobs:
           - target: linux-amd64
             os: ubuntu-latest
             bundles: deb,appimage
+            # Cargo workspace puts the target dir at the repo root, not
+            # inside apps/chaja-app/src-tauri/. cargo tauri build picks
+            # that up — bundles land at <root>/target/release/bundle/...
             artifact_glob: |
-              apps/chaja-app/src-tauri/target/release/bundle/deb/*.deb
-              apps/chaja-app/src-tauri/target/release/bundle/appimage/*.AppImage
+              target/release/bundle/deb/*.deb
+              target/release/bundle/appimage/*.AppImage
           - target: windows-amd64
             os: windows-latest
             bundles: msi
             artifact_glob: |
-              apps/chaja-app/src-tauri/target/release/bundle/msi/*.msi
+              target/release/bundle/msi/*.msi
     steps:
       - uses: actions/checkout@v4
         with:

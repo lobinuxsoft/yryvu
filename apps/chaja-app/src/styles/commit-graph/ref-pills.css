@@ -1,0 +1,229 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Ref pills (#55 — 1:1 port of GitKraken's ref-node per doc 06) */
+.ref-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  position: relative;
+}
+
+.ref-pill {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
+  background: var(--bg-2);
+  color: var(--fg-1);
+  max-width: 140px;
+  overflow: hidden;
+}
+
+.ref-pill__icon {
+  flex-shrink: 0;
+}
+
+.ref-pill__icon-r {
+  flex-shrink: 0;
+  opacity: 0.85;
+  /* Right-side icons (monitor, cloud) sit between name and upstream. The
+     monitor glyph indicates worktree / active checkout; cloud indicates
+     the local branch has remote tracking config. */
+}
+
+.ref-pill__annotation {
+  flex-shrink: 0;
+  /* Annotation slot sits at the far left, ahead of the kind icon. Slightly
+     more prominent than the kind glyph since it conveys ref *state*
+     (checked-out / pinned) rather than ref *type*. */
+  opacity: 0.95;
+}
+
+.ref-pill__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Upstream indicator — ahead/behind arrows tracked vs configured upstream.
+   Renders only when at least one of ahead/behind is non-zero (matches the
+   GK bundle which hides the row entirely when in sync). */
+.ref-pill__upstream {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.ref-pill__ahead,
+.ref-pill__behind {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+/* Pinned annotation — only the trunk's local-branch pill on the pinned
+   row gets it. Visually weaker than the active checkmark so the
+   precedence reads at a glance. */
+.ref-pill.is-pinned {
+  border-color: color-mix(in srgb, var(--fg-1) 35%, transparent);
+}
+
+.ref-pill.is-pinned .ref-pill__annotation {
+  opacity: 0.8;
+}
+
+/* Ghost pills — refs that pass through this commit but don't tip here.
+   GK shows them only on row hover (`showGhostRefsOnRowHover`). Visually
+   they read as "shadow" pills: lower opacity, no border, smaller weight,
+   no interactivity. */
+.ref-pill.is-ghost {
+  opacity: 0.35;
+  background: transparent;
+  border-color: transparent;
+  font-weight: 400;
+  cursor: default;
+  pointer-events: none;
+  /* Compress: ghost pills should not crowd the active pill row. */
+  padding: 0 4px;
+  max-width: 110px;
+}
+
+/* Ghost container holds the on-hover companions. Inline so they sit on
+   the same line as the live pill + overflow chip; gap matches `.ref-node`
+   for visual continuity. */
+.ref-node__ghosts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Hide-btn — visible on pill hover only (matches GK's `enableShowHideRefsOptions
+   && !hasActive` gating; the `!hasActive` half is enforced via `suppressHide`
+   from the pill group). */
+.ref-pill__hide-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin-left: 2px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.ref-pill:hover .ref-pill__hide-btn,
+.ref-pill:focus-within .ref-pill__hide-btn {
+  display: inline-flex;
+}
+
+.ref-pill__hide-btn:hover {
+  background: color-mix(in srgb, currentColor 25%, transparent);
+  opacity: 1;
+}
+
+/* Type-color variants — GitHub status palette conventions, not lane colors.
+   Doc 06 explicitly discards lane tinting as a chajá-specific deviation. */
+.ref-pill--head {
+  background: color-mix(in srgb, #3fb950 20%, var(--bg-2));
+  color: #3fb950;
+  border-color: color-mix(in srgb, #3fb950 40%, transparent);
+  font-weight: 600;
+}
+
+.ref-pill--branch {
+  background: color-mix(in srgb, #2f81f7 18%, var(--bg-2));
+  color: #58a6ff;
+  border-color: color-mix(in srgb, #2f81f7 35%, transparent);
+}
+
+.ref-pill--remote {
+  background: color-mix(in srgb, #8957e5 18%, var(--bg-2));
+  color: #b57fff;
+  border-color: color-mix(in srgb, #8957e5 35%, transparent);
+}
+
+.ref-pill--tag {
+  background: color-mix(in srgb, #d29922 18%, var(--bg-2));
+  color: #e3b341;
+  border-color: color-mix(in srgb, #d29922 35%, transparent);
+}
+
+/* Overflow `+N` chip */
+.ref-node__overflow {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--fg-1);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ref-node__overflow:hover {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+
+.ref-node__overflow.is-active {
+  border-color: color-mix(in srgb, #3fb950 40%, transparent);
+  color: #3fb950;
+}
+
+.ref-node__popover {
+  /* Rendered via Portal at document.body, positioned with `top`/`left`
+     written inline from the trigger's getBoundingClientRect(). Fixed so
+     the popover escapes the BRANCH/TAG zone's `overflow: hidden`. */
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px color-mix(in srgb, black 40%, transparent);
+  z-index: 100;
+  min-width: 160px;
+  /* Stretch to fit the longest ref name (within reason). 24-char branches
+     like `4236-fix-frameo-en-casco` overflow a 200-px pill cap; readable
+     names matter more than a tight rectangle here. */
+  max-width: min(420px, 80vw);
+  width: max-content;
+}
+
+.ref-node__popover .ref-pill {
+  /* Inside the popover, drop the inline max-width cap so long branch
+     names like `4236-fix-frameo-en-casco` render in full. The popover
+     itself caps total width at min(420px, 80vw). */
+  max-width: none;
+}
+
+.ref-node__popover .ref-pill__name {
+  /* And let the name keep its natural width — no truncation inside the
+     popover (the inline pill still truncates to fit the BRANCH/TAG
+     column). */
+  overflow: visible;
+  text-overflow: clip;
+}

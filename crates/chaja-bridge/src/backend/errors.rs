@@ -70,4 +70,14 @@ pub enum BackendError {
     RateLimited { reset_at: u64 },
     #[error("network error: {detail}")]
     NetworkError { detail: String },
+    #[error("OAuth flow cancelled by user")]
+    OAuthCancelled,
+    #[error("OAuth state mismatch (possible CSRF / replay)")]
+    OAuthStateMismatch,
+    #[error("OAuth flow timed out waiting for browser redirect")]
+    OAuthTimeout,
+    #[error("OAuth code-for-token exchange failed: {detail}")]
+    OAuthExchangeFailed { detail: String },
+    #[error("OAuth not configured for this provider — client_id is empty")]
+    OAuthNotConfigured,
 }

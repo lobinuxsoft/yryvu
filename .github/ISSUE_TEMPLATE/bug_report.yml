@@ -1,0 +1,87 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which area of Chajá is affected?
+      options:
+        - ui (frontend / SolidJS / Tauri)
+        - git-core (Rust git backend, gix/git2)
+        - integrations (GitHub/GitLab/Bitbucket/Azure/Jira)
+        - infra (CI, build, release-please)
+        - documentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear description of what the bug is
+      placeholder: What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Open repository at /path/to/repo
+        2. Click "Pull" on the toolbar
+        3. See error toast "..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Please provide your environment details
+      value: |
+        - OS: [e.g., Bazzite F43, Ubuntu 24.04, macOS 15, Windows 11]
+        - Chajá version: [from About dialog or release tag]
+        - Repo size (commits / refs): [e.g., 15k commits, 200 branches]
+        - Repo backend: [git2 default / gix-only — ignore if you don't know]
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Paste any error messages, console output, or `/tmp/chaja-dev.log` excerpts here. Redact paths or secrets if needed.
+      render: shell
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have tested with the latest version (or development branch)
+          required: false
+        - label: I am willing to submit a PR to fix this issue
+          required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Want to contribute a fix?** Great! Please:
+        1. Wait for the issue to be triaged and assigned to you
+        2. Create a branch via `gh issue develop <NUM> --base development --checkout`
+        3. Submit a PR targeting `development` (NOT `main`)
+
+        See [CONTRIBUTING.md](https://github.com/lobinuxsoft/chaja/blob/development/CONTRIBUTING.md) for details.

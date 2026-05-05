@@ -111,10 +111,22 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Flatten artifact tree
+        working-directory: artifacts
+        run: |
+          # actions/upload-artifact preserves the relative path of each
+          # uploaded file. Linux uploads two paths (deb/*.deb +
+          # appimage/*.AppImage) so the download lands as subdirs;
+          # Windows uploads one path so it lands flat. Move everything
+          # to the top level so checksums and the GitHub Release upload
+          # see one flat list.
+          find . -mindepth 2 -type f -exec mv -t . {} +
+          find . -mindepth 1 -type d -empty -delete
+          ls -la
+
       - name: Compute checksums
         working-directory: artifacts
         run: |
-          ls -la
           sha256sum * > checksums-sha256.txt
           cat checksums-sha256.txt
 

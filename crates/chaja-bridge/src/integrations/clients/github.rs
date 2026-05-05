@@ -35,7 +35,7 @@ const REQUIRED_SCOPES_V1: &[&str] = &["repo", "read:org"];
 /// canonical literal in our required set so the question doesn't
 /// arise in practice.
 fn scope_satisfies(granted: &[&str], required: &str) -> bool {
-    if granted.iter().any(|g| *g == required) {
+    if granted.contains(&required) {
         return true;
     }
     if let Some(target) = required.strip_prefix("read:") {

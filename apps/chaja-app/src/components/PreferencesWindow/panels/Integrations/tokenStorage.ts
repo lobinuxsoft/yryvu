@@ -2,11 +2,15 @@
 
 import { createSignal, type Accessor } from "solid-js";
 import {
+  getIntegrationToken,
+  integrationPreflight,
   listConfiguredIntegrations,
   removeIntegrationToken,
   saveIntegrationToken,
+  type UserInfo,
 } from "../../../../ipc";
 import type { IntegrationType } from "./providerTable";
+import { setIntegrationState } from "./state";
 
 /**
  * Reactive cache for "is integration X configured?" queries. The
@@ -48,10 +52,23 @@ export async function hydrateConfigured(): Promise<void> {
 }
 
 /**
- * Save a token (and optional hostname for self-hosted) to the backend.
- * Updates the local "configured" cache on success so the UI reflects
- * immediately. On failure, the cache is unchanged and the promise
- * rejects — callers should toast the backend error.
+ * Save a token (and optional hostname for self-hosted) to the backend
+ * AND validate it against the provider's API in one logical
+ * operation:
+ *
+ *   1. Persist token to keyring + sidecar (`saveIntegrationToken`).
+ *   2. Preflight: hit the provider's `/user` endpoint with the token,
+ *      decode `UserInfo`.
+ *   3. On success → update `configured` cache + push the live
+ *      connected state with the real `UserInfo`.
+ *   4. On preflight failure → **roll back the keyring write** (the
+ *      user's intent was "connect", a persisted bad token is
+ *      misleading) + rethrow.
+ *
+ * Providers without a per-provider client yet (everything except
+ * GitHub / GitHub Enterprise as of #254) get `"not implemented"`
+ * back from preflight — that's not a failure, we keep the persisted
+ * token and let the existing mocked connect state stand.
  */
 export async function saveToken(
   type: IntegrationType,
@@ -64,6 +81,68 @@ export async function saveToken(
     next.add(type);
     return next;
   });
+  try {
+    const user = await integrationPreflight(type, token, hostname);
+    setIntegrationState(type, { tag: "connected", user });
+  } catch (err) {
+    const msg = String(err);
+    if (msg.includes("not implemented")) {
+      // Provider's API client hasn't landed yet — keep the persisted
+      // token and let the existing mocked connect flow stand.
+      return;
+    }
+    // Roll back the keyring write so the user can retry cleanly.
+    try {
+      await removeIntegrationToken(type);
+    } catch {
+      // Roll back failed — leave the orphan rather than mask the
+      // original error. Next save will overwrite consistently.
+    }
+    setConfigured((prev) => {
+      const next = new Set(prev);
+      next.delete(type);
+      return next;
+    });
+    throw err;
+  }
+}
+
+/**
+ * Hydrate a single integration's connected state on app start. Pulls
+ * the persisted token from the keyring and runs preflight silently;
+ * the dot indicator stays lit (sidecar says "configured") regardless,
+ * but if the token has been revoked since last session the form opens
+ * in the disconnected state with reason `token_revoked` so the user
+ * can re-import.
+ */
+export async function hydrateConnectedState(type: IntegrationType): Promise<void> {
+  let auth;
+  try {
+    auth = await getIntegrationToken(type);
+  } catch {
+    return;
+  }
+  if (!auth) return;
+  try {
+    const user: UserInfo = await integrationPreflight(
+      type,
+      auth.token,
+      auth.hostname ?? undefined,
+    );
+    setIntegrationState(type, { tag: "connected", user });
+  } catch (err) {
+    const msg = String(err);
+    if (msg.includes("not implemented")) return;
+    if (msg.includes("token rejected") || msg.includes("insufficient scopes")) {
+      setIntegrationState(type, {
+        tag: "disconnected",
+        reason: "token_revoked",
+      });
+      return;
+    }
+    // Network errors / rate-limited: keep the cached state. The user
+    // may still be able to do something useful with the cached token.
+  }
 }
 
 /**

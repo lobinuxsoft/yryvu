@@ -62,4 +62,12 @@ pub enum BackendError {
     KeyringFailed { detail: String },
     #[error("integrations sidecar schema version {found} not supported (max {supported})")]
     UnsupportedSidecarVersion { found: u32, supported: u32 },
+    #[error("token rejected by provider (401)")]
+    InvalidToken,
+    #[error("insufficient scopes — granted: [{granted}], required: [{required}]")]
+    InsufficientScopes { granted: String, required: String },
+    #[error("rate-limited by provider; resets at unix epoch {reset_at}")]
+    RateLimited { reset_at: u64 },
+    #[error("network error: {detail}")]
+    NetworkError { detail: String },
 }

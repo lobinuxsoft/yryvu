@@ -54,7 +54,16 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
 
   const onPatSubmit = () => {
     setPatDialogOpen(false);
-    startMockedConnect();
+    // saveToken (called inside PatEntryDialog.submit) already ran
+    // integrationPreflight against the provider API and set the
+    // `connected` state with the real UserInfo on success. No mocked
+    // dance needed here — that would pisar el state correcto.
+    //
+    // For providers without a preflight client (NotImplemented),
+    // saveToken keeps the persisted token but leaves state in
+    // disconnected. The sidebar's "configured" indicator stays lit;
+    // the form's avatar is still the badge placeholder. That's the
+    // intended degraded mode until the per-provider client lands.
   };
 
   const startMockedConnect = () => {

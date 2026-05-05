@@ -87,3 +87,42 @@ export function getIntegrationHostname(
 ): Promise<string | null> {
   return invoke<string | null>("get_integration_hostname", { integrationType });
 }
+
+/**
+ * User info returned by `integration_preflight`. Mirrors the Rust
+ * `UserInfo` struct (camelCase serialization).
+ */
+export interface UserInfo {
+  login: string;
+  displayName: string;
+  avatarUrl: string;
+}
+
+/**
+ * Validate `token` against the provider's API and fetch the
+ * authenticated user's profile. The frontend calls this:
+ * - right after `saveIntegrationToken` so the user sees real avatar +
+ *   name immediately on save (and bad tokens fail loudly).
+ * - on app start to hydrate the connected state for every persisted
+ *   integration.
+ *
+ * Errors propagate as backend strings; the caller matches on
+ * substrings to render the right toast CTA:
+ * - `"token rejected by provider"` → re-enter or regenerate token
+ * - `"insufficient scopes"` → grant the missing scopes
+ * - `"rate-limited"` → wait until the reset timestamp
+ * - `"network error"` → check connectivity
+ * - `"not implemented"` → silently skip (provider's per-PR client
+ *   hasn't landed yet)
+ */
+export function integrationPreflight(
+  integrationType: string,
+  token: string,
+  hostname?: string,
+): Promise<UserInfo> {
+  return invoke<UserInfo>("integration_preflight", {
+    integrationType,
+    token,
+    hostname: hostname ?? null,
+  });
+}

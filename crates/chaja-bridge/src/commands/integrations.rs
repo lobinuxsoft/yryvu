@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
 
-use crate::integrations::{self, AuthData};
+use crate::integrations::{self, AuthData, UserInfo};
 
 /// Resolve the sidecar JSON path under the app's local data dir. Same
 /// shape as the preferences sidecar — kept separate because they have
@@ -103,4 +103,20 @@ pub async fn get_integration_hostname(
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// Validate a token against the provider's API and fetch the
+/// authenticated user's profile. Routes by `integration_type` to the
+/// appropriate per-provider client. Providers without a client yet
+/// return `NotImplemented` — frontend treats that as "skip preflight,
+/// stay in mocked connect path".
+#[tauri::command]
+pub async fn integration_preflight(
+    integration_type: String,
+    token: String,
+    hostname: Option<String>,
+) -> Result<UserInfo, String> {
+    integrations::preflight(&integration_type, &token, hostname.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }

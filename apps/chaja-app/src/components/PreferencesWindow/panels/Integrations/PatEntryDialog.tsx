@@ -7,6 +7,7 @@ import { notify } from "../../../Notifications";
 import { importGhToken } from "../../../../ipc";
 import type { ProviderInfo } from "./providerTable";
 import { selfHostedHostname } from "./selfHostedHostnames";
+import { integrationState } from "./state";
 import { buildTokenGenUrl, saveToken } from "./tokenStorage";
 
 /**
@@ -101,6 +102,21 @@ export function PatEntryDialog(props: {
     try {
       await saveToken(props.provider.type, trimmed, hostname);
       setToken("");
+      // After saveToken, the state is `connected` if preflight
+      // succeeded (UserInfo populated from the provider API) or
+      // remained `disconnected` if the provider's API client isn't
+      // implemented yet — surface a different toast for each case so
+      // the user gets clear feedback.
+      const after = integrationState(props.provider.type)();
+      if (after.tag === "connected") {
+        notify.success("Connected", {
+          message: `Signed in as @${after.user.login}.`,
+        });
+      } else {
+        notify.success("Token saved", {
+          message: `${tokenLabel()} stored in OS keyring. ${props.provider.label} API client lands in a future PR.`,
+        });
+      }
       props.onSubmit();
     } catch (err) {
       const msg = String(err);

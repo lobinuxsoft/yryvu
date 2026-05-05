@@ -14,10 +14,12 @@
 //! [`BackendError`] variants; the sidecar fails noisily on schema
 //! mismatch but otherwise silently succeeds.
 
+pub mod clients;
 mod keyring;
 mod sidecar;
 mod types;
 
+pub use clients::{preflight, UserInfo};
 pub use keyring::{get_token, remove_token, save_token};
 pub use sidecar::{read as read_sidecar, write as write_sidecar, IntegrationsConfig};
 pub use types::{AuthData, IntegrationEntry, SIDECAR_VERSION};

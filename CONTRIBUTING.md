@@ -139,6 +139,17 @@ CHAJA_GITHUB_OAUTH_CLIENT_SECRET=<your_github_oauth_app_client_secret>
 
 The `crates/chaja-bridge/build.rs` reads `.env.local` at build time and exposes the values to the binary via `option_env!`. Builds without `.env.local` work fine — the OAuth flow short-circuits with `OAuthNotConfigured` and the rest of the app is unaffected.
 
+### Release builds (maintainer only)
+
+Release binaries (`.deb`, `.AppImage`, `.msi`) are built by `.github/workflows/release.yml` triggered automatically by release-please when a new tag is cut. The workflow needs the same OAuth credentials as the dev build, supplied via **GitHub Repo Secrets**:
+
+| Secret name | Where to set |
+|---|---|
+| `CHAJA_GITHUB_OAUTH_CLIENT_ID` | Settings → Secrets and variables → Actions → New repository secret |
+| `CHAJA_GITHUB_OAUTH_CLIENT_SECRET` | same |
+
+When unset (e.g. forks running CI), the build still succeeds — the OAuth flow simply short-circuits at runtime.
+
 ### Common dev workflow
 
 ```bash

@@ -26,5 +26,8 @@ url.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
+[build-dependencies]
+dotenvy.workspace = true
+
 [dev-dependencies]
 tempfile = "3"

@@ -16,6 +16,7 @@
 
 pub mod clients;
 mod keyring;
+pub mod oauth;
 mod sidecar;
 mod types;
 

@@ -20,6 +20,9 @@ chrono.workspace = true
 tauri.workspace = true
 keyring.workspace = true
 reqwest.workspace = true
+oauth2.workspace = true
+tiny_http.workspace = true
+url.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 

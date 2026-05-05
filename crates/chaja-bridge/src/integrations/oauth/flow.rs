@@ -21,7 +21,7 @@ use std::time::Duration;
 
 use oauth2::basic::BasicClient;
 use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, CsrfToken, EndpointNotSet, EndpointSet,
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EndpointNotSet, EndpointSet,
     PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 
@@ -165,10 +165,18 @@ fn build_client(
         }
     })?;
 
-    Ok(BasicClient::new(ClientId::new(config.client_id.clone()))
+    let mut client = BasicClient::new(ClientId::new(config.client_id.clone()))
         .set_auth_uri(auth_url)
         .set_token_uri(token_url)
-        .set_redirect_uri(redirect))
+        .set_redirect_uri(redirect);
+    if let Some(secret) = &config.client_secret {
+        // GitHub OAuth Apps + GitLab + Bitbucket all require the
+        // client secret in the token exchange even with PKCE. Future
+        // GitHub Apps (PKCE-only) leave this `None` and skip the
+        // assignment.
+        client = client.set_client_secret(ClientSecret::new(secret.clone()));
+    }
+    Ok(client)
 }
 
 fn build_authorize_url(
@@ -197,17 +205,14 @@ mod tests {
     }
 
     #[test]
-    fn begin_known_provider_with_empty_client_id_returns_not_configured() {
-        // All providers in the scaffold have empty client_id by design
-        // (the maintainer fills them after registering the OAuth apps).
-        // Until then, begin must short-circuit cleanly.
-        for provider in [
-            "github",
-            "gitlab",
-            "bitbucket",
-            "azure-devops",
-            "jira-cloud",
-        ] {
+    fn begin_provider_without_baked_creds_returns_not_configured() {
+        // azure-devops and jira-cloud are hardcoded with empty
+        // client_id (no `option_env!` bake) — those always
+        // short-circuit, regardless of `.env.local` contents on the
+        // build host. github / gitlab / bitbucket may or may not be
+        // baked depending on the maintainer's `.env.local`, so we
+        // can't assert anything universal about them here.
+        for provider in ["azure-devops", "jira-cloud"] {
             let err = begin(provider).unwrap_err();
             assert!(
                 matches!(err, BackendError::OAuthNotConfigured),

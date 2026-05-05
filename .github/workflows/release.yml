@@ -19,6 +19,13 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  # Display + slug constants used by every step that names a binary,
+  # bundle, AppDir entry, or icon. Bumped here once and the rest of
+  # the workflow follows.
+  BIN_NAME: chaja-app
+  APP_DISPLAY_NAME: Chajá
+  APP_DESCRIPTION: Cross-platform Git client built with Rust + Tauri 2 + SolidJS
+  DESKTOP_ID: chaja
 
 jobs:
   build:
@@ -28,20 +35,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Linux job emits the .deb via Tauri's bundler. The .AppImage
+          # is built in the dedicated `appimage` job below using the
+          # raw release binary, because Tauri's AppImage bundler
+          # produces a minimal AppImage that crashes on distros where
+          # WebKit2GTK helpers live outside /usr/libexec/webkit2gtk-4.1
+          # (EGL_BAD_PARAMETER on Bazzite F43, repro'd in #274).
           - target: linux-amd64
             os: ubuntu-latest
-            bundles: deb,appimage
-            # Cargo workspace puts the target dir at the repo root, not
-            # inside apps/chaja-app/src-tauri/. cargo tauri build picks
-            # that up — bundles land at <root>/target/release/bundle/...
-            artifact_glob: |
-              target/release/bundle/deb/*.deb
-              target/release/bundle/appimage/*.AppImage
+            bundles: deb
+            artifact_glob: target/release/bundle/deb/*.deb
           - target: windows-amd64
             os: windows-latest
             bundles: msi
-            artifact_glob: |
-              target/release/bundle/msi/*.msi
+            artifact_glob: target/release/bundle/msi/*.msi
     steps:
       - uses: actions/checkout@v4
         with:
@@ -96,9 +103,247 @@ jobs:
           path: ${{ matrix.artifact_glob }}
           if-no-files-found: error
 
+      # The Linux job also uploads the raw release binary so the
+      # AppImage job can grab it without rebuilding.
+      - name: Upload raw Linux binary
+        if: matrix.target == 'linux-amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary
+          path: target/release/${{ env.BIN_NAME }}
+          if-no-files-found: error
+
+  appimage:
+    name: AppImage
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag_name }}
+
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binary
+          path: artifacts/binary
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libgdk-pixbuf2.0-bin \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-gl libgstreamer1.0-dev
+
+      - name: Download tools
+        run: |
+          curl -L -o appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          curl -L -o linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x appimagetool linuxdeploy
+
+      - name: Prepare AppDir
+        run: |
+          mkdir -p chaja.AppDir/usr/bin
+          cp "artifacts/binary/${BIN_NAME}" "chaja.AppDir/usr/bin/${BIN_NAME}"
+          chmod +x "chaja.AppDir/usr/bin/${BIN_NAME}"
+
+          # Tauri stores icons under apps/chaja-app/src-tauri/icons/.
+          # Use the 256-px PNG to preserve resolution; appimagetool
+          # rescales to the embedded thumbnail size automatically.
+          ICON_SRC="apps/chaja-app/src-tauri/icons/128x128@2x.png"
+          if [ ! -f "$ICON_SRC" ]; then
+            ICON_SRC="apps/chaja-app/src-tauri/icons/icon.png"
+          fi
+          cp "$ICON_SRC" "chaja.AppDir/${DESKTOP_ID}.png"
+
+          cat > "chaja.AppDir/${DESKTOP_ID}.desktop" << DESKTOP_EOF
+          [Desktop Entry]
+          Name=${APP_DISPLAY_NAME}
+          Comment=${APP_DESCRIPTION}
+          Exec=${BIN_NAME}
+          Icon=${DESKTOP_ID}
+          Type=Application
+          Categories=Development;RevisionControl;
+          Terminal=false
+          DESKTOP_EOF
+
+      - name: Bundle libraries
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          # Bundle direct .so deps with linuxdeploy.
+          ./linuxdeploy --appdir chaja.AppDir \
+            --executable "chaja.AppDir/usr/bin/${BIN_NAME}" \
+            --desktop-file "chaja.AppDir/${DESKTOP_ID}.desktop" \
+            --icon-file "chaja.AppDir/${DESKTOP_ID}.png"
+
+          # WebKit2GTK helpers (WebKitWebProcess, WebKitNetworkProcess,
+          # injected-bundle) are dlopen'd from a path hardcoded inside
+          # libwebkit2gtk-4.1.so at build time. Patch the .so to use a
+          # relative `././` prefix instead of `/usr/...` so it picks up
+          # the bundled helpers regardless of where the host distro
+          # placed its system WebKit. This is the fix for the
+          # `EGL_BAD_PARAMETER` crash on Bazzite F43 (#274).
+          WEBKIT_DIR=""
+          for candidate in /usr/libexec/webkit2gtk-4.1 /usr/lib/x86_64-linux-gnu/webkit2gtk-4.1; do
+            if [ -d "$candidate" ]; then
+              WEBKIT_DIR="$candidate"
+              break
+            fi
+          done
+          if [ -z "$WEBKIT_DIR" ]; then
+            WKP=$(find /usr -name "WebKitWebProcess" -path "*webkit2gtk*" 2>/dev/null | head -1)
+            if [ -n "$WKP" ]; then
+              WEBKIT_DIR=$(dirname "$WKP")
+            fi
+          fi
+
+          WEBKIT_HARDCODED=$(strings "chaja.AppDir/usr/lib/libwebkit2gtk-4.1.so.0" 2>/dev/null | grep -m1 '/webkit2gtk-4.1$')
+          if [ -n "$WEBKIT_DIR" ] && [ -n "$WEBKIT_HARDCODED" ]; then
+            WEBKIT_RELATIVE="././${WEBKIT_HARDCODED#/usr}"
+            echo "Patching WebKit path: $WEBKIT_HARDCODED -> $WEBKIT_RELATIVE"
+            LC_ALL=C sed -i "s|$WEBKIT_HARDCODED|$WEBKIT_RELATIVE|g" "chaja.AppDir/usr/lib/libwebkit2gtk-4.1.so.0"
+            HELPERS_DEST="chaja.AppDir${WEBKIT_HARDCODED#/usr}"
+            mkdir -p "$HELPERS_DEST"
+            cp "$WEBKIT_DIR/WebKitWebProcess" "$HELPERS_DEST/"
+            cp "$WEBKIT_DIR/WebKitNetworkProcess" "$HELPERS_DEST/"
+            if [ -d "$WEBKIT_DIR/injected-bundle" ]; then
+              cp -r "$WEBKIT_DIR/injected-bundle" "$HELPERS_DEST/"
+            fi
+          else
+            echo "::warning::WebKit helpers or library not found"
+          fi
+
+          # GLib compiled schemas (settings backend chajá leans on
+          # transitively via tauri-plugin-dialog).
+          if [ -f "/usr/share/glib-2.0/schemas/gschemas.compiled" ]; then
+            mkdir -p chaja.AppDir/usr/share/glib-2.0/schemas
+            cp /usr/share/glib-2.0/schemas/gschemas.compiled chaja.AppDir/usr/share/glib-2.0/schemas/
+          fi
+
+          # GIO modules (TLS support) — required for HTTPS in
+          # webkit-network-process.
+          GIO_DIR=$(pkg-config --variable=giomoduledir gio-2.0 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/gio/modules")
+          if [ -d "$GIO_DIR" ]; then
+            mkdir -p chaja.AppDir/usr/lib/gio/modules
+            cp "$GIO_DIR"/*.so chaja.AppDir/usr/lib/gio/modules/
+          fi
+
+          # GDK pixbuf loaders (image format decoders).
+          PIXBUF_DIR="/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0"
+          if compgen -G "$PIXBUF_DIR/loaders/*.so" > /dev/null 2>&1; then
+            mkdir -p chaja.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders
+            cp "$PIXBUF_DIR/loaders"/*.so chaja.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders/
+            if command -v gdk-pixbuf-query-loaders &>/dev/null; then
+              GDK_PIXBUF_MODULEDIR="chaja.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders" \
+                gdk-pixbuf-query-loaders > "chaja.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+            fi
+          fi
+
+      - name: Bundle GStreamer plugins
+        run: |
+          # GStreamer plugins are loaded via dlopen() — invisible to
+          # ldd. Required for media playback inside any WebKit content
+          # we render (avatars, README image previews, etc.).
+          GST_PLUGIN_DIR=$(pkg-config --variable=pluginsdir gstreamer-1.0 2>/dev/null)
+          if [ -z "$GST_PLUGIN_DIR" ] || [ ! -d "$GST_PLUGIN_DIR" ]; then
+            for candidate in /usr/lib/x86_64-linux-gnu/gstreamer-1.0 /usr/lib64/gstreamer-1.0; do
+              if [ -d "$candidate" ]; then
+                GST_PLUGIN_DIR="$candidate"
+                break
+              fi
+            done
+          fi
+          if [ -n "$GST_PLUGIN_DIR" ] && [ -d "$GST_PLUGIN_DIR" ]; then
+            GST_PLUGINS=(
+              coreelements typefindfunctions app playback matroska vpx
+              opus vorbis ogg audioconvert audioresample videoconvertscale
+              autodetect volume opengl gio
+            )
+            mkdir -p chaja.AppDir/usr/lib/gstreamer-1.0
+            for plugin in "${GST_PLUGINS[@]}"; do
+              FOUND=$(compgen -G "$GST_PLUGIN_DIR/libgst${plugin}.*" 2>/dev/null | head -1)
+              if [ -n "$FOUND" ]; then
+                cp "$FOUND" chaja.AppDir/usr/lib/gstreamer-1.0/
+              else
+                echo "::warning::GStreamer plugin not found: $plugin"
+              fi
+            done
+
+            # Plugin scanner — path varies by distro.
+            GST_SCANNER=""
+            GST_SCANNER_DIR=$(pkg-config --variable=pluginscannerdir gstreamer-1.0 2>/dev/null)
+            if [ -n "$GST_SCANNER_DIR" ] && [ -x "$GST_SCANNER_DIR/gst-plugin-scanner" ]; then
+              GST_SCANNER="$GST_SCANNER_DIR/gst-plugin-scanner"
+            elif [ -x "/usr/libexec/gstreamer-1.0/gst-plugin-scanner" ]; then
+              GST_SCANNER="/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
+            else
+              GST_SCANNER=$(find /usr -name "gst-plugin-scanner" -path "*/gstreamer-1.0/*" 2>/dev/null | head -1)
+            fi
+            if [ -n "$GST_SCANNER" ]; then
+              mkdir -p chaja.AppDir/usr/libexec/gstreamer-1.0
+              cp "$GST_SCANNER" chaja.AppDir/usr/libexec/gstreamer-1.0/
+            else
+              echo "::warning::GStreamer plugin scanner not found"
+            fi
+          else
+            echo "::warning::GStreamer plugin directory not found, skipping"
+          fi
+
+      - name: Generate AppRun
+        run: |
+          # linuxdeploy left an AppRun symlink to the binary in place;
+          # remove it so we can write our own wrapper without losing
+          # the binary.
+          rm -f chaja.AppDir/AppRun
+          cat > chaja.AppDir/AppRun << APPRUN_EOF
+          #!/bin/bash
+          SELF=\$(readlink -f "\$0")
+          HERE=\${SELF%/*}
+
+          # Bundled library + module paths
+          export LD_LIBRARY_PATH="\${HERE}/usr/lib:\${LD_LIBRARY_PATH}"
+          export GIO_MODULE_DIR="\${HERE}/usr/lib/gio/modules"
+          export GDK_PIXBUF_MODULE_FILE="\${HERE}/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+          export GSETTINGS_SCHEMA_DIR="\${HERE}/usr/share/glib-2.0/schemas"
+
+          # GStreamer plugin paths
+          export GST_PLUGIN_PATH="\${HERE}/usr/lib/gstreamer-1.0"
+          export GST_PLUGIN_SYSTEM_PATH=""
+          export GST_PLUGIN_SCANNER="\${HERE}/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
+          export GST_REGISTRY="\${HOME}/.cache/${DESKTOP_ID}/gst-registry-${BIN_NAME}.bin"
+
+          # The patched libwebkit2gtk-4.1.so resolves WebKit helpers
+          # via \`././libexec/webkit2gtk-4.1/\` — relative to whatever
+          # cwd the binary is launched in. cd to the AppDir root so
+          # those paths resolve correctly.
+          cd "\${HERE}"
+
+          export PATH="\${HERE}/usr/bin:\${PATH}"
+          exec "\${HERE}/usr/bin/${BIN_NAME}" "\$@"
+          APPRUN_EOF
+          chmod +x chaja.AppDir/AppRun
+
+      - name: Build AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          # Read the version straight from the manifest. Stops a stale
+          # constant in this workflow drifting from the truth.
+          VERSION=$(jq -r '."."' .release-please-manifest.json)
+          OUTPUT="Chaja_${VERSION}_amd64.AppImage"
+          ARCH=x86_64 ./appimagetool chaja.AppDir "$OUTPUT"
+          ls -la "$OUTPUT"
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundles-appimage
+          path: Chaja_*_amd64.AppImage
+          if-no-files-found: error
+
   upload-assets:
     name: upload assets
-    needs: build
+    needs: [build, appimage]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -110,16 +355,13 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+          # Skip the raw linux-binary artifact — it's an internal
+          # hand-off between build → appimage and shouldn't ship.
+          pattern: bundles-*
 
       - name: Flatten artifact tree
         working-directory: artifacts
         run: |
-          # actions/upload-artifact preserves the relative path of each
-          # uploaded file. Linux uploads two paths (deb/*.deb +
-          # appimage/*.AppImage) so the download lands as subdirs;
-          # Windows uploads one path so it lands flat. Move everything
-          # to the top level so checksums and the GitHub Release upload
-          # see one flat list.
           find . -mindepth 2 -type f -exec mv -t . {} +
           find . -mindepth 1 -type d -empty -delete
           ls -la
@@ -141,10 +383,10 @@ jobs:
 
             | File | Description |
             |------|-------------|
-            | `*.deb` | Debian / Ubuntu / Bazzite (`sudo apt install ./chaja-app_*.deb`) |
-            | `*.AppImage` | Portable Linux binary (`chmod +x` then run) |
-            | `*.msi` | Windows installer (unsigned — SmartScreen will warn) |
-            | `checksums-sha256.txt` | SHA-256 checksums for all files |
+            | `*.deb` | Debian / Ubuntu (`sudo apt install ./chaja-app_*.deb`). NOTE: Fedora atomic distros (Bazzite, Silverblue) cannot install this — use the AppImage. |
+            | `Chaja_*_amd64.AppImage` | Portable Linux binary with bundled WebKit/GStreamer/pixbuf — works across distros without manual env-var overrides (`chmod +x` then run). |
+            | `*.msi` | Windows installer (unsigned — SmartScreen will warn). |
+            | `checksums-sha256.txt` | SHA-256 checksums for all files. |
 
             > **Note:** unsigned alpha builds. Windows SmartScreen and macOS Gatekeeper will warn — this is normal until code signing lands. See [SECURITY.md](https://github.com/lobinuxsoft/chaja/blob/main/SECURITY.md) for the disclosure path if you suspect a tampered binary.
           files: artifacts/*

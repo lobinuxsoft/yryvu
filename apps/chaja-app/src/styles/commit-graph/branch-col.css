@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* BRANCH/TAG column — list scaffold and pill-aligned row layout. */
+.commit-graph__col-branch {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Branch/tag column scope — left-align pills with 3px gap from the edge
+   (matches GitKraken's getRefNodePositionOrDefault → LEFT default). */
+.commit-graph__col-branch .graph-row-wrapper {
+  justify-content: flex-start;
+  padding-left: 3px;
+  /* No overflow:hidden — pills handle their own truncation and the
+     +N popover needs to escape the row's vertical bounds. */
+}
+
+/* Pill → commit connector line (#127). A 1-px line in the row's lane
+   color, anchored to the right edge of the BRANCH/TAG cell. `flex: 1`
+   lets it absorb the whitespace between the last pill and the cell's
+   right edge; `align-self: center` pins it to the row's midY so it
+   visually extends into the commit circle sitting in the adjacent
+   GRAPH column. Non-HEAD rows fade to 0.25 opacity — matches
+   GitKraken's `.ref-line` default (`opacity: .25`); HEAD row uses
+   full opacity + 2 px to match `.ref-line.is-active`. Equivalent
+   stroke-opacity is applied on the inner SVG line in `RowRenderer`. */
+.ref-connector {
+  flex: 1;
+  align-self: center;
+  height: 1px;
+  min-height: 1px;
+  min-width: 0;
+  opacity: 0.25;
+}
+
+.ref-connector--head {
+  height: 2px;
+  min-height: 2px;
+  opacity: 1;
+}

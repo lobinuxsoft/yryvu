@@ -1,0 +1,74 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Graph column headers — the strip above CommitGraph that names each
+   zone (BRANCH / GRAPH / MESSAGE / AUTHOR / DATE-TIME / SHA). Widths
+   line up 1:1 with the body zones via shared CSS vars. */
+
+.main__graph-column-headers {
+  display: flex;
+  align-items: stretch;
+  /* Header columns line up 1:1 with the body zones below — same widths
+     driven by `--graph-col-branch` / `--graph-col-graph` CSS vars. The
+     resize handles are absolutely-positioned children of each header
+     column, so they don't steal width from the layout. */
+  gap: 0;
+  padding: 0 var(--graph-col-padding);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.main__graph-column-header {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px 6px var(--graph-col-gap);
+  overflow: hidden;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.main__graph-column-header[data-zone="ref"] {
+  width: var(--graph-col-branch);
+  /* Match `.commit-graph__col-branch .graph-row-wrapper { padding-left: 3px }`
+     so the header label sits over the row's pill column edge. */
+  padding-left: 3px;
+}
+
+.main__graph-column-header[data-zone="graph"] {
+  width: var(--graph-col-graph);
+  /* Match the GRAPH zone's gutter so the `GRAPH` label aligns with the
+     first lane column's centerline area. `--graph-gutter` is set in
+     `RowRenderer.tsx` (defaults to 28 px). */
+  padding-left: var(--graph-col-gap);
+}
+
+.main__graph-column-header[data-zone="commitMessage"] {
+  width: var(--graph-col-message);
+  padding-left: var(--graph-col-gap);
+}
+
+
+.main__graph-column-header[data-zone="commitAuthor"] {
+  width: var(--graph-col-author);
+  padding-left: var(--graph-col-gap);
+}
+
+.main__graph-column-header[data-zone="commitDateTime"] {
+  width: var(--graph-col-date-time);
+  padding-left: var(--graph-col-gap);
+}
+
+.main__graph-column-header[data-zone="commitSha"] {
+  width: var(--graph-col-sha);
+  padding-left: var(--graph-col-gap);
+}
+
+.main__graph-column-header-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

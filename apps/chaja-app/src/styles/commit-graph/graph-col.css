@@ -1,0 +1,68 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* GRAPH column — list scaffold + lane-tint band + per-row streak. The
+   <ul> hosts the absolute-positioned row wrappers; lane content (commit
+   nodes + edges) is drawn inside via SVG renderers. */
+.commit-graph__col-graph {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  /* `width: 100%` so when lane content is narrower than the hscroll
+     viewport, the UL still fills the cell and the absolute-positioned
+     row wrappers (`left: 0; right: 0`) reach the right edge — instead
+     of collapsing to lane content width and leaving a dead band.
+     `min-width` is set inline to `graphContentWidth` so when lanes
+     overflow the viewport, the UL grows past 100 % and the wrapper's
+     `overflow-x: auto` activates. */
+  width: 100%;
+}
+
+/* Lane-color tint band (#128) — GitKraken's `BackgroundStreak` +
+   `.commit-bg-color` rule. A low-opacity wash covering only the stretch
+   of the GRAPH cell from the commit circle rightward to the MESSAGE
+   boundary. `left` is set inline to `GUTTER + lane*LANE_WIDTH +
+   LANE_WIDTH/2` (the commit node's centerX) so the tint reads as a
+   trailing halo off the circle. Default 10 % opacity; jumps to 50 %
+   when the row is selected, echoing GK's
+   `.column-N.is-selected .commit-bg-color` variant. */
+/* Lane tint band — positioned absolutely inside each GRAPH-zone row
+   wrapper. `left` is set inline per row to `nodeCenterX` so the
+   tint reads as a halo trailing off the commit circle to the right.
+   Sized to the node's 22 px diameter and vertically centered. The
+   row's `--row-lane-color` flows in from the parent <li>'s style. */
+.commit-graph__row-tint {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  /* `height` is set inline per row from `dims.commitRadius * 2` so
+     the tint always matches the node's diameter — 22 px in default,
+     10 px in compact. Hardcoding 22 px here left a fat band trailing
+     off the tiny compact node. */
+  transform: translateY(-50%);
+  pointer-events: none;
+  background-color: color-mix(
+    in srgb,
+    var(--row-lane-color, transparent) 10%,
+    transparent
+  );
+}
+
+.graph-row-wrapper.is-selected .commit-graph__row-tint {
+  background-color: color-mix(
+    in srgb,
+    var(--row-lane-color, transparent) 50%,
+    transparent
+  );
+}
+
+/* Per-row lane streak — now lives inside the streaks overlay, not in
+   the row <li>. `top` is set inline per row (globalIndex * ROW_HEIGHT
+   + vertical centering offset). */
+.commit-graph__lane-streak {
+  position: absolute;
+  left: 0;
+  width: 4px;
+  /* `height` is set inline per row from `dims.commitRadius * 2` so the
+     streak matches the node diameter (22 px default, 10 px compact). */
+}

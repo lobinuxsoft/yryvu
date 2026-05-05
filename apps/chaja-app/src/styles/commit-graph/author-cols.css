@@ -1,0 +1,109 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Author / Date-Time / SHA columns — list scaffolding for the three
+   right-side zones. Sized by the parent zone's CSS var; rows live
+   inside via `.graph-row-wrapper`. */
+.commit-graph__col-author,
+.commit-graph__col-date-time,
+.commit-graph__col-sha {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  min-width: 0;
+  /* The UL is the containing block for its absolute-positioned row
+     wrappers (`left: 0; right: 0`). Without an explicit width the UL
+     collapses to 0 because every child is out-of-flow, which in turn
+     collapses the rows. `width: 100%` makes the UL fill the parent
+     zone's fixed width so rows stretch across the whole cell. */
+  width: 100%;
+}
+
+.commit-graph__col-author .graph-row-wrapper,
+.commit-graph__col-date-time .graph-row-wrapper,
+.commit-graph__col-sha .graph-row-wrapper {
+  /* Minimal left padding (2 px, matching GK's `.graph-cell` rule). The
+     inner text span flexes to the row's full width so ellipsis only
+     ever kicks in when the actual cell can't fit the name. */
+  padding-left: 2px;
+  padding-right: 2px;
+  font-size: 12px;
+  color: var(--fg-1);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.commit-graph__author,
+.commit-graph__date-time,
+.commit-graph__sha {
+  /* `flex: 1` + `min-width: 0` is the canonical flex idiom for a child
+     that should both expand to fill the wrapper AND shrink with ellipsis
+     when the wrapper itself is too narrow. Without `min-width: 0` flex
+     refuses to size below the content's intrinsic width and the column
+     overflows the parent. */
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-graph__date-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+
+/* Author cell — icon-only mode triggered when the Author column is
+   resized below `COMMIT_AUTHOR_ZONE_SHOW_ICON_WIDTH = 55` (1:1 with
+   GK's per-zone icon-width constant). The badge inherits the row's
+   lane color so commits remain visually grouped by branch even when
+   author names are hidden. */
+.commit-graph__author--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* HTML twin of `<CommitAvatar>` (the SVG variant inside the graph
+   zone). Reuses the same `avatarStatusByEmail` cache so an image
+   loaded once for the graph circle is hit from cache when the Author
+   column also paints it. Initials show through underneath when the
+   image is still loading or 404'd. */
+.author-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.author-badge__initials {
+  position: relative;
+  z-index: 0;
+}
+
+.author-badge__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  z-index: 1;
+  transition: opacity 120ms ease-out;
+}
+
+
+.commit-graph__sha {
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
+  font-size: 11px;
+  color: var(--fg-2);
+}

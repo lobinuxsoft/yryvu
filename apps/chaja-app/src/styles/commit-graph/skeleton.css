@@ -1,0 +1,70 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Graph initial-stream skeleton (#180). Twelve placeholder rows
+   shimmering until the first stream batch arrives. Geometry mirrors
+   the real ROW_HEIGHT (32 px) so real rows replace skeletons without
+   reflow. Reuses the file-list-skeleton-shimmer keyframe declared in
+   file-list.css (CSS keyframes are global). */
+.commit-graph__skeleton {
+  position: absolute;
+  /* `top` set inline by LoadingSkeleton to clear the WIP cell when
+     the working tree is dirty (it occupies row 0 of every zone). */
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  z-index: 0;
+}
+.commit-graph__skeleton-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 220px; /* clear the BRANCH/TAG + GRAPH zones visually */
+  padding-right: 24px;
+  width: 100%;
+}
+.commit-graph__skeleton-node {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    90deg,
+    var(--bg-2) 0%,
+    var(--bg-3) 50%,
+    var(--bg-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: file-list-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.commit-graph__skeleton-msg,
+.commit-graph__skeleton-author,
+.commit-graph__skeleton-sha {
+  display: inline-block;
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-2) 0%,
+    var(--bg-3) 50%,
+    var(--bg-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: file-list-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.commit-graph__skeleton-msg {
+  flex: 0 1 auto;
+}
+.commit-graph__skeleton-author {
+  width: 70px;
+  flex: 0 0 auto;
+}
+.commit-graph__skeleton-sha {
+  width: 50px;
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+}

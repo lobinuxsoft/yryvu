@@ -1,0 +1,82 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Changed-files list — vertical row list with per-file status badge,
+   path, optional rename "from" path, and add/del stats. */
+
+.changed-files {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.changed-files__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 6px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  color: var(--fg-1);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.changed-files__row:hover { background: var(--bg-2); }
+
+.changed-files__row[data-active="true"] {
+  background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
+  color: var(--fg-0);
+}
+
+.changed-files__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.changed-files__status[data-tone="added"]    { background: color-mix(in srgb, var(--success) 22%, transparent); color: var(--success); }
+.changed-files__status[data-tone="modified"] { background: color-mix(in srgb, var(--warning) 22%, transparent); color: var(--warning); }
+.changed-files__status[data-tone="deleted"]  { background: color-mix(in srgb, var(--danger)  22%, transparent); color: var(--danger); }
+.changed-files__status[data-tone="renamed"]  { background: color-mix(in srgb, var(--info)    22%, transparent); color: var(--info); }
+
+.changed-files__old {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+}
+
+.changed-files__path {
+  flex: 1;
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.changed-files__stats {
+  display: inline-flex;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.changed-files__stats--add { color: var(--success); }
+.changed-files__stats--del { color: var(--danger); }

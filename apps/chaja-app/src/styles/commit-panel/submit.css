@@ -1,0 +1,113 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Split submit button — primary action + chevron caret that opens a
+   dropdown of secondary submit modes (commit + push, amend, etc.).
+   Amend mode swaps the success colour for warning on both halves. */
+
+.commit-panel__submit-split {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  border-radius: var(--radius-sm);
+  overflow: visible;
+}
+
+.commit-panel__submit {
+  flex: 1;
+  background: var(--success);
+  color: var(--bg-0);
+  border: 0;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.commit-panel__submit:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--success) 80%, white);
+}
+
+.commit-panel__submit:disabled {
+  background: var(--bg-3);
+  color: var(--fg-3);
+  cursor: not-allowed;
+}
+
+.commit-panel__submit-split[data-mode="amend"] .commit-panel__submit:not(:disabled) {
+  background: var(--warning);
+}
+
+.commit-panel__submit-split[data-mode="amend"] .commit-panel__submit:not(:disabled):hover {
+  background: color-mix(in srgb, var(--warning) 80%, white);
+}
+
+.commit-panel__submit-caret {
+  width: 28px;
+  background: var(--success);
+  color: var(--bg-0);
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--bg-0) 30%, transparent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.commit-panel__submit-caret:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--success) 80%, white);
+}
+
+.commit-panel__submit-caret:disabled {
+  background: var(--bg-3);
+  color: var(--fg-3);
+  cursor: not-allowed;
+  border-left-color: transparent;
+}
+
+.commit-panel__submit-split[data-mode="amend"] .commit-panel__submit-caret:not(:disabled) {
+  background: var(--warning);
+}
+
+.commit-panel__submit-split[data-mode="amend"] .commit-panel__submit-caret:not(:disabled):hover {
+  background: color-mix(in srgb, var(--warning) 80%, white);
+}
+
+.commit-panel__submit-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  min-width: 180px;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  list-style: none;
+  padding: 4px;
+  margin: 0;
+  z-index: 10;
+}
+
+.commit-panel__submit-menu li {
+  display: block;
+}
+
+.commit-panel__submit-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--fg-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.commit-panel__submit-menu button:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}

@@ -1,0 +1,131 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Zone-based layout (#141 follow-up) — 3 independent scroll containers
+   with JS-synchronized vertical scrollTop (ported from GitKraken's
+   per-zone `Grid` setup, doc 11). Splitting into zones lets the GRAPH
+   zone host its own HORIZONTAL scrollbar pinned to ITS viewport bottom
+   — the previous single-scroll layout placed the horizontal scrollbar
+   thousands of pixels below the visible area. */
+.commit-graph__zones {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  /* `align-items: flex-start` keeps each zone at its natural content
+     height (== UL totalHeight). Without it, flex defaults to
+     `stretch`, every zone gets pulled to the container height, and
+     the leftover viewport space below the last commit shows as a
+     dead band the row tint can't reach. */
+  align-items: flex-start;
+  padding: 0 var(--graph-col-padding);
+  /* Single source of vertical scroll. Used to live on the messages
+     zone, but the moment a user toggled commit-message off the scroll
+     provider disappeared and `visibleRange` collapsed to zero rows.
+     Hosting the scroll on the always-mounted container fixes that. */
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.commit-graph__zone {
+  position: relative;
+  /* No `overflow: hidden` — the zones used to clip individually so
+     each one's UL could be `transform: translateY`-synced. With the
+     outer container hosting the single source of vertical scroll,
+     each zone's UL grows to its full content height and the parent
+     scrolls them all in lockstep. The GRAPH zone re-introduces its
+     own clipping for the horizontal-scroll inner wrapper below. */
+}
+
+.commit-graph__zone--branch {
+  width: var(--graph-col-branch);
+  flex-shrink: 0;
+}
+
+/* GRAPH zone — laid out as a flex row so the streaks "gutter" sits
+   naturally on the right as the last flex item. This avoids the
+   ambiguity of `position: absolute; right: 0` interactions with
+   overflow-y:hidden in WebKit. Ports GitKraken's RightGutter pattern
+   (doc 11). */
+.commit-graph__zone--graph {
+  width: var(--graph-col-graph);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+}
+
+
+.commit-graph__col-graph-hscroll {
+  flex: 1;
+  min-width: 0;
+  /* No `height: 100%` — the wrapper hugs its UL's natural totalHeight
+     so the parent `.commit-graph__zones` scrolls everything together
+     without a dead viewport-tall slab at the bottom. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+}
+
+/* Streaks gutter — 4 px column on the right, OUTSIDE the horizontal
+   scroll container so it never moves horizontally. Vertical sync now
+   comes from the parent `.commit-graph__zones` scrolling everything
+   together; the gutter has no height constraint and grows with its
+   `totalHeight` inner so the absolute-positioned per-row streaks
+   stay aligned with their commits as the user scrolls. */
+.commit-graph__col-graph-streaks {
+  flex-shrink: 0;
+  width: 4px;
+  pointer-events: none;
+  position: relative;
+}
+
+.commit-graph__col-graph-streaks-inner {
+  position: relative;
+  width: 100%;
+}
+
+.commit-graph__zone--messages {
+  /* Width fixed via CSS var (driven by `graphColumnWidths.commitMessage`).
+     Vertical scroll lives on the parent `.commit-graph__zones` so this
+     zone can be hidden without taking the scroll provider with it. */
+  width: var(--graph-col-message);
+  flex-shrink: 0;
+}
+
+
+/* Author / Date-Time / SHA zones — siblings of messages, fixed widths
+   driven by their CSS vars. Vertical scroll syncs to the messages zone
+   via `transform: translateY(-scrollTop)` (same pattern as the BRANCH /
+   GRAPH zones). */
+.commit-graph__zone--author {
+  width: var(--graph-col-author);
+  flex-shrink: 0;
+}
+
+.commit-graph__zone--date-time {
+  width: var(--graph-col-date-time);
+  flex-shrink: 0;
+}
+
+.commit-graph__zone--sha {
+  width: var(--graph-col-sha);
+  flex-shrink: 0;
+}
+
+/* GRAPH horizontal scrollbar styling (WebKit — Tauri Linux). Applied
+   to the inner hscroll wrapper. */
+.commit-graph__col-graph-hscroll::-webkit-scrollbar {
+  height: 10px;
+  background-color: transparent;
+}
+.commit-graph__col-graph-hscroll::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+.commit-graph__col-graph-hscroll::-webkit-scrollbar-thumb {
+  background-color: var(--bg-3);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.commit-graph__col-graph-hscroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--fg-3);
+}

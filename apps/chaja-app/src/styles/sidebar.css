@@ -1,0 +1,12 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Thin aggregator — sub-files live in ./sidebar/. Order: shell, then
+   sections (with collapsed-rail overrides), then row variants
+   (branch/tag, multi-purpose), then top-level callouts (state banner,
+   inline CTA). */
+@import "./sidebar/shell.css";
+@import "./sidebar/sections.css";
+@import "./sidebar/branch-rows.css";
+@import "./sidebar/multi-rows.css";
+@import "./sidebar/inline-cta.css";
+@import "./sidebar/state-banner.css";

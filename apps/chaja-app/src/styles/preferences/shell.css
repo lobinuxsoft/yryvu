@@ -1,0 +1,63 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Preferences window (issue #136)
+   1:1 layout with GK PreferenceView: nav 180 px fixed, content fills the
+   rest, both scroll independently. Window centered as a modal with a dim
+   backdrop because chajá lacks a tab system. */
+
+.preferences__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 8000;
+}
+
+.preferences {
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-lg);
+  width: min(80vw, 1100px);
+  height: min(75vh, 800px);
+  min-width: 720px;
+  min-height: 500px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  color: var(--fg-0);
+  overflow: hidden;
+}
+
+.preferences__header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bg-3);
+  flex-shrink: 0;
+}
+
+.preferences__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.preferences__close {
+  background: transparent;
+  border: 0;
+  color: var(--fg-2);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.preferences__close:hover { color: var(--fg-0); }
+
+.preferences__layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}

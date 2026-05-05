@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Preferences nav sidebar — 180 px fixed, vertical list of section
+   entries with active-row indicator on the left edge. */
+
+.preferences__nav {
+  width: 180px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--bg-3);
+  background: var(--bg-0);
+  overflow-y: auto;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.preferences__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 0;
+  color: var(--fg-1);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.preferences__nav-item:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+.preferences__nav-item:focus-visible {
+  outline: none;
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
+.preferences__nav-item--active,
+.preferences__nav-item--active:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border-left-color: var(--bg-accent);
+  font-weight: 500;
+}
+
+.preferences__nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--fg-2);
+  flex-shrink: 0;
+}
+.preferences__nav-item--active .preferences__nav-icon {
+  color: var(--bg-accent);
+}
+
+.preferences__nav-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

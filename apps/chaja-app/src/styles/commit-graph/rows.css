@@ -1,0 +1,89 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* MESSAGES column — list scaffold + RightGutter divider against the
+   GRAPH zone. Pairs with the per-row lane streak on the GRAPH side. */
+.commit-graph__col-messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  /* RightGutter divider (#128) — 1-px hairline + subtle inward shadow
+     marks the GRAPH → MESSAGE boundary, pairing with the per-row
+     lane-color streak on the GRAPH side. Applied here (not on
+     .col-graph) so the shadow has somewhere to fall without clipping
+     against the streak itself. */
+  border-left: 1px solid var(--bg-3);
+  box-shadow: inset 2px 0 4px -2px color-mix(in srgb, black 35%, transparent);
+}
+
+/* Per-row SVG renderer (#81 — 1:1 port of GitKraken's per-row edge drawing
+   per doc 02 + doc 12). Replaces the previous WebGL canvas. */
+.graph-row__svg {
+  display: block;
+  overflow: visible;
+  /* Keep edges + commit circle on top of the row-tint band so the selection
+     50 % tint paints BEHIND the node, not over it. Requires position:
+     relative since z-index is a no-op on static-positioned elements. */
+  position: relative;
+  z-index: 2;
+}
+
+/* Row wrapper (Bd pattern per doc 12) — the positioning + state-class
+   scaffold shared by all three graph columns (branch / graph / message).
+   className cache lives in index.tsx rowWrapperClass(). */
+.graph-row-wrapper {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--fg-1);
+  /* No global background — the lane tint is painted ONLY inside the
+     GRAPH zone via `.commit-graph__row-tint` (a per-row span anchored
+     at the commit node's centerX, extending right to the zone edge).
+     Mirrors GK's `BackgroundStreak` / `.commit-bg-color` rule which
+     never bleeds across BRANCH/TAG, MESSAGE, AUTHOR, DATE-TIME, SHA. */
+}
+
+.commit-graph__col-messages .graph-row-wrapper {
+  gap: 12px;
+  padding-left: var(--graph-col-gap);
+}
+
+.graph-row-wrapper.is-hovering {
+  background: var(--bg-2);
+}
+
+/* Selected row — neutral theme color across BRANCH/TAG + GRAPH +
+   MESSAGE, mirroring GitKraken's `graph-row.is-selected` rule
+   (`background-color: var(--selected-row)`). The GRAPH column's lane
+   tint jumps to 50 % on top of this via `.commit-graph__row-tint`. */
+.graph-row-wrapper.is-selected {
+  background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
+  color: var(--fg-0);
+}
+.graph-row-wrapper.is-selected .commit-graph__sha {
+  color: var(--fg-1);
+}
+
+/* Hover-dim (#54): when a ref is being hovered in the pill or the sidebar,
+   every row that isn't reachable from that ref fades to 35 % opacity.
+   Transition is fast enough to feel immediate but soft-edged so the change
+   doesn't strobe when the mouse sweeps across a column of pills. */
+.graph-row-wrapper.is-dimmed {
+  opacity: 0.35;
+  transition: opacity 80ms ease-out;
+}
+.graph-row-wrapper:not(.is-dimmed) {
+  transition: opacity 80ms ease-out;
+}
+
+.commit-graph__summary {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

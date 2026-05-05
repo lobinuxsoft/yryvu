@@ -1,0 +1,25 @@
+[package]
+name = "graph-core"
+description = "Pure-Rust commit graph lane assignment engine for chaja"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { workspace = true, optional = true }
+thiserror.workspace = true
+md-5 = { workspace = true }
+
+[features]
+default = ["serde"]
+serde = ["dep:serde"]
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "lane_assignment"
+harness = false

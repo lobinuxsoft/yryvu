@@ -1,0 +1,56 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   Context menu
+   ======================================================================== */
+.ctx-menu {
+  position: fixed;
+  min-width: 180px;
+  max-width: 320px;
+  /* Cap at viewport height minus the 8px gutter the JS clamp uses on
+     each side. Menus taller than the viewport scroll inside the panel
+     instead of spilling off the bottom edge. */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  padding: 4px 0;
+  z-index: 9000;
+  font-size: 12px;
+  color: var(--fg-1);
+}
+
+.ctx-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 6px 12px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ctx-menu__item:hover,
+.ctx-menu__item[data-active="true"] {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
+.ctx-menu__item[data-danger="true"] { color: var(--danger); }
+
+.ctx-menu__item:disabled {
+  color: var(--fg-3);
+  cursor: default;
+  background: transparent;
+}
+
+.ctx-menu__separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--bg-3);
+}
+

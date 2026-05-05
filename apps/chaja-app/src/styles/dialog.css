@@ -1,0 +1,159 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   Dialog / modal
+   ======================================================================== */
+.dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 8000;
+}
+
+.dialog {
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-lg);
+  min-width: 360px;
+  max-width: 520px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  color: var(--fg-0);
+}
+
+.dialog__header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.dialog__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.dialog__close {
+  background: transparent;
+  border: 0;
+  color: var(--fg-2);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.dialog__close:hover { color: var(--fg-0); }
+
+.dialog__body {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--fg-1);
+}
+
+.dialog__body label {
+  display: block;
+  font-size: 12px;
+  color: var(--fg-2);
+  margin-bottom: 4px;
+}
+
+.dialog__body input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: var(--bg-0);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg-0);
+  font-family: var(--font-ui);
+}
+
+.dialog__body input[type="text"]:focus {
+  outline: 2px solid var(--info);
+  outline-offset: -2px;
+}
+
+.dialog__field + .dialog__field { margin-top: 12px; }
+
+.dialog__error {
+  margin-top: 8px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--bg-3);
+}
+
+.dialog__btn {
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  color: var(--fg-0);
+  padding: 6px 14px;
+  font: inherit;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.dialog__btn:hover { background: var(--bg-3); }
+
+.dialog__btn--primary {
+  background: var(--bg-accent);
+  border-color: var(--bg-accent);
+}
+.dialog__btn--primary:hover { background: var(--bg-accent-hover); }
+
+.dialog__btn--danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.dialog__btn--danger:hover { filter: brightness(1.1); }
+
+.dialog__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dialog__warning {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.dialog__hint {
+  margin: 0 0 12px;
+  color: var(--fg-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.dialog__hint code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg-2);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+}
+
+.dialog__path-list {
+  max-height: 160px;
+  overflow-y: auto;
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--fg-1);
+}
+
+.dialog__path-list code {
+  font-family: var(--font-mono);
+}

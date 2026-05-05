@@ -1,0 +1,55 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/graph-core",
+    "crates/chaja-bridge",
+    "apps/chaja-app/src-tauri",
+]
+
+[workspace.package]
+# x-release-please-version
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+authors = ["Matias Galarza <lobinuxsoft@gmail.com>"]
+repository = "https://github.com/lobinuxsoft/chaja"
+rust-version = "1.85"
+
+[workspace.dependencies]
+gix = { version = "0.68", default-features = false, features = ["max-performance-safe", "serde", "revision", "worktree-mutation"] }
+git2 = { version = "0.19", default-features = false, features = ["https"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+md-5 = "0.10"
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "vendored"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls-vendored"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+oauth2 = { version = "5", default-features = false, features = ["reqwest", "native-tls"] }
+tiny_http = "0.12"
+url = "2"
+dotenvy = "0.15"
+
+criterion = { version = "0.5", features = ["html_reports"] }
+
+graph-core = { path = "crates/graph-core" }
+chaja-bridge = { path = "crates/chaja-bridge" }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "symbols"
+opt-level = 3
+
+[profile.release-small]
+inherits = "release"
+opt-level = "z"
+lto = "fat"

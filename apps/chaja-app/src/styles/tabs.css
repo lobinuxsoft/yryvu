@@ -1,0 +1,338 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   Tabs bar — issue #204 / #135 cluster.
+
+   Layout (cited bundle:330605-330614, audit doc 03):
+
+     [REPO_MGMT pill] [tab1] [tab2] [tab3] [+] [⌄]   ▏(spacer)▏   [legacy actions]
+     └ permanent ─┘ └────── transient strip ─────┘                 └─────────────┘
+
+   Permanent tabs render LEFT of the transient strip (NOT right edge —
+   initial audit draft had this inverted, see audit doc 09 cross-validation).
+   ======================================================================== */
+
+.tabs {
+  display: flex;
+  align-items: center;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+  padding: 0 8px;
+  gap: 4px;
+  overflow: hidden;
+}
+
+/* Legacy left cluster — open-repo + favorites buttons. Kept until the
+   #205 NEW tab welcome screen makes the open-repo button redundant. */
+.tabs__leading {
+  display: flex;
+  gap: 6px;
+  padding-right: 6px;
+  border-right: 1px solid var(--bg-3);
+  margin-right: 4px;
+}
+
+.tabs__leading-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-2);
+}
+
+.tabs__leading-btn:hover { background: var(--bg-4); color: var(--fg-0); }
+
+/* Active state for the Repo Management button — bundle:330453
+   `isSelected` flag on makeTabIcon. The button stays highlighted while
+   currentTabType() === "REPO_MANAGEMENT" so the user has a visual
+   anchor matching the active viewport. */
+.tabs__leading-btn.is-active {
+  background: var(--bg-0);
+  color: var(--fg-0);
+  box-shadow: inset 0 -2px 0 var(--info);
+}
+
+/* Container for permanent + transient pills + + + chevron. Permanent
+   pills come first (cited bundle:330605-330614). */
+.tabs__strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ---- Tab pill ---------------------------------------------------- */
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 10px;
+  height: calc(var(--tabs-height) - 4px);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  color: var(--fg-2);
+  border: 0;
+  font-size: 12px;
+  max-width: 180px;
+  flex-shrink: 0;
+  cursor: pointer;
+  outline: none;
+}
+
+.tab__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tab.is-active {
+  background: var(--bg-0);
+  color: var(--fg-0);
+  box-shadow: inset 0 2px 0 var(--info);
+}
+
+.tab:hover {
+  color: var(--fg-0);
+  background: var(--bg-2);
+}
+
+.tab.is-active:hover { background: var(--bg-0); }
+
+/* Drag-reorder (#39). is-dragging lives on the strip while a drag is
+   active; sibling pills suppress hover/active background while the
+   pointer is captured on the dragged pill — the user feels "pushing
+   the pill into a slot" without random hover highlights flashing
+   under the cursor.
+
+   Sibling pills also get a smooth transform transition so they slide
+   into place when the dragged pill crosses a midpoint (computeTargetIndex
+   in dragMath.ts). The dragged pill itself OPTS OUT of the transition
+   (transform: translateX is set every pointermove — adding a transition
+   would lag the cursor visibly). */
+.tabs__strip.is-dragging :where(.tab):not(.is-being-dragged):hover {
+  background: transparent;
+}
+.tabs__strip.is-dragging .tab:not(.is-being-dragged) {
+  transition: transform 140ms ease;
+}
+.tab.is-being-dragged {
+  z-index: 2;
+  opacity: 0.85;
+  cursor: grabbing;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* Permanent tab pill — visually distinct from transient pills via a
+   subtle leading icon slot. Same close behavior is suppressed (permanent
+   tabs close via menu, not via × button). */
+.tab--permanent { padding: 0 10px; }
+.tab--permanent .tab__close { display: none; }
+
+/* ---- Tab × close button ----------------------------------------- */
+
+.tab__close {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: var(--fg-3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 80ms ease;
+  margin-left: 2px;
+  flex-shrink: 0;
+  font-size: 11px; /* sizes the .nf glyph inside */
+}
+
+.tab:hover .tab__close,
+.tab.is-active .tab__close { opacity: 1; }
+
+.tab__close:hover {
+  background: var(--bg-4);
+  color: var(--fg-0);
+}
+
+/* ---- + button --------------------------------------------------- */
+
+.tabs__new {
+  margin-left: 2px;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-2);
+  cursor: pointer;
+}
+
+.tabs__new:hover { background: var(--bg-4); color: var(--fg-0); }
+
+/* ---- ⌄ dropdown chevron stub ------------------------------------ */
+
+/* Visible but inert — clicking it is a no-op until #206 wires the menu.
+   Rendered so the layout matches the audit doc 03 diagram even before
+   the menu lands. */
+.tabs__dropdown {
+  flex-shrink: 0;
+  width: 22px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-3);
+  cursor: pointer;
+}
+
+.tabs__dropdown:hover { background: var(--bg-4); color: var(--fg-0); }
+.tabs__dropdown:disabled { opacity: 0.4; cursor: default; }
+.tabs__dropdown[aria-expanded="true"] { background: var(--bg-4); color: var(--fg-0); }
+
+/* ========================================================================
+   Tab dropdown popover (#206) — issue surface that lets the user filter
+   open tabs + reopen recently-closed tabs from a single combobox. The
+   chevron next to the + button toggles it.
+   ======================================================================== */
+
+.tab-dropdown {
+  /* position:fixed coordinates are inlined by the component (anchor prop),
+     so only the visual rules belong here. */
+  z-index: 100;
+  width: 320px;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  /* Nudge down a couple of px so the popover doesn't hug the chevron. */
+  margin-top: 4px;
+}
+
+.tab-dropdown__filter {
+  display: block;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 0;
+  border-bottom: 1px solid var(--bg-3);
+  font-size: 12px;
+  outline: none;
+}
+
+.tab-dropdown__filter::placeholder {
+  color: var(--fg-3);
+}
+
+.tab-dropdown__filter:focus {
+  background: var(--bg-0);
+}
+
+.tab-dropdown__empty {
+  padding: 14px 12px;
+  color: var(--fg-3);
+  font-size: 12px;
+  text-align: center;
+}
+
+.tab-dropdown__section {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--bg-3);
+  overflow-y: auto;
+}
+
+.tab-dropdown__section:last-child {
+  border-bottom: 0;
+}
+
+.tab-dropdown__section-title {
+  padding: 6px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.tab-dropdown__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--fg-1);
+  font-size: 12px;
+  border-radius: 0;
+}
+
+.tab-dropdown__row:hover,
+.tab-dropdown__row:focus-visible {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  outline: none;
+}
+
+.tab-dropdown__row-icon {
+  width: 16px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.tab-dropdown__row-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-dropdown__row-close {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: var(--fg-3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 80ms ease;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.tab-dropdown__row:hover .tab-dropdown__row-close {
+  opacity: 1;
+}
+
+.tab-dropdown__row-close:hover {
+  background: var(--bg-4);
+  color: var(--fg-0);
+}

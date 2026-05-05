@@ -1,0 +1,10 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Thin aggregator — sub-files live in ./toolbar/. Order: shell first,
+   then buttons, then dropdown surfaces (switcher, split-button), then
+   the small upstream pill cluster. */
+@import "./toolbar/shell.css";
+@import "./toolbar/buttons.css";
+@import "./toolbar/switcher.css";
+@import "./toolbar/split-button.css";
+@import "./toolbar/upstream.css";

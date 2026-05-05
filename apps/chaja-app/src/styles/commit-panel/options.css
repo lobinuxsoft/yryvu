@@ -1,0 +1,71 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Commit Options collapsible — chevron toggle + body of checkboxes
+   with optional inline hints (sign-off, allow-empty, etc.). */
+
+.commit-panel__options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.commit-panel__options-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  color: var(--fg-2);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  padding: 2px 0;
+  align-self: flex-start;
+}
+
+.commit-panel__options-toggle:hover {
+  color: var(--fg-0);
+}
+
+.commit-panel__options-chevron {
+  display: inline-block;
+  width: 10px;
+  color: var(--fg-3);
+  transition: transform 120ms;
+}
+
+.commit-panel__options-chevron[data-collapsed="false"] {
+  transform: rotate(90deg);
+}
+
+.commit-panel__options-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 2px 0;
+}
+
+.commit-panel__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--fg-1);
+  cursor: pointer;
+}
+
+.commit-panel__option[data-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--fg-3);
+}
+
+.commit-panel__option input[type="checkbox"] {
+  accent-color: var(--info);
+}
+
+.commit-panel__option-hint {
+  font-size: 10px;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+}

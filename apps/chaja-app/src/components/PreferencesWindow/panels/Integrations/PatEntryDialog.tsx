@@ -1,0 +1,214 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { createSignal, Show, type JSX } from "solid-js";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { Dialog } from "../../../Dialog";
+import { notify } from "../../../Notifications";
+import { importGhToken } from "../../../../ipc";
+import type { ProviderInfo } from "./providerTable";
+import { selfHostedHostname } from "./selfHostedHostnames";
+import { integrationState } from "./state";
+import { buildTokenGenUrl, saveToken } from "./tokenStorage";
+
+/**
+ * Personal Access Token entry dialog. Mirror of GK's
+ * `handleManualIntegrationTokenInput` flow (`bundle:146636`) plus the
+ * `openLinkToGenerateToken` deep-link (`bundle:146668`).
+ *
+ * The same component handles every provider that accepts manual token
+ * input — that's everyone except Trello (custom app-key+token, out of
+ * scope for chajá v1).
+ *
+ * **chajá deviation**: GK leaves `generateTokenPath: null` for `.com`
+ * providers (`bundle:166381`+); chajá fills these in with public
+ * well-known URLs so the user always gets the deep-link button.
+ *
+ * Bitbucket relabeling: `tokenIsAppPassword` (`bundle:166682` flag)
+ * drives the dialog title + button copy ("App Password" instead of
+ * "Personal Access Token").
+ */
+export function PatEntryDialog(props: {
+  open: boolean;
+  provider: ProviderInfo;
+  onClose: () => void;
+  onSubmit: () => void;
+}): JSX.Element {
+  const [token, setToken] = createSignal("");
+  const tokenLabel = () =>
+    props.provider.tokenIsAppPassword ? "App Password" : "Personal Access Token";
+
+  const tokenGenUrl = () =>
+    buildTokenGenUrl(
+      props.provider.tokenGenPath,
+      props.provider.tokenGenParams,
+      selfHostedHostname(props.provider.type)(),
+    );
+
+  const onGenerateClick = async () => {
+    const url = tokenGenUrl();
+    if (!url) {
+      notify.info("No deep-link", {
+        message: `${props.provider.label} doesn't expose a public token-creation URL.`,
+      });
+      return;
+    }
+    try {
+      await openUrl(url);
+    } catch (err) {
+      notify.error("Failed to open browser", { message: String(err) });
+    }
+  };
+
+  // GitHub-only: pull the token from the user's existing `gh` CLI
+  // session. For GHE, pass the configured self-hosted hostname so
+  // `gh --hostname <h>` queries the right session.
+  const supportsGhImport = () =>
+    props.provider.type === "github" || props.provider.type === "githubEnterprise";
+
+  const onImportFromGh = async () => {
+    const hostname =
+      props.provider.type === "githubEnterprise"
+        ? selfHostedHostname(props.provider.type)()
+        : undefined;
+    try {
+      const fetched = await importGhToken(hostname || undefined);
+      setToken(fetched);
+      notify.success("Imported from gh CLI", {
+        message: "Review the token below and click Save to continue.",
+      });
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("not found on PATH")) {
+        notify.error("gh CLI not installed", {
+          message:
+            "Install GitHub CLI from https://cli.github.com/ or paste a token manually.",
+        });
+      } else if (msg.includes("not authenticated")) {
+        notify.error("gh CLI not authenticated", {
+          message: "Run `gh auth login` in a terminal first, then retry.",
+        });
+      } else {
+        notify.error("gh import failed", { message: msg });
+      }
+    }
+  };
+
+  const submit = async () => {
+    const trimmed = token().trim();
+    if (!trimmed) return;
+    const hostname = props.provider.isSelfHosted
+      ? selfHostedHostname(props.provider.type)() || undefined
+      : undefined;
+    try {
+      await saveToken(props.provider.type, trimmed, hostname);
+      setToken("");
+      // After saveToken, the state is `connected` if preflight
+      // succeeded (UserInfo populated from the provider API) or
+      // remained `disconnected` if the provider's API client isn't
+      // implemented yet — surface a different toast for each case so
+      // the user gets clear feedback.
+      const after = integrationState(props.provider.type)();
+      if (after.tag === "connected") {
+        notify.success("Connected", {
+          message: `Signed in as @${after.user.login}.`,
+        });
+      } else {
+        notify.success("Token saved", {
+          message: `${tokenLabel()} stored in OS keyring. ${props.provider.label} API client lands in a future PR.`,
+        });
+      }
+      props.onSubmit();
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("keyring service unavailable")) {
+        notify.error("OS keyring unavailable", {
+          message:
+            "Start your keyring service (e.g. gnome-keyring on Linux) and retry.",
+        });
+      } else {
+        notify.error("Failed to save token", { message: msg });
+      }
+    }
+  };
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && token().trim().length > 0) {
+      e.preventDefault();
+      void submit();
+    }
+  };
+
+  return (
+    <Dialog
+      open={props.open}
+      title={`${tokenLabel()} — ${props.provider.verboseLabel}`}
+      onClose={props.onClose}
+      footer={
+        <>
+          <button
+            class="dialog__btn"
+            type="button"
+            data-dismiss
+            onClick={props.onClose}
+          >
+            Cancel
+          </button>
+          <button
+            class="dialog__btn dialog__btn--primary"
+            type="button"
+            data-testid="pat-entry-submit"
+            disabled={token().trim().length === 0}
+            onClick={() => void submit()}
+          >
+            Save
+          </button>
+        </>
+      }
+    >
+      <div data-testid="pat-entry-dialog">
+        <p class="dialog__hint">
+          Paste your {tokenLabel()} below. chajá uses it to authenticate
+          against {props.provider.verboseLabel}'s API. Tokens are stored
+          locally; no other tokens are ever transmitted anywhere except to
+          {" "}
+          {props.provider.label}.
+        </p>
+        <div class="pat-entry__actions">
+          <Show when={supportsGhImport()}>
+            <button
+              class="pat-entry__generate-link"
+              type="button"
+              data-testid="pat-entry-import-gh"
+              onClick={() => void onImportFromGh()}
+            >
+              Import from <code>gh</code> CLI
+            </button>
+          </Show>
+          <Show when={tokenGenUrl()}>
+            <button
+              class="pat-entry__generate-link"
+              type="button"
+              data-testid="pat-entry-generate-link"
+              onClick={() => void onGenerateClick()}
+            >
+              Generate {tokenLabel()} on {props.provider.label} →
+            </button>
+          </Show>
+        </div>
+        <input
+          type="password"
+          autofocus
+          data-testid="pat-entry-input"
+          placeholder={
+            props.provider.tokenIsAppPassword
+              ? "Paste your App Password"
+              : "Paste your token (e.g. ghp_xxxxxxxxxxxxxxxx)"
+          }
+          value={token()}
+          onInput={(e) => setToken(e.currentTarget.value)}
+          onKeyDown={onKeyDown}
+        />
+      </div>
+    </Dialog>
+  );
+}

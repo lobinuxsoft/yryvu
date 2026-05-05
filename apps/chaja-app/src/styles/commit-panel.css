@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Thin aggregator — sub-files live in ./commit-panel/. Order: shell
+   chrome (panel + sections), then form, then options, then submit. */
+@import "./commit-panel/shell.css";
+@import "./commit-panel/form.css";
+@import "./commit-panel/options.css";
+@import "./commit-panel/submit.css";

@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Thin aggregator — sub-files live in ./shell/. Order: top-level grid,
+   then main + palette, then graph-headers (with resize handle), then
+   the header-anchored popovers (column-settings, hidden-refs). */
+@import "./shell/grid.css";
+@import "./shell/main.css";
+@import "./shell/graph-headers.css";
+@import "./shell/resize.css";
+@import "./shell/column-settings.css";
+@import "./shell/hidden-refs.css";

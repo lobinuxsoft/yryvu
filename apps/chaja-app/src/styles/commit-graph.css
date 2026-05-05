@@ -1,0 +1,14 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Thin aggregator — sub-files live in ./commit-graph/. Order matters
+   only for the cascade: structural scaffolding first, then content
+   columns, then row state, then specialty rows (WIP, skeleton). */
+@import "./commit-graph/base.css";
+@import "./commit-graph/zones.css";
+@import "./commit-graph/author-cols.css";
+@import "./commit-graph/branch-col.css";
+@import "./commit-graph/ref-pills.css";
+@import "./commit-graph/graph-col.css";
+@import "./commit-graph/rows.css";
+@import "./commit-graph/wip.css";
+@import "./commit-graph/skeleton.css";

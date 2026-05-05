@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Thin aggregator — sub-files live in ./inspector/. Order: shell, then
+   the summary/diff chips at the top, then the changed-files list, then
+   the per-commit detail blocks, then the avatar primitive used by the
+   people block. */
+@import "./inspector/shell.css";
+@import "./inspector/summary.css";
+@import "./inspector/changed-files.css";
+@import "./inspector/commit-detail.css";
+@import "./inspector/avatar.css";

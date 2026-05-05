@@ -1,0 +1,118 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   Release Notes tab body — issue #208 / #135 cluster.
+
+   Renders the parsed CHANGELOG.md as a centered-doc layout with a max
+   width that keeps the line length comfortable. Heading typography
+   matches the rest of the app (var(--font-ui)), the code blocks pick
+   up the Fira Code Nerd Font Mono via the .nf cascade.
+   ======================================================================== */
+
+.release-notes {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg-0);
+  color: var(--fg-1);
+}
+
+.release-notes__doc {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 28px 48px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.release-notes__doc h1,
+.release-notes__doc h2,
+.release-notes__doc h3 {
+  color: var(--fg-0);
+  margin: 28px 0 12px;
+  scroll-margin-top: 16px;
+}
+
+.release-notes__doc h1 { font-size: 22px; font-weight: 700; }
+.release-notes__doc h2 { font-size: 18px; font-weight: 600; border-bottom: 1px solid var(--bg-3); padding-bottom: 6px; }
+.release-notes__doc h3 { font-size: 14px; font-weight: 600; color: var(--fg-1); }
+
+.release-notes__doc p { margin: 8px 0; }
+
+.release-notes__doc ul {
+  margin: 8px 0;
+  padding-left: 24px;
+  list-style: disc;
+}
+
+.release-notes__doc li { margin: 4px 0; }
+
+.release-notes__doc a {
+  color: var(--info);
+  text-decoration: none;
+}
+
+.release-notes__doc a:hover { text-decoration: underline; }
+
+.release-notes__doc code {
+  font-family: "FiraCodeNF", monospace;
+  font-size: 0.92em;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.release-notes__doc pre {
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.release-notes__doc pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+}
+
+.release-notes__doc hr {
+  border: 0;
+  border-top: 1px solid var(--bg-3);
+  margin: 24px 0;
+}
+
+.release-notes__doc strong { color: var(--fg-0); font-weight: 600; }
+
+/* Empty state — pre-first-release builds or empty changelog. */
+.release-notes__empty {
+  max-width: 480px;
+  margin: 80px auto 0;
+  padding: 24px;
+  text-align: center;
+  color: var(--fg-2);
+}
+
+.release-notes__empty h2 {
+  color: var(--fg-0);
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.release-notes__empty p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.release-notes__empty code {
+  font-family: "FiraCodeNF", monospace;
+  font-size: 0.92em;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  padding: 1px 5px;
+  border-radius: 3px;
+}

@@ -1,0 +1,78 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Branch / tag rows — branch row with active checkmark + ahead/behind
+   tracking counters; tag row reuses the layout but swaps the leading
+   slot for an inline tag icon. Empty-state copy lives here too since
+   it's section-body content. */
+
+.sidebar__branch-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 24px;
+  color: var(--fg-1);
+  font-size: 12px;
+  cursor: default;
+  user-select: none;
+}
+
+.sidebar__branch-row:hover { background: var(--bg-2); }
+
+.sidebar__branch-row[data-active="true"] {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--fg-0);
+}
+
+.sidebar__branch-row[data-active="true"]::before {
+  content: "✓";
+  color: var(--success);
+  margin-right: 2px;
+}
+
+.sidebar__branch-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__branch-tracking {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--fg-2);
+  margin-left: auto;
+}
+
+.sidebar__branch-tracking span[data-dir="ahead"] { color: var(--success); }
+.sidebar__branch-tracking span[data-dir="behind"] { color: var(--warning); }
+
+/* Tag rows reuse `__branch-row` for hover/active styling but swap the
+   leading checkmark slot for an inline tag icon. The annotated variant
+   leans on the title attribute for the message tooltip — no custom
+   tooltip surface needed yet. */
+.sidebar__tag-row {
+  padding-left: 10px;
+}
+
+.sidebar__tag-row::before { content: none; }
+
+.sidebar__tag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--fg-2);
+}
+
+.sidebar__tag-row[data-annotated="true"] .sidebar__tag-icon {
+  color: var(--accent);
+}
+
+.sidebar__empty {
+  padding: 6px 10px 6px 24px;
+  color: var(--fg-3);
+  font-size: 11px;
+  font-style: italic;
+}

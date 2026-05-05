@@ -1,0 +1,28 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* AppShell — top-level CSS grid.
+   Regions: tabs / toolbar / sidebar | main | inspector / statusbar */
+
+.shell {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: var(--tabs-height) var(--toolbar-height) 1fr var(--statusbar-height);
+  grid-template-areas:
+    "tabs      tabs    tabs"
+    "toolbar   toolbar toolbar"
+    "sidebar   main    inspector"
+    "statusbar statusbar statusbar";
+  height: 100vh;
+  background: var(--bg-0);
+}
+
+.shell__tabs       { grid-area: tabs; }
+.shell__toolbar    { grid-area: toolbar; }
+.shell__sidebar    { grid-area: sidebar; min-height: 0; overflow: hidden; }
+.shell__main       { grid-area: main; overflow: hidden; position: relative; }
+.shell__inspector  { grid-area: inspector; min-height: 0; overflow: hidden; }
+.shell__statusbar  { grid-area: statusbar; }
+
+/* Hide panels by toggling data attributes on the shell */
+.shell[data-show-left="false"]  .shell__sidebar   { display: none; }
+.shell[data-show-right="false"] .shell__inspector { display: none; }

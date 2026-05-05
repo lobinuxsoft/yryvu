@@ -1,0 +1,121 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Commit form — sticky bottom area: amend toggle row, message
+   summary + description fields, template selector, and the
+   per-field char counter. Submit button lives in `submit.css`. */
+
+.commit-panel__commit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--bg-3);
+  background: var(--bg-1);
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+}
+
+.commit-panel__commit-form__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--fg-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.commit-panel__amend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  color: var(--fg-1);
+  cursor: pointer;
+}
+
+.commit-panel__amend input[type="checkbox"] {
+  accent-color: var(--info);
+}
+
+/* -------- Message: summary + description ------------------------------- */
+.commit-panel__message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.commit-panel__template {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--fg-2);
+}
+
+.commit-panel__template-select {
+  flex: 1;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+.commit-panel__template-select:focus {
+  outline: none;
+  border-color: var(--info);
+}
+
+.commit-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--fg-2);
+}
+
+.commit-panel__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.commit-panel__counter {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-3);
+}
+
+.commit-panel__counter[data-overflow="true"] {
+  color: var(--danger);
+}
+
+.commit-panel__input,
+.commit-panel__textarea {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  outline: none;
+}
+
+.commit-panel__input:focus,
+.commit-panel__textarea:focus {
+  border-color: var(--info);
+}
+
+.commit-panel__textarea {
+  resize: vertical;
+  min-height: 50px;
+}

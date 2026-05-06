@@ -7,6 +7,7 @@ pub mod commands;
 pub mod integrations;
 pub mod preferences;
 pub mod repo;
+pub mod templates;
 pub mod undo_log;
 
 pub use backend::{GitBackend, GixBackend};

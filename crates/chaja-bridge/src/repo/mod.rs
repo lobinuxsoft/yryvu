@@ -19,6 +19,7 @@ mod branches;
 pub(crate) mod commits;
 pub(crate) mod common;
 pub(crate) mod hosting;
+pub(crate) mod init;
 mod merge;
 mod patches;
 mod rebase;

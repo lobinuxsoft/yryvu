@@ -65,6 +65,25 @@ impl OAuthSession {
     pub fn redirect_port(&self) -> u16 {
         self.server.port()
     }
+
+    /// Constructor for tests in sibling modules (e.g. the registry
+    /// in `state.rs`). Not part of the public API — gated to `cfg(test)`
+    /// callers via a `pub(super)` cousin would have been ideal but
+    /// `state.rs` is a sibling, not a child, so it's `pub`-with-a-lock.
+    #[cfg(test)]
+    pub fn for_test(
+        server: LoopbackServer,
+        pkce_verifier: PkceCodeVerifier,
+        csrf_token: CsrfToken,
+        config: ProviderOAuthConfig,
+    ) -> Self {
+        OAuthSession {
+            server,
+            pkce_verifier,
+            csrf_token,
+            config,
+        }
+    }
 }
 
 /// Phase 1: build the authorize URL for `provider` and return an
@@ -100,11 +119,15 @@ pub fn begin(provider: &str) -> Result<(OAuthSession, String), BackendError> {
     ))
 }
 
-/// Phase 2: block (in this thread) until the provider redirects to
-/// our loopback or the timeout elapses, then exchange the
-/// authorization code for an access token.
+/// Phase 2: wait until the provider redirects to our loopback or the
+/// timeout elapses, then exchange the authorization code for an
+/// access token.
 ///
 /// Consumes the [`OAuthSession`] — replays are explicitly prevented.
+///
+/// The loopback recv blocks for the duration of the OAuth window
+/// (default 5 minutes), so it runs on a dedicated tokio blocking
+/// thread to avoid pinning a runtime worker.
 pub async fn await_completion(
     session: OAuthSession,
     timeout: Duration,
@@ -116,13 +139,19 @@ pub async fn await_completion(
         config,
     } = session;
     let redirect_uri = server.redirect_uri();
+    let csrf_secret = csrf_token.secret().to_string();
 
-    let CallbackParams { code, state } = loopback::await_callback(server, timeout)?;
+    let CallbackParams { code, state } =
+        tokio::task::spawn_blocking(move || loopback::await_callback(server, timeout))
+            .await
+            .map_err(|e| BackendError::OAuthExchangeFailed {
+                detail: format!("loopback worker panicked: {e}"),
+            })??;
 
     // Constant-time would be nicer here, but the CSRF token is a
     // 128-bit random string — string-equality is not the side-channel
     // the threat model worries about.
-    if state != *csrf_token.secret() {
+    if state != csrf_secret {
         return Err(BackendError::OAuthStateMismatch);
     }
 

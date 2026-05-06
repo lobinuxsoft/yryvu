@@ -148,3 +148,152 @@ fn git_user_name() -> Option<String> {
         .get_string("user.name")
         .ok()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn opts() -> InitOptions {
+        InitOptions {
+            branch_name: "main".into(),
+            gitignore_template: None,
+            license_template: None,
+            initialize_first_commit: false,
+            bare: false,
+        }
+    }
+
+    fn open_repo(path: &Path) -> Repository {
+        Repository::open(path).expect("open initialized repo")
+    }
+
+    #[test]
+    fn init_non_bare_creates_git_dir_and_returns_path() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        let result = init_repository(&dest, opts()).unwrap();
+        assert_eq!(result, dest);
+        assert!(dest.join(".git").is_dir());
+    }
+
+    #[test]
+    fn init_bare_creates_git_dir_at_dest() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("bare.git");
+        let mut o = opts();
+        o.bare = true;
+        init_repository(&dest, o).unwrap();
+        assert!(dest.join("HEAD").is_file());
+    }
+
+    #[test]
+    fn init_honours_initial_branch_name() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        let mut o = opts();
+        o.branch_name = "trunk".into();
+        init_repository(&dest, o).unwrap();
+        let head = std::fs::read_to_string(dest.join(".git/HEAD")).unwrap();
+        assert!(head.contains("refs/heads/trunk"), "HEAD = {head}");
+    }
+
+    #[test]
+    fn init_with_first_commit_off_leaves_no_commits() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        init_repository(&dest, opts()).unwrap();
+        let repo = open_repo(&dest);
+        assert!(repo.head().is_err(), "expected unborn HEAD");
+    }
+
+    #[test]
+    fn init_with_first_commit_on_creates_initial_commit() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        let mut o = opts();
+        o.initialize_first_commit = true;
+        init_repository(&dest, o).unwrap();
+        let repo = open_repo(&dest);
+        let head = repo.head().expect("HEAD set");
+        let commit = head.peel_to_commit().unwrap();
+        assert_eq!(commit.message(), Some("Initial commit"));
+        assert_eq!(commit.parent_count(), 0);
+    }
+
+    #[test]
+    fn init_with_gitignore_template_writes_file() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        let mut o = opts();
+        o.gitignore_template = Some("rust".into());
+        init_repository(&dest, o).unwrap();
+        let body = std::fs::read_to_string(dest.join(".gitignore")).unwrap();
+        assert!(body.contains("target"), "Rust .gitignore should mention 'target'");
+    }
+
+    #[test]
+    fn init_with_license_template_renders_placeholders() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        let mut o = opts();
+        o.license_template = Some("mit".into());
+        init_repository(&dest, o).unwrap();
+        let body = std::fs::read_to_string(dest.join("LICENSE")).unwrap();
+        assert!(!body.contains("{{year}}"));
+        assert!(!body.contains("{{author}}"));
+        assert!(body.contains(&chrono::Utc::now().year().to_string()));
+    }
+
+    #[test]
+    fn init_with_templates_and_first_commit_stages_them() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        let mut o = opts();
+        o.gitignore_template = Some("rust".into());
+        o.license_template = Some("mit".into());
+        o.initialize_first_commit = true;
+        init_repository(&dest, o).unwrap();
+        let repo = open_repo(&dest);
+        let tree = repo.head().unwrap().peel_to_tree().unwrap();
+        assert!(tree.get_name(".gitignore").is_some());
+        assert!(tree.get_name("LICENSE").is_some());
+    }
+
+    #[test]
+    fn init_rejects_existing_repo() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        init_repository(&dest, opts()).unwrap();
+        let err = init_repository(&dest, opts()).unwrap_err();
+        assert!(matches!(err, BackendError::InitDestExists { .. }), "got {err:?}");
+    }
+
+    #[test]
+    fn init_rejects_invalid_branch_name() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        let mut o = opts();
+        o.branch_name = "has spaces".into();
+        let err = init_repository(&dest, o).unwrap_err();
+        assert!(matches!(err, BackendError::InvalidBranchName { .. }), "got {err:?}");
+    }
+
+    #[test]
+    fn init_rejects_unknown_template() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+        let mut o = opts();
+        o.gitignore_template = Some("not-a-real-template".into());
+        let err = init_repository(&dest, o).unwrap_err();
+        assert!(matches!(err, BackendError::InitTemplateMissing { .. }), "got {err:?}");
+    }
+
+    #[test]
+    fn init_rejects_missing_parent() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("nonexistent").join("repo");
+        let err = init_repository(&dest, opts()).unwrap_err();
+        assert!(matches!(err, BackendError::InitInvalidPath { .. }), "got {err:?}");
+    }
+}

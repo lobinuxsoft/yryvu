@@ -102,6 +102,8 @@ pub fn run() {
             chaja_bridge::commands::reset_preferences,
             chaja_bridge::commands::read_changelog,
             chaja_bridge::commands::list_known_repos,
+            chaja_bridge::commands::list_gitignore_templates,
+            chaja_bridge::commands::list_license_templates,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

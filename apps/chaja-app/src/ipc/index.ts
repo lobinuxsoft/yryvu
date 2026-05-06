@@ -19,6 +19,7 @@ export * from "./staging";
 export * from "./stashes";
 export * from "./submodules";
 export * from "./tags";
+export * from "./templates";
 export * from "./undo";
 export * from "./worktree";
 export * from "./worktrees";

@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { createSignal, type Accessor } from "solid-js";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   getIntegrationToken,
   integrationPreflight,
   listConfiguredIntegrations,
+  oauthAwait,
+  oauthBegin,
+  oauthCancel,
   removeIntegrationToken,
   saveIntegrationToken,
   type UserInfo,
@@ -157,6 +161,43 @@ export async function removeToken(type: IntegrationType): Promise<void> {
     next.delete(type);
     return next;
   });
+}
+
+/**
+ * Drive the full OAuth Authorization Code + PKCE flow end-to-end:
+ *
+ *   1. `oauth_begin` parks a session in the backend registry, returns
+ *      `{ sessionId, authorizeUrl }`.
+ *   2. Open `authorizeUrl` in the user's browser via
+ *      `tauri-plugin-opener` — the user grants consent there.
+ *   3. `oauth_await(sessionId)` blocks until the provider redirects to
+ *      our loopback (5-min window, see backend `DEFAULT_FLOW_TIMEOUT`).
+ *   4. The returned access token is piped through `saveToken` (which
+ *      preflights + persists to keyring) so OAuth-acquired tokens go
+ *      through exactly the same validation as PAT-entered ones.
+ *
+ * Returns the `sessionId` so the caller can call `cancelOAuthFlow`
+ * if the user dismisses the dialog before completion.
+ */
+export async function startOAuthFlow(
+  type: IntegrationType,
+  hostname?: string,
+): Promise<string> {
+  const begin = await oauthBegin(type);
+  await openUrl(begin.authorizeUrl);
+  const token = await oauthAwait(begin.sessionId);
+  await saveToken(type, token, hostname);
+  return begin.sessionId;
+}
+
+/**
+ * Drop the parked OAuth session before the browser round-trip
+ * completes. Used when the user dismisses the connect dialog. The
+ * bound loopback port is released; a fresh `startOAuthFlow` will bind
+ * a new one.
+ */
+export function cancelOAuthFlow(sessionId: string): Promise<void> {
+  return oauthCancel(sessionId);
 }
 
 /**

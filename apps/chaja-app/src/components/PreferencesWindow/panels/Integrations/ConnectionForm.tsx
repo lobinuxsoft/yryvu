@@ -14,6 +14,7 @@ import {
   setIntegrationState,
 } from "./state";
 import { selfHostedHostname } from "./selfHostedHostnames";
+import { cancelOAuthFlow, startOAuthFlow } from "./tokenStorage";
 
 /**
  * Reusable account-row form. Mirror of `bundle:165616` —
@@ -41,6 +42,9 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
   const hostname = () => selfHostedHostname(props.provider.type)();
   const [dialogOpen, setDialogOpen] = createSignal(false);
   const [patDialogOpen, setPatDialogOpen] = createSignal(false);
+  // Tracks the in-flight OAuth session so the user can cancel before
+  // the browser round-trip completes. Cleared on completion / error.
+  const [oauthSessionId, setOauthSessionId] = createSignal<string | null>(null);
 
   const tokenLabel = () =>
     props.provider.tokenIsAppPassword ? "App Password" : "Personal Access Token";
@@ -79,13 +83,73 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
     }, 1000);
   };
 
+  /**
+   * Drive the real OAuth flow for providers whose `client_id` is baked
+   * at compile time (currently github only). On `OAuthNotConfigured`
+   * the chain falls back to the mocked path so non-baked providers
+   * still surface the existing "PR siguiente" toast instead of a
+   * confusing error.
+   */
+  const startRealOAuth = async () => {
+    setIntegrationState(props.provider.type, { tag: "connecting" });
+    try {
+      const sid = await startOAuthFlow(props.provider.type, hostname() || undefined);
+      setOauthSessionId(sid);
+      // saveToken (called inside startOAuthFlow) already set the
+      // connected state with the real UserInfo on success — nothing
+      // else to do here.
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("OAuth not configured")) {
+        setIntegrationState(props.provider.type, {
+          tag: "disconnected",
+          reason: "user_initiated",
+        });
+        notify.info("OAuth pendiente", {
+          message: `${props.provider.label} no tiene client_id baked todavía. Usá un PAT por ahora.`,
+        });
+        return;
+      }
+      if (msg.includes("OAuth flow cancelled by user")) {
+        setIntegrationState(props.provider.type, {
+          tag: "disconnected",
+          reason: "user_initiated",
+        });
+        return;
+      }
+      setIntegrationState(props.provider.type, {
+        tag: "disconnected",
+        reason: "user_initiated",
+      });
+      notify.error("Conexión fallida", { message: msg });
+    } finally {
+      setOauthSessionId(null);
+    }
+  };
+
   const handleConnect = () => {
     if (state().tag !== "disconnected") return;
     if (props.provider.isSelfHosted && !hostname()) {
       setDialogOpen(true);
       return;
     }
+    if (props.provider.authType === "OAUTH") {
+      void startRealOAuth();
+      return;
+    }
     startMockedConnect();
+  };
+
+  const handleCancelOAuth = () => {
+    const sid = oauthSessionId();
+    if (sid) {
+      void cancelOAuthFlow(sid);
+      setOauthSessionId(null);
+    }
+    setIntegrationState(props.provider.type, {
+      tag: "disconnected",
+      reason: "user_initiated",
+    });
   };
 
   const handleDisconnect = () => {
@@ -101,6 +165,10 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
 
   const onDialogSubmit = () => {
     setDialogOpen(false);
+    if (props.provider.authType === "OAUTH") {
+      void startRealOAuth();
+      return;
+    }
     startMockedConnect();
   };
 
@@ -146,6 +214,15 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
           <UserInfo state={state()} provider={props.provider} />
           <div class="integrations-form__actions">
             <StatusPill state={state()} />
+            <Show when={oauthSessionId() !== null && state().tag === "connecting"}>
+              <button
+                class="integrations-btn integrations-btn--danger"
+                type="button"
+                onClick={handleCancelOAuth}
+              >
+                Cancel
+              </button>
+            </Show>
             <ConnectButton
               state={state()}
               provider={props.provider}

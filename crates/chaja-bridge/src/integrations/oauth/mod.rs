@@ -18,13 +18,14 @@
 //! is mandatory in 2025 OAuth — the `client_id` is non-secret as long
 //! as the redirect URI is loopback, which we enforce.
 //!
-//! No Tauri commands are wired in this sub-PR — the next sub-PR adds
-//! `oauth_begin` / `oauth_cancel` and the per-provider client_id
-//! defaults once registered.
+//! - [`state`] — in-memory registry of sessions in flight, keyed by
+//!   an opaque session id the frontend persists between `oauth_begin`
+//!   and `oauth_await`.
 
 pub mod config;
 pub mod flow;
 pub mod loopback;
+pub mod state;
 
 pub use config::{for_provider, ProviderOAuthConfig};
 pub use flow::{await_completion, begin, OAuthSession, DEFAULT_FLOW_TIMEOUT};

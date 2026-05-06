@@ -80,4 +80,16 @@ pub enum BackendError {
     OAuthExchangeFailed { detail: String },
     #[error("OAuth not configured for this provider — client_id is empty")]
     OAuthNotConfigured,
+    #[error("init destination already exists: {path}")]
+    InitDestExists { path: String },
+    #[error("init path is invalid ({reason}): {path}")]
+    InitInvalidPath { path: String, reason: String },
+    #[error("template '{name}' not found in the bundled set")]
+    InitTemplateMissing { name: String },
+    #[error("init write failed for {path}: {source}")]
+    InitWriteFailed {
+        path: String,
+        #[source]
+        source: anyhow::Error,
+    },
 }

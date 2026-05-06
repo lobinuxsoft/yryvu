@@ -9,6 +9,7 @@ export * from "./cliImport";
 export * from "./commits";
 export * from "./integrationStorage";
 export * from "./diff";
+export * from "./init";
 export * from "./merge";
 export * from "./preferences";
 export * from "./release_notes";

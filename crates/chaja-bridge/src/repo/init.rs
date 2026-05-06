@@ -84,16 +84,14 @@ fn write_optional_files(
 ) -> Result<Vec<&'static str>, BackendError> {
     let mut staged = Vec::new();
     if let Some(name) = &opts.gitignore_template {
-        let entry = TemplateEntry::lookup(ALL_GITIGNORE, name).ok_or_else(|| {
-            BackendError::InitTemplateMissing { name: name.clone() }
-        })?;
+        let entry = TemplateEntry::lookup(ALL_GITIGNORE, name)
+            .ok_or_else(|| BackendError::InitTemplateMissing { name: name.clone() })?;
         atomic_write(&path.join(".gitignore"), entry.content)?;
         staged.push(".gitignore");
     }
     if let Some(name) = &opts.license_template {
-        let entry = TemplateEntry::lookup(ALL_LICENSE, name).ok_or_else(|| {
-            BackendError::InitTemplateMissing { name: name.clone() }
-        })?;
+        let entry = TemplateEntry::lookup(ALL_LICENSE, name)
+            .ok_or_else(|| BackendError::InitTemplateMissing { name: name.clone() })?;
         let author = git_user_name().unwrap_or_else(|| "Anonymous".to_string());
         let year = chrono::Utc::now().year();
         let rendered = render_license(entry.content, year, &author);
@@ -229,7 +227,10 @@ mod tests {
         o.gitignore_template = Some("rust".into());
         init_repository(&dest, o).unwrap();
         let body = std::fs::read_to_string(dest.join(".gitignore")).unwrap();
-        assert!(body.contains("target"), "Rust .gitignore should mention 'target'");
+        assert!(
+            body.contains("target"),
+            "Rust .gitignore should mention 'target'"
+        );
     }
 
     #[test]
@@ -266,7 +267,10 @@ mod tests {
         let dest = tmp.path().join("repo");
         init_repository(&dest, opts()).unwrap();
         let err = init_repository(&dest, opts()).unwrap_err();
-        assert!(matches!(err, BackendError::InitDestExists { .. }), "got {err:?}");
+        assert!(
+            matches!(err, BackendError::InitDestExists { .. }),
+            "got {err:?}"
+        );
     }
 
     #[test]
@@ -276,7 +280,10 @@ mod tests {
         let mut o = opts();
         o.branch_name = "has spaces".into();
         let err = init_repository(&dest, o).unwrap_err();
-        assert!(matches!(err, BackendError::InvalidBranchName { .. }), "got {err:?}");
+        assert!(
+            matches!(err, BackendError::InvalidBranchName { .. }),
+            "got {err:?}"
+        );
     }
 
     #[test]
@@ -286,7 +293,10 @@ mod tests {
         let mut o = opts();
         o.gitignore_template = Some("not-a-real-template".into());
         let err = init_repository(&dest, o).unwrap_err();
-        assert!(matches!(err, BackendError::InitTemplateMissing { .. }), "got {err:?}");
+        assert!(
+            matches!(err, BackendError::InitTemplateMissing { .. }),
+            "got {err:?}"
+        );
     }
 
     #[test]
@@ -294,6 +304,9 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let dest = tmp.path().join("nonexistent").join("repo");
         let err = init_repository(&dest, opts()).unwrap_err();
-        assert!(matches!(err, BackendError::InitInvalidPath { .. }), "got {err:?}");
+        assert!(
+            matches!(err, BackendError::InitInvalidPath { .. }),
+            "got {err:?}"
+        );
     }
 }

@@ -9,16 +9,56 @@
 use super::TemplateEntry;
 
 pub const ALL_LICENSE: &[TemplateEntry] = &[
-    TemplateEntry { name: "mit", display_label: "MIT License", content: include_str!("../../resources/license/mit.txt") },
-    TemplateEntry { name: "apache-2.0", display_label: "Apache License 2.0", content: include_str!("../../resources/license/apache-2.0.txt") },
-    TemplateEntry { name: "agpl-3.0", display_label: "GNU Affero General Public License v3.0", content: include_str!("../../resources/license/agpl-3.0.txt") },
-    TemplateEntry { name: "gpl-3.0", display_label: "GNU General Public License v3.0", content: include_str!("../../resources/license/gpl-3.0.txt") },
-    TemplateEntry { name: "bsd-2-clause", display_label: "BSD 2-Clause \"Simplified\" License", content: include_str!("../../resources/license/bsd-2-clause.txt") },
-    TemplateEntry { name: "bsd-3-clause", display_label: "BSD 3-Clause \"New\" or \"Revised\" License", content: include_str!("../../resources/license/bsd-3-clause.txt") },
-    TemplateEntry { name: "mpl-2.0", display_label: "Mozilla Public License 2.0", content: include_str!("../../resources/license/mpl-2.0.txt") },
-    TemplateEntry { name: "isc", display_label: "ISC License", content: include_str!("../../resources/license/isc.txt") },
-    TemplateEntry { name: "unlicense", display_label: "The Unlicense", content: include_str!("../../resources/license/unlicense.txt") },
-    TemplateEntry { name: "cc0-1.0", display_label: "Creative Commons Zero v1.0 Universal", content: include_str!("../../resources/license/cc0-1.0.txt") },
+    TemplateEntry {
+        name: "mit",
+        display_label: "MIT License",
+        content: include_str!("../../resources/license/mit.txt"),
+    },
+    TemplateEntry {
+        name: "apache-2.0",
+        display_label: "Apache License 2.0",
+        content: include_str!("../../resources/license/apache-2.0.txt"),
+    },
+    TemplateEntry {
+        name: "agpl-3.0",
+        display_label: "GNU Affero General Public License v3.0",
+        content: include_str!("../../resources/license/agpl-3.0.txt"),
+    },
+    TemplateEntry {
+        name: "gpl-3.0",
+        display_label: "GNU General Public License v3.0",
+        content: include_str!("../../resources/license/gpl-3.0.txt"),
+    },
+    TemplateEntry {
+        name: "bsd-2-clause",
+        display_label: "BSD 2-Clause \"Simplified\" License",
+        content: include_str!("../../resources/license/bsd-2-clause.txt"),
+    },
+    TemplateEntry {
+        name: "bsd-3-clause",
+        display_label: "BSD 3-Clause \"New\" or \"Revised\" License",
+        content: include_str!("../../resources/license/bsd-3-clause.txt"),
+    },
+    TemplateEntry {
+        name: "mpl-2.0",
+        display_label: "Mozilla Public License 2.0",
+        content: include_str!("../../resources/license/mpl-2.0.txt"),
+    },
+    TemplateEntry {
+        name: "isc",
+        display_label: "ISC License",
+        content: include_str!("../../resources/license/isc.txt"),
+    },
+    TemplateEntry {
+        name: "unlicense",
+        display_label: "The Unlicense",
+        content: include_str!("../../resources/license/unlicense.txt"),
+    },
+    TemplateEntry {
+        name: "cc0-1.0",
+        display_label: "Creative Commons Zero v1.0 Universal",
+        content: include_str!("../../resources/license/cc0-1.0.txt"),
+    },
 ];
 
 pub fn render_license(template: &str, year: i32, author: &str) -> String {

@@ -7,10 +7,18 @@ import { invoke } from "@tauri-apps/api/core";
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface GeneralPreferences {}
 
-/// Mirrors `chaja_bridge::preferences::UiPreferences`. Empty for now —
-/// extended by #103.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface UiPreferences {}
+/// Theme identifier — accepts any built-in id (`a-default`,
+/// `b-tokyo-night`, …, `j-kanagawa`), a custom theme id from
+/// `<app-config>/themes/<id>/`, or the literal `"auto"` (which resolves
+/// at runtime via `prefers-color-scheme`).
+export type ThemeId = string;
+
+/// Mirrors `chaja_bridge::preferences::UiPreferences`. Theme lands here
+/// in #292 sub-PR A; zoom (#293), density (#294), tooltips/animations
+/// (#295) follow.
+export interface UiPreferences {
+  theme: ThemeId;
+}
 
 /// Mirrors `chaja_bridge::preferences::Tab`. Discriminated by `type`.
 /// Wire format is camelCase per the backend's `serde(rename_all = "camelCase")`.

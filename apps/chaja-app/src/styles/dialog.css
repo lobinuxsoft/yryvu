@@ -30,9 +30,10 @@
   width: calc(100vw - 80px);
 }
 
-.dialog__body--split {
+.dialog .dialog__body--split {
   display: flex;
   padding: 0;
+  align-items: stretch;
 }
 
 .onboarding-dialog__sidebar {

@@ -188,6 +188,10 @@ fn is_plausible_url(url: &str) -> bool {
     if trimmed.is_empty() {
         return false;
     }
+    // Local filesystem path (absolute or relative).
+    if trimmed.starts_with('/') || trimmed.starts_with("./") || trimmed.starts_with("../") {
+        return true;
+    }
     // HTTPS / HTTP / git / SSH (ssh://) — full URL forms.
     if trimmed.contains("://") {
         return true;
@@ -220,7 +224,22 @@ fn map_clone_error(e: git2::Error) -> BackendError {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::AtomicUsize;
+
     use super::*;
+
+    fn make_bare_with_commit(path: &Path) {
+        let repo = git2::Repository::init_bare(path).expect("init bare");
+        let sig = git2::Signature::now("chaja-test", "test@local").expect("sig");
+        let tree_id = repo
+            .treebuilder(None)
+            .expect("treebuilder")
+            .write()
+            .expect("write tree");
+        let tree = repo.find_tree(tree_id).expect("find tree");
+        repo.commit(Some("HEAD"), &sig, &sig, "seed", &tree, &[])
+            .expect("seed commit");
+    }
 
     #[test]
     fn rejects_empty_url() {
@@ -261,13 +280,99 @@ mod tests {
     }
 
     #[test]
-    fn accepts_https_and_scp_url_shapes() {
+    fn accepts_https_scp_and_local_url_shapes() {
         assert!(is_plausible_url("https://github.com/foo/bar.git"));
         assert!(is_plausible_url("git://example.com/x"));
         assert!(is_plausible_url("ssh://git@example.com/x"));
         assert!(is_plausible_url("git@github.com:foo/bar.git"));
+        assert!(is_plausible_url("/tmp/source.git"));
+        assert!(is_plausible_url("./relative.git"));
+        assert!(is_plausible_url("../sibling.git"));
         assert!(!is_plausible_url(""));
         assert!(!is_plausible_url("just-text"));
         assert!(!is_plausible_url("@host"));
+    }
+
+    #[test]
+    fn rejects_existing_non_empty_dest() {
+        let cancel = Arc::new(AtomicBool::new(false));
+        let emit: ProgressEmit = Arc::new(|_| {});
+        let dest_root = tempfile::tempdir().unwrap();
+        let dest = dest_root.path().join("repo");
+        std::fs::create_dir(&dest).unwrap();
+        std::fs::write(dest.join("hello.txt"), "hi").unwrap();
+        let opts = CloneOptions {
+            url: "https://example.com/x.git".into(),
+            dest_path: dest.clone(),
+            branch: None,
+            depth: None,
+            recurse_submodules: false,
+        };
+        let err = clone_repository(opts, cancel, emit).unwrap_err();
+        assert!(
+            matches!(err, BackendError::CloneDestExists { .. }),
+            "got {err:?}"
+        );
+    }
+
+    #[test]
+    fn clones_from_local_bare_repo_with_progress_events() {
+        let bare_root = tempfile::tempdir().unwrap();
+        let bare_path = bare_root.path().join("source.git");
+        make_bare_with_commit(&bare_path);
+
+        let dest_root = tempfile::tempdir().unwrap();
+        let dest_path = dest_root.path().join("clone");
+        let cancel = Arc::new(AtomicBool::new(false));
+        let calls = Arc::new(AtomicUsize::new(0));
+        let calls_for_emit = calls.clone();
+        let emit: ProgressEmit = Arc::new(move |_p| {
+            calls_for_emit.fetch_add(1, Ordering::SeqCst);
+        });
+
+        let opts = CloneOptions {
+            url: bare_path.display().to_string(),
+            dest_path: dest_path.clone(),
+            branch: None,
+            depth: None,
+            recurse_submodules: false,
+        };
+        let result = clone_repository(opts, cancel, emit).unwrap();
+        assert_eq!(result, dest_path);
+        assert!(dest_path.join(".git").is_dir());
+        assert!(
+            calls.load(Ordering::SeqCst) >= 1,
+            "progress emitter should fire at least once for a non-empty clone",
+        );
+    }
+
+    #[test]
+    fn cancels_mid_clone_and_cleans_up_dest() {
+        let bare_root = tempfile::tempdir().unwrap();
+        let bare_path = bare_root.path().join("source.git");
+        make_bare_with_commit(&bare_path);
+
+        let dest_root = tempfile::tempdir().unwrap();
+        let dest_path = dest_root.path().join("clone");
+        let cancel = Arc::new(AtomicBool::new(true));
+        let emit: ProgressEmit = Arc::new(|_| {});
+
+        // file:// forces libgit2's network-style clone (the indexer +
+        // transfer_progress callback). Plain filesystem paths use the
+        // hardlink fast path which bypasses transfer_progress, so the
+        // cancel flag is never observed.
+        let opts = CloneOptions {
+            url: format!("file://{}", bare_path.display()),
+            dest_path: dest_path.clone(),
+            branch: None,
+            depth: None,
+            recurse_submodules: false,
+        };
+        let err = clone_repository(opts, cancel, emit).unwrap_err();
+        assert!(matches!(err, BackendError::CloneCancelled), "got {err:?}");
+        assert!(
+            !dest_path.exists(),
+            "partial dest should be cleaned up on cancel",
+        );
     }
 }

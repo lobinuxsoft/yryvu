@@ -107,6 +107,7 @@ pub fn run() {
             chaja_bridge::commands::init_repository,
             chaja_bridge::commands::clone_repository,
             chaja_bridge::commands::clone_cancel,
+            chaja_bridge::commands::validate_git_repo,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

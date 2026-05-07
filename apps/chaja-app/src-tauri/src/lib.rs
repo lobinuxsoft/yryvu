@@ -105,6 +105,8 @@ pub fn run() {
             chaja_bridge::commands::list_gitignore_templates,
             chaja_bridge::commands::list_license_templates,
             chaja_bridge::commands::init_repository,
+            chaja_bridge::commands::clone_repository,
+            chaja_bridge::commands::clone_cancel,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

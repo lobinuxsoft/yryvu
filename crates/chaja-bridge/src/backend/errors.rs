@@ -92,4 +92,14 @@ pub enum BackendError {
         #[source]
         source: anyhow::Error,
     },
+    #[error("clone authentication failed (no credentials accepted)")]
+    CloneAuthFailed,
+    #[error("clone network error: {detail}")]
+    CloneNetworkError { detail: String },
+    #[error("clone url is invalid: {url}")]
+    CloneInvalidUrl { url: String },
+    #[error("clone destination already exists or is not empty: {path}")]
+    CloneDestExists { path: String },
+    #[error("clone cancelled by user")]
+    CloneCancelled,
 }

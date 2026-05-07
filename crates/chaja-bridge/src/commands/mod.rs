@@ -7,6 +7,7 @@
 
 mod branches;
 mod cli_import;
+mod clone;
 mod commits;
 mod init;
 mod integrations;
@@ -27,6 +28,7 @@ mod worktrees;
 
 pub use branches::*;
 pub use cli_import::*;
+pub use clone::*;
 pub use commits::*;
 pub use init::*;
 pub use integrations::*;

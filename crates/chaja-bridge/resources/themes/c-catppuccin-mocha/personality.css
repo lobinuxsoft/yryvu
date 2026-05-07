@@ -1,0 +1,46 @@
+/* ========================================================================
+     PERSONALITY — C · Catppuccin Mocha
+     Pastel rounded soft. Generous radii, fluffy shadows, mauve glows.
+     The "hygge" personality — cozy without being childish.
+     ======================================================================== */
+
+  /* Generous radii everywhere */
+  .row .pill,
+  .row .pill.head,
+  .row .pill.tag {
+    border-radius: 14px;
+    padding: 2px 10px;
+  }
+  .tb-btn { border-radius: 8px; }
+  .tb-split { border-radius: 8px; }
+  .tb-repo { border-radius: 8px; }
+  .tb-search { border-radius: 8px; }
+
+  /* HEAD pill — mauve glow */
+  .row .pill.head {
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+
+  /* Pastel shadows on toolbar buttons hover */
+  .tb-btn:hover {
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  /* Selected row — peach + mauve gradient wash */
+  .row.selected {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--lane-6) 18%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 14%, transparent) 100%
+    );
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  /* Avatar — pastel gradient ring */
+  .ins-avatar {
+    background: radial-gradient(circle at 30% 30%, var(--lane-3), var(--accent));
+    box-shadow:
+      0 0 0 2px var(--bg-1),
+      0 0 0 3px color-mix(in srgb, var(--lane-3) 50%, transparent),
+      0 4px 12px color-mix(in srgb, var(--lane-3) 30%, transparent);
+  }

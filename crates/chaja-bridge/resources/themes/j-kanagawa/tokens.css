@@ -1,0 +1,56 @@
+:root[data-theme="j-kanagawa"] {
+
+    /* Layers — Sumi Ink 0..4 */
+    --bg-0: #16161d;
+    --bg-1: #1f1f28;
+    --bg-2: #2a2a37;
+    --bg-3: #363646;
+    --bg-4: #54546d;
+    --accent: #7e9cd8;
+    --accent-hover: #9bb1e0;
+    --accent-fg: #1f1f28;
+
+    /* Foreground — Fuji White → Old White → Fuji Gray */
+    --fg-0: #dcd7ba;
+    --fg-1: #c8c093;
+    --fg-2: #957fb8;
+    --fg-3: #727169;
+
+    /* Status — Kanagawa accents */
+    --success: #98bb6c;
+    --warning: #e6c384;
+    --danger: #e46876;
+    --info: #7fb4ca;
+
+    /* Lane palette — Wave + Autumn + Sakura rotation */
+    --lane-0: #7fb4ca;
+    --lane-1: #7e9cd8;
+    --lane-2: #957fb8;
+    --lane-3: #d27e99;
+    --lane-4: #e46876;
+    --lane-5: #c34043;
+    --lane-6: #ffa066;
+    --lane-7: #e6c384;
+    --lane-8: #98bb6c;
+    --lane-9: #6a9589;
+
+    /* Geometry — graph dimensions */
+    --row-h: 28px;
+    --lane-w: 22px;
+    --gutter: 28px;
+    --commit-r: 11px;
+
+    /* Typography */
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'FiraCode Nerd Font Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+
+    color-scheme: dark;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-feature-settings: "calt" 1, "liga" 1;
+    font-variant-ligatures: contextual;
+    text-rendering: optimizeLegibility;
+}

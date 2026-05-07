@@ -1,0 +1,62 @@
+/* ========================================================================
+     PERSONALITY — E · Rosé Pine Dawn
+     Editorial / typographic. Serif italic in headers, paper-like
+     elevation, refined pill borders. The "morning newspaper" personality.
+     ======================================================================== */
+
+  /* Serif italics in headers */
+  .sb-section h3,
+  .graph-header > div,
+  .ins-files-title,
+  .ins-summary {
+    font-family: "Iowan Old Style", "Apple Garamond", Palatino,
+                 "Noto Serif", Georgia, serif;
+    font-style: italic;
+    letter-spacing: 0.005em;
+    text-transform: none;
+  }
+  .sb-section h3,
+  .graph-header > div,
+  .ins-files-title {
+    color: var(--fg-2);
+    font-size: 11.5px;
+  }
+  .ins-summary {
+    font-style: normal;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--fg-0);
+  }
+
+  /* Paper-fold elevation on panels */
+  .sidebar,
+  .inspector {
+    box-shadow: 1px 0 0 var(--bg-3), 2px 0 4px rgba(0,0,0,0.04);
+  }
+  .inspector { box-shadow: -1px 0 0 var(--bg-3), -2px 0 4px rgba(0,0,0,0.04); }
+
+  /* Selected row — gold-leaf left edge */
+  .row.selected {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--warning) 16%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 10%, transparent) 100%
+    );
+    box-shadow: inset 2px 0 0 var(--warning);
+  }
+
+  /* Pills — refined editorial style */
+  .row .pill,
+  .row .pill.head,
+  .row .pill.tag {
+    border-width: 1px;
+    border-radius: 3px;
+    font-weight: 500;
+    padding: 1px 8px;
+  }
+
+  /* Avatar — soft ring, no shadow (paper-like) */
+  .ins-avatar {
+    background: linear-gradient(135deg, var(--accent), var(--lane-3));
+    box-shadow: 0 0 0 2px var(--bg-1), 0 0 0 3px var(--bg-3);
+  }

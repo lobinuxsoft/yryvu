@@ -1,0 +1,85 @@
+/* ========================================================================
+     PERSONALITY — D · Synthwave
+     Beyond color tokens: neon glows, scanline overlay, mono headers.
+     This block is theme-specific and lives ONLY in this file.
+     ======================================================================== */
+
+  /* Scanlines overlay across the whole app — extremely subtle (4 % opacity) */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255, 0, 255, 0.04) 0,
+      rgba(255, 0, 255, 0.04) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index: 9999;
+    mix-blend-mode: overlay;
+  }
+
+  /* Mono uppercase headers — terminal cyberpunk vibe */
+  .graph-header > div,
+  .sb-section h3,
+  .ins-files-title {
+    font-family: var(--font-mono);
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 4px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+
+  /* HEAD pill — magenta underglow */
+  .row .pill.head {
+    box-shadow:
+      0 0 0 1px var(--accent),
+      0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+    text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 80%, transparent);
+  }
+
+  /* Selected row — neon left edge */
+  .row.selected {
+    box-shadow: inset 4px 0 0 var(--accent),
+                inset 0 0 24px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  /* Toolbar buttons hover — cyan glow */
+  .tb-btn:hover {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--info) 50%, transparent);
+    text-shadow: 0 0 4px color-mix(in srgb, var(--info) 70%, transparent);
+  }
+
+  /* Toolbar badge — pulsating glow */
+  .tb-badge {
+    box-shadow:
+      0 0 0 1px var(--bg-1),
+      0 0 8px var(--accent);
+  }
+
+  /* Commit nodes — drop-shadow glow on the SVG circles */
+  .graph-zone.svg svg circle {
+    filter: drop-shadow(0 0 3px currentColor);
+  }
+  .graph-zone.svg svg line,
+  .graph-zone.svg svg path {
+    filter: drop-shadow(0 0 1.5px currentColor);
+  }
+
+  /* Inspector avatar — radial neon ring */
+  .ins-avatar {
+    box-shadow:
+      0 0 0 2px var(--bg-1),
+      0 0 0 3px var(--accent),
+      0 0 16px color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+
+  /* SHA pills — slight cyan tint on hover */
+  .ins-sha:hover {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--info) 60%, transparent);
+  }
+
+  /* Tag pills — gold glow instead of flat tint */
+  .row .pill.tag {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 40%, transparent);
+  }

@@ -262,13 +262,74 @@ mod tests {
     }
 
     #[test]
-    fn empty_built_ins_returns_only_custom() {
+    fn custom_theme_appears_alongside_built_ins() {
         let tmp = tempfile::tempdir().unwrap();
         let custom = tmp.path();
         write_theme(custom, "user-theme", "dark", ":root[data-theme=\"user-theme\"]{}");
 
         let list = list_themes(custom);
         assert!(list.iter().any(|t| t.metadata.id == "user-theme" && !t.built_in));
+    }
+
+    #[test]
+    fn ten_built_ins_are_all_loadable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let list = list_themes(tmp.path());
+        let built_ins: Vec<&ThemeEntry> = list.iter().filter(|t| t.built_in).collect();
+        assert_eq!(
+            built_ins.len(),
+            10,
+            "expected 10 built-in themes embedded, got {}: {:?}",
+            built_ins.len(),
+            built_ins.iter().map(|t| &t.metadata.id).collect::<Vec<_>>()
+        );
+
+        let expected_ids = [
+            "a-default", "b-tokyo-night", "c-catppuccin-mocha", "d-synthwave",
+            "e-rose-pine-dawn", "f-gruvbox-dark", "g-nord", "h-dracula",
+            "i-everforest-dark", "j-kanagawa",
+        ];
+        for id in expected_ids {
+            assert!(
+                built_ins.iter().any(|t| t.metadata.id == id),
+                "missing built-in `{id}`"
+            );
+            let css = get_theme_css(id, tmp.path()).unwrap();
+            assert!(
+                css.tokens.contains(&format!("[data-theme=\"{id}\"]")),
+                "tokens.css for `{id}` missing scoped selector"
+            );
+        }
+    }
+
+    #[test]
+    fn rose_pine_dawn_is_the_only_light_built_in() {
+        let tmp = tempfile::tempdir().unwrap();
+        let list = list_themes(tmp.path());
+        let lights: Vec<&str> = list
+            .iter()
+            .filter(|t| t.built_in && matches!(t.metadata.scheme, super::super::schema::Scheme::Light))
+            .map(|t| t.metadata.id.as_str())
+            .collect();
+        assert_eq!(lights, vec!["e-rose-pine-dawn"]);
+    }
+
+    #[test]
+    fn custom_shadows_built_in_when_id_collides() {
+        let tmp = tempfile::tempdir().unwrap();
+        let custom = tmp.path();
+        write_theme(custom, "a-default", "light", ":root[data-theme=\"a-default\"]{--shadowed:1}");
+
+        let list = list_themes(custom);
+        let a_default = list
+            .iter()
+            .find(|t| t.metadata.id == "a-default")
+            .expect("a-default should be present");
+        assert!(!a_default.built_in, "custom should shadow built-in");
+        assert_eq!(a_default.metadata.scheme, super::super::schema::Scheme::Light);
+
+        let css = get_theme_css("a-default", custom).unwrap();
+        assert!(css.tokens.contains("--shadowed"));
     }
 
     #[test]

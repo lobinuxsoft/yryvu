@@ -1,0 +1,63 @@
+/* ========================================================================
+     PERSONALITY — H · Dracula
+     Purple → pink gradients across all accent surfaces. Bold pills,
+     vampiric saturation. The "designer brand" personality.
+     ======================================================================== */
+
+  /* Accent buttons (Sync, primary actions) — purple → pink gradient */
+  .tb-split:has(.tb-btn:nth-child(1):hover),
+  .tb-split:has(.tb-btn:nth-child(2):hover) {
+    box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  /* HEAD pill — gradient + glow */
+  .row .pill.head {
+    background: linear-gradient(135deg, var(--accent), var(--lane-3));
+    border-color: var(--lane-3);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--lane-3) 40%, transparent);
+  }
+
+  /* Selected row — purple → pink wash */
+  .row.selected {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 28%, transparent) 0%,
+      color-mix(in srgb, var(--lane-3) 18%, transparent) 60%,
+      transparent 100%
+    );
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  /* Toolbar badge — gradient instead of flat */
+  .tb-badge {
+    background: linear-gradient(135deg, var(--accent), var(--lane-3));
+    box-shadow:
+      0 0 0 1px var(--bg-1),
+      0 0 10px color-mix(in srgb, var(--lane-3) 50%, transparent);
+  }
+
+  /* Avatar — full gradient + halo */
+  .ins-avatar {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--lane-3) 100%);
+    box-shadow:
+      0 0 0 2px var(--bg-1),
+      0 0 0 3px color-mix(in srgb, var(--lane-3) 60%, transparent),
+      0 0 20px color-mix(in srgb, var(--lane-3) 35%, transparent);
+  }
+
+  /* Pills — slightly bolder, refined gradient on hover */
+  .row .pill { font-weight: 600; }
+  .row .pill.tag {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--warning) 25%, var(--bg-2)),
+      color-mix(in srgb, var(--lane-4) 20%, var(--bg-2)));
+  }
+
+  /* Toolbar headers tint */
+  .sb-section h3,
+  .graph-header > div,
+  .ins-files-title {
+    color: var(--accent);
+    opacity: 0.75;
+    letter-spacing: 0.08em;
+  }

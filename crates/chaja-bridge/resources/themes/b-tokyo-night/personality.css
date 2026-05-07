@@ -1,0 +1,88 @@
+/* ========================================================================
+     PERSONALITY — B · Tokyo Night
+     Soft accent glows, ample tracking on headers, restrained shadows.
+     The "moderne quiet" personality.
+     ======================================================================== */
+
+  /* Headers — wider tracking, medium weight, accent tint */
+  .sb-section h3,
+  .graph-header > div,
+  .ins-files-title {
+    letter-spacing: 0.1em;
+    font-weight: 500;
+    color: var(--accent);
+    opacity: 0.7;
+  }
+
+  /* HEAD pill — sapphire underglow */
+  .row .pill.head {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+
+  /* Selected row — soft accent wash */
+  .row.selected {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 28%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 14%, transparent) 100%
+    );
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+
+  /* Avatar — soft halo */
+  .ins-avatar {
+    box-shadow:
+      0 0 0 2px var(--bg-1),
+      0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent),
+      0 0 18px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  /* Toolbar buttons hover — soft accent tint */
+  .tb-btn:hover {
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-2));
+  }
+
+  /* Pills — softer rounding */
+  .row .pill { border-radius: 6px; }
+
+  /* ---- SVG icons (lucide-style 1:1 GK approach) ---------------------- */
+  .tb-btn svg {
+    width: 14px;
+    height: 14px;
+    color: var(--fg-2);
+    flex-shrink: 0;
+  }
+  .tb-btn:hover svg { color: var(--fg-0); }
+  .tb-btn.icon svg { color: var(--fg-2); }
+  .tb-btn.icon:hover svg { color: var(--accent); }
+  .tb-repo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tb-repo svg { color: var(--fg-2); flex-shrink: 0; }
+  .tb-search-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .tb-search-icon {
+    position: absolute;
+    left: 8px;
+    width: 13px;
+    height: 13px;
+    color: var(--fg-3);
+    pointer-events: none;
+  }
+  .tb-search { padding-left: 28px; }
+  .sb-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sb-section h3 svg {
+    width: 12px;
+    height: 12px;
+    color: var(--fg-3);
+    flex-shrink: 0;
+  }

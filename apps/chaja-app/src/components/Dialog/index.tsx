@@ -9,6 +9,10 @@ interface DialogProps {
   onClose: () => void;
   /** If true, clicking the backdrop dismisses the dialog. Default: true. */
   dismissOnBackdrop?: boolean;
+  /** Size variant. "wide" lifts the max-width for split-pane dialogs. */
+  size?: "default" | "wide";
+  /** Optional class on the body container for layout overrides. */
+  bodyClass?: string;
   children: JSX.Element;
   footer?: JSX.Element;
 }
@@ -66,7 +70,7 @@ export function Dialog(props: DialogProps) {
         >
           <div
             ref={bodyRef}
-            class="dialog"
+            class={`dialog${props.size === "wide" ? " dialog--wide" : ""}`}
             role="dialog"
             aria-modal="true"
             aria-label={props.title}
@@ -83,7 +87,9 @@ export function Dialog(props: DialogProps) {
                 ×
               </button>
             </header>
-            <div class="dialog__body">{props.children}</div>
+            <div class={`dialog__body${props.bodyClass ? ` ${props.bodyClass}` : ""}`}>
+              {props.children}
+            </div>
             <Show when={props.footer}>
               <footer class="dialog__footer">{props.footer}</footer>
             </Show>

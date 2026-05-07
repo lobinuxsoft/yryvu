@@ -1,7 +1,59 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 
+/* Theme-independent tokens + a-default fallback colors.
+ *
+ * The active theme overrides via `:root[data-theme="<id>"]` selectors
+ * injected at startup by the theme system (#292). The `:root` rule
+ * below ships the a-default tokens as the baseline so the first paint
+ * renders on a sane stack before injection completes — and so the
+ * self-healing fallback chain in commit 4 has something to fall back
+ * to if every theme fails to load.
+ *
+ * Chrome shim tokens (`--border`, `--font-sans`, `--selected-row`)
+ * derive from theme color tokens so a single theme switch propagates
+ * to every chrome rule without each rule needing to know the theme
+ * model.
+ */
+
 :root {
-  /* Theme-independent tokens */
+  /* Layers — bg-0 deepest panel, bg-4 highest accent surface */
+  --bg-0: #0f1116;
+  --bg-1: #15171d;
+  --bg-2: #1d2028;
+  --bg-3: #262a33;
+  --bg-4: #2a2e38;
+  --accent: #3a4a7a;
+  --accent-hover: #4a5a8a;
+  --accent-fg: #ffffff;
+
+  /* Foreground — fg-0 primary, fg-3 muted */
+  --fg-0: #e7e9ee;
+  --fg-1: #d4d7df;
+  --fg-2: #8a92a6;
+  --fg-3: #6b7285;
+
+  /* Status */
+  --success: #4e9a5a;
+  --warning: #c9a24c;
+  --danger: #c54a4a;
+  --info: #4a8ec9;
+
+  /* Lane palette — themes override per-id; chrome reads `--lane-N` via
+     `laneColor()` in components/CommitGraph/RowRenderer/geometry.ts */
+  --lane-0: #1abc9c;
+  --lane-1: #3498db;
+  --lane-2: #9b59b6;
+  --lane-3: #e91e63;
+  --lane-4: #ff6f91;
+  --lane-5: #e74c3c;
+  --lane-6: #e67e22;
+  --lane-7: #f1c40f;
+  --lane-8: #2ecc71;
+  --lane-9: #00b894;
+
+  color-scheme: dark;
+
+  /* Geometry */
   --radius-sm: 3px;
   --radius-md: 4px;
   --radius-lg: 6px;
@@ -13,64 +65,25 @@
   --tabs-height: 36px;
   --statusbar-height: 28px;
 
+  /* Default graph-column widths — overridden inline by CommitGraph on
+     mount from the persisted `graphColumns`. */
+  --graph-col-message: 300px;
+  --graph-col-author: 130px;
+  --graph-col-date-time: 130px;
+  --graph-col-sha: 130px;
+
+  /* Typography */
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-mono: 'FiraCode Nerd Font Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: var(--font-ui);
+
+  /* Chrome shim — derives from theme color tokens so a theme switch
+     propagates to all consumers (border outlines, selection highlights). */
+  --border: var(--bg-3);
+  --selected-row: color-mix(in srgb, var(--accent) 18%, transparent);
 
   font-family: var(--font-ui);
   font-size: 13px;
-}
-
-/* ========================================================================
-   Theme tokens — dark (default)
-   Applied by adding data-theme="dark" to <html>.
-   Semantic names: layers bg-0..4 darkest→lightest, fg-0..3 primary→muted.
-   ======================================================================== */
-:root,
-:root[data-theme="dark"] {
-  color-scheme: dark;
-
-  --bg-0: #0f1116;
-  --bg-1: #15171d;
-  --bg-2: #1d2028;
-  --bg-3: #262a33;
-  --bg-4: #2a2e38;
-  --bg-accent: #3a4a7a;
-  --bg-accent-hover: #4a5a8a;
-
-  --fg-0: #e7e9ee;
-  --fg-1: #d4d7df;
-  --fg-2: #8a92a6;
-  --fg-3: #6b7285;
-
-  --success: #4e9a5a;
-  --warning: #c9a24c;
-  --danger: #c54a4a;
-  --info: #4a8ec9;
-}
-
-/* ========================================================================
-   Theme tokens — light
-   ======================================================================== */
-:root[data-theme="light"] {
-  color-scheme: light;
-
-  --bg-0: #f5f6f8;
-  --bg-1: #ffffff;
-  --bg-2: #eaecf0;
-  --bg-3: #d7d9e1;
-  --bg-4: #c8cbd4;
-  --bg-accent: #2d5bc7;
-  --bg-accent-hover: #1d4bb7;
-
-  --fg-0: #1a1d23;
-  --fg-1: #3a3d45;
-  --fg-2: #6a6f7b;
-  --fg-3: #8a8f9b;
-
-  --success: #3b8547;
-  --warning: #a8832c;
-  --danger: #b83a3a;
-  --info: #2a73b5;
 }
 
 body {

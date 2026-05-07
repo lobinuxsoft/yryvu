@@ -51,7 +51,7 @@
 }
 
 .preferences-placeholder__link {
-  color: var(--bg-accent);
+  color: var(--accent);
   text-decoration: none;
 }
 .preferences-placeholder__link:hover {

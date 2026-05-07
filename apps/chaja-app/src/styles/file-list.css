@@ -158,9 +158,9 @@
 }
 
 .file-list__row-action:hover {
-  background: var(--bg-accent);
+  background: var(--accent);
   color: var(--fg-0);
-  border-color: var(--bg-accent);
+  border-color: var(--accent);
 }
 
 .file-list__row-action[data-variant="danger"]:hover {

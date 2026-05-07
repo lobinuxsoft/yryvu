@@ -17,7 +17,7 @@ export function laneCenterX(lane: number, dims: RenderDims): number {
 }
 
 export function laneColor(col: number): string {
-  return `var(--column-${col % PALETTE_SIZE}-color)`;
+  return `var(--lane-${col % PALETTE_SIZE})`;
 }
 
 /** GK's `eE(e, t, o)`: arc endpoint + straight-line-padding offset for a

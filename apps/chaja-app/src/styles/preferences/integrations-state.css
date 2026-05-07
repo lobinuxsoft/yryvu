@@ -104,7 +104,7 @@
 }
 
 .integrations-btn--primary {
-  background: var(--bg-accent);
+  background: var(--accent);
   color: var(--accent-fg, white);
 }
 .integrations-btn--primary:hover:not(:disabled) {

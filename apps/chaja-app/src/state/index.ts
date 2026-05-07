@@ -27,9 +27,6 @@ export {
   setPendingCommitOptionsExpanded,
   skipHooksEnabled,
   setSkipHooksEnabled,
-  theme,
-  setTheme,
-  type Theme,
 } from "./panels";
 export {
   selectedShas,

@@ -8,6 +8,8 @@
 
 pub mod loader;
 pub mod schema;
+pub mod watcher;
 
 pub use loader::{LoadError, ThemeCss, ThemeEntry};
 pub use schema::{Scheme, ThemeMetadata};
+pub use watcher::{THEME_CHANGED_EVENT, ThemeWatcher, WatcherError, start_watcher};

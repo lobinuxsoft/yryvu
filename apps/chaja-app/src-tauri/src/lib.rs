@@ -2,6 +2,9 @@
 
 mod menu;
 
+use tauri::Manager;
+use tracing::warn;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tracing_subscriber::fmt()
@@ -116,6 +119,29 @@ pub fn run() {
         .setup(|app| {
             let m = menu::build(app.handle())?;
             app.set_menu(m)?;
+
+            // File watcher for `<config>/themes/` — emits `theme-changed`
+            // on edits so the frontend can hot-reload the active theme.
+            // Held in app state so the debouncer thread lives as long as
+            // the app does.
+            match app.path().app_config_dir() {
+                Ok(config) => {
+                    let themes_dir = config.join("themes");
+                    match chaja_bridge::themes::start_watcher(
+                        app.handle().clone(),
+                        &themes_dir,
+                    ) {
+                        Ok(handle) => {
+                            app.manage(handle);
+                        }
+                        Err(e) => {
+                            warn!("failed to start themes watcher: {e}");
+                        }
+                    }
+                }
+                Err(e) => warn!("failed to resolve app_config_dir for themes watcher: {e}"),
+            }
+
             Ok(())
         })
         .on_menu_event(menu::handle_event)

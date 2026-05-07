@@ -16,6 +16,7 @@
 
 mod backend_impl;
 mod branches;
+pub(crate) mod clone;
 pub(crate) mod commits;
 pub(crate) mod common;
 pub(crate) mod hosting;

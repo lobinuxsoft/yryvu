@@ -6,6 +6,7 @@
 
 export * from "./branches";
 export * from "./cliImport";
+export * from "./clone";
 export * from "./commits";
 export * from "./integrationStorage";
 export * from "./diff";

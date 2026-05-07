@@ -15,7 +15,7 @@
 //! else is re-exported flat so `super::remote::add_remote` etc. keep
 //! working from the rest of the crate without touching call sites.
 
-mod credentials;
+pub(crate) mod credentials;
 mod management;
 mod push;
 mod sync;

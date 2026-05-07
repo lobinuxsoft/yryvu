@@ -12,6 +12,7 @@ import { FileDiffTab } from "../FileDiffTab";
 import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
 import { DialogsHost } from "../LeftSidebar/DialogsHost";
+import { InitDialog } from "../Onboarding/InitDialog";
 import { PreferencesWindow } from "../PreferencesWindow";
 import { ReleaseNotesBody } from "../ReleaseNotes";
 import { RepoManagementBody } from "../RepoManagement";
@@ -287,6 +288,7 @@ export function AppShell() {
         />
       </Show>
       <DialogsHost ops={branchOps} />
+      <InitDialog />
       <PreferencesWindow />
       <ToastContainer />
     </div>

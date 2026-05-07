@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 
 import { loadRecentRepos, pushRecentRepo, setRepoPath, type RecentRepo } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
+import { openCloneDialog } from "../Onboarding/CloneDialog/state";
 import { openInitDialog } from "../Onboarding/InitDialog/state";
 
 export function ColdStart() {
@@ -33,7 +34,7 @@ export function ColdStart() {
         <h2 class="cold-start__title">Repositories</h2>
         <div class="cold-start__actions">
           <button class="cold-start__action" type="button" onClick={openPicker}>Open…</button>
-          <button class="cold-start__action" type="button" disabled title="Not yet implemented">Clone…</button>
+          <button class="cold-start__action" type="button" onClick={openCloneDialog}>Clone…</button>
           <button class="cold-start__action" type="button" onClick={openInitDialog}>Create…</button>
         </div>
         <p class="cold-start__recent-title">Recent</p>

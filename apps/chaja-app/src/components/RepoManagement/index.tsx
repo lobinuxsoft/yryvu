@@ -21,6 +21,7 @@ import { type KnownRepoInfo } from "../../ipc";
 import { pushRecentRepo, removeRecentRepo, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
+import { openCloneDialog } from "../Onboarding/CloneDialog/state";
 import { openInitDialog } from "../Onboarding/InitDialog/state";
 import {
   ensureInitialized,
@@ -132,8 +133,8 @@ export function RepoManagementBody() {
           <button
             class="repo-management__btn"
             type="button"
-            disabled
-            title="Wire after #100"
+            onClick={openCloneDialog}
+            title="Clone a remote repository"
           >
             <NfIcon code="f0c5" /> Clone
           </button>

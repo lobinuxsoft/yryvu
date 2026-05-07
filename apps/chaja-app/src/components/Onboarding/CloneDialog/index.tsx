@@ -5,6 +5,7 @@ import { open as openPicker } from "@tauri-apps/plugin-dialog";
 
 import { Dialog } from "../../Dialog";
 import { closeCloneDialog, cloneDialog } from "./state";
+import { cancelCloneDialog, submitCloneDialog } from "./submit";
 import {
   checkFolderName,
   checkParentPath,
@@ -47,11 +48,12 @@ export function CloneDialog() {
   }
 
   function onSubmit() {
-    // Wired in the next commit (submit handler + progress + cancel).
+    if (!canSubmit()) return;
+    void submitCloneDialog();
   }
 
   function onCancel() {
-    // Wired in the next commit.
+    void cancelCloneDialog();
   }
 
   return (

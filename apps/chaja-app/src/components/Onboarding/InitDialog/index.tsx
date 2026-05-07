@@ -6,6 +6,7 @@ import { open as openPicker } from "@tauri-apps/plugin-dialog";
 import { listGitignoreTemplates, listLicenseTemplates } from "../../../ipc";
 import { Dialog } from "../../Dialog";
 import { closeInitDialog, initDialog } from "./state";
+import { submitInitDialog } from "./submit";
 import {
   checkBranchName,
   checkFolderName,
@@ -47,7 +48,12 @@ export function InitDialog() {
   }
 
   function onSubmit() {
-    // Wired in the next commit (submit handler + IPC).
+    if (!canSubmit()) return;
+    void submitInitDialog();
+  }
+
+  function onEnter(e: KeyboardEvent) {
+    if (e.key === "Enter") onSubmit();
   }
 
   return (
@@ -85,6 +91,7 @@ export function InitDialog() {
             value={initDialog.parentPath()}
             placeholder="/path/to/parent"
             onInput={(e) => initDialog.setParentPath(e.currentTarget.value)}
+            onKeyDown={onEnter}
           />
           <button class="dialog__btn" type="button" onClick={() => void pickParent()}>
             Browse…
@@ -103,6 +110,7 @@ export function InitDialog() {
           value={initDialog.folderName()}
           placeholder="my-repo"
           onInput={(e) => initDialog.setFolderName(e.currentTarget.value)}
+          onKeyDown={onEnter}
         />
         <Show when={fieldErrorMessage(folderError())}>
           <p class="dialog__field-error">{fieldErrorMessage(folderError())}</p>
@@ -116,6 +124,7 @@ export function InitDialog() {
           type="text"
           value={initDialog.branchName()}
           onInput={(e) => initDialog.setBranchName(e.currentTarget.value)}
+          onKeyDown={onEnter}
         />
         <Show when={fieldErrorMessage(branchError())}>
           <p class="dialog__field-error">{fieldErrorMessage(branchError())}</p>

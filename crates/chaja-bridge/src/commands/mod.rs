@@ -23,6 +23,7 @@ mod submodules;
 mod tags;
 mod templates;
 mod undo;
+mod validate;
 mod worktree;
 mod worktrees;
 
@@ -44,5 +45,6 @@ pub use submodules::*;
 pub use tags::*;
 pub use templates::*;
 pub use undo::*;
+pub use validate::*;
 pub use worktree::*;
 pub use worktrees::*;

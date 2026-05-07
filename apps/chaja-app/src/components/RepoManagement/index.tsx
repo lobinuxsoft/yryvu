@@ -17,10 +17,11 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 
-import { type KnownRepoInfo } from "../../ipc";
+import { type KnownRepoInfo, validateGitRepo } from "../../ipc";
 import { pushRecentRepo, removeRecentRepo, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
+import { notify } from "../Notifications";
 import { openCloneDialog } from "../Onboarding/CloneDialog/state";
 import { openInitDialog } from "../Onboarding/InitDialog/state";
 import {
@@ -104,12 +105,20 @@ export function RepoManagementBody() {
       multiple: false,
       title: "Open a Git repository",
     });
-    if (typeof selected === "string") {
-      pushRecentRepo(selected);
-      setRepoPath(selected);
-      void openRepoInAnotherTab(selected);
-      refreshKnownRepos();
+    if (typeof selected !== "string") return;
+    const status = await validateGitRepo(selected);
+    if (status === "not-a-repo") {
+      notify.error(`${selected} is not a Git repository — clone or init it first.`);
+      return;
     }
+    if (status === "inaccessible-path") {
+      notify.error(`${selected} is not accessible (permissions or removed).`);
+      return;
+    }
+    pushRecentRepo(selected);
+    setRepoPath(selected);
+    void openRepoInAnotherTab(selected);
+    refreshKnownRepos();
   };
 
   const breadcrumbOf = (path: string): string => {

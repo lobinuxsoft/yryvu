@@ -3,8 +3,10 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 
+import { validateGitRepo } from "../../ipc";
 import { loadRecentRepos, pushRecentRepo, setRepoPath, type RecentRepo } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
+import { notify } from "../Notifications";
 import { openCloneDialog } from "../Onboarding/CloneDialog/state";
 import { openInitDialog } from "../Onboarding/InitDialog/state";
 
@@ -15,11 +17,19 @@ export function ColdStart() {
 
   async function openPicker() {
     const selected = await open({ directory: true, multiple: false, title: "Open a Git repository" });
-    if (typeof selected === "string") {
-      setRecent(pushRecentRepo(selected));
-      setRepoPath(selected);
-      void openRepoInAnotherTab(selected);
+    if (typeof selected !== "string") return;
+    const status = await validateGitRepo(selected);
+    if (status === "not-a-repo") {
+      notify.error(`${selected} is not a Git repository — clone or init it first.`);
+      return;
     }
+    if (status === "inaccessible-path") {
+      notify.error(`${selected} is not accessible (permissions or removed).`);
+      return;
+    }
+    setRecent(pushRecentRepo(selected));
+    setRepoPath(selected);
+    void openRepoInAnotherTab(selected);
   }
 
   function openFromRecent(path: string) {

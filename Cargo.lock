@@ -540,16 +540,19 @@ dependencies = [
  "git2",
  "gix",
  "graph-core",
+ "include_dir",
  "keyring",
  "oauth2",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
  "tauri",
+ "tauri-plugin-opener",
  "tempfile",
  "thiserror 2.0.18",
  "tiny_http",
  "tokio",
+ "toml 0.8.2",
  "tracing",
  "url",
 ]
@@ -2904,6 +2907,25 @@ checksum = "3acae9609540aa318d1bc588455225fb2085b9ed0c4f6bd0d9d5bcd86f1a0344"
 dependencies = [
  "icu_normalizer",
  "icu_properties",
+]
+
+[[package]]
+name = "include_dir"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "923d117408f1e49d914f1a379a309cffe4f18c05cf4e3d12e613a15fc81bd0dd"
+dependencies = [
+ "include_dir_macros",
+]
+
+[[package]]
+name = "include_dir_macros"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cab85a7ed0bd5f0e76d93846e0147172bed2e2d3f859bcc33a8d9699cad1a75"
+dependencies = [
+ "proc-macro2",
+ "quote",
 ]
 
 [[package]]

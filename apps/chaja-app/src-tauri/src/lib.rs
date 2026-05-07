@@ -108,6 +108,10 @@ pub fn run() {
             chaja_bridge::commands::clone_repository,
             chaja_bridge::commands::clone_cancel,
             chaja_bridge::commands::validate_git_repo,
+            chaja_bridge::commands::list_themes,
+            chaja_bridge::commands::get_theme_css,
+            chaja_bridge::commands::create_theme_from_template,
+            chaja_bridge::commands::open_themes_folder,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

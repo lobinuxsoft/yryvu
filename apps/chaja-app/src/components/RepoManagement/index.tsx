@@ -21,6 +21,7 @@ import { type KnownRepoInfo } from "../../ipc";
 import { pushRecentRepo, removeRecentRepo, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
+import { openInitDialog } from "../Onboarding/InitDialog/state";
 import {
   ensureInitialized,
   loading,
@@ -139,8 +140,8 @@ export function RepoManagementBody() {
           <button
             class="repo-management__btn"
             type="button"
-            disabled
-            title="Wire after #100"
+            onClick={openInitDialog}
+            title="Initialize a new repository"
           >
             <NfIcon code="f067" /> Init
           </button>

@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use notify::RecursiveMode;
-use notify_debouncer_full::{Debouncer, RecommendedCache, new_debouncer};
+use notify_debouncer_full::{new_debouncer, Debouncer, RecommendedCache};
 use tauri::{AppHandle, Emitter};
 use thiserror::Error;
 use tracing::{debug, warn};
@@ -47,10 +47,7 @@ pub struct ThemeWatcher {
 /// created if it doesn't exist yet — the watcher needs a real path.
 /// Returns an opaque handle the caller must hold (e.g. via
 /// `app.manage(...)`); dropping it stops the watcher.
-pub fn start_watcher(
-    app: AppHandle,
-    themes_dir: &Path,
-) -> Result<ThemeWatcher, WatcherError> {
+pub fn start_watcher(app: AppHandle, themes_dir: &Path) -> Result<ThemeWatcher, WatcherError> {
     if !themes_dir.exists() {
         std::fs::create_dir_all(themes_dir).map_err(|e| WatcherError::CreateDir {
             path: themes_dir.display().to_string(),
@@ -64,7 +61,10 @@ pub fn start_watcher(
         None,
         move |result: notify_debouncer_full::DebounceEventResult| match result {
             Ok(events) if !events.is_empty() => {
-                debug!(?events, "themes dir changed, emitting {THEME_CHANGED_EVENT}");
+                debug!(
+                    ?events,
+                    "themes dir changed, emitting {THEME_CHANGED_EVENT}"
+                );
                 if let Err(e) = app_for_handler.emit(THEME_CHANGED_EVENT, ()) {
                     warn!("failed to emit {THEME_CHANGED_EVENT}: {e}");
                 }
@@ -78,5 +78,7 @@ pub fn start_watcher(
 
     debouncer.watch(themes_dir, RecursiveMode::Recursive)?;
 
-    Ok(ThemeWatcher { _debouncer: debouncer })
+    Ok(ThemeWatcher {
+        _debouncer: debouncer,
+    })
 }

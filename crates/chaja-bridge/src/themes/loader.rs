@@ -14,7 +14,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use include_dir::{Dir, include_dir};
+use include_dir::{include_dir, Dir};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -77,7 +77,10 @@ pub fn list_themes(custom_dir: &Path) -> Vec<ThemeEntry> {
         if let Ok(meta) = built_in_metadata(&folder) {
             by_id.insert(
                 folder.clone(),
-                ThemeEntry { metadata: meta, built_in: true },
+                ThemeEntry {
+                    metadata: meta,
+                    built_in: true,
+                },
             );
         }
     }
@@ -93,7 +96,10 @@ pub fn list_themes(custom_dir: &Path) -> Vec<ThemeEntry> {
                 if let Ok(meta) = custom_metadata(custom_dir, &folder) {
                     by_id.insert(
                         folder,
-                        ThemeEntry { metadata: meta, built_in: false },
+                        ThemeEntry {
+                            metadata: meta,
+                            built_in: false,
+                        },
                     );
                 }
             }
@@ -119,29 +125,29 @@ pub fn get_theme_css(id: &str, custom_dir: &Path) -> Result<ThemeCss, LoadError>
 /// `tokens.css`. The new name mirrors the source ("Synthwave" → "Synthwave
 /// Copy", second copy "Synthwave Copy 2") so the dropdown shows the
 /// origin of every fork. Returns the generated `new_id`.
-pub fn create_from_template(
-    builtin_id: &str,
-    custom_dir: &Path,
-) -> Result<String, LoadError> {
+pub fn create_from_template(builtin_id: &str, custom_dir: &Path) -> Result<String, LoadError> {
     if BUILT_INS.get_dir(builtin_id).is_none() {
-        return Err(LoadError::NotFound { id: builtin_id.to_string() });
+        return Err(LoadError::NotFound {
+            id: builtin_id.to_string(),
+        });
     }
 
     let toml_src = read_built_in_utf8(builtin_id, FILE_THEME_TOML)?;
-    let source_meta: ThemeMetadata =
-        toml::from_str(toml_src).map_err(|e| LoadError::Schema {
-            id: builtin_id.to_string(),
-            source: SchemaError::Parse(e),
-        })?;
+    let source_meta: ThemeMetadata = toml::from_str(toml_src).map_err(|e| LoadError::Schema {
+        id: builtin_id.to_string(),
+        source: SchemaError::Parse(e),
+    })?;
 
     let copy = unique_copy(custom_dir, builtin_id, &source_meta.name);
     let dest = custom_dir.join(&copy.id);
     std::fs::create_dir_all(&dest).map_err(|e| io_err(&copy.id, e))?;
 
-    let toml_rewritten = rewrite_toml_metadata(toml_src, &copy.id, &copy.name)
-        .map_err(|e| LoadError::Schema { id: copy.id.clone(), source: e })?;
-    std::fs::write(dest.join(FILE_THEME_TOML), toml_rewritten)
-        .map_err(|e| io_err(&copy.id, e))?;
+    let toml_rewritten =
+        rewrite_toml_metadata(toml_src, &copy.id, &copy.name).map_err(|e| LoadError::Schema {
+            id: copy.id.clone(),
+            source: e,
+        })?;
+    std::fs::write(dest.join(FILE_THEME_TOML), toml_rewritten).map_err(|e| io_err(&copy.id, e))?;
 
     let tokens_src = read_built_in_utf8(builtin_id, FILE_TOKENS_CSS)?;
     let tokens_rewritten = tokens_src.replace(
@@ -155,8 +161,7 @@ pub fn create_from_template(
         .get_file(format!("{builtin_id}/{FILE_PERSONALITY_CSS}"))
         .and_then(|f| f.contents_utf8())
     {
-        std::fs::write(dest.join(FILE_PERSONALITY_CSS), p)
-            .map_err(|e| io_err(&copy.id, e))?;
+        std::fs::write(dest.join(FILE_PERSONALITY_CSS), p).map_err(|e| io_err(&copy.id, e))?;
     }
 
     Ok(copy.id)
@@ -170,7 +175,12 @@ pub fn themes_dir(app_config_dir: &Path) -> PathBuf {
 fn built_in_folders() -> Vec<String> {
     BUILT_INS
         .dirs()
-        .filter_map(|d| d.path().file_name().and_then(|s| s.to_str()).map(String::from))
+        .filter_map(|d| {
+            d.path()
+                .file_name()
+                .and_then(|s| s.to_str())
+                .map(String::from)
+        })
         .collect()
 }
 
@@ -202,16 +212,22 @@ fn load_built_in_css(id: &str) -> Result<ThemeCss, LoadError> {
         .and_then(|f| f.contents_utf8())
         .map(String::from)
         .unwrap_or_default();
-    Ok(ThemeCss { tokens, personality })
+    Ok(ThemeCss {
+        tokens,
+        personality,
+    })
 }
 
 fn load_custom_css(dir: &Path, id: &str) -> Result<ThemeCss, LoadError> {
     let theme_dir = dir.join(id);
-    let tokens = std::fs::read_to_string(theme_dir.join(FILE_TOKENS_CSS))
-        .map_err(|e| io_err(id, e))?;
-    let personality = std::fs::read_to_string(theme_dir.join(FILE_PERSONALITY_CSS))
-        .unwrap_or_default();
-    Ok(ThemeCss { tokens, personality })
+    let tokens =
+        std::fs::read_to_string(theme_dir.join(FILE_TOKENS_CSS)).map_err(|e| io_err(id, e))?;
+    let personality =
+        std::fs::read_to_string(theme_dir.join(FILE_PERSONALITY_CSS)).unwrap_or_default();
+    Ok(ThemeCss {
+        tokens,
+        personality,
+    })
 }
 
 fn read_built_in_utf8(id: &str, file: &str) -> Result<&'static str, LoadError> {
@@ -273,11 +289,7 @@ fn unique_copy(custom_dir: &Path, base_id: &str, base_name: &str) -> CopyName {
     }
 }
 
-fn rewrite_toml_metadata(
-    src: &str,
-    new_id: &str,
-    new_name: &str,
-) -> Result<String, SchemaError> {
+fn rewrite_toml_metadata(src: &str, new_id: &str, new_name: &str) -> Result<String, SchemaError> {
     let mut meta: ThemeMetadata = toml::from_str(src)?;
     meta.id = new_id.to_string();
     meta.name = new_name.to_string();
@@ -285,7 +297,10 @@ fn rewrite_toml_metadata(
 }
 
 fn io_err(id: &str, source: std::io::Error) -> LoadError {
-    LoadError::Io { id: id.to_string(), source }
+    LoadError::Io {
+        id: id.to_string(),
+        source,
+    }
 }
 
 #[cfg(test)]
@@ -307,10 +322,17 @@ mod tests {
     fn custom_theme_appears_alongside_built_ins() {
         let tmp = tempfile::tempdir().unwrap();
         let custom = tmp.path();
-        write_theme(custom, "user-theme", "dark", ":root[data-theme=\"user-theme\"]{}");
+        write_theme(
+            custom,
+            "user-theme",
+            "dark",
+            ":root[data-theme=\"user-theme\"]{}",
+        );
 
         let list = list_themes(custom);
-        assert!(list.iter().any(|t| t.metadata.id == "user-theme" && !t.built_in));
+        assert!(list
+            .iter()
+            .any(|t| t.metadata.id == "user-theme" && !t.built_in));
     }
 
     #[test]
@@ -327,9 +349,16 @@ mod tests {
         );
 
         let expected_ids = [
-            "a-default", "b-tokyo-night", "c-catppuccin-mocha", "d-synthwave",
-            "e-rose-pine-dawn", "f-gruvbox-dark", "g-nord", "h-dracula",
-            "i-everforest-dark", "j-kanagawa",
+            "a-default",
+            "b-tokyo-night",
+            "c-catppuccin-mocha",
+            "d-synthwave",
+            "e-rose-pine-dawn",
+            "f-gruvbox-dark",
+            "g-nord",
+            "h-dracula",
+            "i-everforest-dark",
+            "j-kanagawa",
         ];
         for id in expected_ids {
             assert!(
@@ -350,7 +379,9 @@ mod tests {
         let list = list_themes(tmp.path());
         let lights: Vec<&str> = list
             .iter()
-            .filter(|t| t.built_in && matches!(t.metadata.scheme, super::super::schema::Scheme::Light))
+            .filter(|t| {
+                t.built_in && matches!(t.metadata.scheme, super::super::schema::Scheme::Light)
+            })
             .map(|t| t.metadata.id.as_str())
             .collect();
         assert_eq!(lights, vec!["e-rose-pine-dawn"]);
@@ -360,7 +391,12 @@ mod tests {
     fn custom_shadows_built_in_when_id_collides() {
         let tmp = tempfile::tempdir().unwrap();
         let custom = tmp.path();
-        write_theme(custom, "a-default", "light", ":root[data-theme=\"a-default\"]{--shadowed:1}");
+        write_theme(
+            custom,
+            "a-default",
+            "light",
+            ":root[data-theme=\"a-default\"]{--shadowed:1}",
+        );
 
         let list = list_themes(custom);
         let a_default = list
@@ -368,7 +404,10 @@ mod tests {
             .find(|t| t.metadata.id == "a-default")
             .expect("a-default should be present");
         assert!(!a_default.built_in, "custom should shadow built-in");
-        assert_eq!(a_default.metadata.scheme, super::super::schema::Scheme::Light);
+        assert_eq!(
+            a_default.metadata.scheme,
+            super::super::schema::Scheme::Light
+        );
 
         let css = get_theme_css("a-default", custom).unwrap();
         assert!(css.tokens.contains("--shadowed"));

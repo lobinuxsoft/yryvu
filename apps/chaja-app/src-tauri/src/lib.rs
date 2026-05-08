@@ -127,10 +127,7 @@ pub fn run() {
             match app.path().app_config_dir() {
                 Ok(config) => {
                     let themes_dir = config.join("themes");
-                    match chaja_bridge::themes::start_watcher(
-                        app.handle().clone(),
-                        &themes_dir,
-                    ) {
+                    match chaja_bridge::themes::start_watcher(app.handle().clone(), &themes_dir) {
                         Ok(handle) => {
                             app.manage(handle);
                         }

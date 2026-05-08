@@ -1,85 +1,273 @@
 /* ========================================================================
-     PERSONALITY — D · Synthwave
-     Beyond color tokens: neon glows, scanline overlay, mono headers.
-     This block is theme-specific and lives ONLY in this file.
-     ======================================================================== */
+   PERSONALITY — D · Synthwave
+   Cyberpunk neon vibe: scrolling scanlines, sun-glow horizon, pulsing
+   neon underglows on every chrome boundary, breathing accents on
+   active state. Targets the deployed chajá chrome (toolbar, sidebar,
+   cold-start, statusbar, tabs) so effects are visible without a repo
+   open. Honors `prefers-reduced-motion: reduce`.
+   ======================================================================== */
 
-  /* Scanlines overlay across the whole app — extremely subtle (4 % opacity) */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(255, 0, 255, 0.04) 0,
-      rgba(255, 0, 255, 0.04) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-    z-index: 9999;
-    mix-blend-mode: overlay;
-  }
+/* --- Global overlays ------------------------------------------------- */
 
-  /* Mono uppercase headers — terminal cyberpunk vibe */
-  .graph-header > div,
-  .sb-section h3,
-  .ins-files-title {
-    font-family: var(--font-mono);
-    letter-spacing: 0.12em;
-    text-shadow: 0 0 4px color-mix(in srgb, var(--accent) 50%, transparent);
-  }
+/* CRT scanlines, scrolling slowly downward. 7% opacity at the source —
+   amplified by mix-blend-mode: overlay against the dark background. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 0, 255, 0.07) 0,
+    rgba(255, 0, 255, 0.07) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 9999;
+  mix-blend-mode: overlay;
+  animation: synthwave-scanlines 8s linear infinite;
+}
 
-  /* HEAD pill — magenta underglow */
-  .row .pill.head {
+@keyframes synthwave-scanlines {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 6px; }
+}
+
+/* --- Toolbar --------------------------------------------------------- */
+
+/* Magenta underglow that breathes with a 3 s cycle. */
+.toolbar {
+  border-bottom: 1px solid var(--accent);
+  animation: synthwave-toolbar-pulse 3s ease-in-out infinite;
+}
+
+@keyframes synthwave-toolbar-pulse {
+  0%, 100% {
     box-shadow:
-      0 0 0 1px var(--accent),
-      0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
-    text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 80%, transparent);
+      0 1px 0 var(--accent),
+      0 4px 14px color-mix(in srgb, var(--accent) 25%, transparent);
   }
-
-  /* Selected row — neon left edge */
-  .row.selected {
-    box-shadow: inset 4px 0 0 var(--accent),
-                inset 0 0 24px color-mix(in srgb, var(--accent) 12%, transparent);
-  }
-
-  /* Toolbar buttons hover — cyan glow */
-  .tb-btn:hover {
-    box-shadow: 0 0 8px color-mix(in srgb, var(--info) 50%, transparent);
-    text-shadow: 0 0 4px color-mix(in srgb, var(--info) 70%, transparent);
-  }
-
-  /* Toolbar badge — pulsating glow */
-  .tb-badge {
+  50% {
     box-shadow:
-      0 0 0 1px var(--bg-1),
-      0 0 8px var(--accent);
+      0 1px 0 var(--accent),
+      0 4px 32px color-mix(in srgb, var(--accent) 65%, transparent);
   }
+}
 
-  /* Commit nodes — drop-shadow glow on the SVG circles */
-  .graph-zone.svg svg circle {
-    filter: drop-shadow(0 0 3px currentColor);
+/* Idle: subtle 4 s breathe so the toolbar feels alive even untouched.
+   Hover: cyan flare lifts above the magenta breathe. */
+.toolbar__btn {
+  transition: box-shadow 200ms ease, text-shadow 200ms ease;
+  animation: synthwave-btn-breathe 4s ease-in-out infinite;
+}
+.toolbar__btn:hover {
+  animation: none;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--info) 70%, transparent);
+  text-shadow: 0 0 4px var(--info);
+}
+@keyframes synthwave-btn-breathe {
+  0%, 100% {
+    box-shadow: 0 0 0 transparent;
+    text-shadow: 0 0 0 transparent;
   }
-  .graph-zone.svg svg line,
-  .graph-zone.svg svg path {
-    filter: drop-shadow(0 0 1.5px currentColor);
+  50% {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent);
+    text-shadow: 0 0 4px color-mix(in srgb, var(--accent) 40%, transparent);
   }
+}
 
-  /* Inspector avatar — radial neon ring */
-  .ins-avatar {
+.toolbar__btn-icon {
+  filter: drop-shadow(0 0 2px currentColor);
+}
+
+/* Notification badge — fast pulsing magenta (1.6 s). */
+.toolbar__btn-badge {
+  box-shadow:
+    0 0 0 2px var(--bg-1),
+    0 0 8px var(--accent);
+  animation: synthwave-badge-pulse 1.6s ease-in-out infinite;
+}
+@keyframes synthwave-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--bg-1), 0 0 6px var(--accent); }
+  50%      { box-shadow: 0 0 0 2px var(--bg-1), 0 0 22px var(--accent); }
+}
+
+/* --- Tabs ------------------------------------------------------------ */
+
+.tabs {
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+
+.tab {
+  transition: text-shadow 180ms ease, background 180ms ease;
+}
+.tab:hover {
+  text-shadow: 0 0 6px color-mix(in srgb, var(--info) 80%, transparent);
+}
+
+.tab[aria-selected="true"],
+.tab.active,
+.tab--permanent {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 100%
+  );
+  box-shadow: inset 0 -2px 0 var(--accent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* --- Sidebar (left panel) ------------------------------------------- */
+
+.sidebar {
+  box-shadow:
+    inset -1px 0 0 var(--accent),
+    inset -3px 0 24px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.sidebar__branch-row {
+  transition: box-shadow 160ms ease, text-shadow 160ms ease;
+}
+.sidebar__branch-row:hover {
+  box-shadow:
+    inset 3px 0 0 var(--info),
+    inset 0 0 18px color-mix(in srgb, var(--info) 14%, transparent);
+}
+.sidebar__branch-row[data-active="true"] {
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    inset 0 0 24px color-mix(in srgb, var(--accent) 18%, transparent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* --- Branch / tag pills ---------------------------------------------- */
+
+/* RGB-shift glitch on every ref pill — subtle continuous (4 s steps),
+   amplified on hover for a sharper cyberpunk read. The 3-color
+   drop-shadow chain (magenta / cyan / yellow) jumps via steps() rather
+   than tweens, which is the proper glitch feel. */
+.ref-pill {
+  animation: synthwave-pill-glitch 4s steps(2, end) infinite;
+  position: relative;
+}
+.ref-pill:hover {
+  animation: synthwave-pill-glitch 0.5s steps(2, end) infinite;
+  z-index: 10;
+}
+@keyframes synthwave-pill-glitch {
+  0%, 60%, 100% {
+    filter:
+      drop-shadow(0 0 2px color-mix(in srgb, var(--accent) 40%, transparent));
+  }
+  61% {
+    filter:
+      drop-shadow(-1px 0 0 var(--accent))
+      drop-shadow(1px 0 0 var(--info))
+      drop-shadow(0 1px 0 var(--warning));
+  }
+  62%, 64% {
+    filter:
+      drop-shadow(1px 0 0 var(--accent))
+      drop-shadow(-1px 0 0 var(--info))
+      drop-shadow(0 -1px 0 var(--warning));
+  }
+  63%, 65% {
+    filter:
+      drop-shadow(0 0 2px color-mix(in srgb, var(--accent) 60%, transparent));
+  }
+}
+
+/* HEAD pill — pulsing magenta underglow, additive on top of the glitch. */
+.ref-pill--head {
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* Tag pill — gold glow stack instead of magenta. */
+.ref-pill--tag {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 50%, transparent);
+}
+
+/* Remote pill — cyan glow (info color, distinguishes from local branches). */
+.ref-pill--remote {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--info) 45%, transparent);
+}
+
+/* --- Status bar ------------------------------------------------------ */
+
+.statusbar {
+  box-shadow:
+    inset 0 1px 0 var(--accent),
+    0 -4px 18px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* --- Cold start (no-repo screen) ------------------------------------ */
+
+.cold-start__title {
+  text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+  animation: synthwave-title-pulse 3s ease-in-out infinite;
+  letter-spacing: 0.04em;
+}
+@keyframes synthwave-title-pulse {
+  0%, 100% {
+    text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  50% {
+    text-shadow:
+      0 0 18px color-mix(in srgb, var(--accent) 90%, transparent),
+      0 0 36px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+}
+
+/* Idle: 3 s breathe (slightly slower than toolbar, offset phase via
+   negative animation-delay so they don't all pulse in unison).
+   Hover: lift + flare. */
+.cold-start__action {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: transform 240ms ease;
+  animation: synthwave-cta-breathe 3s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+.cold-start__action:hover {
+  animation: none;
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--accent) 75%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+@keyframes synthwave-cta-breathe {
+  0%, 100% {
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  50% {
     box-shadow:
-      0 0 0 2px var(--bg-1),
-      0 0 0 3px var(--accent),
-      0 0 16px color-mix(in srgb, var(--accent) 70%, transparent);
+      0 0 26px color-mix(in srgb, var(--accent) 60%, transparent),
+      inset 0 0 14px color-mix(in srgb, var(--accent) 14%, transparent);
   }
+}
 
-  /* SHA pills — slight cyan tint on hover */
-  .ins-sha:hover {
-    box-shadow: 0 0 8px color-mix(in srgb, var(--info) 60%, transparent);
-  }
+.cold-start__recent-item {
+  transition: box-shadow 180ms ease;
+}
+.cold-start__recent-item:hover {
+  box-shadow:
+    inset 3px 0 0 var(--info),
+    0 0 18px color-mix(in srgb, var(--info) 25%, transparent);
+}
 
-  /* Tag pills — gold glow instead of flat tint */
-  .row .pill.tag {
-    box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 40%, transparent);
+/* --- Reduced motion -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  .toolbar,
+  .toolbar__btn,
+  .toolbar__btn-badge,
+  .ref-pill,
+  .ref-pill:hover,
+  .cold-start__title,
+  .cold-start__action {
+    animation: none;
   }
+}

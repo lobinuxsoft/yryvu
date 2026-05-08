@@ -41,11 +41,18 @@
   align-items: center;
   font-size: 12px;
   color: var(--fg-1);
-  /* No global background — the lane tint is painted ONLY inside the
-     GRAPH zone via `.commit-graph__row-tint` (a per-row span anchored
-     at the commit node's centerX, extending right to the zone edge).
-     Mirrors GK's `BackgroundStreak` / `.commit-bg-color` rule which
-     never bleeds across BRANCH/TAG, MESSAGE, AUTHOR, DATE-TIME, SHA. */
+  /* Full-row lane tint at 8 % — matches GitKraken's per-row background
+     where the lane color washes across every column (BRANCH/TAG +
+     GRAPH + MESSAGE + AUTHOR + DATE-TIME + SHA). The GRAPH zone layers
+     a sharper 30 % streak (`.commit-graph__row-tint`) on top of this
+     base for a stronger read at the commit node's centerline.
+     `--row-lane-color` is set per-row by each zone component
+     (zones/{BranchZone,GraphZone,MessageZone,MetaZones}.tsx). */
+  background-color: color-mix(
+    in srgb,
+    var(--row-lane-color, transparent) 8%,
+    transparent
+  );
 }
 
 .commit-graph__col-messages .graph-row-wrapper {

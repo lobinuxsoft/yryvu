@@ -79,7 +79,7 @@ function AuthorZone(props: { deps: ZoneDeps }) {
                   style={{
                     top: `${item.start + deps.layout.wipShift()}px`,
                     height: `${ROW_HEIGHT}px`,
-                    "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                    "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                   }}
                   onClick={(e) => deps.selection.handleCommitClick(e, r.sha)}
                   onMouseEnter={() => deps.setHoveredCommit(r.sha)}
@@ -162,7 +162,7 @@ function DateTimeZone(props: { deps: ZoneDeps }) {
                   style={{
                     top: `${item.start + deps.layout.wipShift()}px`,
                     height: `${ROW_HEIGHT}px`,
-                    "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                    "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                   }}
                   onClick={(e) => deps.selection.handleCommitClick(e, r.sha)}
                   onMouseEnter={() => deps.setHoveredCommit(r.sha)}
@@ -224,7 +224,7 @@ function ShaZone(props: { deps: ZoneDeps }) {
                   style={{
                     top: `${item.start + deps.layout.wipShift()}px`,
                     height: `${ROW_HEIGHT}px`,
-                    "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                    "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                   }}
                   onClick={(e) => deps.selection.handleCommitClick(e, r.sha)}
                   onMouseEnter={() => deps.setHoveredCommit(r.sha)}

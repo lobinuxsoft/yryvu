@@ -43,7 +43,7 @@
   pointer-events: none;
   background-color: color-mix(
     in srgb,
-    var(--row-lane-color, transparent) 10%,
+    var(--row-lane-color, transparent) 30%,
     transparent
   );
 }
@@ -51,7 +51,7 @@
 .graph-row-wrapper.is-selected .commit-graph__row-tint {
   background-color: color-mix(
     in srgb,
-    var(--row-lane-color, transparent) 50%,
+    var(--row-lane-color, transparent) 60%,
     transparent
   );
 }

@@ -70,7 +70,7 @@ export function BranchZone(props: { deps: ZoneDeps }) {
                   style={{
                     top: `${item.start + deps.layout.wipShift()}px`,
                     height: `${ROW_HEIGHT}px`,
-                    "--row-lane-color": `var(--column-${r.color_idx % 10}-color)`,
+                    "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                   }}
                   onMouseEnter={() => deps.setHoveredCommit(r.sha)}
                   onMouseLeave={() => {
@@ -98,7 +98,7 @@ export function BranchZone(props: { deps: ZoneDeps }) {
                       }}
                       aria-hidden="true"
                       style={{
-                        "background-color": `var(--column-${r.color_idx % 10}-color)`,
+                        "background-color": `var(--lane-${r.color_idx % 10})`,
                       }}
                     />
                   </Show>

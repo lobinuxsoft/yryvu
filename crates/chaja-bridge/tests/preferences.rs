@@ -6,8 +6,8 @@
 //! version-newer rejection.
 
 use chaja_bridge::preferences::{
-    file_path, load, reset, save, Density, GeneralPreferences, PermanentTabState, PermanentTabs,
-    Preferences, PreferencesError, Tab, TabsPreferences, UiPreferences,
+    file_path, load, reset, save, AnimationMode, Density, GeneralPreferences, PermanentTabState,
+    PermanentTabs, Preferences, PreferencesError, Tab, TabsPreferences, UiPreferences,
 };
 use tempfile::TempDir;
 
@@ -291,6 +291,175 @@ fn ui_zoom_missing_field_falls_back_to_default() {
     .unwrap();
     let prefs = load(dir.path()).unwrap();
     assert_eq!(prefs.ui.zoom, 1.0);
+}
+
+#[test]
+fn ui_tooltips_enabled_defaults_to_true() {
+    let prefs = Preferences::default();
+    assert!(prefs.ui.tooltips_enabled);
+}
+
+#[test]
+fn ui_tooltips_enabled_disabled_roundtrips() {
+    let dir = TempDir::new().unwrap();
+    let prefs = Preferences {
+        ui: UiPreferences {
+            tooltips_enabled: false,
+            ..UiPreferences::default()
+        },
+        ..Preferences::default()
+    };
+    save(dir.path(), &prefs).unwrap();
+    let loaded = load(dir.path()).unwrap();
+    assert!(!loaded.ui.tooltips_enabled);
+}
+
+#[test]
+fn ui_tooltips_enabled_serializes_as_camel_case() {
+    // Frontend reads `tooltipsEnabled` literal — drift breaks the
+    // <Tooltip> wrapper's gate silently when sub-PR #316 lands.
+    let prefs = Preferences {
+        ui: UiPreferences {
+            tooltips_enabled: false,
+            ..UiPreferences::default()
+        },
+        ..Preferences::default()
+    };
+    let json = serde_json::to_string(&prefs).unwrap();
+    assert!(json.contains("\"tooltipsEnabled\":false"), "got {json}");
+}
+
+#[test]
+fn ui_tooltips_enabled_missing_field_falls_back_to_default() {
+    // A preferences file written before #315 lacks `tooltipsEnabled`.
+    // Loading must fill it with `true` instead of failing.
+    let dir = TempDir::new().unwrap();
+    std::fs::write(
+        file_path(dir.path()),
+        r#"{"version": 1, "ui": {"theme": "auto"}}"#,
+    )
+    .unwrap();
+    let prefs = load(dir.path()).unwrap();
+    assert!(prefs.ui.tooltips_enabled);
+}
+
+#[test]
+fn ui_tooltip_delay_ms_defaults_to_500() {
+    let prefs = Preferences::default();
+    assert_eq!(prefs.ui.tooltip_delay_ms, 500);
+}
+
+#[test]
+fn ui_tooltip_delay_ms_custom_value_roundtrips() {
+    // Walk the panel-gated range plus the boundaries to catch any rename
+    // / camelCase drift on every value the UI is allowed to produce.
+    let dir = TempDir::new().unwrap();
+    for delay in [0_u16, 100, 500, 1000, 2000] {
+        let prefs = Preferences {
+            ui: UiPreferences {
+                tooltip_delay_ms: delay,
+                ..UiPreferences::default()
+            },
+            ..Preferences::default()
+        };
+        save(dir.path(), &prefs).unwrap();
+        let loaded = load(dir.path()).unwrap();
+        assert_eq!(
+            loaded.ui.tooltip_delay_ms, delay,
+            "delay {delay} did not round-trip"
+        );
+    }
+}
+
+#[test]
+fn ui_tooltip_delay_ms_serializes_as_camel_case_number() {
+    // The IPC contract is a JSON number under `tooltipDelayMs` — frontend
+    // (sub-PR #316) reads it directly to drive the show-after timer.
+    let prefs = Preferences {
+        ui: UiPreferences {
+            tooltip_delay_ms: 250,
+            ..UiPreferences::default()
+        },
+        ..Preferences::default()
+    };
+    let json = serde_json::to_string(&prefs).unwrap();
+    assert!(json.contains("\"tooltipDelayMs\":250"), "got {json}");
+}
+
+#[test]
+fn ui_tooltip_delay_ms_missing_field_falls_back_to_default() {
+    let dir = TempDir::new().unwrap();
+    std::fs::write(
+        file_path(dir.path()),
+        r#"{"version": 1, "ui": {"theme": "auto"}}"#,
+    )
+    .unwrap();
+    let prefs = load(dir.path()).unwrap();
+    assert_eq!(prefs.ui.tooltip_delay_ms, 500);
+}
+
+#[test]
+fn ui_animations_defaults_to_system() {
+    let prefs = Preferences::default();
+    assert_eq!(prefs.ui.animations, AnimationMode::System);
+}
+
+#[test]
+fn ui_animations_custom_value_roundtrips() {
+    let dir = TempDir::new().unwrap();
+    for mode in [
+        AnimationMode::Always,
+        AnimationMode::System,
+        AnimationMode::Never,
+    ] {
+        let prefs = Preferences {
+            ui: UiPreferences {
+                animations: mode,
+                ..UiPreferences::default()
+            },
+            ..Preferences::default()
+        };
+        save(dir.path(), &prefs).unwrap();
+        let loaded = load(dir.path()).unwrap();
+        assert_eq!(
+            loaded.ui.animations, mode,
+            "animation mode {mode:?} did not round-trip"
+        );
+    }
+}
+
+#[test]
+fn ui_animations_serializes_as_camel_case() {
+    // Frontend (sub-PR #316) reads the literal strings to drive the
+    // `data-animations` root attribute. Drift would silently flip the
+    // CSS override block off without breaking the load path.
+    for (mode, literal) in [
+        (AnimationMode::Always, "\"animations\":\"always\""),
+        (AnimationMode::System, "\"animations\":\"system\""),
+        (AnimationMode::Never, "\"animations\":\"never\""),
+    ] {
+        let prefs = Preferences {
+            ui: UiPreferences {
+                animations: mode,
+                ..UiPreferences::default()
+            },
+            ..Preferences::default()
+        };
+        let json = serde_json::to_string(&prefs).unwrap();
+        assert!(json.contains(literal), "got {json}");
+    }
+}
+
+#[test]
+fn ui_animations_missing_field_falls_back_to_default() {
+    let dir = TempDir::new().unwrap();
+    std::fs::write(
+        file_path(dir.path()),
+        r#"{"version": 1, "ui": {"theme": "auto"}}"#,
+    )
+    .unwrap();
+    let prefs = load(dir.path()).unwrap();
+    assert_eq!(prefs.ui.animations, AnimationMode::System);
 }
 
 #[test]

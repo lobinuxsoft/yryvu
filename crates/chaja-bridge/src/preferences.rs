@@ -101,7 +101,8 @@ fn default_version() -> u32 {
 pub struct GeneralPreferences {}
 
 /// UI preferences (issue #103). Theme lands here in #292 (sub-PR A);
-/// zoom (#293), density (#294), tooltips/animations (#295) follow.
+/// zoom (#293), density (#294), tooltips/animations (#315 backend, #316 view)
+/// follow.
 ///
 /// `theme` is a [`ThemeId`] — any built-in id, custom id, or `"auto"`.
 /// `"auto"` resolves at runtime against `prefers-color-scheme`.
@@ -114,6 +115,12 @@ pub struct UiPreferences {
     pub density: Density,
     #[serde(default = "default_zoom")]
     pub zoom: f32,
+    #[serde(default = "default_tooltips_enabled")]
+    pub tooltips_enabled: bool,
+    #[serde(default = "default_tooltip_delay_ms")]
+    pub tooltip_delay_ms: u16,
+    #[serde(default)]
+    pub animations: AnimationMode,
 }
 
 impl Default for UiPreferences {
@@ -122,6 +129,9 @@ impl Default for UiPreferences {
             theme: default_theme(),
             density: Density::default(),
             zoom: default_zoom(),
+            tooltips_enabled: default_tooltips_enabled(),
+            tooltip_delay_ms: default_tooltip_delay_ms(),
+            animations: AnimationMode::default(),
         }
     }
 }
@@ -159,6 +169,32 @@ pub enum Density {
     #[default]
     Comfortable,
     Compact,
+}
+
+fn default_tooltips_enabled() -> bool {
+    true
+}
+
+/// Tooltip hover delay default (issue #315). 500 ms matches GK's
+/// `tooltipDelay` constant (`bundle:248913`); the panel gates the
+/// effective range to 0..2000 ms but the backing field is `u16` so
+/// a future range bump up to ~65 s would not require a schema change.
+fn default_tooltip_delay_ms() -> u16 {
+    500
+}
+
+/// Animation policy (issue #315). `System` honors the OS-level
+/// `prefers-reduced-motion` query; `Always` and `Never` are explicit
+/// overrides. The frontend (sub-PR #316) reads the literal camelCase
+/// strings to drive `:root[data-animations]` plus a CSS override block
+/// that disables non-spinner transitions when motion is suppressed.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum AnimationMode {
+    Always,
+    #[default]
+    System,
+    Never,
 }
 
 /// Transient tab variant. Ports GK's `tabTypes` (cited bundle:228930-228943),

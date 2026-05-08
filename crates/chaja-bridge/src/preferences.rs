@@ -61,7 +61,7 @@ pub enum PreferencesError {
 /// the corresponding tab in the Preferences window. Each section is
 /// `#[serde(default)]` so a partial JSON or a file written by an older
 /// version loads against the current struct without errors.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Preferences {
     #[serde(default = "default_version")]
@@ -105,13 +105,15 @@ pub struct GeneralPreferences {}
 ///
 /// `theme` is a [`ThemeId`] — any built-in id, custom id, or `"auto"`.
 /// `"auto"` resolves at runtime against `prefers-color-scheme`.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UiPreferences {
     #[serde(default = "default_theme")]
     pub theme: ThemeId,
     #[serde(default)]
     pub density: Density,
+    #[serde(default = "default_zoom")]
+    pub zoom: f32,
 }
 
 impl Default for UiPreferences {
@@ -119,6 +121,7 @@ impl Default for UiPreferences {
         Self {
             theme: default_theme(),
             density: Density::default(),
+            zoom: default_zoom(),
         }
     }
 }
@@ -130,6 +133,18 @@ pub type ThemeId = String;
 
 fn default_theme() -> ThemeId {
     "auto".to_string()
+}
+
+/// UI zoom factor (issue #293). Ports GK's `ZOOM_FACTORS` ladder
+/// (`bundle:256353`): `0.8 / 0.9 / 1.0 / 1.1 / 1.2 / 1.3`. Stored as
+/// `f32` to match GK's wire format — value-set validation lives in
+/// the UI `<select>` (Preferences panel + status-bar mirror #313),
+/// not in the loader. The frontend applies via CSS `zoom` on `:root`
+/// (Option B in `docs/research/gitkraken-ui-preferences/05-zoom.md`),
+/// reproducing the "scales every surface" behavior of Electron's
+/// `webFrame.setZoomFactor` without a `px → rem` codemod.
+fn default_zoom() -> f32 {
+    1.0
 }
 
 /// UI density (issue #294). chajá-only — GK has no density preference;

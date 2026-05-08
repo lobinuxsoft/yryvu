@@ -6,7 +6,7 @@
 //! version-newer rejection.
 
 use chaja_bridge::preferences::{
-    file_path, load, reset, save, GeneralPreferences, PermanentTabState, PermanentTabs,
+    file_path, load, reset, save, Density, GeneralPreferences, PermanentTabState, PermanentTabs,
     Preferences, PreferencesError, Tab, TabsPreferences, UiPreferences,
 };
 use tempfile::TempDir;
@@ -175,6 +175,64 @@ fn tabs_release_notes_variant_roundtrips() {
     assert!(json.contains("\"type\":\"RELEASE_NOTES\""), "got {json}");
     let back: Preferences = serde_json::from_str(&json).unwrap();
     assert_eq!(back, prefs);
+}
+
+#[test]
+fn ui_density_defaults_to_comfortable() {
+    let prefs = Preferences::default();
+    assert_eq!(prefs.ui.density, Density::Comfortable);
+}
+
+#[test]
+fn ui_density_compact_roundtrips() {
+    let dir = TempDir::new().unwrap();
+    let prefs = Preferences {
+        ui: UiPreferences {
+            density: Density::Compact,
+            ..UiPreferences::default()
+        },
+        ..Preferences::default()
+    };
+    save(dir.path(), &prefs).unwrap();
+    let loaded = load(dir.path()).unwrap();
+    assert_eq!(loaded.ui.density, Density::Compact);
+}
+
+#[test]
+fn ui_density_serializes_as_camel_case() {
+    // The IPC contract is camelCase. The frontend reads `density` as the
+    // literal strings `"comfortable"` / `"compact"` to drive the
+    // `data-density` attribute — drift would silently break theming.
+    let prefs = Preferences {
+        ui: UiPreferences {
+            density: Density::Compact,
+            ..UiPreferences::default()
+        },
+        ..Preferences::default()
+    };
+    let json = serde_json::to_string(&prefs).unwrap();
+    assert!(json.contains("\"density\":\"compact\""), "got {json}");
+
+    let prefs_default = Preferences::default();
+    let json_default = serde_json::to_string(&prefs_default).unwrap();
+    assert!(
+        json_default.contains("\"density\":\"comfortable\""),
+        "got {json_default}"
+    );
+}
+
+#[test]
+fn ui_density_missing_field_falls_back_to_default() {
+    // A preferences file written before #294 lacks `density`. Loading
+    // must fill it with `Comfortable` instead of failing.
+    let dir = TempDir::new().unwrap();
+    std::fs::write(
+        file_path(dir.path()),
+        r#"{"version": 1, "ui": {"theme": "auto"}}"#,
+    )
+    .unwrap();
+    let prefs = load(dir.path()).unwrap();
+    assert_eq!(prefs.ui.density, Density::Comfortable);
 }
 
 #[test]

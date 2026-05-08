@@ -114,10 +114,11 @@ pub fn get_theme_css(id: &str, custom_dir: &Path) -> Result<ThemeCss, LoadError>
     }
 }
 
-/// Copy a built-in theme to `<custom_dir>/<new_id>/`, rewriting `id` in
-/// `theme.toml` and the `:root[data-theme="…"]` selector in tokens.css.
-/// Returns the generated `new_id` (e.g. `a-default-copy`,
-/// `a-default-copy-2`, …).
+/// Copy a built-in theme to `<custom_dir>/<new_id>/`, rewriting `id` +
+/// `name` in `theme.toml` and the `:root[data-theme="…"]` selector in
+/// `tokens.css`. The new name mirrors the source ("Synthwave" → "Synthwave
+/// Copy", second copy "Synthwave Copy 2") so the dropdown shows the
+/// origin of every fork. Returns the generated `new_id`.
 pub fn create_from_template(
     builtin_id: &str,
     custom_dir: &Path,
@@ -126,33 +127,39 @@ pub fn create_from_template(
         return Err(LoadError::NotFound { id: builtin_id.to_string() });
     }
 
-    let new_id = unique_id(custom_dir, builtin_id);
-    let dest = custom_dir.join(&new_id);
-    std::fs::create_dir_all(&dest).map_err(|e| io_err(&new_id, e))?;
-
     let toml_src = read_built_in_utf8(builtin_id, FILE_THEME_TOML)?;
-    let toml_rewritten = rewrite_toml_id(toml_src, &new_id)
-        .map_err(|e| LoadError::Schema { id: new_id.clone(), source: e })?;
+    let source_meta: ThemeMetadata =
+        toml::from_str(toml_src).map_err(|e| LoadError::Schema {
+            id: builtin_id.to_string(),
+            source: SchemaError::Parse(e),
+        })?;
+
+    let copy = unique_copy(custom_dir, builtin_id, &source_meta.name);
+    let dest = custom_dir.join(&copy.id);
+    std::fs::create_dir_all(&dest).map_err(|e| io_err(&copy.id, e))?;
+
+    let toml_rewritten = rewrite_toml_metadata(toml_src, &copy.id, &copy.name)
+        .map_err(|e| LoadError::Schema { id: copy.id.clone(), source: e })?;
     std::fs::write(dest.join(FILE_THEME_TOML), toml_rewritten)
-        .map_err(|e| io_err(&new_id, e))?;
+        .map_err(|e| io_err(&copy.id, e))?;
 
     let tokens_src = read_built_in_utf8(builtin_id, FILE_TOKENS_CSS)?;
     let tokens_rewritten = tokens_src.replace(
         &format!(":root[data-theme=\"{builtin_id}\"]"),
-        &format!(":root[data-theme=\"{new_id}\"]"),
+        &format!(":root[data-theme=\"{}\"]", &copy.id),
     );
     std::fs::write(dest.join(FILE_TOKENS_CSS), tokens_rewritten)
-        .map_err(|e| io_err(&new_id, e))?;
+        .map_err(|e| io_err(&copy.id, e))?;
 
     if let Some(p) = BUILT_INS
         .get_file(format!("{builtin_id}/{FILE_PERSONALITY_CSS}"))
         .and_then(|f| f.contents_utf8())
     {
         std::fs::write(dest.join(FILE_PERSONALITY_CSS), p)
-            .map_err(|e| io_err(&new_id, e))?;
+            .map_err(|e| io_err(&copy.id, e))?;
     }
 
-    Ok(new_id)
+    Ok(copy.id)
 }
 
 /// Resolve `<config>/themes/` for a Tauri-style app config dir.
@@ -221,24 +228,59 @@ fn read_built_in_utf8(id: &str, file: &str) -> Result<&'static str, LoadError> {
         })
 }
 
-fn unique_id(custom_dir: &Path, base: &str) -> String {
-    let candidate = format!("{base}-copy");
-    if !custom_dir.join(&candidate).exists() {
-        return candidate;
+struct CopyName {
+    id: String,
+    name: String,
+}
+
+/// Strip the alphabetical sort prefix used by built-ins (`a-default`,
+/// `b-tokyo-night`, …) — that prefix is meaningless for user themes
+/// (custom shadows built-in by id, never co-sorted) and noisy in the
+/// file manager. `d-synthwave` → `synthwave`.
+fn strip_sort_prefix(id: &str) -> &str {
+    let bytes = id.as_bytes();
+    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b'-' {
+        &id[2..]
+    } else {
+        id
+    }
+}
+
+/// Generate a unique copy id + matching human name. The id strips the
+/// built-in sort prefix and appends `-copy[-N]` for filesystem
+/// uniqueness; the name appends `Copy[ N]` so the same counter shows up
+/// in both. `d-synthwave` / "Synthwave" → `synthwave-copy` /
+/// "Synthwave Copy", second copy `synthwave-copy-2` / "Synthwave Copy 2".
+fn unique_copy(custom_dir: &Path, base_id: &str, base_name: &str) -> CopyName {
+    let id_root = strip_sort_prefix(base_id);
+    let candidate_id = format!("{id_root}-copy");
+    if !custom_dir.join(&candidate_id).exists() {
+        return CopyName {
+            id: candidate_id,
+            name: format!("{base_name} Copy"),
+        };
     }
     let mut n = 2;
     loop {
-        let c = format!("{base}-copy-{n}");
-        if !custom_dir.join(&c).exists() {
-            return c;
+        let cid = format!("{id_root}-copy-{n}");
+        if !custom_dir.join(&cid).exists() {
+            return CopyName {
+                id: cid,
+                name: format!("{base_name} Copy {n}"),
+            };
         }
         n += 1;
     }
 }
 
-fn rewrite_toml_id(src: &str, new_id: &str) -> Result<String, SchemaError> {
+fn rewrite_toml_metadata(
+    src: &str,
+    new_id: &str,
+    new_name: &str,
+) -> Result<String, SchemaError> {
     let mut meta: ThemeMetadata = toml::from_str(src)?;
     meta.id = new_id.to_string();
+    meta.name = new_name.to_string();
     Ok(toml::to_string(&meta).unwrap_or_default())
 }
 
@@ -366,21 +408,70 @@ mod tests {
     }
 
     #[test]
-    fn unique_id_increments_when_taken() {
-        let tmp = tempfile::tempdir().unwrap();
-        assert_eq!(unique_id(tmp.path(), "x"), "x-copy");
-        std::fs::create_dir_all(tmp.path().join("x-copy")).unwrap();
-        assert_eq!(unique_id(tmp.path(), "x"), "x-copy-2");
-        std::fs::create_dir_all(tmp.path().join("x-copy-2")).unwrap();
-        assert_eq!(unique_id(tmp.path(), "x"), "x-copy-3");
+    fn strip_sort_prefix_drops_leading_letter_dash() {
+        assert_eq!(strip_sort_prefix("d-synthwave"), "synthwave");
+        assert_eq!(strip_sort_prefix("a-default"), "default");
+        assert_eq!(strip_sort_prefix("e-rose-pine-dawn"), "rose-pine-dawn");
+        // No prefix to strip
+        assert_eq!(strip_sort_prefix("custom-theme"), "custom-theme");
+        assert_eq!(strip_sort_prefix("synthwave"), "synthwave");
+        // Edge cases
+        assert_eq!(strip_sort_prefix("a"), "a");
+        assert_eq!(strip_sort_prefix(""), "");
+        assert_eq!(strip_sort_prefix("1-not-a-letter"), "1-not-a-letter");
     }
 
     #[test]
-    fn rewrite_toml_id_replaces_id_field() {
-        let src = "name = \"X\"\nid = \"old\"\nscheme = \"dark\"\n";
-        let out = rewrite_toml_id(src, "new").unwrap();
+    fn unique_copy_strips_prefix_and_increments_when_taken() {
+        let tmp = tempfile::tempdir().unwrap();
+        let first = unique_copy(tmp.path(), "d-synthwave", "Synthwave");
+        assert_eq!(first.id, "synthwave-copy");
+        assert_eq!(first.name, "Synthwave Copy");
+
+        std::fs::create_dir_all(tmp.path().join("synthwave-copy")).unwrap();
+        let second = unique_copy(tmp.path(), "d-synthwave", "Synthwave");
+        assert_eq!(second.id, "synthwave-copy-2");
+        assert_eq!(second.name, "Synthwave Copy 2");
+
+        std::fs::create_dir_all(tmp.path().join("synthwave-copy-2")).unwrap();
+        let third = unique_copy(tmp.path(), "d-synthwave", "Synthwave");
+        assert_eq!(third.id, "synthwave-copy-3");
+        assert_eq!(third.name, "Synthwave Copy 3");
+    }
+
+    #[test]
+    fn rewrite_toml_metadata_replaces_id_and_name() {
+        let src = "name = \"Synthwave\"\nid = \"d-synthwave\"\nscheme = \"dark\"\n";
+        let out = rewrite_toml_metadata(src, "synthwave-copy", "Synthwave Copy").unwrap();
         let meta: ThemeMetadata = toml::from_str(&out).unwrap();
-        assert_eq!(meta.id, "new");
-        assert_eq!(meta.name, "X");
+        assert_eq!(meta.id, "synthwave-copy");
+        assert_eq!(meta.name, "Synthwave Copy");
+        assert_eq!(meta.scheme, super::super::schema::Scheme::Dark);
+    }
+
+    #[test]
+    fn create_from_template_copies_metadata_and_renames() {
+        let tmp = tempfile::tempdir().unwrap();
+        let new_id = create_from_template("d-synthwave", tmp.path()).unwrap();
+        assert_eq!(new_id, "synthwave-copy");
+
+        let copied_dir = tmp.path().join(&new_id);
+        assert!(copied_dir.is_dir());
+
+        let toml_src = std::fs::read_to_string(copied_dir.join("theme.toml")).unwrap();
+        let meta: ThemeMetadata = toml::from_str(&toml_src).unwrap();
+        assert_eq!(meta.id, "synthwave-copy");
+        assert_eq!(meta.name, "Synthwave Copy");
+        assert_eq!(meta.scheme, super::super::schema::Scheme::Dark);
+
+        let tokens = std::fs::read_to_string(copied_dir.join("tokens.css")).unwrap();
+        assert!(
+            tokens.contains("[data-theme=\"synthwave-copy\"]"),
+            "tokens.css selector not rewritten: {tokens}"
+        );
+        assert!(
+            !tokens.contains("[data-theme=\"d-synthwave\"]"),
+            "old selector lingered: {tokens}"
+        );
     }
 }

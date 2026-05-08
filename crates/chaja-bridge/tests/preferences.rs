@@ -236,6 +236,64 @@ fn ui_density_missing_field_falls_back_to_default() {
 }
 
 #[test]
+fn ui_zoom_defaults_to_one() {
+    let prefs = Preferences::default();
+    assert_eq!(prefs.ui.zoom, 1.0);
+}
+
+#[test]
+fn ui_zoom_custom_value_roundtrips() {
+    // Walk the whole GK ladder to catch any rename / camelCase drift on
+    // every supported value, not just the default.
+    let dir = TempDir::new().unwrap();
+    for zoom in [0.8_f32, 0.9, 1.0, 1.1, 1.2, 1.3] {
+        let prefs = Preferences {
+            ui: UiPreferences {
+                zoom,
+                ..UiPreferences::default()
+            },
+            ..Preferences::default()
+        };
+        save(dir.path(), &prefs).unwrap();
+        let loaded = load(dir.path()).unwrap();
+        assert_eq!(
+            loaded.ui.zoom, zoom,
+            "ladder value {zoom} did not round-trip"
+        );
+    }
+}
+
+#[test]
+fn ui_zoom_serializes_as_camel_case_number() {
+    // The IPC contract is a JSON number under the literal key `zoom`.
+    // Both the Preferences panel and the status-bar mirror (#313) read
+    // this exact field — drift breaks both surfaces silently.
+    let prefs = Preferences {
+        ui: UiPreferences {
+            zoom: 1.1,
+            ..UiPreferences::default()
+        },
+        ..Preferences::default()
+    };
+    let json = serde_json::to_string(&prefs).unwrap();
+    assert!(json.contains("\"zoom\":1.1"), "got {json}");
+}
+
+#[test]
+fn ui_zoom_missing_field_falls_back_to_default() {
+    // A preferences file written before #293 lacks `zoom`. Loading must
+    // fill it with 1.0 instead of failing.
+    let dir = TempDir::new().unwrap();
+    std::fs::write(
+        file_path(dir.path()),
+        r#"{"version": 1, "ui": {"theme": "auto"}}"#,
+    )
+    .unwrap();
+    let prefs = load(dir.path()).unwrap();
+    assert_eq!(prefs.ui.zoom, 1.0);
+}
+
+#[test]
 fn tabs_partial_load_falls_back_to_section_defaults() {
     // A file written by an older chajá won't have the `tabs` section.
     // Loading must fill the section with TabsPreferences::default().

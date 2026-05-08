@@ -110,12 +110,15 @@ pub struct GeneralPreferences {}
 pub struct UiPreferences {
     #[serde(default = "default_theme")]
     pub theme: ThemeId,
+    #[serde(default)]
+    pub density: Density,
 }
 
 impl Default for UiPreferences {
     fn default() -> Self {
         Self {
             theme: default_theme(),
+            density: Density::default(),
         }
     }
 }
@@ -127,6 +130,20 @@ pub type ThemeId = String;
 
 fn default_theme() -> ThemeId {
     "auto".to_string()
+}
+
+/// UI density (issue #294). chajá-only — GK has no density preference;
+/// included to match VSCode / IntelliJ genre conventions. Maps to
+/// `:root[data-density="<variant>"]` on the frontend, which overrides
+/// the geometry tokens (`--row-h`, `--gutter`, paddings) by ~20% in
+/// `Compact`. View-side wiring lands in a separate sub-PR — backend
+/// only persists the choice.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Density {
+    #[default]
+    Comfortable,
+    Compact,
 }
 
 /// Transient tab variant. Ports GK's `tabTypes` (cited bundle:228930-228943),

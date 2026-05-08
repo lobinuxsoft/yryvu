@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { For, Show, createMemo, type JSX } from "solid-js";
+import { For, Show, createEffect, createMemo, type JSX } from "solid-js";
 
 import {
   createThemeFromTemplate,
@@ -23,6 +23,8 @@ const AUTO_LABEL = "Auto (follow OS)";
  * font scale (#293), tooltips/animations (#295) follow.
  */
 export function UiPanel(): JSX.Element {
+  let selectRef: HTMLSelectElement | undefined;
+
   const list = createMemo<readonly ThemeEntry[]>(() => themes() ?? []);
 
   const activePreferenceId = createMemo<string | null>(() => {
@@ -40,19 +42,43 @@ export function UiPanel(): JSX.Element {
     [...list()].sort((a, b) => a.id.localeCompare(b.id)),
   );
 
+  // Entry whose id matches the resolved-active id, or null if the
+  // themes list hasn't loaded or the active id no longer exists.
+  const activeEntry = createMemo<ThemeEntry | null>(() => {
+    const id = resolvedId();
+    if (!id) return null;
+    return list().find((t) => t.id === id) ?? null;
+  });
+
+  // Imperatively reflect the active id onto the <select>'s `value`
+  // *property* whenever it changes. Declarative `value=` / `selected=`
+  // both lose to the browser's user-interaction tracking once the user
+  // has touched the select once — the property setter is the only path
+  // that consistently wins. Depending on `sortedThemes()` ensures the
+  // effect runs *after* the For has rendered the matching <option>.
+  createEffect(() => {
+    const id = activePreferenceId();
+    sortedThemes();
+    if (selectRef && id !== null && selectRef.value !== id) {
+      selectRef.value = id;
+    }
+  });
+
   const onChange = (e: Event & { currentTarget: HTMLSelectElement }) => {
     const next = e.currentTarget.value;
     if (next === activePreferenceId()) return;
     void updatePreferences({ ui: { theme: next } });
   };
 
-  const onCreateFromTemplate = async () => {
+  const onDuplicateActive = async () => {
+    const source = activeEntry();
+    if (!source || !source.builtIn) return;
     try {
-      await createThemeFromTemplate("a-default");
+      await createThemeFromTemplate(source.id);
       await refetchThemes();
       await openThemesFolder();
     } catch (err) {
-      console.error("create theme from template failed:", err);
+      console.error("duplicate theme failed:", err);
     }
   };
 
@@ -67,9 +93,9 @@ export function UiPanel(): JSX.Element {
       <div class="ui-panel__field">
         <label class="ui-panel__label" for="ui-panel-theme">Theme</label>
         <select
+          ref={selectRef}
           id="ui-panel-theme"
           class="ui-panel__select"
-          value={activePreferenceId() ?? AUTO_ID}
           onChange={onChange}
           disabled={activePreferenceId() === null}
         >
@@ -95,9 +121,17 @@ export function UiPanel(): JSX.Element {
         <button
           type="button"
           class="ui-panel__btn"
-          onClick={onCreateFromTemplate}
+          onClick={onDuplicateActive}
+          disabled={!activeEntry() || !activeEntry()?.builtIn}
+          title={
+            activeEntry()?.builtIn === false
+              ? "Custom themes can't be used as a template — switch to a built-in first."
+              : undefined
+          }
         >
-          New theme from template
+          {activeEntry()
+            ? `Duplicate "${activeEntry()!.name}" as new theme`
+            : "Duplicate active theme"}
         </button>
         <button
           type="button"
@@ -108,9 +142,11 @@ export function UiPanel(): JSX.Element {
         </button>
       </div>
       <p class="ui-panel__helper">
-        Custom themes live under your config directory. Edit
-        <code>tokens.css</code> and reopen the panel to see changes — live
-        reload arrives in a follow-up commit.
+        Pick any built-in as your starting point — synthwave's neon glows,
+        kanagawa's sumi-e shadows, dracula's gradients all come baked in.
+        Edit <code>tokens.css</code> for colors and <code>personality.css</code>
+        for animations / button shapes / decorative effects. Live reload
+        repaints within ~200 ms.
       </p>
     </div>
   );

@@ -66,7 +66,7 @@
 }
 
 .onboarding-dialog__sidebar-row.is-active {
-  background: var(--bg-accent);
+  background: var(--accent);
   color: var(--accent-fg, #fff);
 }
 
@@ -161,7 +161,7 @@
 }
 .dialog__progress-bar {
   height: 100%;
-  background: var(--bg-accent);
+  background: var(--accent);
   transition: width 100ms linear;
 }
 
@@ -248,10 +248,10 @@
 .dialog__btn:hover { background: var(--bg-3); }
 
 .dialog__btn--primary {
-  background: var(--bg-accent);
-  border-color: var(--bg-accent);
+  background: var(--accent);
+  border-color: var(--accent);
 }
-.dialog__btn--primary:hover { background: var(--bg-accent-hover); }
+.dialog__btn--primary:hover { background: var(--accent-hover); }
 
 .dialog__btn--danger {
   background: var(--danger);

@@ -100,11 +100,34 @@ fn default_version() -> u32 {
 #[serde(rename_all = "camelCase")]
 pub struct GeneralPreferences {}
 
-/// UI preferences (issue #103). Empty in this PR — extended by #103
-/// with theme, density, font scale, etc.
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+/// UI preferences (issue #103). Theme lands here in #292 (sub-PR A);
+/// zoom (#293), density (#294), tooltips/animations (#295) follow.
+///
+/// `theme` is a [`ThemeId`] — any built-in id, custom id, or `"auto"`.
+/// `"auto"` resolves at runtime against `prefers-color-scheme`.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct UiPreferences {}
+pub struct UiPreferences {
+    #[serde(default = "default_theme")]
+    pub theme: ThemeId,
+}
+
+impl Default for UiPreferences {
+    fn default() -> Self {
+        Self {
+            theme: default_theme(),
+        }
+    }
+}
+
+/// Theme identifier — accepts any built-in id, custom id, or `"auto"`.
+/// Validation is loader-side: an unknown id triggers the self-healing
+/// fallback chain (see `themes::loader`).
+pub type ThemeId = String;
+
+fn default_theme() -> ThemeId {
+    "auto".to_string()
+}
 
 /// Transient tab variant. Ports GK's `tabTypes` (cited bundle:228930-228943),
 /// minus CLI (no terminal in chajá) and FOCUS_VIEW (GK-proprietary).

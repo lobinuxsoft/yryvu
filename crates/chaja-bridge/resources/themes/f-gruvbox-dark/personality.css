@@ -1,0 +1,123 @@
+/* ========================================================================
+     PERSONALITY — F · Gruvbox Dark
+     Retro embossed terminal. Monospace everywhere, inset bottom shadows
+     for "pressed key" buttons, scan-line selected rows. The "old vt100"
+     personality. The most opinionated of all the dark themes.
+     ======================================================================== */
+
+  /* Mono everything — kicks the entire UI into terminal mode */
+  body,
+  .toolbar,
+  .sidebar,
+  .inspector,
+  .row,
+  .ins-summary {
+    font-family: var(--font-mono);
+  }
+
+  /* Headers — bold uppercase with mustard tint */
+  .sb-section h3,
+  .graph-header > div,
+  .ins-files-title {
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  /* Buttons — embossed (highlight top, shadow bottom) */
+  .tb-btn,
+  .tb-repo,
+  .tb-split {
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--fg-0) 8%, transparent),
+      inset 0 -1px 0 rgba(0,0,0,0.3);
+  }
+  .tb-btn:hover {
+    background: var(--bg-3);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--fg-0) 12%, transparent),
+      inset 0 -1px 0 rgba(0,0,0,0.4);
+  }
+
+  /* Selected row — green scan-line indicator */
+  .row.selected {
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    box-shadow:
+      inset 4px 0 0 var(--success),
+      inset 0 1px 0 rgba(0,0,0,0.3),
+      inset 0 -1px 0 rgba(0,0,0,0.3);
+  }
+
+  /* Pills — sharp, rectangular, embossed */
+  .row .pill,
+  .row .pill.head,
+  .row .pill.tag {
+    border-radius: 2px;
+    padding: 1px 7px;
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--fg-0) 6%, transparent),
+      inset 0 -1px 0 rgba(0,0,0,0.4);
+  }
+
+  /* Avatar — pixelated square ring (no border-radius) */
+  .ins-avatar {
+    border-radius: 4px;
+    background: linear-gradient(135deg, var(--lane-2), var(--accent));
+    box-shadow:
+      0 0 0 2px var(--bg-1),
+      0 0 0 3px var(--accent);
+  }
+
+  /* SHA pills — extra terminal feel */
+  .ins-sha,
+  .row .msg-sha {
+    text-transform: uppercase;
+  }
+
+  /* ---- Nerd Font icons (Powerlevel10k / oh-my-posh vibe) -------------- */
+  /* Reuses var(--font-mono) — Fira Code Nerd Font Mono — which already
+     contains all PUA icon glyphs. No separate font needed. */
+  .nf {
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-feature-settings: "liga" 0, "calt" 0;
+    font-variant-ligatures: none;
+    display: inline-block;
+    width: 1.1em;
+    text-align: center;
+    vertical-align: -1px;
+    flex-shrink: 0;
+  }
+  .tb-btn .nf,
+  .tb-repo .nf {
+    color: var(--accent);
+    margin-right: 4px;
+  }
+  .tb-btn.icon .nf { margin-right: 0; font-size: 1.1em; }
+  .tb-repo .nf.pl-sep {
+    color: var(--bg-4);
+    margin: 0 4px;
+    font-size: 1.4em;
+    width: auto;
+  }
+  .sb-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sb-section h3 .nf {
+    color: var(--accent);
+    font-size: 1.1em;
+  }
+  .tb-search-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .tb-search-icon {
+    position: absolute;
+    left: 8px;
+    color: var(--fg-3);
+    pointer-events: none;
+  }
+  .tb-search { padding-left: 26px; }

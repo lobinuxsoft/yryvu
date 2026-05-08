@@ -101,7 +101,7 @@
 
 .commit-panel__bulk {
   margin-left: auto;
-  background: var(--bg-accent);
+  background: var(--accent);
   color: var(--fg-0);
   border: 0;
   border-radius: var(--radius-sm);
@@ -112,5 +112,5 @@
 }
 
 .commit-panel__bulk:hover {
-  background: var(--bg-accent-hover);
+  background: var(--accent-hover);
 }

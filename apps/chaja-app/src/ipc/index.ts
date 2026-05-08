@@ -22,6 +22,7 @@ export * from "./stashes";
 export * from "./submodules";
 export * from "./tags";
 export * from "./templates";
+export * from "./themes";
 export * from "./undo";
 export * from "./validate";
 export * from "./worktree";

@@ -35,7 +35,6 @@ import {
   setShowTerminalPanel,
   showLeftPanel,
   showRightPanel,
-  theme,
 } from "../../state";
 import { matchTabKeybind, runTabKeybind } from "../../tabs/keybinds";
 import {
@@ -168,11 +167,6 @@ export function AppShell() {
   });
 
   onCleanup(() => unlisteners.forEach((fn) => fn()));
-
-  // Apply the persisted theme to <html data-theme="…"> whenever it changes.
-  createEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme());
-  });
 
   // Sync the active tab into the legacy repoPath() signal so the rest of
   // the app (CommitGraph, sidebar, inspector — all built before the tab

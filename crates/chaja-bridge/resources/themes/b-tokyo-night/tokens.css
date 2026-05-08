@@ -1,0 +1,56 @@
+:root[data-theme="b-tokyo-night"] {
+
+    /* Layers */
+    --bg-0: #16161e;
+    --bg-1: #1a1b26;
+    --bg-2: #24283b;
+    --bg-3: #2f334d;
+    --bg-4: #414868;
+    --accent: #7aa2f7;
+    --accent-hover: #89b4ff;
+    --accent-fg: #1a1b26;
+
+    /* Foreground */
+    --fg-0: #c0caf5;
+    --fg-1: #a9b1d6;
+    --fg-2: #737aa2;
+    --fg-3: #565a76;
+
+    /* Status */
+    --success: #9ece6a;
+    --warning: #e0af68;
+    --danger: #f7768e;
+    --info: #7dcfff;
+
+    /* Lane palette — Tokyo Night accent variants */
+    --lane-0: #7dcfff;
+    --lane-1: #7aa2f7;
+    --lane-2: #bb9af7;
+    --lane-3: #f7768e;
+    --lane-4: #ff9e64;
+    --lane-5: #e0af68;
+    --lane-6: #9ece6a;
+    --lane-7: #73daca;
+    --lane-8: #2ac3de;
+    --lane-9: #b4f9f8;
+
+    /* Geometry — graph dimensions */
+    --row-h: 28px;
+    --lane-w: 22px;
+    --gutter: 28px;
+    --commit-r: 11px;
+
+    /* Typography */
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'FiraCode Nerd Font Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+
+    color-scheme: dark;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-feature-settings: "calt" 1, "liga" 1;
+    font-variant-ligatures: contextual;
+    text-rendering: optimizeLegibility;
+}

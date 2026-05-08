@@ -1,0 +1,59 @@
+:root[data-theme="a-default"] {
+
+    /* Layers — bg-0 deepest panel, bg-4 highest accent surface */
+    --bg-0: #0f1116;
+    --bg-1: #15171d;
+    --bg-2: #1d2028;
+    --bg-3: #262a33;
+    --bg-4: #2a2e38;
+    --accent: #3a4a7a;
+    --accent-hover: #4a5a8a;
+    --accent-fg: #ffffff;
+
+    /* Foreground — fg-0 primary, fg-3 muted */
+    --fg-0: #e7e9ee;
+    --fg-1: #d4d7df;
+    --fg-2: #8a92a6;
+    --fg-3: #6b7285;
+
+    /* Status */
+    --success: #4e9a5a;
+    --warning: #c9a24c;
+    --danger: #c54a4a;
+    --info: #4a8ec9;
+
+    /* Lane palette — 10 colors, GitKraken-derived */
+    --lane-0: #1abc9c;
+    --lane-1: #3498db;
+    --lane-2: #9b59b6;
+    --lane-3: #e91e63;
+    --lane-4: #ff6f91;
+    --lane-5: #e74c3c;
+    --lane-6: #e67e22;
+    --lane-7: #f1c40f;
+    --lane-8: #2ecc71;
+    --lane-9: #00b894;
+
+    /* Geometry — graph dimensions */
+    --row-h: 28px;
+    --lane-w: 22px;
+    --gutter: 28px;
+    --commit-r: 11px;
+
+    /* Typography */
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'FiraCode Nerd Font Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+
+    color-scheme: dark;
+    font-family: var(--font-ui);
+    font-size: 13px;
+
+    /* Programming ligatures — only kick in where mono fonts are used.
+       system-ui ignores these features so the chrome is unaffected. */
+    font-feature-settings: "calt" 1, "liga" 1;
+    font-variant-ligatures: contextual;
+    text-rendering: optimizeLegibility;
+}

@@ -1,0 +1,56 @@
+:root[data-theme="c-catppuccin-mocha"] {
+
+    /* Layers — Crust → Mantle → Base → Surface0/1/2 */
+    --bg-0: #11111b;
+    --bg-1: #181825;
+    --bg-2: #1e1e2e;
+    --bg-3: #313244;
+    --bg-4: #45475a;
+    --accent: #cba6f7;
+    --accent-hover: #d8b8ff;
+    --accent-fg: #1e1e2e;
+
+    /* Foreground — Text → Subtext1/0 → Overlay2 */
+    --fg-0: #cdd6f4;
+    --fg-1: #bac2de;
+    --fg-2: #a6adc8;
+    --fg-3: #7f849c;
+
+    /* Status */
+    --success: #a6e3a1;
+    --warning: #f9e2af;
+    --danger: #f38ba8;
+    --info: #89dceb;
+
+    /* Lane palette — Catppuccin accents */
+    --lane-0: #89dceb;
+    --lane-1: #74c7ec;
+    --lane-2: #cba6f7;
+    --lane-3: #f5c2e7;
+    --lane-4: #eba0ac;
+    --lane-5: #f38ba8;
+    --lane-6: #fab387;
+    --lane-7: #f9e2af;
+    --lane-8: #a6e3a1;
+    --lane-9: #94e2d5;
+
+    /* Geometry — graph dimensions */
+    --row-h: 28px;
+    --lane-w: 22px;
+    --gutter: 28px;
+    --commit-r: 11px;
+
+    /* Typography */
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'FiraCode Nerd Font Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+
+    color-scheme: dark;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-feature-settings: "calt" 1, "liga" 1;
+    font-variant-ligatures: contextual;
+    text-rendering: optimizeLegibility;
+}

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Pure-Rust commit graph lane assignment for chaja.
+//! Pure-Rust commit graph lane assignment for yryvu.
 //!
 //! The public entry point is [`layout_commits`], which takes a topologically
 //! ordered commit slice (children before parents) together with an optional

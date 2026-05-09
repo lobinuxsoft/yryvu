@@ -1,6 +1,6 @@
 [package]
 name = "graph-core"
-description = "Pure-Rust commit graph lane assignment engine for chaja"
+description = "Pure-Rust commit graph lane assignment engine for yryvu"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -3,6 +3,7 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 
+import logoUrl from "../../assets/logo.svg";
 import { validateGitRepo } from "../../ipc";
 import { loadRecentRepos, pushRecentRepo, setRepoPath, type RecentRepo } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
@@ -41,6 +42,13 @@ export function ColdStart() {
   return (
     <section class="cold-start">
       <div>
+        <div class="cold-start__brand">
+          <img class="cold-start__hero" src={logoUrl} alt="Yryvu" />
+          <div class="cold-start__brand-text">
+            <h1 class="cold-start__brand-name">Yryvu</h1>
+            <p class="cold-start__brand-tagline">jote (Coragyps atratus) en guaraní</p>
+          </div>
+        </div>
         <h2 class="cold-start__title">Repositories</h2>
         <div class="cold-start__actions">
           <button class="cold-start__action" type="button" onClick={openPicker}>Open…</button>

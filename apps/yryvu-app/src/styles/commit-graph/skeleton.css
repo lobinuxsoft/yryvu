@@ -4,7 +4,28 @@
    shimmering until the first stream batch arrives. Geometry mirrors
    the real ROW_HEIGHT (32 px) so real rows replace skeletons without
    reflow. Reuses the file-list-skeleton-shimmer keyframe declared in
-   file-list.css (CSS keyframes are global). */
+   file-list.css (CSS keyframes are global).
+
+   While loading, a large silhouette watermark fills the empty viewport —
+   the perch is empty until the messenger arrives (#322). Disappears the
+   moment the first batch lands and `data-loading` flips to "false". */
+.commit-graph[data-loading="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  mask: url("../../assets/silhouette.svg") no-repeat center center / auto 60%;
+  -webkit-mask: url("../../assets/silhouette.svg") no-repeat center center / auto 60%;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 320ms ease;
+}
+
+.commit-graph[data-loading="false"]::before {
+  opacity: 0;
+}
+
 .commit-graph__skeleton {
   position: absolute;
   /* `top` set inline by LoadingSkeleton to clear the WIP cell when

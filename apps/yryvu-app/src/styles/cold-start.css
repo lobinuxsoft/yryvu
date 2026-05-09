@@ -10,6 +10,61 @@
   padding: 48px;
   height: 100%;
   overflow-y: auto;
+  position: relative;
+  isolation: isolate;
+}
+
+/* Silhouette watermark — large, bottom-right, low opacity. Tinted with
+   the accent color via mask so it actually reads against the near-black
+   bg-0 (a black-on-black SVG at 5% opacity is invisible). */
+.cold-start::before {
+  content: "";
+  position: absolute;
+  right: -120px;
+  bottom: -120px;
+  width: 720px;
+  height: 720px;
+  background: var(--accent);
+  mask: url("../assets/silhouette.svg") no-repeat center / contain;
+  -webkit-mask: url("../assets/silhouette.svg") no-repeat center / contain;
+  opacity: 0.10;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.cold-start__brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.cold-start__hero {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent));
+}
+
+.cold-start__brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cold-start__brand-name {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--fg-0);
+  letter-spacing: 0.02em;
+}
+
+.cold-start__brand-tagline {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-2);
+  font-style: italic;
 }
 
 .cold-start__title {
@@ -85,4 +140,25 @@
   background: transparent;
   border: 0;
   text-align: left;
+}
+
+/* Decorative pattern — sample sheet of crow variants tiled at the bottom
+   of the aside column. Tinted via mask so the pattern reads against the
+   dark bg without being invisible. */
+.cold-start aside {
+  position: relative;
+  isolation: isolate;
+}
+
+.cold-start aside::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 280px;
+  background: var(--fg-2);
+  mask: url("../assets/pattern.svg") no-repeat center bottom / contain;
+  -webkit-mask: url("../assets/pattern.svg") no-repeat center bottom / contain;
+  opacity: 0.10;
+  pointer-events: none;
+  z-index: -1;
 }

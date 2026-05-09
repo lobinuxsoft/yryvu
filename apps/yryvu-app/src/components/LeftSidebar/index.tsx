@@ -52,9 +52,19 @@ export function LeftSidebar() {
         >
           {collapsed() ? "›" : "‹"}
         </button>
-        <span>Viewing</span>
-        <span class="sidebar__item-badge">{data.branches()?.length ?? 0}</span>
+        <Show when={!collapsed()}>
+          <span>Viewing</span>
+          <span class="sidebar__item-badge">{data.branches()?.length ?? 0}</span>
+        </Show>
       </div>
+
+      <Show when={collapsed()}>
+        <div
+          class="sidebar__brand-rail"
+          title="Yryvu"
+          aria-label="Yryvu"
+        />
+      </Show>
 
       <Show when={!collapsed()}>
         <div

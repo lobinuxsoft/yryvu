@@ -1,0 +1,87 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* About dialog body — branded splash with color logo, version, tagline,
+   and credits grid. Mounted via the shared <Dialog> shell. */
+
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 16px 8px;
+  gap: 0;
+}
+
+.about__logo {
+  width: 128px;
+  height: 128px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 6px 24px color-mix(in srgb, var(--accent) 45%, transparent));
+}
+
+.about__name {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--fg-0);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.about__version {
+  font-size: 13px;
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  margin: 4px 0 12px;
+}
+
+.about__tagline {
+  font-size: 14px;
+  color: var(--accent-hover);
+  margin: 0 0 16px;
+}
+
+.about__description {
+  font-size: 13px;
+  color: var(--fg-1);
+  margin: 0 0 12px;
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+.about__stack {
+  font-size: 11px;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  margin: 0 0 24px;
+  letter-spacing: 0.04em;
+}
+
+.about__credits {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
+  width: 100%;
+  max-width: 360px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--bg-3);
+}
+
+.about__credits-row {
+  display: contents;
+}
+
+.about__credits-label {
+  font-size: 11px;
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+}
+
+.about__credits-value {
+  font-size: 12px;
+  color: var(--fg-1);
+  font-family: var(--font-mono);
+  text-align: left;
+  word-break: break-all;
+}

@@ -99,7 +99,7 @@ commit-author block uses.
 appears alphabetically — if the user's most-likely choice is MIT, GK
 doesn't put it first; it relies on alphabetical fall-through.
 
-## Triage: how chajá ships this
+## Triage: how yryvu ships this
 
 ### KEEP: bundle a curated set
 
@@ -117,8 +117,8 @@ license texts).
 
 ### Plan
 
-1. Add `apps/chaja-app/src-tauri/templates/licenses/<key>.txt` resources.
-2. Add `apps/chaja-app/src-tauri/templates/licenses/index.json`:
+1. Add `apps/yryvu-app/src-tauri/templates/licenses/<key>.txt` resources.
+2. Add `apps/yryvu-app/src-tauri/templates/licenses/index.json`:
 
    ```json
    [
@@ -138,7 +138,7 @@ license texts).
    of `[username]` because that's the standard convention (matches
    choosealicense.com canonical templates).
 
-   chajá deviation: choosealicense.com uses `[year] [fullname]`
+   yryvu deviation: choosealicense.com uses `[year] [fullname]`
    instead of GK's `[year] [username]`. Both forms commonly appear; we
    pick the choosealicense convention because it's the upstream
    canonical. **FLAG: noted for the implementation hints doc.**
@@ -173,7 +173,7 @@ $ grep -n "replaceLicenseTagsWithRelevantData" /tmp/gk-bundle-pretty.js
 
 Confirmed. The license set is exact (18 entries via `212316`).
 
-## chajá deviation FLAGs
+## yryvu deviation FLAGs
 
 1. **Tag name:** `[fullname]` instead of GK's `[username]`. Matches
    upstream choosealicense.com convention; safer for users who paste

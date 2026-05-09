@@ -2,7 +2,7 @@
 
 When the working tree is dirty, GitKraken adds a pseudo-row above the HEAD
 commit that represents the uncommitted changes. This is the reference for
-Chajá issues **#81** (WIP connector clipping) and the WIP row styling we
+Yryvu issues **#81** (WIP connector clipping) and the WIP row styling we
 already have.
 
 ## Geometry
@@ -41,12 +41,12 @@ So the connector is a full-fledged SVG `<path>` inside the row SVG, and it
 stays aligned with everything else because it's part of the same coordinate
 system.
 
-**Chajá bug (#81) root cause**: our WIP connector is a CSS `::after`
+**Yryvu bug (#81) root cause**: our WIP connector is a CSS `::after`
 pseudo-element on a `<span>` that sits in a DOM flow outside the canvas. When
 the canvas scrolls or renders over the connector's area, paint order hides
 it.
 
-**Chajá fix**: render the WIP row through the same renderer pipeline as
+**Yryvu fix**: render the WIP row through the same renderer pipeline as
 regular rows. When `dirty_file_count > 0`, synthesize a "virtual" GraphRow
 at index -1 with type `WorkDir`, push it into the WebGL batch, and draw a
 dashed stroke between its node and the HEAD node. No more DOM connector.
@@ -67,7 +67,7 @@ The input is the same one that appears in the commit panel on the right —
 GitKraken keeps them synced via Redux. Our implementation in
 `commit-graph__wip-input` already does this via the `commitMessage` signal.
 
-## Chajá implementation (proposed for fixing #81 + matching GitKraken)
+## Yryvu implementation (proposed for fixing #81 + matching GitKraken)
 
 1. In `graph-core`, add a `RowKind` enum to `GraphRow`:
    ```rust

@@ -115,7 +115,7 @@ saga onUserPushClick(ref):
     dispatch refreshCommits(repo)
 ```
 
-## Chajá implications
+## Yryvu implications
 
 - **Cancellable Tauri commands** emit progress events the frontend
   subscribes to.

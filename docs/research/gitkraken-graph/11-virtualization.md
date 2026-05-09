@@ -96,7 +96,7 @@ debounce in the graph wiring — the library emits synchronous resize events.
 The grid's internal scroll+resize handler fires without rAF throttling. On
 very fast window resizes this can tear; GitKraken accepts the trade-off.
 
-## Chajá implications
+## Yryvu implications
 
 - For Solid: `@solid-primitives/virtual` or a hand-rolled Intersection
   Observer windowing is appropriate. Don't copy `overscanRowCount:0` blindly

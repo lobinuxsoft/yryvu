@@ -15,7 +15,7 @@ inherited for free:
 - Regex mode (toggle in widget).
 - Case sensitivity (toggle).
 - Whole-word (toggle).
-- Replace panel (when editor is editable — Chajá's diff is normally
+- Replace panel (when editor is editable — Yryvu's diff is normally
   read-only, so Replace is hidden).
 - Find in selection (toggle in widget).
 - Match highlighting + count.
@@ -83,7 +83,7 @@ Find for inside-file search.
 Neither Monaco's widget state (query, regex flag) nor the commit search
 bar's state persists across sessions — each is session-scoped.
 
-## Chajá implications
+## Yryvu implications
 
 - **Don't build a custom in-editor find**. Monaco's is excellent.
 - **Implement `overrideKeymap` / `restoreKeymap` pattern** — critical

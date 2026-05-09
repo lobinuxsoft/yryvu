@@ -1,7 +1,7 @@
 # 00 — UI preferences overview
 
 Audit of GitKraken's `Preferences > UI` tab — the "what controls the
-look of the app" surface that maps to chajá issue #103
+look of the app" surface that maps to yryvu issue #103
 (`feat(preferences): UI preferences (theme / zoom / font / density /
 tooltips / animation)`).
 
@@ -19,13 +19,13 @@ GK's actual `UIPreferences` panel.** Of the remaining five:
 |---|---|---|---|
 | Theme | YES (`bundle:346142-346145`) | `Preferences > UI > Theme` | KEEP, port |
 | Zoom | NO | Status-bar dropdown bottom-right of every window (`bundle:186319-186322`) | KEEP, but as a status-bar control |
-| Editor font | NO | `Preferences > Editor > Font` (`bundle:255749`) | DEFER (no Monaco in chajá yet) |
-| Density | does not exist as a setting | (graph layout has compact mode but not surfaced as UI setting) | SKIP (chajá deviation) |
+| Editor font | NO | `Preferences > Editor > Font` (`bundle:255749`) | DEFER (no Monaco in yryvu yet) |
+| Density | does not exist as a setting | (graph layout has compact mode but not surfaced as UI setting) | SKIP (yryvu deviation) |
 | Tooltip toggle | does not exist | (only a tab-hover delay constant `TAB_TOOLTIP_HOVER_MS`) | SKIP |
 | Animation toggle | does not exist | (no global `animationsEnabled` flag) | SKIP |
 
-The chajá scope cannot be ported 1:1 — three of the six settings have
-no GK analogue. See `09-chaja-deviations.md` for the rip list.
+The yryvu scope cannot be ported 1:1 — three of the six settings have
+no GK analogue. See `09-yryvu-deviations.md` for the rip list.
 
 ## What GK's UI preferences panel actually contains
 
@@ -37,14 +37,14 @@ Rows in render order:
 
 | Row | Bundle line | Control | Notes |
 |---|---|---|---|
-| Theme | `bundle:346142-346145` | `<select>` populated from `themeOptions` | KEEP — chajá ports |
+| Theme | `bundle:346142-346145` | `<select>` populated from `themeOptions` | KEEP — yryvu ports |
 | NotificationLocation | `bundle:346146-346149` | `<select>` (toast positions) | Belongs in #105 (notifications cluster) |
 | DateTimeFormat (Locale + 4 inputs) | `bundle:346088-346098` | Group of locale selector + format strings | Belongs in #102 (general) — out of UI panel scope |
 | DefaultWorkspaceColor | `bundle:346150-346153` | Color picker | GK proprietary (Workspaces) — SKIP |
 | DefaultGroupColor | `bundle:346154-346157` | Color picker | GK proprietary (Workspaces) — SKIP |
-| ShowToolbarLabels | `bundle:346158-346161` | Checkbox | KEEP (port if chajá toolbar grows icon-only buttons) |
+| ShowToolbarLabels | `bundle:346158-346161` | Checkbox | KEEP (port if yryvu toolbar grows icon-only buttons) |
 | ShowLeftPanelWorkflowView | `bundle:346162-346177` | Checkbox | GK proprietary (Workflow view) — SKIP |
-| Spellcheck | `bundle:346178-346181` | Checkbox | DEFER (chajá has no commit input yet) |
+| Spellcheck | `bundle:346178-346181` | Checkbox | DEFER (yryvu has no commit input yet) |
 | UseAuthorInitialsForAvatars | `bundle:346182-346185` | Checkbox | KEEP (small UX win, no infra) |
 | ShowGhostRefsOnHover | `bundle:346186-346189` | Checkbox | DEFER (graph-cluster) |
 | HighlightRowsOnRefHover | `bundle:346190-346193` | Checkbox | DEFER (graph-cluster) |
@@ -53,15 +53,15 @@ Rows in render order:
 | Customizable graph zone toggles | `bundle:345928-345971` | Generated checkboxes per `graphZoneMetaData` | Graph cluster #155 |
 | HideLaunchpadInStatusBar | `bundle:346202-346206` | Checkbox (only when `Fn` truthy) | GK proprietary (Launchpad) — SKIP |
 
-So GK's UI panel is only ~3 rows that actually map to chajá's #103: Theme,
+So GK's UI panel is only ~3 rows that actually map to yryvu's #103: Theme,
 ShowToolbarLabels, UseAuthorInitialsForAvatars. The rest are either
 proprietary or belong to other clusters.
 
-## What chajá #103 wants that GK doesn't have
+## What yryvu #103 wants that GK doesn't have
 
 The original issue body proposed `density` (per-zone or global),
 `tooltipBehavior`, `animationsEnabled`, and a hard 75/100/125/150 zoom
-ladder. Those are **chajá deviations**, not GK ports. `09-chaja-deviations.md`
+ladder. Those are **yryvu deviations**, not GK ports. `09-yryvu-deviations.md`
 documents each.
 
 ## Theme — the one real KEEP
@@ -83,10 +83,10 @@ GK's theme system (`bundle:411302-411388`) is dynamic:
   ship their own theme files that GK loads alongside built-ins.
 - The compiled theme is rendered as a **dynamic `:root { ... }`** CSS
   block injected via React Helmet (`bundle:104435`) — exactly the
-  mechanism chajá's design-previews use.
+  mechanism yryvu's design-previews use.
 
-This is *substantially more sophisticated* than chajá's #103 body
-suggests. Chajá's spec is closer to a static "10 hard-coded themes"
+This is *substantially more sophisticated* than yryvu's #103 body
+suggests. Yryvu's spec is closer to a static "10 hard-coded themes"
 design — see doc 01 for the deviation rationale and docs 11/12 for how
 to align with GK's compiled-theme-string approach.
 
@@ -107,12 +107,12 @@ See doc 05 for the full implementation.
 Editor font and font size live in the EDITOR preferences tab
 (`bundle:255749` `EditorPreferences-Font`, `bundle:255753`
 `EditorPreferences-FontSize`). They're persisted at profile path
-`["editor", "fontFamily"]` (`bundle:10632`). chajá has no Monaco /
+`["editor", "fontFamily"]` (`bundle:10632`). yryvu has no Monaco /
 diff editor yet (#256 cluster), so these are deferred. See doc 06.
 
 ## What doesn't exist in GK at all
 
-Three of the six chajá #103 items have **no GK analogue** in any
+Three of the six yryvu #103 items have **no GK analogue** in any
 preferences panel:
 
 1. **Density** (compact / standard / comfortable). Not a user-facing
@@ -128,7 +128,7 @@ preferences panel:
    `prefers-reduced-motion` in some Bootstrap-derived components, but
    there is no UI to toggle.
 
-These are chajá deviations. See doc 09 for the rationale and doc 04 for
+These are yryvu deviations. See doc 09 for the rationale and doc 04 for
 why we still want to ship them.
 
 ## Document tree
@@ -137,16 +137,16 @@ why we still want to ship them.
 |---|---|
 | 00-overview.md | This file |
 | 01-theme-preference.md | GK theme model (built-ins, custom, compiled string, OS-follow) |
-| 02-density.md | Why density doesn't exist in GK; chajá-only flag |
-| 03-tooltip-behavior.md | Why GK has no tooltip preference; chajá-only flag |
-| 04-animation.md | Why GK has no animation preference; chajá-only flag |
+| 02-density.md | Why density doesn't exist in GK; yryvu-only flag |
+| 03-tooltip-behavior.md | Why GK has no tooltip preference; yryvu-only flag |
+| 04-animation.md | Why GK has no animation preference; yryvu-only flag |
 | 05-zoom.md | GK zoom: status-bar control + ZOOM_FACTORS ladder |
-| 06-editor-font.md | GK editor font (Editor panel, deferred for chajá) |
+| 06-editor-font.md | GK editor font (Editor panel, deferred for yryvu) |
 | 07-color-blind-and-other-misc.md | Color blind audit (none in GK), other UI panel bits |
 | 08-other-ui-panel-rows-triage.md | Per-row triage of every row GK ships in UI panel |
-| 09-chaja-deviations.md | Explicit list of chajá-only choices vs GK |
-| 10-acceptance-translation.md | #103 split into chajá sub-issues + sub-PR plan |
-| 11-backend-implementation-notes.md | Rust struct shape + serde defaults + IPC (chajá-bridge) |
+| 09-yryvu-deviations.md | Explicit list of yryvu-only choices vs GK |
+| 10-acceptance-translation.md | #103 split into yryvu sub-issues + sub-PR plan |
+| 11-backend-implementation-notes.md | Rust struct shape + serde defaults + IPC (yryvu-bridge) |
 | 12-frontend-implementation-notes.md | Solid signals + effects + CSS file layout + Tooltip refactor |
 | strings.md | i18n strings the UI panel uses, verbatim |
 
@@ -154,12 +154,12 @@ why we still want to ship them.
 
 | Item | Triage | Why |
 |---|---|---|
-| Theme | **KEEP, port adapted** | GK has a richer model than #103 assumes; doc 01 + 11 align chajá's 10-theme set with GK's compiled-string mechanism |
+| Theme | **KEEP, port adapted** | GK has a richer model than #103 assumes; doc 01 + 11 align yryvu's 10-theme set with GK's compiled-string mechanism |
 | Zoom | **KEEP, port** | Real feature; correct ladder is 80–130%, not 75–150%. Where to surface (status bar vs preferences) is doc 05 |
-| Density | **FLAG (chajá-only)** | No GK analogue; chajá ships with a single global flag (compact / comfortable). Doc 02 |
-| Tooltip toggle | **FLAG (chajá-only)** | No GK analogue; ship as a single global on/off + ms delay. Doc 03 |
-| Animation toggle | **FLAG (chajá-only)** | No GK analogue; ship as a single global on/off + honor `prefers-reduced-motion`. Doc 04 |
-| Editor font | **DEFER** | GK has it but in EDITOR panel; chajá has no editor yet. Doc 06 |
+| Density | **FLAG (yryvu-only)** | No GK analogue; yryvu ships with a single global flag (compact / comfortable). Doc 02 |
+| Tooltip toggle | **FLAG (yryvu-only)** | No GK analogue; ship as a single global on/off + ms delay. Doc 03 |
+| Animation toggle | **FLAG (yryvu-only)** | No GK analogue; ship as a single global on/off + honor `prefers-reduced-motion`. Doc 04 |
+| Editor font | **DEFER** | GK has it but in EDITOR panel; yryvu has no editor yet. Doc 06 |
 
 ## Cross-validation note
 
@@ -180,19 +180,19 @@ No bundle citation in the doc set was speculative; every claim has a
 real line. The icon `["fas", "palette"]` referenced in the prompt is
 **wrong** — GK uses `paint-brush`. Call this **Inversion #1**.
 
-## chajá-deviation FLAGs surfaced in this overview
+## yryvu-deviation FLAGs surfaced in this overview
 
 1. **Three of #103's six settings are not GK ports.** Density / tooltip
-   toggle / animation toggle are chajá additions justified by genre
+   toggle / animation toggle are yryvu additions justified by genre
    conventions (VSCode, IntelliJ both have them). Doc 09 makes the
    case.
-2. **Theme model is much richer in GK than in chajá's design-previews.**
+2. **Theme model is much richer in GK than in yryvu's design-previews.**
    GK has compiled-theme-strings, custom themes, and a 4-state built-in
-   set (dark/light + high-contrast variants). chajá ships 10 hardcoded
+   set (dark/light + high-contrast variants). yryvu ships 10 hardcoded
    themes with no custom-theme support. Doc 01 + 11 align both worlds.
 3. **Zoom ladder is wrong in #103 body** (75/100/125/150). Real GK
    ladder is 80/90/100/110/120/130. Doc 05 ports the GK ladder.
-4. **Zoom is in status-bar not preferences in GK.** chajá #103 proposes
+4. **Zoom is in status-bar not preferences in GK.** yryvu #103 proposes
    it under Preferences. Choice: ship the ladder under Preferences
    (matches #103 acceptance) AND optionally a status-bar shortcut
    later. Doc 05 documents tradeoff.

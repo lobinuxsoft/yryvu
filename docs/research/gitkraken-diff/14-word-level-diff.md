@@ -98,14 +98,14 @@ Word-level highlighting inside hunk body lines works identically to
 inline/split modes — it's a model-level property, not a mode-level
 one.
 
-## Chajá implications
+## Yryvu implications
 
 - **Use Monaco's `charChanges` directly** — no custom intra-line diff
   library needed (no `diff-match-patch`, no `jsdiff`, no Hirschberg).
-- **Define the four `diffEditor.*` theme tokens** in Chajá's Monaco
+- **Define the four `diffEditor.*` theme tokens** in Yryvu's Monaco
   theme JSON. Use standard Monaco opacities as starting point.
 - **No user toggle for word-level highlighting** — always on.
-- **No chajá-specific word-diff algorithm**. Monaco's is sufficient
+- **No yryvu-specific word-diff algorithm**. Monaco's is sufficient
   and battle-tested.
 - **Interaction with `ignoreTrimWhitespace` is free** — Monaco handles
   the recomputation.

@@ -195,7 +195,7 @@ This prop is `true` only when:
 When `false`, overlays are not rendered — the diff becomes read-only
 visually.
 
-## Chajá implications
+## Yryvu implications
 
 - **Use Monaco's IOverlayWidget API directly** — don't invent a parallel
   positioning system. Solid components mount via `render()` from

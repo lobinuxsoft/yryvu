@@ -67,7 +67,7 @@ Four buttons in the diff options row (`data-testid="diff-options"`):
 | `toggleSplitViewButton`      | `FileViewPanel-SplitView`     | `["far","columns"]`     | `mode === SPLIT`       |
 | `ignore-whitespace-button`   | `FileViewPanel-IgnoreWhiteSpace` | `["far","paragraph"]` | `ignoreWhitespace`    |
 
-(`far` = Font Awesome Regular, `fas` = Font Awesome Solid. Chajá will
+(`far` = Font Awesome Regular, `fas` = Font Awesome Solid. Yryvu will
 need an equivalent icon set — Phosphor has matching glyphs.)
 
 Two additional top-level toggles (File View vs Diff View):
@@ -153,7 +153,7 @@ additionalPayload: {
 Not `"hunk" | "inline" | "split"` — just the coarse "file vs diff" pair.
 Individual diff modes aren't tracked.
 
-## Chajá implications
+## Yryvu implications
 
 - **Replicate all 4 modes** including CONTENT. We already have a
   diff-only viewer; adding CONTENT is a pure Monaco editor (not

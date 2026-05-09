@@ -91,7 +91,7 @@ the hover without waiting for the drop.
   skips the action menu was found. The default action appears to be
   "merge into current" when the target is HEAD.
 
-## Chajá implications
+## Yryvu implications
 
 - **Don't couple DnD to the DOM layer directly.** SolidJS lacks a
   mature `react-dnd` equivalent. Separate a `DragController` (logic)
@@ -104,7 +104,7 @@ the hover without waiting for the drop.
   machinery itself. Keep it a regular context menu component so it
   can also be triggered without drag (right-click).
 - **Keyboard accessibility** — GitKraken's gesture is mouse-only.
-  Chajá should offer an equivalent keyboard flow (e.g. select source
+  Yryvu should offer an equivalent keyboard flow (e.g. select source
   ref with space, move focus, press enter) so DnD is not the only path
   to merge/rebase/cherry-pick.
 

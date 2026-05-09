@@ -151,12 +151,12 @@ Menu entries (i18n keys observed):
 | `ContextMenu-DeleteTagFromRemote` / `ContextMenu-DeleteTagXFromRemoteY` | `git push --delete` |
 | `ContextMenu-DeleteTagXFromAllRemotes` | broadcast delete to every remote |
 | `ContextMenu-CopyTagName` | clipboard write |
-| `ContextMenu-CopyDeepLinkForTag` / `ContextMenu-CopyDeepLinkForTagOnRemote` | GK deep-link — **OUT OF SCOPE** for chajá (their `gitkraken://…` URI scheme) |
+| `ContextMenu-CopyDeepLinkForTag` / `ContextMenu-CopyDeepLinkForTagOnRemote` | GK deep-link — **OUT OF SCOPE** for yryvu (their `gitkraken://…` URI scheme) |
 | `ContextMenu-MergeBranchIntoBranch` (when applicable) | merge tag commit into HEAD |
 
 The `CopyDeepLink*` entries write a `gitkraken://link/...` URL — a
 private URI scheme handled by the GK desktop client. **Skip them.**
-chajá can implement its own `chaja://...` deep links if it wants,
+yryvu can implement its own `yryvu://...` deep links if it wants,
 but those wouldn't interop with GK.
 
 ## Header
@@ -174,7 +174,7 @@ header). No refresh button (tags are immediate from the local repo
 state). Right-click on the header opens the per-section menu (see
 doc 10).
 
-## chajá implementation hint
+## yryvu implementation hint
 
 - New backend op needed: `list_tags(repo)` returning `{fullName,
   name, sha, isAnnotated, message, taggerName, taggerEmail,
@@ -186,7 +186,7 @@ doc 10).
   "tag"`.
 - Implement the hover tooltip showing the annotation message; for
   lightweight tags show "lightweight tag" or just nothing.
-- Add the deep-link menu items only if chajá ever defines a URI
+- Add the deep-link menu items only if yryvu ever defines a URI
   scheme. Otherwise omit those rows; the rest of the menu is
   pure-git and trivial.
 - The semver detection is marginal value at v1 — GK has it but

@@ -49,7 +49,7 @@ when tree. There's no "sort by churn" or "sort by type" option.
 Scrolled through the bundle looking for `sortBy`, `fileSort`, `sortFiles`
 — no hits for an alternative-sort toggle. Baseline is path-alphabetical.
 
-**For chajá**: don't add sort options that don't exist upstream; they
+**For yryvu**: don't add sort options that don't exist upstream; they
 become divergence liabilities. If users want it later, add a user
 setting.
 
@@ -85,7 +85,7 @@ right-click-driven.
 `FILE_NODE_HEIGHT = 32`. The file rows are drag-sources — you can drag
 a committed-file row into an external editor tab (Electron treats it
 as a native OS drag, dropping a temp copy). This is a Windows/macOS
-integration detail; porting to chajá via Tauri will need matching OS
+integration detail; porting to yryvu via Tauri will need matching OS
 drag-source registration.
 
 ## Per-row dims (constants grepped)
@@ -114,9 +114,9 @@ stat_x       = rowWidth - VERTICAL_SCROLLBAR_WIDTH - (inline stats width)
 Matches what we already implemented in `diff/05`. Keep those numbers
 across the inspector too.
 
-## Chajá implications
+## Yryvu implications
 
-1. **Same widget, `listType=COMMITTED`**. If chajá's FileList widget
+1. **Same widget, `listType=COMMITTED`**. If yryvu's FileList widget
    takes a variant parameter, adding the inspector is just wiring the
    variant.
 2. **No staging dot**, **no stage/unstage buttons** in COMMITTED mode.

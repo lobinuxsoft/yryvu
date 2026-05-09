@@ -7,7 +7,7 @@ Companion to `11-backend-implementation-notes.md`. Solid + CSS layer.
 ### File layout
 
 ```
-apps/chaja-app/src/
+apps/yryvu-app/src/
 ├── components/PreferencesWindow/panels/Ui.tsx        # MAIN: 5 rows + i18n
 ├── state/preferences.ts                              # ADD: signals + effects
 ├── styles/
@@ -125,7 +125,7 @@ export function UiPanel(): JSX.Element {
         <select value={ui.theme()}
                 onChange={e => setUi.setTheme(e.currentTarget.value as never)}>
           <option value="auto">{t("UiPreferences-Theme-Auto")}</option>
-          <option value="a-default">a · Default chajá</option>
+          <option value="a-default">a · Default yryvu</option>
           <option value="b-tokyo-night">b · Tokyo Night</option>
           <option value="c-catppuccin-mocha">c · Catppuccin Mocha</option>
           <option value="d-synthwave">d · Synthwave</option>
@@ -185,7 +185,7 @@ export function UiPanel(): JSX.Element {
 }
 ```
 
-(`PreferenceRow` is a thin wrapper with `<label>` + slot. If chajá
+(`PreferenceRow` is a thin wrapper with `<label>` + slot. If yryvu
 already has a row component, reuse — don't duplicate.)
 
 ### `themes.css` shape
@@ -313,7 +313,7 @@ on children continues to be honored by screen readers.
 Audit pre-PR:
 
 ```bash
-grep -rn "title=" apps/chaja-app/src/ | grep -v ".test." | wc -l
+grep -rn "title=" apps/yryvu-app/src/ | grep -v ".test." | wc -l
 ```
 
 Each site becomes:
@@ -338,7 +338,7 @@ Each site becomes:
 }
 ```
 
-Already present if chajá bundles fonts elsewhere; add the new paths.
+Already present if yryvu bundles fonts elsewhere; add the new paths.
 
 ## Test plan
 

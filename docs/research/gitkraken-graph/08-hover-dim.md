@@ -1,7 +1,7 @@
 # Hover dim — "show only ancestors of this ref"
 
 When the user hovers a ref pill, GitKraken dims every commit that is NOT an
-ancestor of that ref. This is the reference for Chajá issue **#54** (dim
+ancestor of that ref. This is the reference for Yryvu issue **#54** (dim
 non-member commits on hover).
 
 ## Key insight: ancestors are precomputed, not traversed on hover
@@ -79,7 +79,7 @@ alpha = min_alpha + (1 - min_alpha) * clamp01(dist_from_edge / (gutter_width / 2
 where `min_alpha = 0.5`. Creates a soft fade-out as nodes scroll out of view
 horizontally. Not driven by hover — purely a clip-to-gutter aesthetic.
 
-## Chajá implementation plan
+## Yryvu implementation plan
 
 1. In `graph-core`, add `child_refs: ChildRefs` to `GraphRow`:
    ```rust
@@ -111,7 +111,7 @@ GitKraken on ref click calls `setScrollToSha(sha, scrollLeft)`. Alignment
 
 **No keyframe pulse animation was found in the bundle.** It's a plain scroll,
 no visual pulse. So GitKraken's UX on ref click is: scroll + select. If
-Chajá wants a pulse, that's our own innovation rather than mimicry.
+Yryvu wants a pulse, that's our own innovation rather than mimicry.
 
 ## Source locations
 

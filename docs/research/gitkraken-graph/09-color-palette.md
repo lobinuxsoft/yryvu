@@ -61,9 +61,9 @@ The WIP pseudo-row is **always column 1 (blue)**, regardless of the HEAD
 commit's actual lane (see `07-wip-row.md`). This gives a consistent visual
 anchor for the "uncommitted changes" concept.
 
-## Chajá current state
+## Yryvu current state
 
-File: `apps/chaja-app/src/components/CommitGraph/palette.ts`
+File: `apps/yryvu-app/src/components/CommitGraph/palette.ts`
 
 We have an RGB palette (array of `[r, g, b]` triples) passed as a WebGL
 uniform. Assignment is by `color_idx` which the `LaneAssigner` picks at
@@ -80,7 +80,7 @@ To match GitKraken:
 4. Generate `--graph-color-N-f10`, `-f50`, `-bgN` variants in CSS for ref pills,
    row selection highlights, etc.
 
-## Chajá opportunity: themability
+## Yryvu opportunity: themability
 
 Mirror GitKraken's contract — 10 CSS vars for lane colors, derivative alpha
 variants — so custom themes (issue #27 `feat(themes)`) can override them.

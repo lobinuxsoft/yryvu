@@ -2,7 +2,7 @@
 
 The `REPO_MANAGEMENT` permanent tab is GK's "all repos" surface — a singleton tab that lists every known repo across local cache + workspaces, with a filter, multi-select, and bulk actions (open in tabs, fetch, pull, etc.).
 
-**For chajá's port**: the workspaces concept is **out of scope** (GK-proprietary). The chajá REPO_MANAGEMENT tab degrades to a simpler "all known local repos + clone/init buttons" surface — essentially the recent-repos grid from doc 07 but without the 8-item cap and with bulk actions.
+**For yryvu's port**: the workspaces concept is **out of scope** (GK-proprietary). The yryvu REPO_MANAGEMENT tab degrades to a simpler "all known local repos + clone/init buttons" surface — essentially the recent-repos grid from doc 07 but without the 8-item cap and with bulk actions.
 
 ## Open saga (bundle:2655-2681)
 
@@ -32,7 +32,7 @@ at.openRepoManagementTab = (Ve, at) => ({
 Two phases:
 
 1. **Switch-or-no-op**: if not already on REPO_MANAGEMENT tab, `SWITCH_TO` it. **Correction (2026-04-30):** unlike FOCUS_VIEW (which has a `closed` flag toggled by the user), REPO_MANAGEMENT initializes its permanent-tab state slot as `{}` (bundle:2089) — no `closed` flag, no toggle. The icon button is always available; the user "leaves" the view by selecting any other tab.
-2. **Workspace scroll**: if `projectId` arg provided, scroll the matching workspace section into view + add to recent-projects list + fire metric. **Skip the workspace logic for chajá** — no workspaces.
+2. **Workspace scroll**: if `projectId` arg provided, scroll the matching workspace section into view + add to recent-projects list + fire metric. **Skip the workspace logic for yryvu** — no workspaces.
 
 ## View modes (bundle:182648)
 
@@ -43,7 +43,7 @@ at.RepoManagementViews = {
 };
 ```
 
-Two sub-views — both are modal-like overlays inside the REPO_MANAGEMENT tab body. They surface when the user clicks "Clone" or "Init" buttons in the tab's header. **For chajá**, these collapse onto the existing #100 dialogs (open / clone / init); the tab just hosts buttons that trigger them.
+Two sub-views — both are modal-like overlays inside the REPO_MANAGEMENT tab body. They surface when the user clicks "Clone" or "Init" buttons in the tab's header. **For yryvu**, these collapse onto the existing #100 dialogs (open / clone / init); the tab just hosts buttons that trigger them.
 
 ## Content load (bundle:86354)
 
@@ -55,9 +55,9 @@ at.loadRepoManagementTabContents = () => ({
 });
 ```
 
-Called from `loadActiveTabContents` switch at bundle:2334-2336 when the user switches into the REPO_MANAGEMENT tab. For chajá, this maps to a Solid `createEffect` keyed on `currentTabType() === "REPO_MANAGEMENT"` that triggers a backend `list_known_repos` call.
+Called from `loadActiveTabContents` switch at bundle:2334-2336 when the user switches into the REPO_MANAGEMENT tab. For yryvu, this maps to a Solid `createEffect` keyed on `currentTabType() === "REPO_MANAGEMENT"` that triggers a backend `list_known_repos` call.
 
-For chajá's backend, `list_known_repos` needs:
+For yryvu's backend, `list_known_repos` needs:
 - The recent-repos cache (already used by NEW tab via `getRecentLocalRepos`).
 - Any persisted "favorite" repos (separate concept, deferred — doesn't block).
 - For each: scan `.git/HEAD` to surface current branch + dirty status.
@@ -70,7 +70,7 @@ For chajá's backend, `list_known_repos` needs:
 │                                                    │
 │  All Repositories  (12)                            │
 │  ┌──────────────────────────────────────────────┐ │
-│  │ □ chaja                  feat/foo  ◯ clean   │ │
+│  │ □ yryvu                  feat/foo  ◯ clean   │ │
 │  │ □ oh-my-engine           main      ● 3 dirty │ │
 │  │ □ CapyDeploy             develop   ◯ clean   │ │
 │  │ ...                                           │ │

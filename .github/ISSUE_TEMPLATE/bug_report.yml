@@ -12,7 +12,7 @@ body:
     id: component
     attributes:
       label: Component
-      description: Which area of Chajá is affected?
+      description: Which area of Yryvu is affected?
       options:
         - ui (frontend / SolidJS / Tauri)
         - git-core (Rust git backend, gix/git2)
@@ -50,7 +50,7 @@ body:
       description: Please provide your environment details
       value: |
         - OS: [e.g., Bazzite F43, Ubuntu 24.04, macOS 15, Windows 11]
-        - Chajá version: [from About dialog or release tag]
+        - Yryvu version: [from About dialog or release tag]
         - Repo size (commits / refs): [e.g., 15k commits, 200 branches]
         - Repo backend: [git2 default / gix-only — ignore if you don't know]
     validations:
@@ -60,7 +60,7 @@ body:
     id: logs
     attributes:
       label: Relevant Logs
-      description: Paste any error messages, console output, or `/tmp/chaja-dev.log` excerpts here. Redact paths or secrets if needed.
+      description: Paste any error messages, console output, or `/tmp/yryvu-dev.log` excerpts here. Redact paths or secrets if needed.
       render: shell
 
   - type: checkboxes
@@ -84,4 +84,4 @@ body:
         2. Create a branch via `gh issue develop <NUM> --base development --checkout`
         3. Submit a PR targeting `development` (NOT `main`)
 
-        See [CONTRIBUTING.md](https://github.com/lobinuxsoft/chaja/blob/development/CONTRIBUTING.md) for details.
+        See [CONTRIBUTING.md](https://github.com/lobinuxsoft/yryvu/blob/development/CONTRIBUTING.md) for details.

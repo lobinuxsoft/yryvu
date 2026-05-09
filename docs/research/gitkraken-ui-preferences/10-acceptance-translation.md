@@ -1,4 +1,4 @@
-# 10 — Acceptance translation: #103 → chajá sub-issues
+# 10 — Acceptance translation: #103 → yryvu sub-issues
 
 This is the bridge from research to plan. The current #103 issue body
 covers six sub-settings (theme, zoom, font, density, tooltips,
@@ -9,8 +9,8 @@ animation). The audit reveals:
   panels / different scopes (zoom = status bar, font = editor panel).
 - 3 of those (density, tooltips, animation) have **no GK analogue**.
 
-Plus one out-of-scope item the audit surfaces: the existing chajá
-`Preferences > UI` panel is a stub (`apps/chaja-app/src/components/PreferencesWindow/panels/Ui.tsx`)
+Plus one out-of-scope item the audit surfaces: the existing yryvu
+`Preferences > UI` panel is a stub (`apps/yryvu-app/src/components/PreferencesWindow/panels/Ui.tsx`)
 that needs a full render contract.
 
 ## Recommended sub-issue split
@@ -26,17 +26,17 @@ auto-OS-follow, live-apply`
 **Scope**:
 
 1. Add `Preferences.ui.theme: ThemeId` enum to
-   `crates/chaja-bridge/src/preferences.rs`. Variants: `Auto` plus
+   `crates/yryvu-bridge/src/preferences.rs`. Variants: `Auto` plus
    the 10 theme ids.
 2. Port the 10 design-previews `:root` blocks into a single
-   `apps/chaja-app/src/styles/themes.css` (or 10 lazy-loaded files —
+   `apps/yryvu-app/src/styles/themes.css` (or 10 lazy-loaded files —
    see doc 12 for the choice).
 3. Bundle FiraCode Nerd Font Mono (already in
    `design-previews/preferences-themes/fonts/`) into
-   `apps/chaja-app/public/fonts/` and reference from
+   `apps/yryvu-app/public/fonts/` and reference from
    `tokens.css` / `themes.css`.
 4. Add a `themeId` Solid signal in
-   `apps/chaja-app/src/state/preferences.ts` (or wherever the
+   `apps/yryvu-app/src/state/preferences.ts` (or wherever the
    preferences store lives).
 5. Add an `effect` that:
    - On startup: reads the saved theme id, resolves `auto` to a
@@ -46,16 +46,16 @@ auto-OS-follow, live-apply`
    - Listens to `window.matchMedia('(prefers-color-scheme: dark)')`
      change events when current id is `auto`.
 6. Add the `<select>` row to
-   `apps/chaja-app/src/components/PreferencesWindow/panels/Ui.tsx`,
+   `apps/yryvu-app/src/components/PreferencesWindow/panels/Ui.tsx`,
    wired to the signal.
-7. Add i18n strings (chajá has `es` + `en` baseline).
+7. Add i18n strings (yryvu has `es` + `en` baseline).
 
 **Acceptance**:
 - Picking any of 11 options (10 themes + auto) live-applies without
   reload.
 - `auto` correctly tracks OS dark/light changes.
 - Selection persists across app restarts.
-- All existing chajá UI surfaces (toolbar, left panel, status bar,
+- All existing yryvu UI surfaces (toolbar, left panel, status bar,
   ColdStart, RepoManagement) render correctly under each of the 10
   themes — no token misses.
 
@@ -99,7 +99,7 @@ PR concurrently — that's a separate sub-issue.)
 
 **Acceptance**:
 - Density change live-applies without reload.
-- All chajá UI surfaces visually scale correctly under compact (no
+- All yryvu UI surfaces visually scale correctly under compact (no
   clipping, no horizontal scroll appearing).
 - Comfortable matches the design-previews exactly.
 
@@ -120,7 +120,7 @@ no clipping.
    ```
 2. Implement / refactor `<Tooltip>` component to read both signals.
    Audit existing tooltips:
-   - Grep `apps/chaja-app/src/` for `title=` and existing
+   - Grep `apps/yryvu-app/src/` for `title=` and existing
      `<Tooltip>` usages. Document the count in the PR description.
 3. Add the `data-animations` attribute mechanism + the CSS
    override block from doc 04.
@@ -196,7 +196,7 @@ opens, not deferred:
 3. **Tooltip refactor scope**: refactor every existing `title=` site
    in PR D, or land the framework only and migrate sites in follow-ups.
    Recommendation: framework + migrate every site in the same PR
-   (~30-50 sites by current chajá codebase size; one PR is fine).
+   (~30-50 sites by current yryvu codebase size; one PR is fine).
 4. **`auto` theme: which dark / light theme does it resolve to?**
    Recommendation: `a-default` for dark, `e-rose-pine-dawn` for light.
    This is the only light-scheme theme in the 10, so the choice is

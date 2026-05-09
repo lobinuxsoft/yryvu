@@ -131,7 +131,7 @@ an arc length of `π * r / 2 ≈ 12.57 px` — the dash pattern `4 on, 3 off`
 divides evenly enough that the join with straight segments is visually
 clean.
 
-## Chajá implications
+## Yryvu implications
 
 When porting to Rust + SolidJS, the command emitter should be a pure
 function `fn build_edge(waypoints: &[Waypoint]) -> String` living next

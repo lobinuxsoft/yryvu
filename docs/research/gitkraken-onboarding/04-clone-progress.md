@@ -103,12 +103,12 @@ For credential rejections (`maybeOrgOwner`), a richer error toast is
 shown with a "Reconnect to <Provider>" button that opens an external
 URL — this is GK proprietary (depends on integrations).
 
-## chajá implementation hints (#100 scope)
+## yryvu implementation hints (#100 scope)
 
 ### Progress reporting via Tauri events
 
 gix's `prepare_clone` accepts a `progress::Discard` or any
-`gix_features::progress::Progress` impl. Approach for chajá:
+`gix_features::progress::Progress` impl. Approach for yryvu:
 
 1. Backend command `clone_repository(url, dest, name, recurse,
    shallow_depth, session_id) -> Result<(), BackendError>` runs in
@@ -133,27 +133,27 @@ Phases to surface:
 
 GK averages `received + indexed`, but gix gives us per-phase progress.
 Better UX: show **current phase** + **phase-local percent**, not a
-unified 0..100 average. This is a chajá deviation — clearer for the
+unified 0..100 average. This is a yryvu deviation — clearer for the
 user.
 
 ### Cancel UX
 
 `gix::interrupt::Trigger` lets us interrupt long ops at safe points.
-chajá Cancel button:
+yryvu Cancel button:
 
 1. UI: cancel button inside the cloning toast.
 2. Backend: store an `Arc<AtomicBool>` keyed by `session_id` in a
    global registry (mirror `oauth/state.rs` pattern from
-   `crates/chaja-bridge/src/integrations/oauth/state.rs`).
+   `crates/yryvu-bridge/src/integrations/oauth/state.rs`).
 3. Worker checks the flag at gix's `interrupt::IS_INTERRUPTED` callback.
 4. On cancel, gix unwinds the partial clone. Worker rms the partial
    destination directory before returning `BackendError::CloneCancelled`.
 
-This is a chajá UX win: GK has no clone cancel; chajá ships it.
+This is a yryvu UX win: GK has no clone cancel; yryvu ships it.
 
 ### Toast semantics
 
-Reuse `notify.loading()` from `apps/chaja-app/src/components/Notifications`:
+Reuse `notify.loading()` from `apps/yryvu-app/src/components/Notifications`:
 
 ```ts
 const toastId = notify.loading(`Cloning to ${dest}`, {
@@ -168,13 +168,13 @@ const toastId = notify.loading(`Cloning to ${dest}`, {
 
 ### Open-after-clone UX
 
-Mirror GK's "Open Now" prompt as a chajá `<Dialog>`:
+Mirror GK's "Open Now" prompt as a yryvu `<Dialog>`:
 
 - Title: "Repository cloned"
 - Body: "<repo name> cloned to <dest>. Open it now?"
 - Buttons: "Open" (primary) / "OK" (secondary, just dismisses)
 
-`Open` → `openRepoInAnotherTab(dest)` (chajá's `tabs/ops.ts`).
+`Open` → `openRepoInAnotherTab(dest)` (yryvu's `tabs/ops.ts`).
 
 ## Cross-validation
 
@@ -195,5 +195,5 @@ The original prompt described "percent + current object reporting".
 Verified: percent IS reported (`bundle:188471` formula above), and
 current object NAME is **not** part of the GK pipeline — only object
 counts. No string-style "Receiving foo.bin" labels surface in the toast.
-chajá's per-phase progress is more informative than GK's unified bar.
-This is **chajá deviation, not a bug fix**.
+yryvu's per-phase progress is more informative than GK's unified bar.
+This is **yryvu deviation, not a bug fix**.

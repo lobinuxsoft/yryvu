@@ -138,7 +138,7 @@ on keydown(ev):
         ev.preventDefault()
 ```
 
-## Chajá implications
+## Yryvu implications
 
 - **Decide early: command-runner palette or navigator palette?**
   GitKraken chose navigator, which fits a Git client better because

@@ -6,7 +6,7 @@ optional **overlay** toggle that superimposes the old image on the
 new.
 
 This is simpler than the four-mode image diff (side-by-side / onion /
-difference / slider) that an earlier Chajá audit assumed. The GitKraken
+difference / slider) that an earlier Yryvu audit assumed. The GitKraken
 reality is **two controls**: the always-present side-by-side pair
 plus a single "Show diff overlay" button.
 
@@ -99,7 +99,7 @@ but no such option observed. Research pass for context menus needed.
 Covered by doc 07's large-file handling. A huge PNG (> 50 MB) triggers
 the binary placeholder, not the image viewer.
 
-## Chajá implications
+## Yryvu implications
 
 - **Two controls total**: always-visible side-by-side pair + overlay
   toggle. Do not invent onion-skin, slider, difference modes unless

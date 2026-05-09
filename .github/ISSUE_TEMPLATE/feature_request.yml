@@ -12,7 +12,7 @@ body:
     id: component
     attributes:
       label: Component
-      description: Which area of Chajá would this affect?
+      description: Which area of Yryvu would this affect?
       options:
         - ui (frontend / SolidJS / Tauri)
         - git-core (Rust git backend, gix/git2)
@@ -85,4 +85,4 @@ body:
         2. Create a branch via `gh issue develop <NUM> --base development --checkout`
         3. Submit a PR targeting `development` (NOT `main`)
 
-        See [CONTRIBUTING.md](https://github.com/lobinuxsoft/chaja/blob/development/CONTRIBUTING.md) for details.
+        See [CONTRIBUTING.md](https://github.com/lobinuxsoft/yryvu/blob/development/CONTRIBUTING.md) for details.

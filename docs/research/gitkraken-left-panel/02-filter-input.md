@@ -137,7 +137,7 @@ right-button on the filter input does **nothing** in GK. Probably
 deliberate: the panel-wide right-click target sits on the section
 headers / rows themselves, and they didn't want the input to compete.
 
-This is a deviation from typical text-input ergonomics. Chajá can
+This is a deviation from typical text-input ergonomics. Yryvu can
 choose to keep the native menu or follow GK; flagging it.
 
 ## Per-section search widgets (PRs and Issues)
@@ -162,7 +162,7 @@ These rows are non-hideable (`canBeHidden: false`) and pinned at
 the top of the section — they scroll with the section body, not
 with the panel.
 
-## chajá implementation hint
+## yryvu implementation hint
 
 - Implement the global filter as one `<LeftPanelFilter>` component
   with the *same* split: in-memory `signal` for the input value,
@@ -175,7 +175,7 @@ with the panel.
   am I in" *before* scanning the section bodies.
 - Suppress the native context menu only after the user objects to
   having it — losing Paste on a search input is hostile. GK gets
-  away with it because it's GK; chajá can keep the native menu.
+  away with it because it's GK; yryvu can keep the native menu.
 - PR and Issue sections need their *own* in-section search rows.
   Don't try to make the global filter narrow PRs/Issues — their
   filter syntax is different (provider query DSL vs ref-name

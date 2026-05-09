@@ -83,7 +83,7 @@ GK uses one of three backends depending on platform:
 > guarding the master password. To verify, search GK's
 > `app.asar` after extraction for `keytar` / `safeStorage`.
 
-## What chajá should do
+## What yryvu should do
 
 **Primary backend:** `keyring` crate (Rust). It abstracts:
 
@@ -94,20 +94,20 @@ GK uses one of three backends depending on platform:
 | Windows | Windows Credential Manager |
 
 One entry per `(profile_id, integration_type)` pair. Service name
-`io.chaja` (or whatever bundle id), account name
+`io.yryvu` (or whatever bundle id), account name
 `<profile_guid>:<integration_type>`. Value: JSON-serialised
 credential blob `{accessToken, refreshToken?, expiresAt?, scopes?}`.
 
 **Fallback when keyring unavailable** (Linux without
 gnome-keyring / kwallet, headless servers): a sidecar file at
-`$XDG_DATA_HOME/chaja/credentials.json.enc`, mode `0600`, encrypted
+`$XDG_DATA_HOME/yryvu/credentials.json.enc`, mode `0600`, encrypted
 with a key derived from a user passphrase via Argon2id. Refuse to
 write plain JSON — period.
 
-> chajá deviation: GK ships an encrypted-file backend out of the
+> yryvu deviation: GK ships an encrypted-file backend out of the
 > box with no user passphrase (the "password" in the constructor
 > is some app-derived constant). That's bad opsec — anyone with
-> the file gets the tokens. chajá's fallback should require
+> the file gets the tokens. yryvu's fallback should require
 > a real user passphrase, prompted on first launch and cached
 > for the session.
 
@@ -133,8 +133,8 @@ is prompted to reconnect.
 detection rather than proactive expiry tracking. Simpler, but
 costs one wasted API call per expired session.
 
-> chajá note: store `expiresAt` when the provider returns
-> `expires_in` so chajá can refresh proactively (e.g. 5 minutes
+> yryvu note: store `expiresAt` when the provider returns
+> `expires_in` so yryvu can refresh proactively (e.g. 5 minutes
 > before expiry) and avoid the cold-start 401. Cheap improvement.
 
 ## Per-profile multi-tenancy
@@ -151,8 +151,8 @@ yield put(IntegrationCredentialsDeletedForCurrentProfile(ct, Ve));
 — scoped to the active profile only. Multi-profile is GK's answer to
 "two GitHub accounts": each profile has its own integration table.
 
-chajá: same model. The keyring-account-name pattern
-`<profile_guid>:<integration_type>` lets chajá list "all credentials
+yryvu: same model. The keyring-account-name pattern
+`<profile_guid>:<integration_type>` lets yryvu list "all credentials
 for profile X" via the keyring's `find_credentials` API.
 
 ## Token-metadata table (`bundle:203620`)
@@ -171,9 +171,9 @@ without round-tripping through IPC.
 `getETags` (`bundle:203620`) is the related E-Tag cache for HTTP
 If-None-Match optimisation — saves API rate-limit budget.
 
-## chajá deviation: separate keyring entries per credential
+## yryvu deviation: separate keyring entries per credential
 
-GK serialises everything into one JSON blob per integration. chajá
+GK serialises everything into one JSON blob per integration. yryvu
 should consider one entry per atomic secret:
 
 | Account | Value |
@@ -189,7 +189,7 @@ Cons: more entries, more keyring API calls.
 **Rec:** match GK's blob pattern (one entry per provider) for v1;
 revisit only if rotation becomes a hot path.
 
-## chajá note: never log tokens
+## yryvu note: never log tokens
 
 The Octokit error wrapper (`bundle:46153`–`46154`) redacts tokens
 from logs:
@@ -200,7 +200,7 @@ dt.url.replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]")
       .replace(/\baccess_token=\w+/g, "access_token=[REDACTED]")
 ```
 
-Mirror this in chajá's HTTP client error formatter. Bake it into the
+Mirror this in yryvu's HTTP client error formatter. Bake it into the
 shared error type so it's impossible to accidentally print a token
 from any log path. Bonus: include the redaction in `Display` impl
 of the error type, not just `Debug`.

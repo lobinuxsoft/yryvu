@@ -121,10 +121,10 @@ bundle despite the `KeyBindingFilter` search. Customization happens
 by editing the platform JSON files under the user's app-data directory,
 or not at all.
 
-**Chajá has #108** for a full customize-shortcuts editor — goes beyond
+**Yryvu has #108** for a full customize-shortcuts editor — goes beyond
 GitKraken.
 
-## Chajá implications
+## Yryvu implications
 
 - **Replicate the context menu sets verbatim** — same labels, same
   conditions, same actions.
@@ -134,7 +134,7 @@ GitKraken.
 - **Replicate the keybinding JSONs per-platform** — ship
   `darwin.json` / `linux.json` / `win32.json` mirroring GitKraken's
   layout. Platform-key remapping (Cmd ↔ Ctrl) is already per-file, so
-  Chajá's loader just picks the right file.
+  Yryvu's loader just picks the right file.
 - **Implement the keybindings dialog** as read-only first (doc 23's
   research shows this is simplest), then #108 extends it with
   rebind/record flow.

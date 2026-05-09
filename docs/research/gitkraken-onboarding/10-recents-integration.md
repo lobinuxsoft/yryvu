@@ -20,9 +20,9 @@ what registers it. The recents list is the union of every path
 `openRepoByPath` / `openRepoInSelectedTab` / `openRepoInAnotherTab` has
 ever been called with, deduped by path.
 
-## chajá behaviour
+## yryvu behaviour
 
-`apps/chaja-app/src/state/recent-repos.ts`:
+`apps/yryvu-app/src/state/recent-repos.ts`:
 
 - `pushRecentRepo(path)` -> stores `RecentRepo { path, name, openedAt
   }` in localStorage.
@@ -57,7 +57,7 @@ implicitly registers" approach.
 
 KEEP the explicit `pushRecentRepo` pattern. Reasons:
 
-1. The chajá recents list is local-only (no profile sync). Explicit
+1. The yryvu recents list is local-only (no profile sync). Explicit
    push is fine.
 2. Centralising the push inside `openRepoInAnotherTab` would couple
    tab-ops to recents — bad layering. Today the recents push is a
@@ -90,7 +90,7 @@ and needs the refresh; ColdStart unmounts as soon as the repo opens.
 ## Suggestion: open-after-clone prompt parity
 
 GK pops a prompt after clone success: "Repository cloned. Open now?"
-(`bundle:188505-188517`). chajá can either:
+(`bundle:188505-188517`). yryvu can either:
 
 A) **Skip the prompt** — auto-open in a new tab (matches the
    ColdStart pattern). UX is faster.
@@ -99,7 +99,7 @@ B) **Show the prompt** — gives the user the option to leave the new
    repo unfocused. Useful when bulk-cloning sequentially (rare in #100
    v1 since we don't bulk-clone).
 
-**Recommendation: A (skip the prompt) for v1.** Matches chajá's
+**Recommendation: A (skip the prompt) for v1.** Matches yryvu's
 existing post-Open pattern. Re-add the prompt as a follow-up if user
 demand surfaces.
 

@@ -19,7 +19,7 @@ const ct = at.transientTabTypes = {
 at.permanentTabIds = dt;
 ```
 
-**For chajá** — port 4 of 6:
+**For yryvu** — port 4 of 6:
 
 | Type | Source group | Port? | Notes |
 |---|---|---|---|
@@ -27,7 +27,7 @@ at.permanentTabIds = dt;
 | `NEW` | transient | ✅ | sub-PR 3 |
 | `RELEASE_NOTES` | transient | ✅ | sub-PR 6 |
 | `REPO_MANAGEMENT` | permanent | ✅ | sub-PR 7 |
-| `CLI` | transient | ❌ | no terminal in chajá (#25 deferred) |
+| `CLI` | transient | ❌ | no terminal in yryvu (#25 deferred) |
 | `FOCUS_VIEW` | permanent | ❌ | GK Launchpad proprietary |
 
 Notice that `permanentTabIds === permanentTabTypes` — the bundle reuses the type-string as the singleton ID. Don't invent fresh UUIDs for the two permanent tabs.
@@ -71,7 +71,7 @@ at.tabTypesThatCanHaveATerminal = [tabTypes.REPO];  // skip
 at.tabsIpcMessageChannels = { OPEN_REPO_MANAGEMENT_TAB: "OPEN_REPO_MANAGEMENT_TAB" };
 ```
 
-Port `NEW_TAB_BUTTON_ID` and the three `TAB_TOOLTIP_*` constants verbatim — they govern hover-tooltip timing on truncated tab labels (a UX detail GK handles per pixel). `permanentTabsCacheSize` caps the number of repos REPO_MANAGEMENT tab remembers, not the closed-tabs stack. `tabsIpcMessageChannels` belongs to GK's main↔renderer IPC; chajá's Tauri-IPC layer doesn't need a parallel.
+Port `NEW_TAB_BUTTON_ID` and the three `TAB_TOOLTIP_*` constants verbatim — they govern hover-tooltip timing on truncated tab labels (a UX detail GK handles per pixel). `permanentTabsCacheSize` caps the number of repos REPO_MANAGEMENT tab remembers, not the closed-tabs stack. `tabsIpcMessageChannels` belongs to GK's main↔renderer IPC; yryvu's Tauri-IPC layer doesn't need a parallel.
 
 ## Store shape
 
@@ -99,9 +99,9 @@ interface Tab {
 }
 ```
 
-Selectors live near `bundle:372861`. The chajá port uses Solid signals + derived `createMemo` instead, but the keys map 1:1:
+Selectors live near `bundle:372861`. The yryvu port uses Solid signals + derived `createMemo` instead, but the keys map 1:1:
 
-| GK selector | chajá signal name |
+| GK selector | yryvu signal name |
 |---|---|
 | `Ma.getTabs` | `tabs` |
 | `Ma.getSelectedTabId` | `selectedTabId` |
@@ -132,8 +132,8 @@ const persistTabStateToProfile = () => ({
 
 Persisted under profile key `tabInfo` with three fields: `permanentTabs`, `selectedTabId`, `tabs`. `closedTabs` is **not** persisted to profile in the snapshot path — it's reconstructed from in-memory state and discarded on app exit.
 
-**For chajá**:
-- Persist to `~/.config/com.lobinuxsoft.chaja/preferences.json` under a new `tabs` key (separate from the existing `general` / `ui` sections in `preferences.rs`). Reuse the atomic-write sidecar pattern.
+**For yryvu**:
+- Persist to `~/.config/com.lobinuxsoft.yryvu/preferences.json` under a new `tabs` key (separate from the existing `general` / `ui` sections in `preferences.rs`). Reuse the atomic-write sidecar pattern.
 - Bump `preferences.rs` `SCHEMA_VERSION` if you add this section. New optional fields with `#[serde(default)]` don't require a bump, but a fresh `tabs` envelope at the top level does — to match the load-time transform contract.
 - `closedTabs` stays in-memory only (matches GK).
 
@@ -142,5 +142,5 @@ Persisted under profile key `tabInfo` with three fields: `permanentTabs`, `selec
 Three claims worth re-grepping before coding:
 
 1. **`permanentTabIds === permanentTabTypes`** — confirmed at `bundle:228940` (`at.permanentTabIds = dt` where `dt` is the same object literal exported as `permanentTabTypes`).
-2. **`tabTypesThatCanHaveATerminal = [REPO]`** — only REPO tabs host the embedded terminal pane. Chajá skips this regardless.
+2. **`tabTypesThatCanHaveATerminal = [REPO]`** — only REPO tabs host the embedded terminal pane. Yryvu skips this regardless.
 3. **`MUTATE` preserves `tabId`** — confirmed in `replaceSelectedTabWithNewTab` (bundle:2588): the existing `selectedTabId` is reused as the `tabId` field in the MUTATE op, which means the React reconciler keeps the same DOM node. Without this, `replaceSelectedTabWithNewTab` would force a remount.

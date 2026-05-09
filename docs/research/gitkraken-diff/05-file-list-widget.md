@@ -5,7 +5,7 @@ changed by the current selection (commit, range, or working directory).
 It supports a **tree vs flat** display toggle, an expand/collapse-all
 button, a filter input, and per-repo persistence.
 
-Not the three-mode Path/Tree/Flat that an earlier Chajá draft assumed —
+Not the three-mode Path/Tree/Flat that an earlier Yryvu draft assumed —
 there are **two** display modes, plus a "View all files" button for
 multi-commit selections.
 
@@ -51,7 +51,7 @@ When `true`, paths are grouped by directory and rendered as a nested
 accordion. When `false`, paths are shown as a flat list with full path
 strings.
 
-This is **not** a three-mode enum. Chajá's existing #61 draft proposed
+This is **not** a three-mode enum. Yryvu's existing #61 draft proposed
 "Path / Tree / View-all-files modes" — the 1:1 GitKraken reality is:
 
 - **Tree** or **Flat** (binary toggle via `isContentsTreeDisplayed`).
@@ -133,7 +133,7 @@ CommitDetailPanel-DiffBetweenCommitsTitle      = "Viewing merged diff of {0} com
 CommitDetailPanel-DiffBetweenTwoCommits        = "Viewing diff between 2 commits"
 ```
 
-## Chajá implications
+## Yryvu implications
 
 - **Bin the "Path / Tree / Flat" 3-mode from #61's draft** — GitKraken
   has Tree and Flat, plus the multi-selection "View all files" is a

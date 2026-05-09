@@ -72,7 +72,7 @@ Binary files over the 50 MB cap (doc 07) are also handled by the
 "Binary file" placeholder. The user sees the same pane regardless of
 whether the file is classified as binary content OR too-large text.
 
-## Chajá implications
+## Yryvu implications
 
 - **Single placeholder pane** for all binary cases. No hex viewer in
   clone scope — post-clone innovation if desired.

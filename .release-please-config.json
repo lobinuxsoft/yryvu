@@ -3,7 +3,7 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "chaja",
+      "package-name": "yryvu",
       "include-v-in-tag": true,
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
@@ -11,12 +11,12 @@
         "Cargo.toml",
         {
           "type": "json",
-          "path": "apps/chaja-app/package.json",
+          "path": "apps/yryvu-app/package.json",
           "jsonpath": "$.version"
         },
         {
           "type": "json",
-          "path": "apps/chaja-app/src-tauri/tauri.conf.json",
+          "path": "apps/yryvu-app/src-tauri/tauri.conf.json",
           "jsonpath": "$.version"
         }
       ],

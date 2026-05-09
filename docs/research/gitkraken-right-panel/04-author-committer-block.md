@@ -193,7 +193,7 @@ Email is **not rendered in the flow** — only shown as a hover tooltip
 (`OverlayTrigger` with `placement="bottom"` and `id="commit-detail-author-email-tooltip"`)
 when hovering the author/committer name.
 
-This means chajá's layout doesn't need to handle long-email overflow —
+This means yryvu's layout doesn't need to handle long-email overflow —
 emails are out of the main flow entirely.
 
 ## Timestamp format
@@ -224,7 +224,7 @@ separately (author above, committer below in its own block), with clear
 labels. If the email/name are identical, only author renders. That's
 more transparent than a combined sentence.
 
-## Chajá implications
+## Yryvu implications
 
 1. **Two separate blocks** (author / committer), not a merged
    sentence. Render committer block only when `authorEmail/Name !==
@@ -239,7 +239,7 @@ more transparent than a combined sentence.
 5. **Email** is tooltip-only, not in the flow. No overflow handling
    needed in the layout.
 6. **Timestamp** in author/committer rows: locale-aware "L @ LT" (e.g.
-   "3/15/2024 @ 2:32 PM"). Not relative. Chajá should use `time` crate
+   "3/15/2024 @ 2:32 PM"). Not relative. Yryvu should use `time` crate
    with user's locale or default to ISO-like `YYYY-MM-DD HH:mm`.
 7. **Labels**: `authored` / `committed` / `Co-authors:` — lowercase,
    terse, no colon on first two. Match EN strings verbatim.

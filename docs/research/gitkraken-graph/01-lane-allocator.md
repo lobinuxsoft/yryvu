@@ -137,7 +137,7 @@ def get_columns(commit):
   return col
 ```
 
-## Chajá implications
+## Yryvu implications
 
 Our current `LaneAssigner` (`crates/graph-core/src/lane.rs`) is leftmost-free
 + reuse (`claim_free_or_append`), which covers the basic allocation. To match

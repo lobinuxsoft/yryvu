@@ -249,7 +249,7 @@ struct CopyName {
     name: String,
 }
 
-/// Strip the alphabetical sort prefix used by built-ins (`a-default`,
+/// Strip the alphabetical sort prefix used by built-ins (`a-yryvu`,
 /// `b-tokyo-night`, …) — that prefix is meaningless for user themes
 /// (custom shadows built-in by id, never co-sorted) and noisy in the
 /// file manager. `d-synthwave` → `synthwave`.
@@ -342,14 +342,14 @@ mod tests {
         let built_ins: Vec<&ThemeEntry> = list.iter().filter(|t| t.built_in).collect();
         assert_eq!(
             built_ins.len(),
-            10,
-            "expected 10 built-in themes embedded, got {}: {:?}",
+            11,
+            "expected 11 built-in themes embedded, got {}: {:?}",
             built_ins.len(),
             built_ins.iter().map(|t| &t.metadata.id).collect::<Vec<_>>()
         );
 
         let expected_ids = [
-            "a-default",
+            "a-yryvu",
             "b-tokyo-night",
             "c-catppuccin-mocha",
             "d-synthwave",
@@ -359,6 +359,7 @@ mod tests {
             "h-dracula",
             "i-everforest-dark",
             "j-kanagawa",
+            "k-default",
         ];
         for id in expected_ids {
             assert!(
@@ -393,23 +394,20 @@ mod tests {
         let custom = tmp.path();
         write_theme(
             custom,
-            "a-default",
+            "a-yryvu",
             "light",
-            ":root[data-theme=\"a-default\"]{--shadowed:1}",
+            ":root[data-theme=\"a-yryvu\"]{--shadowed:1}",
         );
 
         let list = list_themes(custom);
-        let a_default = list
+        let a_yryvu = list
             .iter()
-            .find(|t| t.metadata.id == "a-default")
-            .expect("a-default should be present");
-        assert!(!a_default.built_in, "custom should shadow built-in");
-        assert_eq!(
-            a_default.metadata.scheme,
-            super::super::schema::Scheme::Light
-        );
+            .find(|t| t.metadata.id == "a-yryvu")
+            .expect("a-yryvu should be present");
+        assert!(!a_yryvu.built_in, "custom should shadow built-in");
+        assert_eq!(a_yryvu.metadata.scheme, super::super::schema::Scheme::Light);
 
-        let css = get_theme_css("a-default", custom).unwrap();
+        let css = get_theme_css("a-yryvu", custom).unwrap();
         assert!(css.tokens.contains("--shadowed"));
     }
 
@@ -449,7 +447,8 @@ mod tests {
     #[test]
     fn strip_sort_prefix_drops_leading_letter_dash() {
         assert_eq!(strip_sort_prefix("d-synthwave"), "synthwave");
-        assert_eq!(strip_sort_prefix("a-default"), "default");
+        assert_eq!(strip_sort_prefix("a-yryvu"), "yryvu");
+        assert_eq!(strip_sort_prefix("k-default"), "default");
         assert_eq!(strip_sort_prefix("e-rose-pine-dawn"), "rose-pine-dawn");
         // No prefix to strip
         assert_eq!(strip_sort_prefix("custom-theme"), "custom-theme");

@@ -12,8 +12,8 @@ const builtIn = (id: string, scheme: "dark" | "light"): ThemeEntry => ({
   builtIn: true,
 });
 
-const TEN_BUILT_INS: ThemeEntry[] = [
-  builtIn("a-default", "dark"),
+const ELEVEN_BUILT_INS: ThemeEntry[] = [
+  builtIn("a-yryvu", "dark"),
   builtIn("b-tokyo-night", "dark"),
   builtIn("c-catppuccin-mocha", "dark"),
   builtIn("d-synthwave", "dark"),
@@ -23,34 +23,35 @@ const TEN_BUILT_INS: ThemeEntry[] = [
   builtIn("h-dracula", "dark"),
   builtIn("i-everforest-dark", "dark"),
   builtIn("j-kanagawa", "dark"),
+  builtIn("k-default", "dark"),
 ];
 
 describe("resolveAutoTheme", () => {
-  it("picks a-default when OS prefers dark and a-default is present", () => {
-    expect(resolveAutoTheme(TEN_BUILT_INS, "dark")).toBe("a-default");
+  it("picks a-yryvu when OS prefers dark and a-yryvu is present", () => {
+    expect(resolveAutoTheme(ELEVEN_BUILT_INS, "dark")).toBe("a-yryvu");
   });
 
   it("picks e-rose-pine-dawn when OS prefers light and it is present", () => {
-    expect(resolveAutoTheme(TEN_BUILT_INS, "light")).toBe("e-rose-pine-dawn");
+    expect(resolveAutoTheme(ELEVEN_BUILT_INS, "light")).toBe("e-rose-pine-dawn");
   });
 
-  it("falls back to alphabetically-first dark theme when a-default is missing", () => {
-    const without = TEN_BUILT_INS.filter((t) => t.id !== "a-default");
+  it("falls back to alphabetically-first dark theme when a-yryvu is missing", () => {
+    const without = ELEVEN_BUILT_INS.filter((t) => t.id !== "a-yryvu");
     expect(resolveAutoTheme(without, "dark")).toBe("b-tokyo-night");
   });
 
   it("falls back to alphabetically-first light theme when e-rose-pine-dawn is missing", () => {
     const customLights: ThemeEntry[] = [
-      builtIn("a-default", "dark"),
+      builtIn("a-yryvu", "dark"),
       { id: "x-solarized-light", name: "Solarized Light", scheme: "light", builtIn: false },
       { id: "y-paper", name: "Paper", scheme: "light", builtIn: false },
     ];
     expect(resolveAutoTheme(customLights, "light")).toBe("x-solarized-light");
   });
 
-  it("returns the literal a-default when no themes are loaded", () => {
-    expect(resolveAutoTheme([], "dark")).toBe("a-default");
-    expect(resolveAutoTheme([], "light")).toBe("a-default");
+  it("returns the literal a-yryvu when no themes are loaded", () => {
+    expect(resolveAutoTheme([], "dark")).toBe("a-yryvu");
+    expect(resolveAutoTheme([], "light")).toBe("a-yryvu");
   });
 
   it("falls back to the first available theme when no theme matches the OS scheme", () => {
@@ -62,10 +63,10 @@ describe("resolveAutoTheme", () => {
   });
 
   it("custom themes can shadow built-ins by id without breaking auto resolution", () => {
-    const userOverridesDefault: ThemeEntry[] = [
-      ...TEN_BUILT_INS.filter((t) => t.id !== "a-default"),
-      { id: "a-default", name: "User Default", scheme: "dark", builtIn: false },
+    const userOverridesYryvu: ThemeEntry[] = [
+      ...ELEVEN_BUILT_INS.filter((t) => t.id !== "a-yryvu"),
+      { id: "a-yryvu", name: "User Yryvu", scheme: "dark", builtIn: false },
     ];
-    expect(resolveAutoTheme(userOverridesDefault, "dark")).toBe("a-default");
+    expect(resolveAutoTheme(userOverridesYryvu, "dark")).toBe("a-yryvu");
   });
 });

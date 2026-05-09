@@ -178,6 +178,24 @@ fn tabs_release_notes_variant_roundtrips() {
 }
 
 #[test]
+fn ui_theme_defaults_to_a_yryvu() {
+    // #322: flagship default. `auto` is opt-in via the dropdown, not the
+    // baseline. New installs land on the Yryvu plumage palette.
+    let prefs = Preferences::default();
+    assert_eq!(prefs.ui.theme, "a-yryvu");
+}
+
+#[test]
+fn ui_theme_missing_field_falls_back_to_default() {
+    // A preferences file written before #322 lacked an explicit theme
+    // value; loading must fill it with `"a-yryvu"` instead of failing.
+    let dir = TempDir::new().unwrap();
+    std::fs::write(file_path(dir.path()), r#"{"version": 1, "ui": {}}"#).unwrap();
+    let prefs = load(dir.path()).unwrap();
+    assert_eq!(prefs.ui.theme, "a-yryvu");
+}
+
+#[test]
 fn ui_density_defaults_to_comfortable() {
     let prefs = Preferences::default();
     assert_eq!(prefs.ui.density, Density::Comfortable);

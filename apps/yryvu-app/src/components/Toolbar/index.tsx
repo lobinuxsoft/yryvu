@@ -10,6 +10,7 @@ import {
   undoRedoState,
   type PullType,
 } from "../../state";
+import { openAbout } from "../About";
 import { Bell } from "../Notifications";
 import { BranchSwitcher } from "./BranchSwitcher";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -22,6 +23,7 @@ import {
   IconArrowUp,
   IconBranch,
   IconGear,
+  IconInfo,
   IconRedo,
   IconSearch,
   IconStashIn,
@@ -148,6 +150,12 @@ export function Toolbar(props: ToolbarProps) {
       <div class="toolbar__spacer" />
 
       <div class="toolbar__actions toolbar__actions--trailing">
+        <ToolbarBtn
+          icon={<IconInfo />}
+          label="About"
+          title="About Yryvu"
+          onClick={openAbout}
+        />
         <ToolbarBtn
           icon={<IconGear />}
           label="Preferences"

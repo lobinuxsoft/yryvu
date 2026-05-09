@@ -5,6 +5,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
+import { About } from "../About";
 import { CommitGraph } from "../CommitGraph";
 import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
@@ -286,6 +287,7 @@ export function AppShell() {
       <InitDialog />
       <CloneDialog />
       <PreferencesWindow />
+      <About />
       <ToastContainer />
     </div>
     </BranchOpsProvider>

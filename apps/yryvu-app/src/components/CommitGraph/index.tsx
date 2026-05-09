@@ -92,12 +92,18 @@ export function CommitGraph(props: CommitGraphProps) {
       ops.openCommitContextMenu(e, sha, shortSha),
   };
 
+  const isInitialLoading = () => data.loading() && data.rows().length === 0;
+
   return (
-    <div class="commit-graph" ref={rootEl}>
+    <div
+      class="commit-graph"
+      ref={rootEl}
+      data-loading={isInitialLoading() ? "true" : "false"}
+    >
       <Show when={data.error()}>
         <div class="commit-graph__error">Error: {data.error()}</div>
       </Show>
-      <Show when={data.loading() && data.rows().length === 0}>
+      <Show when={isInitialLoading()}>
         <LoadingSkeleton topOffset={dirtyFileCount() > 0 ? ROW_HEIGHT : 0} />
       </Show>
       {/* WIP pseudo-row architecture mirrors GitKraken exactly: each

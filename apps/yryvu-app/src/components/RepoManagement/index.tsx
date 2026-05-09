@@ -129,6 +129,13 @@ export function RepoManagementBody() {
 
   return (
     <section class="repo-management">
+      <div class="repo-management__brand">
+        <span class="repo-management__brand-mark" aria-hidden="true" />
+        <div class="repo-management__brand-text">
+          <span class="repo-management__brand-name">Yryvu</span>
+          <span class="repo-management__brand-section">Repository management</span>
+        </div>
+      </div>
       <header class="repo-management__header">
         <div class="repo-management__actions">
           <button
@@ -185,6 +192,7 @@ export function RepoManagementBody() {
               when={loading()}
               fallback={
                 <>
+                  <span class="repo-management__empty-mark" aria-hidden="true" />
                   <h2>No known repositories yet</h2>
                   <p>
                     Open a repo from the welcome tab and it'll show up here

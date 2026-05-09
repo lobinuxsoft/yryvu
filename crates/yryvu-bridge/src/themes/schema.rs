@@ -60,13 +60,13 @@ mod tests {
     #[test]
     fn parses_minimal_theme_toml() {
         let src = r#"
-            name = "Default"
-            id = "a-default"
+            name = "Default Dark"
+            id = "k-default"
             scheme = "dark"
         "#;
-        let meta = parse(src, "a-default").unwrap();
-        assert_eq!(meta.name, "Default");
-        assert_eq!(meta.id, "a-default");
+        let meta = parse(src, "k-default").unwrap();
+        assert_eq!(meta.name, "Default Dark");
+        assert_eq!(meta.id, "k-default");
         assert_eq!(meta.scheme, Scheme::Dark);
         assert!(meta.author.is_none());
         assert!(meta.version.is_none());
@@ -100,15 +100,15 @@ mod tests {
     #[test]
     fn rejects_id_folder_mismatch() {
         let src = r#"
-            name = "Default"
+            name = "Default Dark"
             id = "wrong-id"
             scheme = "dark"
         "#;
-        let err = parse(src, "a-default").unwrap_err();
+        let err = parse(src, "k-default").unwrap_err();
         match err {
             SchemaError::IdMismatch { got, expected } => {
                 assert_eq!(got, "wrong-id");
-                assert_eq!(expected, "a-default");
+                assert_eq!(expected, "k-default");
             }
             other => panic!("wrong error variant: {other:?}"),
         }

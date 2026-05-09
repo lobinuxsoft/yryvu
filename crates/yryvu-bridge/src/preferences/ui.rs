@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 /// follow.
 ///
 /// `theme` is a [`ThemeId`] — any built-in id, custom id, or `"auto"`.
-/// `"auto"` resolves at runtime against `prefers-color-scheme`.
+/// Default is the flagship `"a-yryvu"` (#322); `"auto"` is opt-in and
+/// resolves at runtime against `prefers-color-scheme`.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UiPreferences {
@@ -52,7 +53,7 @@ impl Default for UiPreferences {
 pub type ThemeId = String;
 
 fn default_theme() -> ThemeId {
-    "auto".to_string()
+    "a-yryvu".to_string()
 }
 
 /// UI zoom factor (issue #293). Ports GK's `ZOOM_FACTORS` ladder

@@ -25,6 +25,22 @@
   border-bottom: 1px solid var(--bg-3);
 }
 
+/* Brand anchor shown only when the sidebar is collapsed to its rail
+   (44 px wide). Lives in its own row below the header — the rail body is
+   empty in collapsed state (filter + sections + banner all hidden) so it
+   has room without clipping (#322). */
+.sidebar__brand-rail {
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 12px auto;
+  background: var(--accent);
+  mask: url("../../assets/silhouette.svg") no-repeat center / contain;
+  -webkit-mask: url("../../assets/silhouette.svg") no-repeat center / contain;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
 .sidebar__filter {
   position: relative;
   padding: 6px 10px;

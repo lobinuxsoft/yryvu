@@ -97,7 +97,7 @@ function ResultBody(props: { result: MergeResult }) {
       >
         The repo is in a merge-in-progress state. Resolve the files manually
         (editor + <code>git add</code> + <code>git commit</code>) — or wait
-        for Chajá's conflict resolver (issue #10). Click{" "}
+        for Yryvu's conflict resolver (issue #10). Click{" "}
         <strong>Abort merge</strong> to discard the merge entirely (reset
         hard to HEAD).
       </p>

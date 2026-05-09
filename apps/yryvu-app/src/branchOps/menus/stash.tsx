@@ -60,12 +60,12 @@ export function openStashContextMenu(
         try {
           await stashDrop(path, index);
           refreshWorkingTree();
-          // Note: stash drop is NOT undoable via the chajá undo log
-          // (crates/chaja-bridge/src/repo/undo.rs:22 — re-stashing
+          // Note: stash drop is NOT undoable via the yryvu undo log
+          // (crates/yryvu-bridge/src/repo/undo.rs:22 — re-stashing
           // needs a heavier snapshot than libgit2 exposes). The sha
           // does live in the objects DB until git GC (~90 days), so
           // a determined user can `git stash apply <sha>` from a
-          // terminal — but from chajá's UI it's gone for good.
+          // terminal — but from yryvu's UI it's gone for good.
           notify.info("Stash dropped", { message: label });
         } catch (err) {
           notify.error("Drop failed", { message: String(err) });

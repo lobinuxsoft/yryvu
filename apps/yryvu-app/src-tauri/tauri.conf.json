@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "chaja-app",
+  "productName": "yryvu-app",
   "version": "0.1.0",
-  "identifier": "dev.chaja.app",
+  "identifier": "com.lobinuxsoft.yryvu",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "chaja-app",
+        "title": "yryvu-app",
         "width": 800,
         "height": 600
       }

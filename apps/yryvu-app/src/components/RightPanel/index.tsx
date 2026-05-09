@@ -73,7 +73,7 @@ export function RightPanel() {
 
   // Refresh working-tree status whenever the window regains focus or becomes
   // visible — covers the common flow where the user edits files in an external
-  // editor and alt-tabs back to Chajá.
+  // editor and alt-tabs back to Yryvu.
   onMount(() => {
     const refresh = () => refreshWorkingTree();
     window.addEventListener("focus", refresh);

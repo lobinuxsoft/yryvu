@@ -7,7 +7,7 @@ interface PlaceholderProps {
   issue?: number;
 }
 
-const REPO_URL = "https://github.com/lobinuxsoft/chaja";
+const REPO_URL = "https://github.com/lobinuxsoft/yryvu";
 
 export function Placeholder(props: PlaceholderProps): JSX.Element {
   return (

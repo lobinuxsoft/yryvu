@@ -7,8 +7,8 @@ import { invoke } from "@tauri-apps/api/core";
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface GeneralPreferences {}
 
-/// Theme identifier — accepts any built-in id (`a-default`,
-/// `b-tokyo-night`, …, `j-kanagawa`), a custom theme id from
+/// Theme identifier — accepts any built-in id (`a-yryvu`,
+/// `b-tokyo-night`, …, `k-default`), a custom theme id from
 /// `<app-config>/themes/<id>/`, or the literal `"auto"` (which resolves
 /// at runtime via `prefers-color-scheme`).
 export type ThemeId = string;

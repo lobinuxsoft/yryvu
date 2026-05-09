@@ -39,7 +39,7 @@ export function getThemeCss(id: string): Promise<ThemeCss> {
 }
 
 /// Copy a built-in theme to `<app-config>/themes/<unique-id>/`. Returns
-/// the generated id (e.g. `a-default-copy`, `a-default-copy-2`, …).
+/// the generated id (e.g. `a-yryvu-copy`, `a-yryvu-copy-2`, …).
 export function createThemeFromTemplate(builtinId: string): Promise<string> {
   return invoke<string>("create_theme_from_template", { builtinId });
 }

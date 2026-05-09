@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 
-/* Theme-independent tokens + a-default fallback colors.
+/* Theme-independent tokens + a-yryvu fallback colors.
  *
  * The active theme overrides via `:root[data-theme="<id>"]` selectors
  * injected at startup by the theme system (#292). The `:root` rule
- * below ships the a-default tokens as the baseline so the first paint
+ * below ships the a-yryvu tokens as the baseline so the first paint
  * renders on a sane stack before injection completes — and so the
  * self-healing fallback chain in commit 4 has something to fall back
  * to if every theme fails to load.
@@ -16,40 +16,40 @@
  */
 
 :root {
-  /* Layers — bg-0 deepest panel, bg-4 highest accent surface */
-  --bg-0: #0f1116;
-  --bg-1: #15171d;
-  --bg-2: #1d2028;
-  --bg-3: #262a33;
-  --bg-4: #2a2e38;
-  --accent: #3a4a7a;
-  --accent-hover: #4a5a8a;
-  --accent-fg: #ffffff;
+  /* Layers — deep matte black to violet-tinged elevation (a-yryvu) */
+  --bg-0: #050708;
+  --bg-1: #0d101b;
+  --bg-2: #131626;
+  --bg-3: #1a2038;
+  --bg-4: #232a52;
+  --accent: #5b64b8;
+  --accent-hover: #7286c3;
+  --accent-fg: #f5f8ff;
 
-  /* Foreground — fg-0 primary, fg-3 muted */
-  --fg-0: #e7e9ee;
-  --fg-1: #d4d7df;
-  --fg-2: #8a92a6;
-  --fg-3: #6b7285;
+  /* Foreground — pale cyan ladder */
+  --fg-0: #caedf2;
+  --fg-1: #a9d4f2;
+  --fg-2: #7a8cb6;
+  --fg-3: #4b5c94;
 
-  /* Status */
-  --success: #4e9a5a;
-  --warning: #c9a24c;
-  --danger: #c54a4a;
-  --info: #4a8ec9;
+  /* Status — wine warm + cool complements */
+  --success: #6ab5a0;
+  --warning: #c4a872;
+  --danger: #c66594;
+  --info: #7f9dd8;
 
   /* Lane palette — themes override per-id; chrome reads `--lane-N` via
      `laneColor()` in components/CommitGraph/RowRenderer/geometry.ts */
-  --lane-0: #1abc9c;
-  --lane-1: #3498db;
-  --lane-2: #9b59b6;
-  --lane-3: #e91e63;
-  --lane-4: #ff6f91;
-  --lane-5: #e74c3c;
-  --lane-6: #e67e22;
-  --lane-7: #f1c40f;
-  --lane-8: #2ecc71;
-  --lane-9: #00b894;
+  --lane-0: #5b64b8;
+  --lane-1: #7286c3;
+  --lane-2: #94aee0;
+  --lane-3: #c66594;
+  --lane-4: #ab5a8a;
+  --lane-5: #6ab5a0;
+  --lane-6: #c4a872;
+  --lane-7: #8b7ab5;
+  --lane-8: #d4a4b8;
+  --lane-9: #4b86c2;
 
   color-scheme: dark;
 

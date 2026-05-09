@@ -8,7 +8,7 @@
 //! CSS via the backend, and injects it into `<head>`.
 //!
 //! Mounted once at app boot via [`mountThemeProvider`]. The chrome's
-//! `:root` baseline (a-default tokens) keeps the first paint legible
+//! `:root` baseline (a-yryvu tokens) keeps the first paint legible
 //! before this resolves; the injection then takes over in the next
 //! microtask.
 
@@ -26,7 +26,7 @@ import {
 } from "./auto-resolver";
 import { applyThemeCss } from "./inject";
 
-const FALLBACK_THEME_ID = "a-default";
+const FALLBACK_THEME_ID = "a-yryvu";
 const THEME_CHANGED_EVENT = "theme-changed";
 
 const [colorScheme, setColorScheme] = createSignal<ColorSchemePreference>(
@@ -107,8 +107,8 @@ async function injectById(id: string): Promise<void> {
 
     if (id === FALLBACK_THEME_ID) {
       // Fallback itself failed — the chrome's `:root` baseline (defined
-      // in `styles/tokens.css` from commit 3a, mirroring a-default) keeps
-      // the app legible. Surface the failure so the user knows.
+      // in `styles/tokens.css`, mirroring a-yryvu) keeps the app legible.
+      // Surface the failure so the user knows.
       notify.error(`Theme '${id}' failed to load`, {
         message: `${msg}. Using built-in baseline.`,
       });

@@ -100,9 +100,9 @@ mn.updateOptions({ tabSize: ct });
 
 (Per doc 04.) No per-file-type tab size override in the bundle.
 `.editorconfig` is NOT honored by GitKraken — audit opportunity for
-Chajá (#33 capability audit).
+Yryvu (#33 capability audit).
 
-## Chajá implications
+## Yryvu implications
 
 - **One whitespace toggle only**: "Ignore Leading/Trailing Whitespace"
   → Monaco `ignoreTrimWhitespace`. Do not expose `-w` or aggressive
@@ -113,7 +113,7 @@ Chajá (#33 capability audit).
 - **Word Wrap is a display toggle**, not a diff option. Per-file
   override (toolbar) overlays per-profile default (preferences).
 - **Tab size per-profile**, not per-file. `.editorconfig` support is
-  a post-clone Chajá innovation.
+  a post-clone Yryvu innovation.
 
 ## Source locations
 

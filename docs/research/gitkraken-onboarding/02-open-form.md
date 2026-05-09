@@ -30,9 +30,9 @@ open) failed.
 The right pane is decorative imagery: `OnboardingImgRelativePaths.openRepoKeif`
 (`bundle:96649`).
 
-## What chajá has today
+## What yryvu has today
 
-`apps/chaja-app/src/components/ColdStart/index.tsx:14-21`:
+`apps/yryvu-app/src/components/ColdStart/index.tsx:14-21`:
 
 ```ts
 async function openPicker() {
@@ -50,22 +50,22 @@ async function openPicker() {
 ```
 
 This calls `@tauri-apps/plugin-dialog`'s native directory picker. **No
-custom dialog renders inside chajá.** The OS dialog handles browse +
-selection, and on confirm chajá pushes to recents and opens.
+custom dialog renders inside yryvu.** The OS dialog handles browse +
+selection, and on confirm yryvu pushes to recents and opens.
 
-## Gap analysis (chajá vs. GK)
+## Gap analysis (yryvu vs. GK)
 
-| Behaviour | GK | chajá today | Triage |
+| Behaviour | GK | yryvu today | Triage |
 |---|---|---|---|
 | OS directory picker | yes (in `RepoPathSelector`) | yes (`@tauri-apps/plugin-dialog`) | **DONE** |
-| Validate the picked path is a real git repo before opening | yes (`checkRepoValidity: true` at `bundle:96632`) | NO — chajá calls `setRepoPath` and the failure surfaces post-mount | **FLAG** |
+| Validate the picked path is a real git repo before opening | yes (`checkRepoValidity: true` at `bundle:96632`) | NO — yryvu calls `setRepoPath` and the failure surfaces post-mount | **FLAG** |
 | Auto-detect "this folder has multiple repos in it" + offer to pick one | yes (`searchReposInSubfolders: true` + `RepoPathSelector` invariant) | NO | **DEFER** (ChooseRepoForm-equivalent, doc 01) |
-| In-app form rendering vs. native OS dialog only | GK renders an in-app form (so the user can see "validating…", retry, etc.) | chajá goes straight to native picker | **FLAG / minor** — chajá's UX is simpler; matches GK's spirit if we add validation feedback. |
+| In-app form rendering vs. native OS dialog only | GK renders an in-app form (so the user can see "validating…", retry, etc.) | yryvu goes straight to native picker | **FLAG / minor** — yryvu's UX is simpler; matches GK's spirit if we add validation feedback. |
 | Path keyboard shortcut: Enter opens | yes (`onPathKeyDown`) | implicit (native dialog) | **DONE** (native dialog Enter = confirm) |
 
-## Recommendations for chajá
+## Recommendations for yryvu
 
-### KEEP what chajá has
+### KEEP what yryvu has
 
 The OS picker is **simpler and faster** than GK's in-app form. Don't
 replace it with a custom Solid component for the sake of 1:1.
@@ -85,11 +85,11 @@ This is **NOT in #100 scope** unless we want to bundle it. Recommendation:
 file as follow-up (`fix(coldstart): validate path before opening`),
 keep #100 focused on Clone + Init.
 
-### chajá deviation: skip the in-app OpenRepoForm
+### yryvu deviation: skip the in-app OpenRepoForm
 
-GK shows a stage with a search box and a button "Open the repo". chajá
-opts for OS-native picker. **This is the right call for chajá** —
-documented as deviation in `12-chaja-implementation-hints.md`.
+GK shows a stage with a search box and a button "Open the repo". yryvu
+opts for OS-native picker. **This is the right call for yryvu** —
+documented as deviation in `12-yryvu-implementation-hints.md`.
 
 ## Cross-validation
 

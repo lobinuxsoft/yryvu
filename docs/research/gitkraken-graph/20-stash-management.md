@@ -132,7 +132,7 @@ If the operation is cancelled ("cancelled" reason):
 After the operation: transparent apply + drop. If it fails → the
 stash remains visible for recovery.
 
-## Chajá implications
+## Yryvu implications
 
 - **Model stashes as first-class graph nodes** from day one:
   `enum GraphNode { Commit(Sha), Stash { sha, base, index, message } }`.

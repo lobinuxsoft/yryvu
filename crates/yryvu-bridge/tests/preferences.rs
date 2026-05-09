@@ -5,11 +5,11 @@
 //! JSON loads via `#[serde(default)]`, unknown-field tolerance, and
 //! version-newer rejection.
 
+use tempfile::TempDir;
 use yryvu_bridge::preferences::{
     file_path, load, reset, save, AnimationMode, Density, GeneralPreferences, PermanentTabState,
     PermanentTabs, Preferences, PreferencesError, Tab, TabsPreferences, UiPreferences,
 };
-use tempfile::TempDir;
 
 #[test]
 fn load_returns_default_when_file_missing() {

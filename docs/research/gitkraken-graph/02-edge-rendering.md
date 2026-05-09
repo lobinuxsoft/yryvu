@@ -98,7 +98,7 @@ Six memoization caches seen in the bundle:
 - `No`, `Co`, `Io`, `wo`, `vo` — serialized path fragments keyed by
   (edge type, column, compact-mode).
 
-For Chajá with SolidJS these map naturally to `createMemo` keyed by the same
+For Yryvu with SolidJS these map naturally to `createMemo` keyed by the same
 tuples.
 
 ## Rendering order (within a row)
@@ -113,7 +113,7 @@ tuples.
 Z-order: nodes paint over edges; ref pills paint over nodes; messages in their
 own grid cell. No `z-index` gymnastics — it comes from DOM order.
 
-## Chajá implications
+## Yryvu implications
 
 Our renderer uses WebGL (ogl) with Bézier curves. Moving to SVG arcs would be
 a substantial rewrite, but would:

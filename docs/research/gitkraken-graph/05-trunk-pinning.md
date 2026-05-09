@@ -63,10 +63,10 @@ which forces column 0 for every sha in the set.
 - **Merge commit on pinned chain**: only the first parent is followed, so
   merged-in side branches are excluded. Consistent with `git log --first-parent`.
 
-## Chajá proposal: auto-pin fallback
+## Yryvu proposal: auto-pin fallback
 
 GitKraken's "manual-only" behavior is a UX miss — users expect the trunk to
-stay on the left without configuration. Proposed Chajá behavior:
+stay on the left without configuration. Proposed Yryvu behavior:
 
 1. If the user has explicitly pinned a branch for this repo, use that.
 2. Else, auto-fallback in this order:
@@ -80,10 +80,10 @@ stay on the left without configuration. Proposed Chajá behavior:
 Auto-pin results must be invalidated and recomputed whenever refs change
 (create/delete/move branch, fetch, rename HEAD).
 
-## Chajá implementation sketch
+## Yryvu implementation sketch
 
 ```rust
-// In chaja-bridge::repo::commits after topo_sort_children_first
+// In yryvu-bridge::repo::commits after topo_sort_children_first
 let pinned_head = pick_pinned_branch(&repo)?;         // auto or from settings
 let pinned_shas = build_pinned_set(&rows, &pinned_head);
 

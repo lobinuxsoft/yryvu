@@ -52,18 +52,18 @@ if (gitIgnorePath) {
 Plain file copy. No template-tag substitution (unlike the license
 flow). Just copy bytes.
 
-## Triage: how chajá ships this
+## Triage: how yryvu ships this
 
 Three options:
 
-### Option A: Bundle templates with chajá (mirror GK)
+### Option A: Bundle templates with yryvu (mirror GK)
 
 **KEEP** as the v1 approach. Source the templates from the upstream
-`github/gitignore` repo (CC0 — license-compatible with chajá's AGPL).
+`github/gitignore` repo (CC0 — license-compatible with yryvu's AGPL).
 
 Plan:
 
-1. Add `apps/chaja-app/src-tauri/templates/gitignore/` to the Rust
+1. Add `apps/yryvu-app/src-tauri/templates/gitignore/` to the Rust
    bundle resources.
 2. Curate ~20 most-used templates (Node, Python, Rust, Go, Java, C++,
    VS, VSCode, JetBrains, macOS, Windows, Linux, etc.) — full set is
@@ -87,7 +87,7 @@ SKIP. Adds network dependency for offline-installed users; defeats the
 file picker, lets user point at any local `.gitignore` they want copied.
 Defer to follow-up issue.
 
-## chajá implementation hint
+## yryvu implementation hint
 
 Tauri resource paths: declare in `src-tauri/tauri.conf.json` under
 `bundle.resources` and resolve at runtime via
@@ -121,9 +121,9 @@ $ grep -n "InitRepo-GitIgnoreTemplate" /tmp/gk-bundle-pretty.js
 
 Confirmed.
 
-## chajá deviation FLAG
+## yryvu deviation FLAG
 
 1. **Curated subset, not the full upstream.** GK ships hundreds of
    templates by inheriting all of `github/gitignore` plus some custom.
-   chajá ships ~20 most-used to keep the bundle small. If a user needs
+   yryvu ships ~20 most-used to keep the bundle small. If a user needs
    one we don't ship, they can paste the file post-init.

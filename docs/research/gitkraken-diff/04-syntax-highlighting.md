@@ -135,7 +135,7 @@ Why both:
 
 So: editable or diff context → Monaco; read-only inline code → Prism.
 
-## Chajá implications
+## Yryvu implications
 
 - **Follow the same split**: Monaco for DiffEditor + Content editor;
   Prism (or Shiki for a modern alternative) for Markdown preview and
@@ -149,13 +149,13 @@ So: editable or diff context → Monaco; read-only inline code → Prism.
   `monaco.languages.getLanguages()` at init, match by extension. Don't
   maintain our own extension→language map.
 - **Tab size from user settings**, not per-file-type. If we want a
-  chajá improvement later, `.editorconfig` respect is a natural fit
+  yryvu improvement later, `.editorconfig` respect is a natural fit
   (but GitKraken doesn't honor it — see the capability audit #33).
 - **Theme tokens**: Monaco theme JSON should define the diff editor
   keys (`diffEditor.*`) even if the base editor keys are otherwise
   theme-system driven.
 - **Do not port Prism's `squirrel` and similar obscure grammars** that
-  nobody uses — Prism's default language list is sufficient. Chajá
+  nobody uses — Prism's default language list is sufficient. Yryvu
   chooses which grammars to bundle.
 
 ## Source locations

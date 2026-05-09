@@ -42,12 +42,12 @@ The lane assigner's invariants rely on "children before parents":
 If a parent appears before any of its children, the child's later reservation
 has nowhere to attach, and the parent ends up on a random leftmost-free lane.
 This is the exact bug we hit when `gix`'s `Sorting::ByCommitTime(NewestFirst)`
-produced out-of-order tips in repos with tied timestamps (see `chaja-testbed`).
+produced out-of-order tips in repos with tied timestamps (see `yryvu-testbed`).
 
-## Chajá implementation
+## Yryvu implementation
 
 We don't shell out to `git` — `gix` is the primary backend. Our equivalent is
-`topo_sort_children_first` in `crates/chaja-bridge/src/repo/commits.rs`:
+`topo_sort_children_first` in `crates/yryvu-bridge/src/repo/commits.rs`:
 
 - Collect commits from gix's `ByCommitTime` walk into a `HashMap<sha, Commit>`.
 - Build in-degree map: `in_deg[sha] = count of commits in set that list sha as parent`.
@@ -69,7 +69,7 @@ Bundle: same file.
 - `dateOrder:true, firstParent:true, topoOrder:true` — option flags to the
   git log command builder (visible via grep for `topoOrder`).
 
-Chajá:
-- `crates/chaja-bridge/src/repo/commits.rs::topo_sort_children_first`
-- `crates/chaja-bridge/src/repo/commits.rs::TopoEntry` (heap entry with
+Yryvu:
+- `crates/yryvu-bridge/src/repo/commits.rs::topo_sort_children_first`
+- `crates/yryvu-bridge/src/repo/commits.rs::TopoEntry` (heap entry with
   date-desc comparator).

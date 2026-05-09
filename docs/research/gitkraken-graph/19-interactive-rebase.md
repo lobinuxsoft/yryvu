@@ -130,7 +130,7 @@ reset to the original `headRef` via
 `PendingInteractiveRebaseStagedChangesDanglingCommitShaUpdated` which
 preserves the pre-rebase sha.
 
-## Chajá implications
+## Yryvu implications
 
 - **The `GIT_SEQUENCE_EDITOR = custom-binary` pattern is robust but
   requires a bundled binary.** In Rust / Tauri, build a sidecar binary

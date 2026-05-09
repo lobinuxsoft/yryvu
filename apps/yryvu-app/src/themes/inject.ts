@@ -2,8 +2,8 @@
 
 //! Injection of an active theme's CSS into `<head>`.
 //!
-//! Two `<style>` elements are managed: `chaja-theme-tokens` for the
-//! `:root[data-theme="<id>"] { ... }` block and `chaja-theme-personality`
+//! Two `<style>` elements are managed: `yryvu-theme-tokens` for the
+//! `:root[data-theme="<id>"] { ... }` block and `yryvu-theme-personality`
 //! for the optional decorative rules. Replacing their `textContent` (vs
 //! recreating the elements) keeps CSS rule ordinals stable so transitions
 //! remain smooth across theme switches.
@@ -13,8 +13,8 @@
 
 import type { ThemeCss } from "../ipc";
 
-const TOKENS_ID = "chaja-theme-tokens";
-const PERSONALITY_ID = "chaja-theme-personality";
+const TOKENS_ID = "yryvu-theme-tokens";
+const PERSONALITY_ID = "yryvu-theme-personality";
 
 function ensureStyleEl(id: string): HTMLStyleElement {
   let el = document.getElementById(id) as HTMLStyleElement | null;

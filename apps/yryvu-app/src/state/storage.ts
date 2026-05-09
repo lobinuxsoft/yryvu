@@ -4,11 +4,11 @@ import { createSignal, type Signal } from "solid-js";
 
 /**
  * Shared `localStorage` namespace for every persisted UI signal in the
- * app. Keep the prefix on every read/write so users with multiple chajá
+ * app. Keep the prefix on every read/write so users with multiple yryvu
  * versions co-resident in the same browser profile (rare, but possible
  * during dev) don't trample each other's state.
  */
-export const STORAGE_PREFIX = "chaja.";
+export const STORAGE_PREFIX = "yryvu.";
 
 /**
  * Persisted boolean signal. Stores `"1"` / `"0"` so the values survive

@@ -12,7 +12,7 @@
 //!
 //! **Backend choice — why git2 dominates this module (as of gix 0.68)**:
 //!
-//! Chajá's rule is gix-primary, git2 only for ops gix hasn't stabilised
+//! Yryvu's rule is gix-primary, git2 only for ops gix hasn't stabilised
 //! yet. For every function here the verification found gix still missing
 //! a piece of the pipeline — so they all live on git2 until gix catches
 //! up. Each function carries a `BACKEND: git2 — <reason>` marker so a

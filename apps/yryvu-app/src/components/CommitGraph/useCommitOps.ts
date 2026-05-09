@@ -112,7 +112,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
     const path = repoPath();
     if (!path) return;
     try {
-      await stashPush(path, `chaja: auto-stash before checkout to ${shortSha}`);
+      await stashPush(path, `yryvu: auto-stash before checkout to ${shortSha}`);
       await checkoutCommit(path, sha);
       closeDialog();
       refreshGraph();

@@ -1,6 +1,6 @@
 # 11 — Implementation notes for #103
 
-Concrete plumbing recipes for each chajá layer. This is the bridge from
+Concrete plumbing recipes for each yryvu layer. This is the bridge from
 the research findings into PR-ready code shapes. Auditor reviews these
 before the implementation PRs open.
 
@@ -8,7 +8,7 @@ before the implementation PRs open.
 
 ### Extending `UiPreferences`
 
-File: `crates/chaja-bridge/src/preferences.rs`. The struct currently
+File: `crates/yryvu-bridge/src/preferences.rs`. The struct currently
 sits at line 107 as `pub struct UiPreferences {}`. Replace with:
 
 ```rust

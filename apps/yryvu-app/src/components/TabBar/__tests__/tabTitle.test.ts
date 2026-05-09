@@ -11,7 +11,7 @@ function repo(repoPath: string, id = "id"): Tab {
 
 describe("titleOf", () => {
   it("REPO uses the last path segment", () => {
-    expect(titleOf(repo("/var/mnt/DATA/Repos/chaja"))).toBe("chaja");
+    expect(titleOf(repo("/var/mnt/DATA/Repos/yryvu"))).toBe("yryvu");
     expect(titleOf(repo("/Users/foo/Code/oh-my-engine"))).toBe("oh-my-engine");
   });
 
@@ -33,7 +33,7 @@ describe("titleOf", () => {
 
 describe("filterByTitle", () => {
   const items = [
-    repo("/var/mnt/DATA/Repos/chaja", "a"),
+    repo("/var/mnt/DATA/Repos/yryvu", "a"),
     repo("/var/mnt/DATA/Repos/oh-my-engine", "b"),
     repo("/var/mnt/DATA/Repos/CapyDeploy", "c"),
     { type: "NEW", id: "n" } as Tab,
@@ -46,7 +46,7 @@ describe("filterByTitle", () => {
   });
 
   it("case-insensitive substring match", () => {
-    expect(filterByTitle(items, titleOf, "chaja").map((t) => t.id)).toEqual([
+    expect(filterByTitle(items, titleOf, "yryvu").map((t) => t.id)).toEqual([
       "a",
     ]);
     expect(filterByTitle(items, titleOf, "CHAJA").map((t) => t.id)).toEqual([

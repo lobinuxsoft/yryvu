@@ -1,7 +1,7 @@
 # 09 — Error classes + UI presentation
 
 This doc enumerates onboarding-flow errors, their GK presentation, and
-the chajá typed-error mapping for v1.
+the yryvu typed-error mapping for v1.
 
 ## Error catalogue
 
@@ -33,9 +33,9 @@ The Open form has minimal error surface. Path validity is checked by
 a path and presses Enter, libgit2 attempts to open and any failure
 surfaces as a generic "could not open repository" toast.
 
-## chajá typed errors for v1
+## yryvu typed errors for v1
 
-Add to `crates/chaja-bridge/src/repo/backend/errors.rs` (or wherever
+Add to `crates/yryvu-bridge/src/repo/backend/errors.rs` (or wherever
 the existing error enum lives):
 
 ```rust
@@ -79,7 +79,7 @@ For clone, gix-protocol surfaces auth errors via
 `gix::credentials::protocol::Error` and SSL via
 `gix_transport::client::Error`. Map both to the typed error variants.
 
-## UI presentation rules (chajá)
+## UI presentation rules (yryvu)
 
 | Severity | Surface | Examples |
 |---|---|---|
@@ -96,7 +96,7 @@ Rule: use **inline** errors when the user can fix the offending field
 without leaving the dialog (validation). Use **toast** when the failure
 came from the backend (auth, network, filesystem).
 
-### chajá deviation: surface auth-required as a clear actionable
+### yryvu deviation: surface auth-required as a clear actionable
 
 When `CloneAuthRequired { host }` fires, toast text:
 

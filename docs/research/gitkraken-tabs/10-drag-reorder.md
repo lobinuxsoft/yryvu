@@ -56,7 +56,7 @@ function arrayMove(Ve, at, ct) {
 
 — a non-mutating insert-at-index. Port verbatim, it's 1 line.
 
-## chajá port options
+## yryvu port options
 
 For sub-PR 8 (= #39), three viable libs:
 
@@ -66,7 +66,7 @@ For sub-PR 8 (= #39), three viable libs:
 | **Hand-rolled `pointerdown` + `pointermove`** | No dep, full control | ~150 LOC; need to handle pointer capture, axis lock, hit testing |
 | **HTML5 native `draggable="true"`** | Zero dep, browser-supported | Janky visuals (custom drag preview + drop zones), poor cross-browser feel |
 
-**Recommendation**: hand-rolled. The tab strip is 1D (`axis: x`), no pointer-capture edge cases (the strip is always horizontal, no nesting), and chajá already follows this pattern for `GraphColumnResizer` (see `apps/chaja-app/src/components/CommitGraph/GraphColumnResizer.tsx`). The wins: no new dep, less bundle weight, no semver risk.
+**Recommendation**: hand-rolled. The tab strip is 1D (`axis: x`), no pointer-capture edge cases (the strip is always horizontal, no nesting), and yryvu already follows this pattern for `GraphColumnResizer` (see `apps/yryvu-app/src/components/CommitGraph/GraphColumnResizer.tsx`). The wins: no new dep, less bundle weight, no semver risk.
 
 Sketch:
 
@@ -113,14 +113,14 @@ Sibling pills get `is-sibling-dragging` to suppress hover/click cursors and to s
 
 ## Edge cases
 
-1. **Drag past the `+` button**: clamped at `tabs.length - 1`. The `+` button is part of the sortable list in GK but tagged non-sortable; for chajá, exclude the `+` from the pointer hit-testing range.
+1. **Drag past the `+` button**: clamped at `tabs.length - 1`. The `+` button is part of the sortable list in GK but tagged non-sortable; for yryvu, exclude the `+` from the pointer hit-testing range.
 2. **Drag past REPO_MANAGEMENT permanent tab**: same as `+` — permanent tabs are non-reorderable and live at the right edge. Hit-test only against transient pills.
 3. **Single-pill strip**: drag is a no-op — no other pills to swap with.
-4. **Concurrent CLOSE during drag**: GK's queue serializes — the MOVE op waits for any in-flight op. The chajá port using the Promise queue from doc 02 inherits the same guarantee.
+4. **Concurrent CLOSE during drag**: GK's queue serializes — the MOVE op waits for any in-flight op. The yryvu port using the Promise queue from doc 02 inherits the same guarantee.
 
 ## Cross-validation
 
 Two claims worth re-grepping:
 
-1. **`onSortStart` flips `isTabBeingDragged`** before any visual change — confirmed at bundle:330254-330256. The flag drives sibling-suppression CSS; if the chajá port omits this, sibling pills will show hover effects under the dragged pill, which surprises users.
+1. **`onSortStart` flips `isTabBeingDragged`** before any visual change — confirmed at bundle:330254-330256. The flag drives sibling-suppression CSS; if the yryvu port omits this, sibling pills will show hover effects under the dragged pill, which surprises users.
 2. **`useDragHandle: false`** — confirmed by the absence of a `useDragHandle` prop on the SortableContainer (the default is false). The whole pill is the handle. Don't add a dedicated drag-handle `:before` element.

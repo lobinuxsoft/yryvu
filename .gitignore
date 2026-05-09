@@ -11,7 +11,7 @@ dist/
 *.tsbuildinfo
 
 # Tauri
-apps/chaja-app/src-tauri/gen/
+apps/yryvu-app/src-tauri/gen/
 
 # IDE / editors
 .vscode/*

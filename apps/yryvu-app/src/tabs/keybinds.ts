@@ -35,7 +35,7 @@ export type TabKeybind =
 ///
 /// Cmd/Ctrl+T (openNewTab) and Cmd/Ctrl+W (closeSelectedTab) are NOT in
 /// this table — they're routed through the native Tauri menu in
-/// `apps/chaja-app/src-tauri/src/menu.rs`. WebKit2GTK reserves both at
+/// `apps/yryvu-app/src-tauri/src/menu.rs`. WebKit2GTK reserves both at
 /// the WebView level so a `keydown` listener never sees them; menu
 /// accelerators capture before GTK gets the chance.
 export function matchTabKeybind(input: {

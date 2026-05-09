@@ -3,7 +3,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 /**
- * Mirrors `chaja_bridge::backend::TagInfo`. `target_sha` is always the
+ * Mirrors `yryvu_bridge::backend::TagInfo`. `target_sha` is always the
  * peeled commit SHA — for annotated tags the wrapping object is decoded
  * server-side. `message` / `tagger_*` are populated only when
  * `is_annotated` is true.

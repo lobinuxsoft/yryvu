@@ -2,7 +2,7 @@
 
 GK's OAuth flow is **not** a direct conversation with each provider —
 it is mediated by the **GK auth proxy** at the user's
-`getApiUrl` endpoint (the GK backend). chajá replaces that mediator
+`getApiUrl` endpoint (the GK backend). yryvu replaces that mediator
 with direct provider OAuth.
 
 ## The auth-URL builder (`bundle:52634`)
@@ -82,7 +82,7 @@ The OAuth-relevant subset: `SEND_AUTHORIZATION_REQUEST`,
 `SET_TOKEN_FROM_SNAKE_CASE_TOKEN`, `REFRESH_TOKEN`,
 `SAVE_AUTH_DATA_FOR_INTEGRATION_TYPE`,
 `REMOVE_AUTH_TOKEN_FOR_INTEGRATION_TYPE`,
-`DISCONNECT_INTEGRATION`. chajá's Tauri `invoke` set should mirror
+`DISCONNECT_INTEGRATION`. yryvu's Tauri `invoke` set should mirror
 these names verbatim — they're a clean state machine.
 
 ## Browser opening (`bundle:146684`)
@@ -97,7 +97,7 @@ yield dt.call(Zr.openExternal, jn);
 `shell.openExternal` — the **system default browser**, not an
 in-app webview. Same pattern at `bundle:138712` for SSO login.
 
-> chajá deviation: Tauri 2 equivalent is `tauri-plugin-shell`'s
+> yryvu deviation: Tauri 2 equivalent is `tauri-plugin-shell`'s
 > `open` API. Same outcome — system browser, not embedded webview.
 > Embedded webview for OAuth has a long history of UX disasters
 > (password managers don't recognise it, providers refuse the embed
@@ -111,7 +111,7 @@ client only knows the integration type. The user grants scopes on
 the provider's consent screen.
 
 > ⚠ unconfirmed — Scopes are in the GK proxy server, not in the
-> client bundle. chajá must define its own scope sets per provider
+> client bundle. yryvu must define its own scope sets per provider
 > (when registering its own OAuth apps). Suggested minimum:
 >
 > | Provider | Scopes |
@@ -133,8 +133,8 @@ generateTokenParams: "scopes=repo,admin:org,admin:public_key,workflow&descriptio
 
 This is the querystring deep-linked to GHE's "create PAT" page —
 the user lands with the right scopes pre-checked. Mirror this in
-chajá's PAT dialog (replace `description=GitKraken` with
-`description=chaja`).
+yryvu's PAT dialog (replace `description=GitKraken` with
+`description=yryvu`).
 
 ## Token refresh (`bundle:146545`)
 
@@ -190,12 +190,12 @@ credential. `at` is a "soft disconnect" boolean — when `true`
 keeps cached metadata but clears the token, allowing PAT fallback
 without re-fetching the user profile.
 
-## chajá deviation: direct OAuth, no proxy
+## yryvu deviation: direct OAuth, no proxy
 
 Replace the GK proxy URL pattern with provider-native OAuth
 authorize endpoints:
 
-| Provider | chajá authorize URL |
+| Provider | yryvu authorize URL |
 |----------|---------------------|
 | GitHub | `https://github.com/login/oauth/authorize?client_id=…&scope=…&redirect_uri=…&state=…` |
 | GitLab | `https://gitlab.com/oauth/authorize?client_id=…&response_type=code&redirect_uri=…&scope=…&state=…` |
@@ -213,18 +213,18 @@ Token-exchange + refresh URLs:
 | Azure DevOps | `https://app.vssps.visualstudio.com/oauth2/token` |
 | Jira Cloud | `https://auth.atlassian.com/oauth/token` |
 
-These are **not in the bundle** — chajá must register an OAuth app
+These are **not in the bundle** — yryvu must register an OAuth app
 per provider and store the client_id (and, where required, the
 client_secret in the keyring).
 
-## chajá note: redirect URI strategy
+## yryvu note: redirect URI strategy
 
 Two viable patterns for native apps:
 
-A) **Custom protocol scheme** — register `chaja://` via Tauri
-   protocol-handler, listen for `chaja://oauth/<provider>/callback?code=…`.
+A) **Custom protocol scheme** — register `yryvu://` via Tauri
+   protocol-handler, listen for `yryvu://oauth/<provider>/callback?code=…`.
    Cross-platform but installation-time setup needed (Linux:
-   `.desktop` file `MimeType=x-scheme-handler/chaja`).
+   `.desktop` file `MimeType=x-scheme-handler/yryvu`).
 
 B) **Localhost loopback** — spin up an ephemeral HTTP server on a
    random port (8000-9999), redirect to `http://127.0.0.1:<port>/callback`.
@@ -233,14 +233,14 @@ B) **Localhost loopback** — spin up an ephemeral HTTP server on a
    redirect URIs in their app config.
 
 GK uses A (`gitkraken://` deep links) per their published docs.
-For chajá's MVP, B is simpler and works on all platforms with no
+For yryvu's MVP, B is simpler and works on all platforms with no
 installer changes. **Rec: B.**
 
-## chajá note: PKCE is mandatory
+## yryvu note: PKCE is mandatory
 
 Native apps SHOULD NOT ship a client_secret. All five providers
 support OAuth 2.0 PKCE (Proof Key for Code Exchange, RFC 7636).
-GK's proxy hides the client_secret server-side; chajá doesn't have
+GK's proxy hides the client_secret server-side; yryvu doesn't have
 that luxury, so **every authorize request must include
 `code_challenge` + `code_challenge_method=S256`** and the token
 exchange must include `code_verifier`. Skipping PKCE is a security

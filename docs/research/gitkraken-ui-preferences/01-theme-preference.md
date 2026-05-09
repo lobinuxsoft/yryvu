@@ -1,7 +1,7 @@
 # 01 — Theme preference
 
 The single largest GK port surface in #103. This doc reverse-engineers
-GK's theme model end-to-end so chajá's 10-theme implementation can be
+GK's theme model end-to-end so yryvu's 10-theme implementation can be
 aligned with the GK contract where it matters and deviated where it
 doesn't.
 
@@ -29,7 +29,7 @@ part of that same map; their entries carry `isBuiltInTheme: true`
 The currently selected theme id is **not** stored in the `theme` slice.
 It lives in the **profile** slice at `["ui", "theme"]`
 (`bundle:4753` — `ProfileSettingPaths.THEME = ["ui", "theme"]`). This
-means each user profile carries its own theme choice. chajá has no
+means each user profile carries its own theme choice. yryvu has no
 profile system, so the same single value lives in `Preferences.ui.theme`.
 
 ## Built-in theme set
@@ -47,7 +47,7 @@ THEME = {
 
 Default at first run: `DEFAULT_THEME = THEME.DARK` (`bundle:218670`).
 
-GK ships **four** built-in themes (vs chajá's planned 10). Both
+GK ships **four** built-in themes (vs yryvu's planned 10). Both
 high-contrast variants are accessibility-focused; the regular dark/light
 pair is the default UX.
 
@@ -62,9 +62,9 @@ themeSchemeTypes = { DARK: "dark", LIGHT: "light" }
 Every theme has a `scheme` that is one of these two. The scheme drives
 component-level branching that's binary: Monaco editor base
 (`vs-dark` vs `vs`) at `bundle:9116`, PR diff hunk styling at
-`bundle:361140`, etc. **Important**: the chajá deviation ships 10 themes
-that ALL must declare a scheme — this is a contract chajá inherits even
-though chajá has no Monaco yet, because future surfaces (PR diff,
+`bundle:361140`, etc. **Important**: the yryvu deviation ships 10 themes
+that ALL must declare a scheme — this is a contract yryvu inherits even
+though yryvu has no Monaco yet, because future surfaces (PR diff,
 syntax-highlighted code blocks) will branch on it.
 
 Selectors:
@@ -105,7 +105,7 @@ return sortThemeOptions(ct); // sort by label asc
 | `win32` | `10.0.0` (Windows 10) |
 
 On Linux the gate is unconditional — `SyncWithSystem` is always offered.
-chajá running on Bazzite picks up the same Linux behavior for free.
+yryvu running on Bazzite picks up the same Linux behavior for free.
 
 ## Compiled theme string
 
@@ -141,30 +141,30 @@ React.createElement(Helmet, null,
 )
 ```
 
-This is the chajá-aligned approach — same mechanism, different
-delivery. chajá's design-previews already embed `:root { ... }` blocks
+This is the yryvu-aligned approach — same mechanism, different
+delivery. yryvu's design-previews already embed `:root { ... }` blocks
 inside `<style>` tags. The port is straightforward: keep the same
 contract, deliver via Solid's reactive primitives instead of Helmet.
 
 ## Theme keys (tokens)
 
 `THEME_KEYS` at `bundle:218670` is a 400+ entry array of every CSS
-custom property GK references. **Do not port verbatim** — the chajá
-token contract is much smaller (`apps/chaja-app/src/styles/tokens.css`
+custom property GK references. **Do not port verbatim** — the yryvu
+token contract is much smaller (`apps/yryvu-app/src/styles/tokens.css`
 + `design-previews/preferences-themes/a-default.html`):
 
-| chajá tokens | GK rough equivalent | Notes |
+| yryvu tokens | GK rough equivalent | Notes |
 |---|---|---|
-| `--bg-0..--bg-4` | `--app__bg0`, `--panel__bg0..--panel__bg2`, `--toolbar__bg0..2` | chajá compresses 9 GK layers into 5 |
-| `--fg-0..--fg-3` | `--text-normal`, `--text-secondary`, `--text-disabled`, `--text-bright`, `--text-dimmed` | chajá compresses 5 GK fg roles into 4 |
-| `--accent`, `--accent-hover`, `--accent-fg` | `--primary-bg`, `--primary-hover`, `--primary-text-normal` | chajá uses simpler primary contract |
-| `--success`, `--warning`, `--danger`, `--info` | `--success-bg`, `--warning-bg`, `--danger-bg` (+text/border variants) | chajá ships single-color status, no per-component states yet |
-| `--lane-0..--lane-9` | `--graph-color-0..--graph-color-9` (+ `-f10`, `-f50`, `-bg25`, `-bg45`, `-bg50`, `-bg15` variants) | chajá flat 10, no opacity-derivative tokens |
-| `--row-h`, `--lane-w`, `--gutter`, `--commit-r` | `--graph-row-height` (+ structural geometry not exposed as theme tokens) | chajá adds graph geometry to theme contract |
+| `--bg-0..--bg-4` | `--app__bg0`, `--panel__bg0..--panel__bg2`, `--toolbar__bg0..2` | yryvu compresses 9 GK layers into 5 |
+| `--fg-0..--fg-3` | `--text-normal`, `--text-secondary`, `--text-disabled`, `--text-bright`, `--text-dimmed` | yryvu compresses 5 GK fg roles into 4 |
+| `--accent`, `--accent-hover`, `--accent-fg` | `--primary-bg`, `--primary-hover`, `--primary-text-normal` | yryvu uses simpler primary contract |
+| `--success`, `--warning`, `--danger`, `--info` | `--success-bg`, `--warning-bg`, `--danger-bg` (+text/border variants) | yryvu ships single-color status, no per-component states yet |
+| `--lane-0..--lane-9` | `--graph-color-0..--graph-color-9` (+ `-f10`, `-f50`, `-bg25`, `-bg45`, `-bg50`, `-bg15` variants) | yryvu flat 10, no opacity-derivative tokens |
+| `--row-h`, `--lane-w`, `--gutter`, `--commit-r` | `--graph-row-height` (+ structural geometry not exposed as theme tokens) | yryvu adds graph geometry to theme contract |
 | `--font-ui`, `--font-mono` | `--font-default`, `--font-monospace` | identical role |
-| `--radius-{sm,md,lg}` | `--button-radius`, `--input-radius`, `--checkbox-border-radius` | chajá generic radii vs GK per-component |
+| `--radius-{sm,md,lg}` | `--button-radius`, `--input-radius`, `--checkbox-border-radius` | yryvu generic radii vs GK per-component |
 
-The chajá contract is **deliberately smaller** — it sacrifices fine-
+The yryvu contract is **deliberately smaller** — it sacrifices fine-
 grained component theming for the ability to ship 10 distinct themes
 without 400 tokens to hand-tune each. This is a defensible tradeoff for
 v1; if user-submitted custom themes become a feature, the contract can
@@ -190,36 +190,36 @@ listeners (Electron's `nativeTheme.on('updated')` — not in this bundle
 because it's renderer-side, but the seed value `osTheme: THEME.DARK` is
 at `bundle:165973`).
 
-For chajá the equivalent is `window.matchMedia('(prefers-color-scheme:
+For yryvu the equivalent is `window.matchMedia('(prefers-color-scheme:
 dark)')` with a `change` listener — see doc 12.
 
-## chajá variant: `auto` instead of `SYNC_WITH_SYSTEM`
+## yryvu variant: `auto` instead of `SYNC_WITH_SYSTEM`
 
-The chajá design-previews list 10 themes (a-default through
-j-kanagawa). To match GK's behavior, chajá adds an 11th option with
+The yryvu design-previews list 10 themes (a-default through
+j-kanagawa). To match GK's behavior, yryvu adds an 11th option with
 id `auto` (renaming GK's `SYNC_WITH_SYSTEM` for shorter URL/persistence
 strings). The auto resolver picks one of two themes based on
 `prefers-color-scheme`:
 
-| OS prefers | chajá resolves to |
+| OS prefers | yryvu resolves to |
 |---|---|
-| `dark` | `a-default` (chajá's default dark theme) |
-| `light` | `e-rose-pine-dawn` (chajá's only light-scheme theme) |
+| `dark` | `a-default` (yryvu's default dark theme) |
+| `light` | `e-rose-pine-dawn` (yryvu's only light-scheme theme) |
 
 If the user picks any other theme, `auto` is irrelevant and the picked
-theme renders regardless of OS. See `09-chaja-deviations.md` for why
-chajá ships only one light-scheme theme in v1.
+theme renders regardless of OS. See `09-yryvu-deviations.md` for why
+yryvu ships only one light-scheme theme in v1.
 
 ## Custom themes — explicit non-goal for v1
 
 GK supports user-provided theme JSON files (`isBuiltInTheme: false`,
-`bundle:411387`). chajá v1 **does not**. Reasons:
+`bundle:411387`). yryvu v1 **does not**. Reasons:
 
 1. The 10 built-ins cover the requested aesthetic spectrum
    (Tokyo Night, Catppuccin, Synthwave, Rose Pine, Gruvbox, Nord,
-   Dracula, Everforest, Kanagawa, default chajá) — there's no obvious
+   Dracula, Everforest, Kanagawa, default yryvu) — there's no obvious
    gap a user would fill with their own.
-2. Custom theme schema requires a stable token contract. The chajá
+2. Custom theme schema requires a stable token contract. The yryvu
    contract is still small (~30 tokens) and likely to grow as new
    surfaces land — locking it now would force a v1→v2 break later.
 3. The compiled-theme-string mechanism doesn't change between
@@ -227,7 +227,7 @@ GK supports user-provided theme JSON files (`isBuiltInTheme: false`,
    themes can be added in a follow-up issue without re-architecting.
 
 If user demand surfaces, the follow-up issue: **feat(preferences):
-load user-provided theme files from `~/.config/chaja/themes/*.json`**.
+load user-provided theme files from `~/.config/yryvu/themes/*.json`**.
 
 ## Live-apply (no app reload)
 
@@ -243,7 +243,7 @@ GK changes themes **without reloading**. The flow:
    `<style>` tag.
 7. CSS custom property propagation re-paints all consumers.
 
-For chajá the simpler equivalent (no main-process round-trip in v1):
+For yryvu the simpler equivalent (no main-process round-trip in v1):
 
 1. User picks a new value.
 2. `setUiPreference("themeId", value)` updates the Solid signal AND
@@ -256,7 +256,7 @@ For chajá the simpler equivalent (no main-process round-trip in v1):
 See doc 12 for the apply mechanism choice (single CSS file with all
 selectors vs. lazy-loaded per-theme files).
 
-## What chajá's UI panel actually shows for theme
+## What yryvu's UI panel actually shows for theme
 
 A single `<select>` row, label `"Theme"`. Options come from the static
 list of 11 (10 built-ins + `auto`). Default value: `auto` if running
@@ -267,7 +267,7 @@ v1, `a-default` if `prefers-color-scheme` cannot be detected.
   <select value={ui.themeId()}
           onChange={e => setUiPreference("themeId", e.currentTarget.value)}>
     <option value="auto">{t("UiPreferences-Theme-Auto")}</option>
-    <option value="a-default">a · Default chajá</option>
+    <option value="a-default">a · Default yryvu</option>
     <option value="b-tokyo-night">b · Tokyo Night</option>
     ...
     <option value="j-kanagawa">j · Kanagawa</option>
@@ -275,7 +275,7 @@ v1, `a-default` if `prefers-color-scheme` cannot be detected.
 </PreferenceRow>
 ```
 
-Triage: **KEEP, ported with chajá-specific deviation** (10 themes vs 4,
+Triage: **KEEP, ported with yryvu-specific deviation** (10 themes vs 4,
 no custom-theme support).
 
 ## Cross-validation

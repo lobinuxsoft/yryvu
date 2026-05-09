@@ -60,7 +60,7 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
     const path = repoPath();
     if (!path) return;
     try {
-      await stashPush(path, `chaja: auto-stash before checkout to ${target}`);
+      await stashPush(path, `yryvu: auto-stash before checkout to ${target}`);
       await checkoutBranch(path, target);
       closeDialog();
       refresh();
@@ -78,7 +78,7 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
     try {
       await stashPush(
         path,
-        `chaja: auto-stash before checkout to ${fullRemoteName}`,
+        `yryvu: auto-stash before checkout to ${fullRemoteName}`,
       );
       await checkoutRemoteTracking(path, fullRemoteName);
       closeDialog();

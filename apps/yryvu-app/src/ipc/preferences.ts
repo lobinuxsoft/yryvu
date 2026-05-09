@@ -2,7 +2,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 
-/// Mirrors `chaja_bridge::preferences::GeneralPreferences`. Empty for
+/// Mirrors `yryvu_bridge::preferences::GeneralPreferences`. Empty for
 /// now — extended by #102 (see #195 for why the previous toggle was rip'd).
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface GeneralPreferences {}
@@ -13,32 +13,32 @@ export interface GeneralPreferences {}
 /// at runtime via `prefers-color-scheme`).
 export type ThemeId = string;
 
-/// Mirrors `chaja_bridge::preferences::UiPreferences`. Theme lands here
+/// Mirrors `yryvu_bridge::preferences::UiPreferences`. Theme lands here
 /// in #292 sub-PR A; zoom (#293), density (#294), tooltips/animations
 /// (#295) follow.
 export interface UiPreferences {
   theme: ThemeId;
 }
 
-/// Mirrors `chaja_bridge::preferences::Tab`. Discriminated by `type`.
+/// Mirrors `yryvu_bridge::preferences::Tab`. Discriminated by `type`.
 /// Wire format is camelCase per the backend's `serde(rename_all = "camelCase")`.
 export type PersistedTab =
   | { type: "REPO"; id: string; repoPath: string; isWorktree: boolean }
   | { type: "NEW"; id: string }
   | { type: "RELEASE_NOTES"; id: string; version: string };
 
-/// Mirrors `chaja_bridge::preferences::PermanentTabState`.
+/// Mirrors `yryvu_bridge::preferences::PermanentTabState`.
 export interface PermanentTabState {
   closed: boolean;
 }
 
-/// Mirrors `chaja_bridge::preferences::PermanentTabs`. Currently only
+/// Mirrors `yryvu_bridge::preferences::PermanentTabs`. Currently only
 /// REPO_MANAGEMENT (FOCUS_VIEW skipped — proprietary).
 export interface PermanentTabs {
   repoManagement?: PermanentTabState;
 }
 
-/// Mirrors `chaja_bridge::preferences::TabsPreferences`. Three fields
+/// Mirrors `yryvu_bridge::preferences::TabsPreferences`. Three fields
 /// persist; `closedTabs` is in-memory only and lives in `tabs/state.ts`,
 /// not in this envelope (matches GK at bundle:2373-2381).
 export interface TabsPreferences {
@@ -47,7 +47,7 @@ export interface TabsPreferences {
   permanentTabs: PermanentTabs;
 }
 
-/// Mirrors `chaja_bridge::preferences::Preferences`. The `version`
+/// Mirrors `yryvu_bridge::preferences::Preferences`. The `version`
 /// field is owned by the backend; never mutate it from the frontend.
 export interface Preferences {
   version: number;

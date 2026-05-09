@@ -1,7 +1,7 @@
 # Ref pills (BRANCH/TAG column)
 
 The left column in GitKraken's graph carries branch / tag / head pills per
-commit. This is the primary reference for Chajá issue **#55**.
+commit. This is the primary reference for Yryvu issue **#55**.
 
 ## Pill anatomy
 
@@ -83,10 +83,10 @@ If a commit has more than 100 refs, the remaining ones are **silently
 truncated** with no `+N` chip — only a disabled context menu entry
 `"X refs not displayed"` surfaces the count.
 
-Chajá opportunity: show the `+N` chip even at the 100-ref cap instead of
+Yryvu opportunity: show the `+N` chip even at the 100-ref cap instead of
 truncating silently.
 
-## Chajá implementation for #55
+## Yryvu implementation for #55
 
 Data already streamed: `GraphRow.refs: Vec<RefTag>` where
 `RefTag { name, kind: Branch | RemoteBranch | Tag | Head }`.

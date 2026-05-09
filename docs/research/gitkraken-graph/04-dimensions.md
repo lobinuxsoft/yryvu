@@ -65,9 +65,9 @@ When the user toggles compact density, all dimensions collapse:
 
 Compact mode is effectively GitKraken's "dense" view for quick scanning.
 
-## Current Chajá values (for comparison)
+## Current Yryvu values (for comparison)
 
-| Concept | GitKraken | Chajá (today) | Gap |
+| Concept | GitKraken | Yryvu (today) | Gap |
 |---|---|---|---|
 | Row height | 28 | 24 | –4 |
 | Lane / column width | 22 | 14 | –8 |

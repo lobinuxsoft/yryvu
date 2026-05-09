@@ -12,7 +12,7 @@ import { repoPath } from "../../state";
 /// `fullyExpanded` — `treeViewFullyExpanded`: when true, every dir accordion
 /// is expanded regardless of the per-dir `collapsedDirs` set.
 ///
-/// Persisted under `chaja.fileList.<field>.<repoId>`. Default repo-id is the
+/// Persisted under `yryvu.fileList.<field>.<repoId>`. Default repo-id is the
 /// repo path itself — good enough until we have stable UUIDs.
 interface PersistedRepoState {
   displayTree: boolean;
@@ -20,7 +20,7 @@ interface PersistedRepoState {
   fullyExpanded: boolean;
 }
 
-const STORAGE_PREFIX = "chaja.fileList";
+const STORAGE_PREFIX = "yryvu.fileList";
 
 function loadPersisted(repoId: string): PersistedRepoState {
   const read = (field: string, fallback: string): string =>

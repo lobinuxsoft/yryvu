@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-/// Maximum total diff size Chajá will materialize per file. Anything larger is
+/// Maximum total diff size Yryvu will materialize per file. Anything larger is
 /// returned with `truncated = true` and empty `hunks`.
 pub const DIFF_MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
 
@@ -116,7 +116,7 @@ pub enum ResetMode {
 }
 
 /// Push customisation. Currently exposes the `--force-with-lease` switch;
-/// chajá deliberately does not surface a bare `--force` from the UI to keep
+/// yryvu deliberately does not surface a bare `--force` from the UI to keep
 /// users from clobbering coworkers' commits unintentionally.
 #[derive(Debug, Clone, Copy, Default, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]

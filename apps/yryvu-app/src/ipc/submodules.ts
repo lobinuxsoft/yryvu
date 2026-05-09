@@ -3,7 +3,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 /**
- * Mirrors `chaja_bridge::backend::SubmoduleInfo`. `head_sha` is the
+ * Mirrors `yryvu_bridge::backend::SubmoduleInfo`. `head_sha` is the
  * SHA the parent's HEAD tree pins the submodule to; `index_sha` is
  * what the parent's index has staged. `ahead` / `behind` compare the
  * submodule's checked-out HEAD against the parent-pinned commit, and

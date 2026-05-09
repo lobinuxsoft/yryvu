@@ -6,7 +6,7 @@ shortcodes converted to unicode, and nothing else. No markdown, no
 linkification of URLs, no issue-reference hyperlinks, no
 conventional-commit type parsing.
 
-This is actually a notable product choice — chajá can match it or do
+This is actually a notable product choice — yryvu can match it or do
 better (linkify issues, render markdown). But for 1:1 parity, match.
 
 ## Component structure
@@ -135,11 +135,11 @@ scroll container to handle overflow. There's no "click to expand" UX.
 Not done. Messages like `feat(graph): add lane hover` render as plain
 text — no colored "feat" badge, no scope highlight.
 
-If chajá wants conventional-commit awareness, that's a deviation —
+If yryvu wants conventional-commit awareness, that's a deviation —
 worth considering because the spec is ubiquitous in modern OSS, but
 not a port blocker.
 
-## Chajá implications
+## Yryvu implications
 
 1. **Split algorithm**: first LF → subject, rest → body (after the blank
    line). Trivial string ops, no regex magic needed.
@@ -148,10 +148,10 @@ not a port blocker.
    or break toward fully-proportional (more readable for non-code
    commit messages).
 3. **Emoji shortcodes**: run the whole message through an emojify step.
-   Chajá can use `emoji-name-map` or just a small lookup table for the
+   Yryvu can use `emoji-name-map` or just a small lookup table for the
    top ~200 common ones.
 4. **Do NOT linkify URLs or issue references** for 1:1 parity. Worth
-   noting as a possible chajá improvement (`#123` → open issue in
+   noting as a possible yryvu improvement (`#123` → open issue in
    Linear/GitHub, with repo-level issue-tracker config). If added,
    make it opt-in.
 5. **Do NOT parse markdown**. `**bold**` stays `**bold**`.

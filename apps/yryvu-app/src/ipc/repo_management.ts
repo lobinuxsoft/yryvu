@@ -2,7 +2,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 
-/// Mirrors `chaja_bridge::commands::repo_management::KnownRepoInfo`.
+/// Mirrors `yryvu_bridge::commands::repo_management::KnownRepoInfo`.
 /// `error` is non-null when the repo couldn't be opened or scanned —
 /// the row still renders in a "stale" visual state instead of bringing
 /// the whole list down.

@@ -18,7 +18,7 @@ other Git clients:
   placeholder.
 - **LaTeX** — no rendered preview. Plain text.
 
-Chajá inherits these gaps per the 1:1 rule. Post-clone, specialized
+Yryvu inherits these gaps per the 1:1 rule. Post-clone, specialized
 viewers can be added.
 
 ## Submodule pointer view (`fileDataTypes.SUBMODULE`)
@@ -104,7 +104,7 @@ viewer or form editor.
 **None observed.** Monaco handles JSON / TOML syntax highlighting; no
 dedicated manifest editor view.
 
-## Chajá implications
+## Yryvu implications
 
 - **Four primary renderers** + three edge enum values (SUBMODULE /
   DIRECTORY / DELETED) cover the whole surface.
@@ -119,8 +119,8 @@ dedicated manifest editor view.
 
 ## Post-clone opportunities (out of scope now)
 
-These are features GitKraken **doesn't** have that Chajá could add as
-chajá-innovation after the clone is complete:
+These are features GitKraken **doesn't** have that Yryvu could add as
+yryvu-innovation after the clone is complete:
 
 - Notebook cell-level diff for `.ipynb`.
 - CSV tabular diff with cell-level highlighting.

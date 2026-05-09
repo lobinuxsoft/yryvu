@@ -137,7 +137,7 @@ function getCurrentThemeScheme():
     return themeSchemeTypes[getTheme(profile.uiTheme).scheme]
 ```
 
-## Chajá implications
+## Yryvu implications
 
 - **Use the exact model**: one flat dictionary of semantic tokens,
   rendered as CSS custom properties on `:root`, swapped by rewriting

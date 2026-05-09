@@ -3,7 +3,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 /**
- * Mirrors `chaja_bridge::backend::WorktreeInfo`. `branch` carries the
+ * Mirrors `yryvu_bridge::backend::WorktreeInfo`. `branch` carries the
  * short HEAD ref (or the literal `HEAD` for detached worktrees);
  * `head` is the commit SHA. `is_main` flags the main worktree (the
  * only one that can be bare and that cannot be removed). `locked` and

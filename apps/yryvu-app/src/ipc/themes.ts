@@ -2,10 +2,10 @@
 
 import { invoke } from "@tauri-apps/api/core";
 
-/// Mirrors `chaja_bridge::themes::schema::Scheme`.
+/// Mirrors `yryvu_bridge::themes::schema::Scheme`.
 export type Scheme = "dark" | "light";
 
-/// Mirrors `chaja_bridge::themes::schema::ThemeMetadata`. `id` MUST
+/// Mirrors `yryvu_bridge::themes::schema::ThemeMetadata`. `id` MUST
 /// match the containing folder name; the loader rejects mismatches.
 export interface ThemeMetadata {
   name: string;
@@ -15,7 +15,7 @@ export interface ThemeMetadata {
   version?: string;
 }
 
-/// Mirrors `chaja_bridge::themes::loader::ThemeEntry`. `builtIn=false`
+/// Mirrors `yryvu_bridge::themes::loader::ThemeEntry`. `builtIn=false`
 /// means the theme lives under `<app-config>/themes/<id>/` and was
 /// loaded from disk; `true` means it was embedded at compile time via
 /// `include_dir!`.
@@ -23,7 +23,7 @@ export interface ThemeEntry extends ThemeMetadata {
   builtIn: boolean;
 }
 
-/// Mirrors `chaja_bridge::themes::loader::ThemeCss`. `personality` is
+/// Mirrors `yryvu_bridge::themes::loader::ThemeCss`. `personality` is
 /// empty when the theme has no `personality.css`.
 export interface ThemeCss {
   tokens: string;

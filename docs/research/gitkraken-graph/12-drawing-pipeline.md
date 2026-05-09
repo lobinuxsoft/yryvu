@@ -131,7 +131,7 @@ DOM. `ResizeObserver` (via `AutoSizer`) fires when the container changes —
 that triggers Redux update of `graphWidth/graphHeight` which flow back as
 props. No ping-pong layout thrashing.
 
-## Chajá implications
+## Yryvu implications
 
 - The `Bd`/`Gd` className-cache pattern **is the single most impactful
   optimization** and trivially portable to Solid. Two `Map<string, string>`

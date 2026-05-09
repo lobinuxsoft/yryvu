@@ -1,4 +1,4 @@
-# 12 — chajá implementation hints for #100
+# 12 — yryvu implementation hints for #100
 
 This is the bridge from research to plan. It does NOT prescribe a PR
 structure — that decision is for the auditor when splitting #100 into
@@ -8,7 +8,7 @@ sub-PRs. Here we collect concrete recipes per layer.
 
 ### `clone_repository` Tauri command
 
-Crate: `chaja-bridge`. Module: `repo/clone.rs` (new). Pattern: mirror
+Crate: `yryvu-bridge`. Module: `repo/clone.rs` (new). Pattern: mirror
 the existing `BACKEND: git2 —` markers when falling back to git2 for
 ops gix can't do yet.
 
@@ -71,7 +71,7 @@ fn clone_impl(
 Dependencies:
 
 - `register_clone_session(session_id)` mirrors
-  `crates/chaja-bridge/src/integrations/oauth/state.rs` —
+  `crates/yryvu-bridge/src/integrations/oauth/state.rs` —
   `LazyLock<Mutex<HashMap<String, Arc<AtomicBool>>>>`, returns an
   `interrupt::IsInterruptedFn` closure.
 - `make_progress_emitter` builds a `gix_features::progress::Progress`
@@ -90,7 +90,7 @@ pub async fn init_repository(
     default_branch: Option<String>,    // None = use git's init.defaultBranch
     gitignore_template: Option<String>,// None = skip
     license_key: Option<String>,       // None = skip
-    initialize_first_commit: bool,     // chajá addition; default true
+    initialize_first_commit: bool,     // yryvu addition; default true
 ) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         init_impl(&app, &base_path, &folder_name, default_branch.as_deref(),
@@ -141,11 +141,11 @@ Add two new variants:
 
 Fields don't need to live in DialogState — clone/init dialogs have
 several fields, store them in dialog-local Solid stores under
-`apps/chaja-app/src/onboarding/{cloneOps,initOps}.ts`.
+`apps/yryvu-app/src/onboarding/{cloneOps,initOps}.ts`.
 
 ### CloneDialog component
 
-Path: `apps/chaja-app/src/onboarding/CloneDialog.tsx`.
+Path: `apps/yryvu-app/src/onboarding/CloneDialog.tsx`.
 
 Reuse the existing `<Dialog>` shell from `LeftSidebar/dialogs/`. Field
 set:
@@ -191,7 +191,7 @@ dialog.
 
 ### InitDialog component
 
-Path: `apps/chaja-app/src/onboarding/InitDialog.tsx`.
+Path: `apps/yryvu-app/src/onboarding/InitDialog.tsx`.
 
 Field set per doc 06. Pre-load `gitignoreOptions` and `licenseOptions`
 once on first dialog open via `ipc.listGitignoreTemplates()` /
@@ -237,7 +237,7 @@ shape). Reuse:
 ### File layout (suggested)
 
 ```
-apps/chaja-app/src/onboarding/
+apps/yryvu-app/src/onboarding/
 ├── index.ts                 # re-exports + AppShell portal hook
 ├── CloneDialog.tsx          # (~150 LOC) UI + ops wiring
 ├── InitDialog.tsx           # (~200 LOC) UI + ops wiring
@@ -251,7 +251,7 @@ Cap per file 400 LOC (user rule). Split if any blows past.
 
 ## Resource bundling
 
-Add to `apps/chaja-app/src-tauri/tauri.conf.json`:
+Add to `apps/yryvu-app/src-tauri/tauri.conf.json`:
 
 ```json
 "bundle": {
@@ -292,7 +292,7 @@ order; 3 depends on 1; 4 depends on 2; 5 is independent.
 - Each sub-PR closes its own issue (umbrella stays open until last
   sub-PR).
 - 400 LOC cap on every changed source file.
-- All Rust new code: standard chajá patterns (typed errors, atomic
+- All Rust new code: standard yryvu patterns (typed errors, atomic
   write where applicable, `BACKEND: git2 —` markers when falling back).
 
 ## Open questions for the user (auditor)

@@ -20,14 +20,14 @@ GK doesn't ship a global animation toggle. Like tooltips, it's an
 opinionated design choice: GK considers animations integral to the
 spatial-continuity UX of the graph and panels.
 
-Triage: **chajá-only addition (FLAG)**. Same justification as
+Triage: **yryvu-only addition (FLAG)**. Same justification as
 tooltips: accessibility (motion sickness, vestibular disorders) +
 power-user preference (some folks find animation slow). The bar for
 shipping this is **lower** than tooltips because the OS-level
 `prefers-reduced-motion` media query already provides a no-cost honor
 path that even GK doesn't fully use.
 
-## chajá design
+## yryvu design
 
 A tri-state, not boolean:
 
@@ -50,7 +50,7 @@ defaults to "follow OS" because the OS hint exists, is widely respected
 in modern UI, and has zero implementation cost (a single CSS media
 query).
 
-## What chajá's UI panel shows
+## What yryvu's UI panel shows
 
 ```tsx
 <PreferenceRow label={t("UiPreferences-Animations")}>
@@ -99,18 +99,18 @@ The CSS gates animations:
 The `!important` is intentional — third-party libraries (if any) embed
 inline transitions that we want to override unconditionally.
 
-## What chajá animates
+## What yryvu animates
 
 Inventory of current/planned animations the toggle affects:
 
 | Surface | Animation | Source |
 |---|---|---|
-| Toast enter/exit | 250ms slide+fade | `apps/chaja-app/src/components/Toast/` |
-| Panel collapse/expand | 200ms width transition | `apps/chaja-app/src/components/SidePanel/` |
+| Toast enter/exit | 250ms slide+fade | `apps/yryvu-app/src/components/Toast/` |
+| Panel collapse/expand | 200ms width transition | `apps/yryvu-app/src/components/SidePanel/` |
 | Modal open/close | 150ms fade + 8px slide | (planned, not shipped yet) |
 | Hover states (button bg) | 100ms color transition | global |
-| Loading spinner | 1s rotation | `apps/chaja-app/src/components/Spinner/` (the spinner's `animation` is exempt — the doc-1 selector targets `:root[data-animations="never"] *` but the spinner has a special-case `animation: spin 1s linear infinite !important` that survives the override; without animation the spinner is just a static icon, which is fine) |
-| Graph commit-row hover-highlight | 80ms bg transition | `apps/chaja-app/src/components/Graph/` (when shipped) |
+| Loading spinner | 1s rotation | `apps/yryvu-app/src/components/Spinner/` (the spinner's `animation` is exempt — the doc-1 selector targets `:root[data-animations="never"] *` but the spinner has a special-case `animation: spin 1s linear infinite !important` that survives the override; without animation the spinner is just a static icon, which is fine) |
+| Graph commit-row hover-highlight | 80ms bg transition | `apps/yryvu-app/src/components/Graph/` (when shipped) |
 
 The spinner exemption is worth calling out in the implementation PR —
 the global `* { animation: none !important }` will kill the spinner
@@ -133,6 +133,6 @@ Same effect pattern as theme: signal change → effect updates
 
 ## Triage
 
-**FLAG (chajá-only)**. Ship the tri-state. Default to `system`.
+**FLAG (yryvu-only)**. Ship the tri-state. Default to `system`.
 Justify in PR with a11y rationale + screenshot of the
 `prefers-reduced-motion` honor path.

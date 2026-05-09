@@ -2,7 +2,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 
-/// Mirrors `chaja_bridge::templates::TemplateInfo`. Wire format is
+/// Mirrors `yryvu_bridge::templates::TemplateInfo`. Wire format is
 /// camelCase per the backend's `serde(rename_all = "camelCase")`.
 export interface TemplateInfo {
   name: string;

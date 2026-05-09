@@ -1,11 +1,11 @@
-# chajá implementation hints
+# yryvu implementation hints
 
-This doc is chajá-side synthesis — translating the audit's findings
-into the chajá stack (Rust backend via Tauri 2 + SolidJS renderer).
+This doc is yryvu-side synthesis — translating the audit's findings
+into the yryvu stack (Rust backend via Tauri 2 + SolidJS renderer).
 **Not** sourced from the GK bundle; this is the audit's
 recommendations for how to land the surface.
 
-Cross-reference with `docs/architecture/` if/when chajá grows that
+Cross-reference with `docs/architecture/` if/when yryvu grows that
 tree.
 
 ## Crate structure
@@ -14,7 +14,7 @@ Suggested Rust split:
 
 ```
 crates/
-  chaja-bridge/
+  yryvu-bridge/
     src/
       integrations/
         mod.rs                 ← public API (trait IntegrationProvider)
@@ -60,7 +60,7 @@ trivially easy six months from now.
 ## SolidJS component layout
 
 ```
-apps/chaja-app/src/components/Preferences/
+apps/yryvu-app/src/components/Preferences/
   Integrations/
     IntegrationsTab.tsx           ← top-level Preferences > Integrations
     IntegrationsSubTabSidebar.tsx ← left rail listing 10 providers (orderedIntegrationSubTabTypes)
@@ -86,7 +86,7 @@ the provider-table store — don't fork into per-provider components.
 ## Inline-CTA components
 
 ```
-apps/chaja-app/src/components/
+apps/yryvu-app/src/components/
   CallToActions/
     HostingServiceNotConnected.tsx  ← PR slidey-panel empty state (data-testid="hosting-service-not-connected")
     IssueTrackerNotConnected.tsx    ← LeftPanel ISSUES section stub
@@ -101,7 +101,7 @@ hook so the dispatch is uniform:
 function useOpenIntegrationPreferences() {
   const navigate = useNavigate();
   return (provider: IntegrationType, telemetryAction?: string) => {
-    // chajá's TargetBranchStatusAction-equivalent enum tag
+    // yryvu's TargetBranchStatusAction-equivalent enum tag
     navigate(`/prefs/integrations/${getSubTabType(provider)}`);
   };
 }
@@ -138,8 +138,8 @@ in v1 and regrets in v3.
 
 | Storage | Path/Key | Content |
 |---------|----------|---------|
-| Keyring | service `io.chaja.integrations`, account `<profile_guid>:<integration_type>` | JSON `{accessToken, refreshToken?, expiresAt?, scopes?}` |
-| Keyring fallback | `$XDG_DATA_HOME/chaja/credentials.<profile>.enc` (mode 0600, Argon2id-derived key) | same JSON, encrypted |
+| Keyring | service `io.yryvu.integrations`, account `<profile_guid>:<integration_type>` | JSON `{accessToken, refreshToken?, expiresAt?, scopes?}` |
+| Keyring fallback | `$XDG_DATA_HOME/yryvu/credentials.<profile>.enc` (mode 0600, Argon2id-derived key) | same JSON, encrypted |
 | Profile settings | `integrations.<type>.userInfo` | UserInfo cache (rehydrated on launch) |
 | Profile settings | `integrations.<type>.lastRefreshAt` | timestamp |
 | Profile settings | `integrations.<type>.scopesGranted` | string[] |
@@ -179,18 +179,18 @@ to the OAuth call (drop after callback). Listen only on
 ## i18n
 
 Mirror GK's i18n keys from docs 04, 05, 07, 08 verbatim. Drop into
-`apps/chaja-app/src/i18n/en.json` (and ES, since the user is
-ES-tuteo). chajá-side translations are the user's call — but the
+`apps/yryvu-app/src/i18n/en.json` (and ES, since the user is
+ES-tuteo). yryvu-side translations are the user's call — but the
 **keys** are stable cross-references back to the bundle.
 
 ## Testing
 
 End-to-end tests for OAuth are notoriously flaky (live providers,
-real consent screens). chajá-side strategy:
+real consent screens). yryvu-side strategy:
 
-- **Mock provider**: ship a `chaja-test-oauth-provider` crate that
+- **Mock provider**: ship a `yryvu-test-oauth-provider` crate that
   serves an OAuth-2.0-compliant authorize/token endpoint pointed
-  at the chajá app. Tests run against this, not real providers.
+  at the yryvu app. Tests run against this, not real providers.
 - **Provider client tests**: per-provider unit tests against
   `wiremock` fixtures captured from real provider responses
   (sanitised). Stable and fast.
@@ -228,17 +228,17 @@ real consent screens). chajá-side strategy:
 Each step yields a working partial product. No 6-month
 "refactor everything when we're done" merge.
 
-## chajá note: don't ship telemetry
+## yryvu note: don't ship telemetry
 
 GK's `recordMetric(metric, { additionalPayload })` calls fire on
-every CTA. chajá doesn't ship telemetry — but **do** keep the
+every CTA. yryvu doesn't ship telemetry — but **do** keep the
 `TargetBranchStatusAction`-equivalent enum for typed dispatch. It's
 the right shape for "which CTA fired this" debugging even without
 analytics.
 
-## chajá note: provider OAuth app registrations
+## yryvu note: provider OAuth app registrations
 
-Before any of this ships, someone has to register chajá's OAuth
+Before any of this ships, someone has to register yryvu's OAuth
 apps with each provider:
 
 - **GitHub**: Settings → Developer settings → OAuth Apps → New
@@ -249,9 +249,9 @@ apps with each provider:
 - **Jira Cloud**: developer.atlassian.com → Console → Create app
 
 Each registration captures: client_id, redirect_uri (loopback or
-custom protocol), allowed scopes, branding (icon + name "chajá").
+custom protocol), allowed scopes, branding (icon + name "yryvu").
 Document the values in `docs/ops/oauth-app-registrations.md`
 (off-tree if secrets, on-tree if just IDs).
 
 This is a **one-time-per-provider** task — the values get baked
-into chajá's compile-time config and ship with the binary.
+into yryvu's compile-time config and ship with the binary.

@@ -123,7 +123,7 @@ The outer section marker:
 (Note: the `data-testid="commit-detail-panel"` sits on an **inner**
 `commit-detail-section` container, *inside* the outer `commit-detail-panel`
 div. Slightly confusing naming — the outer className matches the
-inner testid. Don't mirror that inconsistency in chajá.)
+inner testid. Don't mirror that inconsistency in yryvu.)
 
 ## Source
 
@@ -138,17 +138,17 @@ Bundle: same.
 - `"commit-detail-section"` + `data-testid="commit-detail-panel"` —
   outer container for the inspector's bottom.
 
-## Chajá implications
+## Yryvu implications
 
 1. **Flat text chip summary** — no bar/chart, no line churn at this
    level.
 2. **4 categories** (added / modified / deleted / renamed) matching GK
-   enum. If chajá has more change types (conflicted, resolved), extend
+   enum. If yryvu has more change types (conflicted, resolved), extend
    the key mapping but don't add them to the top-level summary unless
    UX warrants.
 3. **Loading flag** (`diffCalcInProgress`) drives a spinner next to
    the summary while the diff engine crunches stats. Plug this into
-   chajá's async diff pipeline so the UI doesn't read as empty during
+   yryvu's async diff pipeline so the UI doesn't read as empty during
    compute.
 4. **Filter + tree/flat** come from the shared widget in diff doc 05.
    Same code path used by the inspector; don't fork.

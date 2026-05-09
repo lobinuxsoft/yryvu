@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * Provider table — chajá's distillation of GK's `integrationInfo`
+ * Provider table — yryvu's distillation of GK's `integrationInfo`
  * (`bundle:166355`–`166940`). Drops every GK-proprietary field
  * (`gkProjects`, `requiresProToAuthenticate`, `enabledInGitKrakenEnterprise`,
  * `launchpadTabLabelTranslation`, `refreshTokenRouteName`,
@@ -9,14 +9,14 @@
  *
  * Order matches `bundle:119112` (`orderedIntegrationSubTabTypes`) verbatim.
  *
- * **chajá v1 auth deviation** (audit doc 02 "Auth modes — provider
+ * **yryvu v1 auth deviation** (audit doc 02 "Auth modes — provider
  * reality vs GK enum"): GK's `USERNAME_AND_PASSWORD` mode is dropped
  * entirely — only Jira Server uses it in GK, and PAT is the
  * upstream-recommended replacement. Our `authType: "PAT"` for Jira
  * Server reflects that. SSH is git-transport-only (handled by
  * `build_credentials_callbacks`), not in this table.
  *
- * **chajá v1 icon deviation**: chajá ships SolidJS without Font
+ * **yryvu v1 icon deviation**: yryvu ships SolidJS without Font
  * Awesome's brand icons. Until we add proper SVG brand paths in a
  * follow-up, providers use a colored initials badge — `colorAccent`
  * keys the badge background, `initials` the label inside.
@@ -51,11 +51,11 @@ export interface ProviderInfo {
   hostname: string | null;
   /** Roles this provider fulfils. Drives the section it appears in. */
   roles: readonly IntegrationRole[];
-  /** Primary auth mode chajá uses. */
+  /** Primary auth mode yryvu uses. */
   authType: AuthType;
   /** Self-hosted = needs custom-hostname plumbing. */
   isSelfHosted: boolean;
-  /** Two-or-three letter badge text (chajá-only, see top-of-file note). */
+  /** Two-or-three letter badge text (yryvu-only, see top-of-file note). */
   initials: string;
   /** Hex color for the badge background. */
   colorAccent: string;
@@ -74,10 +74,10 @@ export interface ProviderInfo {
    * an absolute URL; for self-hosted variants it's a relative path that
    * gets concatenated to the user-supplied hostname.
    *
-   * **chajá deviation**: GK leaves this `null` for `.com` providers
-   * (`bundle:166381`+) — the user is expected to know the path. chajá
+   * **yryvu deviation**: GK leaves this `null` for `.com` providers
+   * (`bundle:166381`+) — the user is expected to know the path. yryvu
    * fills these in with public, well-known URLs for a less friction-y
-   * UX. Where GK has the path verbatim (self-hosted), chajá mirrors it
+   * UX. Where GK has the path verbatim (self-hosted), yryvu mirrors it
    * 1:1.
    */
   tokenGenPath: string | null;
@@ -116,7 +116,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cohort: "v1",
     prCharacter: "#",
     tokenGenPath: "https://github.com/settings/tokens/new",
-    tokenGenParams: "scopes=repo,admin:org,admin:public_key,workflow&description=chaja",
+    tokenGenParams: "scopes=repo,admin:org,admin:public_key,workflow&description=yryvu",
     tokenIsAppPassword: false,
   },
   {
@@ -133,7 +133,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cohort: "v2",
     prCharacter: "#",
     tokenGenPath: "/settings/tokens/new",
-    tokenGenParams: "scopes=repo,admin:org,admin:public_key,workflow&description=chaja",
+    tokenGenParams: "scopes=repo,admin:org,admin:public_key,workflow&description=yryvu",
     tokenIsAppPassword: false,
   },
   {

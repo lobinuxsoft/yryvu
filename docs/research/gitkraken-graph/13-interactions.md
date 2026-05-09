@@ -159,7 +159,7 @@ Placement defaults: `top` for icons, `right` for ref tooltips. Trigger:
 default) — not inline. Content is plain strings, no HTML (except for ref
 icons which nest FontAwesome inside).
 
-## Chajá implications
+## Yryvu implications
 
 - **Keep selection in a store, not a signal on the row**. Sagas are
   overkill for Solid; a Zustand-like store works. But the pattern of

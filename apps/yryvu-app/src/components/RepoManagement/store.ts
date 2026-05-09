@@ -25,7 +25,7 @@ import { createSignal } from "solid-js";
 import { listKnownRepos, type KnownRepoInfo } from "../../ipc";
 import { loadRecentRepos } from "../../state";
 
-const SNAPSHOT_KEY = "chaja.knownReposSnapshot";
+const SNAPSHOT_KEY = "yryvu.knownReposSnapshot";
 
 function loadSnapshot(): KnownRepoInfo[] {
   const raw = localStorage.getItem(SNAPSHOT_KEY);

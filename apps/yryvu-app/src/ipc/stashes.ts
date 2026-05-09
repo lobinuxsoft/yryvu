@@ -3,7 +3,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 /**
- * Mirrors `chaja_bridge::backend::StashInfo`. `parent_sha` is the WIP
+ * Mirrors `yryvu_bridge::backend::StashInfo`. `parent_sha` is the WIP
  * base commit (where HEAD was when stashed); `index_sha` and
  * `untracked_sha` come from the stash commit's parent slots so the
  * inspector can diff index-only or untracked-only views without

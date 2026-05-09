@@ -5,7 +5,7 @@ import type { IntegrationType } from "./providerTable";
 
 /**
  * Per-integration finite state. Discriminated union mirroring the shape
- * recommended in `docs/research/gitkraken-integrations/10-chaja-implementation-hints.md`.
+ * recommended in `docs/research/gitkraken-integrations/10-yryvu-implementation-hints.md`.
  *
  * Keeping the union shape now (instead of flat booleans) avoids the
  * v3-refactor trap when real OAuth lands.

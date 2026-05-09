@@ -28,11 +28,11 @@ GK's user has **no way to globally disable tooltips, change the delay,
 or set tooltip behavior**. This is a GK design choice (the bundle
 has hundreds of tooltips and they're all considered essential UX).
 
-Triage: **chajá-only addition (FLAG)**. Justification: accessibility
+Triage: **yryvu-only addition (FLAG)**. Justification: accessibility
 + power-user preference. Many users find tooltip flicker on hover
 distracting; many a11y tools recommend longer delays.
 
-## chajá design
+## yryvu design
 
 A single boolean flag:
 
@@ -54,7 +54,7 @@ Two settings, not one. The reasoning: a pure on/off is too coarse
 confusing (delay = max-int means "off" via implicit). Two explicit
 fields makes both axes obvious.
 
-## What chajá's UI panel shows
+## What yryvu's UI panel shows
 
 ```tsx
 <PreferenceRow label={t("UiPreferences-TooltipsEnabled")}>
@@ -75,7 +75,7 @@ The second row is visually disabled when the first is unchecked.
 
 ## Implementation surface
 
-A central `<Tooltip>` component in `apps/chaja-app/src/components/Tooltip/`
+A central `<Tooltip>` component in `apps/yryvu-app/src/components/Tooltip/`
 (if not already present) reads both signals:
 
 ```tsx
@@ -109,5 +109,5 @@ existing tooltip-wrapped elements via Solid's reactive primitives.
 
 ## Triage
 
-**FLAG (chajá-only)**. Ship the two-field setting. Justify in the
+**FLAG (yryvu-only)**. Ship the two-field setting. Justify in the
 implementation PR description with the a11y + power-user rationale.

@@ -49,7 +49,7 @@ describe("filterByTitle", () => {
     expect(filterByTitle(items, titleOf, "yryvu").map((t) => t.id)).toEqual([
       "a",
     ]);
-    expect(filterByTitle(items, titleOf, "CHAJA").map((t) => t.id)).toEqual([
+    expect(filterByTitle(items, titleOf, "YRYVU").map((t) => t.id)).toEqual([
       "a",
     ]);
     expect(filterByTitle(items, titleOf, "Engine").map((t) => t.id)).toEqual([

@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createStore } from "solid-js/store";
+import { createStore, produce } from "solid-js/store";
 
 import { repoPath } from "../../state";
 
 /// Per-repo persisted settings — 1:1 with GitKraken's `treeViewsByRepoAtom`
-/// and `filterQueriesByRepoAtom`.
-///
-/// `displayTree` — binary tree↔flat toggle (`isContentsTreeDisplayed`).
-/// `filterQuery` — substring filter, trimmed lowercase on read.
-/// `fullyExpanded` — `treeViewFullyExpanded`: when true, every dir accordion
-/// is expanded regardless of the per-dir `collapsedDirs` set.
+/// and `filterQueriesByRepoAtom`. Only display-mode + filter persist; the
+/// expansion state is session-scoped and matches GK's redux behavior (no
+/// `treeViewFullyExpanded` flag stored — GK derives it live from the tree
+/// via `isTreeViewFullyExpanded(node) = !node.collapsed && every(children,
+/// …)`).
 ///
 /// Persisted under `yryvu.fileList.<field>.<repoId>`. Default repo-id is the
 /// repo path itself — good enough until we have stable UUIDs.
 interface PersistedRepoState {
   displayTree: boolean;
   filterQuery: string;
-  fullyExpanded: boolean;
 }
 
 const STORAGE_PREFIX = "yryvu.fileList";
@@ -28,7 +26,6 @@ function loadPersisted(repoId: string): PersistedRepoState {
   return {
     displayTree: read("displayTree", "1") === "1",
     filterQuery: read("filterQuery", ""),
-    fullyExpanded: read("fullyExpanded", "1") === "1",
   };
 }
 
@@ -41,8 +38,8 @@ function savePersisted<K extends keyof PersistedRepoState>(
   localStorage.setItem(`${STORAGE_PREFIX}.${field}.${repoId}`, raw);
 }
 
-/// Ephemeral per-revision state — `collapsedDirs` is *which* dirs the user
-/// has explicitly collapsed (only consulted when `fullyExpanded` is false).
+/// Ephemeral per-revision state. `collapsedDirs` is the **single source of
+/// truth** for expansion — a dir is collapsed iff its path is a key here.
 /// `forcedVisible` mirrors `TreeViewFileForcedVisible`: files surfaced past
 /// the filter because they're the current selection.
 ///
@@ -114,36 +111,23 @@ export function setFilterQuery(id: string, value: string): void {
   savePersisted(id, "filterQuery", value);
 }
 
-export function fullyExpanded(id: string): boolean {
-  return ensurePersisted(id).fullyExpanded;
-}
-
-export function setFullyExpanded(id: string, value: boolean): void {
-  ensurePersisted(id);
-  setPersistedByRepo(id, "fullyExpanded", value);
-  savePersisted(id, "fullyExpanded", value);
-}
-
 // ---------- ephemeral accessors ----------
 
-/// Is this directory currently collapsed? Consults both the global
-/// `fullyExpanded` flag (short-circuits to *expanded* when true) and the
-/// per-dir `collapsedDirs` set.
+/// Source of truth: only the per-`(id, revKey, isTree)` `collapsedDirs` set.
+/// No global flag — matches GK's `setEveryNodeInTreeViewIsCollapsed` model.
 export function isDirCollapsed(
   id: string,
   revKey: string,
   isTree: boolean,
   dirPath: string,
 ): boolean {
-  if (fullyExpanded(id)) return false;
   const key = ephemeralKey(id, revKey, isTree);
   return ephemeralByKey[key]?.collapsedDirs[dirPath] === true;
 }
 
-/// Toggle a single directory's accordion state.
-/// `TreeViewDirectoryAccordionToggle` equivalent. Flips `fullyExpanded` to
-/// false on first per-dir action — matches GK, which treats "expand all" as
-/// a group action that any per-dir toggle invalidates.
+/// Toggle a single directory's accordion state. `TreeViewDirectoryAccordionToggle`
+/// equivalent. Per-path mutation keeps Solid's path-based reactivity wiring
+/// for already-mounted rows.
 export function toggleDirCollapsed(
   id: string,
   revKey: string,
@@ -152,10 +136,7 @@ export function toggleDirCollapsed(
 ): void {
   const key = ephemeralKey(id, revKey, isTree);
   ensureEphemeral(key);
-  const wasFullyExpanded = fullyExpanded(id);
-  if (wasFullyExpanded) setFullyExpanded(id, false);
-  const currently =
-    ephemeralByKey[key]?.collapsedDirs[dirPath] === true && !wasFullyExpanded;
+  const currently = ephemeralByKey[key]?.collapsedDirs[dirPath] === true;
   if (currently) {
     setEphemeralByKey(key, "collapsedDirs", dirPath, undefined!);
   } else {
@@ -163,9 +144,11 @@ export function toggleDirCollapsed(
   }
 }
 
-/// Collapse every directory. `TreeViewAllDirectoriesCollapsedStateSet(true)`.
-/// Caller passes the full list of dir paths because the store doesn't know
-/// the tree's topology.
+/// Collapse every directory in the visible tree.
+/// `TreeViewAllDirectoriesCollapsedStateSet(true)`. `produce` mutates the
+/// `collapsedDirs` record per-path so each individual row's reactive read
+/// fires — replacing the whole object reference breaks Solid stores'
+/// path-based reactivity for descendants already accessed.
 export function collapseAllDirs(
   id: string,
   revKey: string,
@@ -173,25 +156,33 @@ export function collapseAllDirs(
   allDirPaths: string[],
 ): void {
   const key = ephemeralKey(id, revKey, isTree);
-  // Parent slot must exist before writing `collapsedDirs` — Solid's setStore
-  // on a record-shaped top-level key is inconsistent about auto-creating
-  // missing intermediates, and when a commit is selected for the first time
-  // the `resetRevState` effect has `defer: true` and hasn't run yet. Skipping
-  // this call is what made Collapse/Expand All silently no-op until the user
-  // toggled a chevron (which calls ensureEphemeral itself).
   ensureEphemeral(key);
-  const next: Record<string, true> = {};
-  for (const p of allDirPaths) next[p] = true;
-  setEphemeralByKey(key, "collapsedDirs", next);
-  setFullyExpanded(id, false);
+  setEphemeralByKey(
+    key,
+    "collapsedDirs",
+    produce((c: Record<string, true>) => {
+      for (const p of allDirPaths) c[p] = true;
+    }),
+  );
 }
 
 /// Expand every directory. `TreeViewAllDirectoriesCollapsedStateSet(false)`.
-export function expandAllDirs(id: string, revKey: string, isTree: boolean): void {
+/// Iterates current keys and deletes each — per-path mutation again so
+/// row-level reactive reads fire on flip.
+export function expandAllDirs(
+  id: string,
+  revKey: string,
+  isTree: boolean,
+): void {
   const key = ephemeralKey(id, revKey, isTree);
   ensureEphemeral(key);
-  setEphemeralByKey(key, "collapsedDirs", {});
-  setFullyExpanded(id, true);
+  setEphemeralByKey(
+    key,
+    "collapsedDirs",
+    produce((c: Record<string, true>) => {
+      for (const p of Object.keys(c)) delete c[p];
+    }),
+  );
 }
 
 /// Force a file visible past the filter — `TreeViewFileForcedVisible`.
@@ -218,11 +209,9 @@ export function isFileForcedVisible(
   return ephemeralByKey[key]?.forcedVisible[filePath] === true;
 }
 
-/// Reactive predicate: does the ephemeral state for this (id, revKey,
-/// isTree) hold any collapsed directories? Drives the toolbar's
-/// Expand/Collapse-all label based on what's *actually* visible, instead
-/// of the persisted `fullyExpanded` flag — that flag survives across
-/// sessions per-repo and can drift away from per-rev state.
+/// Reactive predicate driving the toolbar's Expand/Collapse-all label. Any
+/// entry in `collapsedDirs` ⇒ at least one dir collapsed. Mirrors GK's
+/// derived `!isTreeViewFullyExpanded`.
 export function hasAnyCollapsed(
   id: string,
   revKey: string,

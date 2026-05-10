@@ -23,6 +23,40 @@
   gap: 6px;
 }
 
+.statusbar__zoom {
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.statusbar__zoom:hover,
+.statusbar__zoom:focus-within {
+  background: var(--bg-2);
+}
+
+.statusbar__zoom-select {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+}
+
+.statusbar__zoom-select:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.statusbar__zoom-select option {
+  background: var(--bg-1);
+  color: var(--fg-1);
+}
+
 .statusbar__badge-pro {
   padding: 1px 8px;
   background: color-mix(in srgb, var(--info) 24%, var(--bg-2));

@@ -136,6 +136,33 @@ export function orderedVisibleZones(
   );
 }
 
+/// Sum of `currentWidth` for the zones in `ordered`, optionally excluding
+/// one. Mirrors GK's `(0, ja.al)(zones, excludeType?)` helper used by
+/// `expand/shrinkZoneWidthsToFitWidth`.
+export function sumOfWidths(
+  ordered: GraphZoneId[],
+  layout: Record<GraphZoneId, ColumnSettings>,
+  excludeId?: GraphZoneId,
+): number {
+  let total = 0;
+  for (const id of ordered) {
+    if (id === excludeId) continue;
+    total += layout[id].width;
+  }
+  return total;
+}
+
+/// `true` iff `id` is the rightmost visible zone in `ordered`. The last
+/// zone's `maximumWidth` cap is ignored when expanding so it absorbs any
+/// remainder needed to keep `sum === containerWidth`. Mirrors GK's
+/// `(0, ja.z)(type, zones)`.
+export function isLastVisibleZone(
+  id: GraphZoneId,
+  ordered: GraphZoneId[],
+): boolean {
+  return ordered.length > 0 && ordered[ordered.length - 1] === id;
+}
+
 /** Format a unix-seconds timestamp for the date-time column. */
 export function formatCommitDateTime(unixSeconds: number): string {
   if (!Number.isFinite(unixSeconds) || unixSeconds <= 0) return "";

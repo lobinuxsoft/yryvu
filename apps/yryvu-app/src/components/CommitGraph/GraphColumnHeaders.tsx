@@ -11,9 +11,13 @@
  * context menu).
  */
 
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 
-import { activeColumnSettings, activeOrderedZones } from "../../state";
+import {
+  activeColumnSettings,
+  activeOrderedZones,
+  ensureColumnWidthsFitContainer,
+} from "../../state";
 import {
   ColumnSettingsMenu,
   createMenuState,
@@ -37,6 +41,25 @@ function HeaderLabel(props: { id: GraphZoneId }) {
 export function GraphColumnHeaders() {
   const visible = createMemo(() => activeOrderedZones());
   const menu = createMenuState();
+  let containerEl: HTMLDivElement | undefined;
+  let observer: ResizeObserver | undefined;
+
+  // Watch the live container width — the column cascade math assumes
+  // `sum(widths) === containerWidth`, so any change to the parent (window
+  // resize, panel toggles, font-zoom) needs to re-balance the visible
+  // zones. Mirrors GK's `onGraphResized → ensureZoneWidthsMatchGraphWidth`.
+  onMount(() => {
+    if (!containerEl || typeof ResizeObserver === "undefined") return;
+    observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = Math.floor(entry.contentRect.width);
+        if (w > 0) ensureColumnWidthsFitContainer(w);
+      }
+    });
+    observer.observe(containerEl);
+  });
+
+  onCleanup(() => observer?.disconnect());
 
   // Open the menu near the cursor on right-click. `right` is computed
   // from the click X so the popover stays anchored to the click point
@@ -49,7 +72,7 @@ export function GraphColumnHeaders() {
   };
 
   return (
-    <div class="main__graph-column-headers">
+    <div class="main__graph-column-headers" ref={containerEl}>
       <For each={visible()}>
         {(id) => (
           <span

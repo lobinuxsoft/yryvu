@@ -101,15 +101,19 @@ export {
 } from "./sections";
 export {
   graphColumns,
+  graphContainerWidth,
   commitZoneMode,
   activeColumnSettings,
   activeOrderedZones,
   setGraphZoneWidth,
+  setGraphZoneWidthInteractive,
+  commitGraphColumnLayout,
   setGraphZoneVisible,
   setCommitZoneMode,
   toggleCommitZoneMode,
   resetColumnsToDefaultLayout,
   resetColumnsToCompactLayout,
+  ensureColumnWidthsFitContainer,
 } from "./columns";
 export { pullType, setPullType, type PullType } from "./pull";
 export {

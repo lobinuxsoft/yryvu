@@ -5,13 +5,14 @@
 //! `app/src/strings/en-us.json` (13 strings with prefix
 //! `CommitPreferences-`):
 //!
-//! - `CommitTemplate` + `Summary` + `Description` + `UseTemplateForCommitMessages`
-//!   + `SaveCommitTemplate` + `Instructions` + `CommitTemplateDocumentation`
-//!   → template editor (one stored string, summary/description joined
-//!   with the standard `\n\n` Git separator at apply-time)
-//! - `DefaultPushAfterCommit` → push-after-commit default
-//! - `DefaultSkipGitHooks` → `--no-verify` default
-//! - `RemoveCommentsFromCommitMessages` → strip `#` lines before commit
+//! - Template editor: `CommitTemplate`, `Summary`, `Description`,
+//!   `UseTemplateForCommitMessages`, `SaveCommitTemplate`,
+//!   `Instructions`, `CommitTemplateDocumentation`. One stored string;
+//!   summary and description are joined with the standard `\n\n` Git
+//!   separator at apply-time.
+//! - `DefaultPushAfterCommit` → push-after-commit default.
+//! - `DefaultSkipGitHooks` → `--no-verify` default.
+//! - `RemoveCommentsFromCommitMessages` → strip `#` lines before commit.
 //!
 //! `MergeBehavior` is a sub-section header in GK and is deferred to a
 //! separate audit (enum values not yet mapped). Sign-off, confirm-discard

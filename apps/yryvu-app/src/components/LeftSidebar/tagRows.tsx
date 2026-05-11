@@ -3,7 +3,11 @@
 import { Show } from "solid-js";
 
 import type { TagInfo } from "../../ipc";
-import { clearHoveredRef, setHoveredRef } from "../../state";
+import {
+  clearHoveredRef,
+  navigateToRef,
+  setHoveredRef,
+} from "../../state";
 import { IconTag, IconTagAnnotated } from "../Icons";
 
 export interface TagRowProps {
@@ -25,6 +29,7 @@ export function TagRow(props: TagRowProps) {
       class="sidebar__branch-row sidebar__tag-row"
       data-annotated={props.tag.is_annotated ? "true" : "false"}
       title={tooltip()}
+      onClick={() => navigateToRef(props.tag.target_sha)}
       onMouseEnter={() =>
         setHoveredRef({ kind: "tag", name: props.tag.name })
       }

@@ -3,7 +3,11 @@
 import { Show } from "solid-js";
 
 import type { BranchInfo } from "../../ipc";
-import { clearHoveredRef, setHoveredRef } from "../../state";
+import {
+  clearHoveredRef,
+  navigateToRef,
+  setHoveredRef,
+} from "../../state";
 
 export interface LocalBranchRowProps {
   branch: BranchInfo;
@@ -21,6 +25,7 @@ export function LocalBranchRow(props: LocalBranchRowProps) {
           ? `tracks ${props.branch.upstream} — double-click to checkout`
           : "no upstream — double-click to checkout"
       }
+      onClick={() => navigateToRef(props.branch.tip_sha)}
       onContextMenu={(e) => props.onContextMenu(e, props.branch)}
       onDblClick={() => {
         if (!props.branch.is_head) props.onCheckout(props.branch.name);
@@ -54,6 +59,7 @@ export function RemoteBranchRow(props: RemoteBranchRowProps) {
   return (
     <div
       class="sidebar__branch-row"
+      onClick={() => navigateToRef(props.branch.tip_sha)}
       onContextMenu={(e) => props.onContextMenu(e, props.branch)}
       onMouseEnter={() =>
         setHoveredRef({ kind: "remote", name: props.branch.name })

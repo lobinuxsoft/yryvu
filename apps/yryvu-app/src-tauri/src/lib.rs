@@ -103,6 +103,7 @@ pub fn run() {
             yryvu_bridge::commands::get_preferences,
             yryvu_bridge::commands::set_preferences,
             yryvu_bridge::commands::reset_preferences,
+            yryvu_bridge::commands::open_external_terminal,
             yryvu_bridge::commands::read_changelog,
             yryvu_bridge::commands::list_known_repos,
             yryvu_bridge::commands::list_gitignore_templates,

@@ -66,6 +66,23 @@ export interface CommitPreferences {
   removeCommentsFromCommitMessages: boolean;
 }
 
+/// Mirrors `yryvu_bridge::preferences::ExternalTerminal` (#105). Path is
+/// the absolute terminal binary; args is a shell-quoted argument
+/// template with `{cwd}` substituted to the repo path at launch time.
+/// Both nullable — `null`/empty path errors out at launch instead of
+/// guessing a terminal across platforms.
+export interface ExternalTerminal {
+  path: string | null;
+  args: string | null;
+}
+
+/// Mirrors `yryvu_bridge::preferences::ToolPreferences` (#105). Only
+/// External Terminal is exposed by design; diff/merge/external editor
+/// are out of scope (see #105 body for rationale).
+export interface ToolPreferences {
+  externalTerminal: ExternalTerminal;
+}
+
 /// Mirrors `yryvu_bridge::preferences::Preferences`. The `version`
 /// field is owned by the backend; never mutate it from the frontend.
 export interface Preferences {
@@ -74,6 +91,7 @@ export interface Preferences {
   ui: UiPreferences;
   tabs: TabsPreferences;
   commit: CommitPreferences;
+  tools: ToolPreferences;
 }
 
 export function getPreferences(): Promise<Preferences> {
@@ -86,4 +104,12 @@ export function setPreferences(preferences: Preferences): Promise<Preferences> {
 
 export function resetPreferences(): Promise<Preferences> {
   return invoke<Preferences>("reset_preferences");
+}
+
+/// Spawn the configured external terminal at `repoPath`. Errors surface
+/// to the caller as a rejected promise — the panel / toolbar binding
+/// should toast the message (typically "external terminal path is not
+/// configured" on first use, before the user picks one).
+export function openExternalTerminal(repoPath: string): Promise<void> {
+  return invoke<void>("open_external_terminal", { repoPath });
 }

@@ -129,6 +129,12 @@ export {
   type RecentRepo,
 } from "./recent-repos";
 export {
+  pendingRefNav,
+  navigateToRef,
+  clearPendingRefNav,
+  type RefNavRequest,
+} from "./refNavigation";
+export {
   PREFERENCE_SECTION_IDS,
   preferencesOpen,
   setPreferencesOpen,

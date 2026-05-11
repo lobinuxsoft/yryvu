@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, on, Show } from "solid-js";
 
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 
-import { dirtyFileCount } from "../../state";
+import {
+  clearPendingRefNav,
+  dirtyFileCount,
+  inspectorMode,
+  pendingRefNav,
+  setInspectorMode,
+  setSelectedCommit,
+} from "../../state";
 import { ContextMenu } from "../ContextMenu";
 import { CommitDialogs } from "./CommitDialogs";
 import { LoadingSkeleton } from "./LoadingSkeleton";
@@ -78,6 +85,37 @@ export function CommitGraph(props: CommitGraphProps) {
     rootRef: () => rootEl,
   });
   const selection = useGraphSelection({ rows: data.rows });
+
+  // Sidebar ref-click navigation (issue #72). Mirrors GK's `setScrollToSha`:
+  // resolve the requested sha to a row index, scroll only when off-screen
+  // (`align: "center"`), and update the selection ring. The signal is
+  // request-shaped (with a bumping `seq`) so two clicks on the same ref
+  // re-fire even though the sha is unchanged.
+  createEffect(
+    on(pendingRefNav, (req) => {
+      if (!req) return;
+      const rows = data.rows();
+      const idx = rows.findIndex((r) => r.sha === req.sha);
+      if (idx < 0) {
+        clearPendingRefNav();
+        return;
+      }
+      const scroller = zonesScroll;
+      if (scroller) {
+        const rowTop = idx * ROW_HEIGHT;
+        const rowBottom = rowTop + ROW_HEIGHT;
+        const viewTop = scroller.scrollTop;
+        const viewBottom = viewTop + scroller.clientHeight;
+        const fullyVisible = rowTop >= viewTop && rowBottom <= viewBottom;
+        if (!fullyVisible) {
+          virtualizer.scrollToIndex(idx, { align: "center" });
+        }
+      }
+      setSelectedCommit(req.sha);
+      if (inspectorMode() !== "details") setInspectorMode("details");
+      clearPendingRefNav();
+    }),
+  );
 
   const deps: ZoneDeps = {
     rows: data.rows,

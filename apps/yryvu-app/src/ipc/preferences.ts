@@ -53,6 +53,19 @@ export interface TabsPreferences {
   permanentTabs: PermanentTabs;
 }
 
+/// Mirrors `yryvu_bridge::preferences::CommitPreferences` (#304).
+/// Backend persistence only — no panel reader yet. Shape exposed so a
+/// future `Commit.tsx` consumer can type the IPC envelope without
+/// another mirror bump. `commitTemplate` is the raw stored string
+/// (summary + description joined with `\n\n` at apply-time).
+export interface CommitPreferences {
+  commitTemplate: string | null;
+  useTemplateForCommitMessages: boolean;
+  defaultPushAfterCommit: boolean;
+  defaultSkipGitHooks: boolean;
+  removeCommentsFromCommitMessages: boolean;
+}
+
 /// Mirrors `yryvu_bridge::preferences::Preferences`. The `version`
 /// field is owned by the backend; never mutate it from the frontend.
 export interface Preferences {
@@ -60,6 +73,7 @@ export interface Preferences {
   general: GeneralPreferences;
   ui: UiPreferences;
   tabs: TabsPreferences;
+  commit: CommitPreferences;
 }
 
 export function getPreferences(): Promise<Preferences> {

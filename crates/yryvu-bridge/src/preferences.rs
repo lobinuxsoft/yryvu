@@ -31,15 +31,17 @@
 //!
 //! # Module layout
 //!
-//! Each section lives in its own sub-module (`general`, `ui`, `tabs`)
-//! and is re-exported here. The IPC contract — every name resolvable
-//! at `yryvu_bridge::preferences::<Name>` — is preserved by
+//! Each section lives in its own sub-module (`general`, `ui`, `tabs`,
+//! `commit`) and is re-exported here. The IPC contract — every name
+//! resolvable at `yryvu_bridge::preferences::<Name>` — is preserved by
 //! `pub use`.
 
+pub mod commit;
 pub mod general;
 pub mod tabs;
 pub mod ui;
 
+pub use commit::CommitPreferences;
 pub use general::GeneralPreferences;
 pub use tabs::{PermanentTabState, PermanentTabs, Tab, TabsPreferences};
 pub use ui::{AnimationMode, Density, ThemeId, UiPreferences};
@@ -87,6 +89,8 @@ pub struct Preferences {
     pub ui: UiPreferences,
     #[serde(default)]
     pub tabs: TabsPreferences,
+    #[serde(default)]
+    pub commit: CommitPreferences,
 }
 
 impl Default for Preferences {
@@ -96,6 +100,7 @@ impl Default for Preferences {
             general: GeneralPreferences::default(),
             ui: UiPreferences::default(),
             tabs: TabsPreferences::default(),
+            commit: CommitPreferences::default(),
         }
     }
 }

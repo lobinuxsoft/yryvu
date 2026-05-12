@@ -83,6 +83,27 @@ export interface ToolPreferences {
   externalTerminal: ExternalTerminal;
 }
 
+/// Mirrors `yryvu_bridge::preferences::EolCharacter` (#190). Wire
+/// format is kebab-case (`"lf"` / `"crlf"`) — drives the EOL
+/// `<select>` value directly.
+export type EolCharacter = "lf" | "crlf";
+
+/// Mirrors `yryvu_bridge::preferences::EditorPreferences` (#190).
+/// Backend persistence only — DiffView / FileDiffTab will consume the
+/// settings (font, line numbers, syntax highlighting, EOL on write) in
+/// a follow-up sub-PR. Whitespace display, multi-mode word wrap, and
+/// EOL preserve are out of scope (not in GK bundle).
+export interface EditorPreferences {
+  font: string;
+  showOnlyMonospace: boolean;
+  fontSize: number;
+  eolCharacter: EolCharacter;
+  wordWrap: boolean;
+  tabSize: number;
+  showLineNumbers: boolean;
+  syntaxHighlighting: boolean;
+}
+
 /// Mirrors `yryvu_bridge::preferences::Preferences`. The `version`
 /// field is owned by the backend; never mutate it from the frontend.
 export interface Preferences {
@@ -92,6 +113,7 @@ export interface Preferences {
   tabs: TabsPreferences;
   commit: CommitPreferences;
   tools: ToolPreferences;
+  editor: EditorPreferences;
 }
 
 export function getPreferences(): Promise<Preferences> {

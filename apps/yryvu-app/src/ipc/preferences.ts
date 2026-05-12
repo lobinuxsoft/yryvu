@@ -104,6 +104,20 @@ export interface EditorPreferences {
   syntaxHighlighting: boolean;
 }
 
+/// Mirrors `yryvu_bridge::preferences::NotificationsPreferences`
+/// (#193). yryvu deviation from GK — GK exposes only Desktop +
+/// Marketing toggles which don't map here. Six per-category bools
+/// derived from the `notify.*` callsite audit; the wave-2 consumer
+/// reads these before emitting from the `notify.*` API.
+export interface NotificationsPreferences {
+  remoteSyncNotifications: boolean;
+  branchNotifications: boolean;
+  commitNotifications: boolean;
+  stashNotifications: boolean;
+  repoObjectNotifications: boolean;
+  undoRedoNotifications: boolean;
+}
+
 /// Mirrors `yryvu_bridge::preferences::Preferences`. The `version`
 /// field is owned by the backend; never mutate it from the frontend.
 export interface Preferences {
@@ -114,6 +128,7 @@ export interface Preferences {
   commit: CommitPreferences;
   tools: ToolPreferences;
   editor: EditorPreferences;
+  notifications: NotificationsPreferences;
 }
 
 export function getPreferences(): Promise<Preferences> {

@@ -69,17 +69,22 @@ export function openWorktreeContextMenu(
             await worktreeUnlock(path, info.workdir);
             notify.success("Worktree unlocked", {
               message: info.workdir,
+              category: "repoObject",
             });
           } else {
             // chajá doesn't ship a Lock-with-reason dialog yet; a
             // null reason matches `git worktree lock` defaults.
             await worktreeLock(path, info.workdir, null);
-            notify.success("Worktree locked", { message: info.workdir });
+            notify.success("Worktree locked", {
+              message: info.workdir,
+              category: "repoObject",
+            });
           }
           refreshBranches();
         } catch (err) {
           notify.error(isLocked ? "Unlock failed" : "Lock failed", {
             message: String(err),
+            category: "repoObject",
           });
         }
       },
@@ -101,9 +106,15 @@ export function openWorktreeContextMenu(
           await worktreeRemove(path, info.workdir);
           refreshBranches();
           refreshWorkingTree();
-          notify.info("Worktree removed", { message: info.workdir });
+          notify.info("Worktree removed", {
+            message: info.workdir,
+            category: "repoObject",
+          });
         } catch (err) {
-          notify.error("Remove failed", { message: String(err) });
+          notify.error("Remove failed", {
+            message: String(err),
+            category: "repoObject",
+          });
         }
       },
     });

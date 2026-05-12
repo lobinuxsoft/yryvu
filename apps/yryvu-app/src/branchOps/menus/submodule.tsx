@@ -54,9 +54,15 @@ export function openSubmoduleContextMenu(
           await submoduleInit(parent, info.name);
           refreshBranches();
           refreshWorkingTree();
-          notify.success("Submodule initialized", { message: info.name });
+          notify.success("Submodule initialized", {
+            message: info.name,
+            category: "repoObject",
+          });
         } catch (err) {
-          notify.error("Initialize failed", { message: String(err) });
+          notify.error("Initialize failed", {
+            message: String(err),
+            category: "repoObject",
+          });
         }
       },
     },
@@ -68,9 +74,15 @@ export function openSubmoduleContextMenu(
           await submoduleUpdate(parent, info.name);
           refreshBranches();
           refreshWorkingTree();
-          notify.success("Submodule updated", { message: info.name });
+          notify.success("Submodule updated", {
+            message: info.name,
+            category: "repoObject",
+          });
         } catch (err) {
-          notify.error("Update failed", { message: String(err) });
+          notify.error("Update failed", {
+            message: String(err),
+            category: "repoObject",
+          });
         }
       },
     },

@@ -100,7 +100,10 @@ export function openTagContextMenu(
     label: "Copy tag name",
     onSelect: () => {
       void navigator.clipboard.writeText(tag.name);
-      notify.info("Tag name copied", { message: tag.name });
+      notify.info("Tag name copied", {
+        message: tag.name,
+        category: "repoObject",
+      });
     },
   });
   items.push({

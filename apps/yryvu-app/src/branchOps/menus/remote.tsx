@@ -111,9 +111,12 @@ export function openRemoteContextMenu(
         try {
           const url = await getRemoteUrl(path, parsed.remote);
           await navigator.clipboard.writeText(url);
-          notify.info("URL copied", { message: url });
+          notify.info("URL copied", { message: url, category: "repoObject" });
         } catch (err) {
-          notify.error("Copy URL failed", { message: String(err) });
+          notify.error("Copy URL failed", {
+            message: String(err),
+            category: "repoObject",
+          });
         }
       },
     },

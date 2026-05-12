@@ -30,16 +30,18 @@ async function runWithToast(
     if (outcome.outcome === "applied") {
       notify.success(kind === "undo" ? "Undone" : "Redone", {
         message: outcome.kind_label,
+        category: "undoRedo",
       });
     } else {
       notify.info(kind === "undo" ? "Cannot undo" : "Cannot redo", {
         message: outcome.reason,
+        category: "undoRedo",
       });
     }
   } catch (err) {
     notify.error(
       `${kind === "undo" ? "Undo" : "Redo"} of ${human} failed`,
-      { message: String(err) },
+      { message: String(err), category: "undoRedo" },
     );
   }
   refreshGraph();
@@ -50,7 +52,7 @@ async function runWithToast(
 
 export async function runUndo(): Promise<void> {
   if (!undoRedoState()?.can_undo) {
-    notify.info("Nothing to undo");
+    notify.info("Nothing to undo", { category: "undoRedo" });
     return;
   }
   await runWithToast("undo", undoRedoState()?.undo_label ?? undefined);
@@ -58,7 +60,7 @@ export async function runUndo(): Promise<void> {
 
 export async function runRedo(): Promise<void> {
   if (!undoRedoState()?.can_redo) {
-    notify.info("Nothing to redo");
+    notify.info("Nothing to redo", { category: "undoRedo" });
     return;
   }
   await runWithToast("redo", undoRedoState()?.redo_label ?? undefined);

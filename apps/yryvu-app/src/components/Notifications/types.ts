@@ -29,6 +29,27 @@ export const DURATION_MS: Record<Exclude<Duration, number>, number> = {
  */
 export type DismissMode = "default" | "x-only";
 
+/**
+ * Operation category used to gate emission against
+ * `NotificationsPreferences` (issue #193 wave 2 / #334). Mirrors the
+ * six bool fields on the backend struct — names match the camelCase
+ * prefix of each `<category>Notifications` field so the lookup is a
+ * direct string-template.
+ *
+ * Callers annotate their `notify.*` calls with the appropriate
+ * category; the toaster drops the toast silently when the user has
+ * muted that category in Preferences. `loading` severity always
+ * emits, regardless of category — it carries progress signal the
+ * user explicitly wants.
+ */
+export type NotificationCategory =
+  | "remoteSync"
+  | "branch"
+  | "commit"
+  | "stash"
+  | "repoObject"
+  | "undoRedo";
+
 export interface NotificationAction {
   label: string;
   onClick: () => void;
@@ -50,6 +71,12 @@ export interface NotificationOptions {
    * button closes; ideal for errors the user must read.
    */
   dismissable?: DismissMode;
+  /**
+   * Operation category. When set, the toaster gates emission against
+   * the corresponding `NotificationsPreferences` toggle. Omit on
+   * one-off / system toasts that should never be muted.
+   */
+  category?: NotificationCategory;
 }
 
 export interface NotificationItem {
@@ -60,6 +87,7 @@ export interface NotificationItem {
   actions: NotificationAction[];
   duration: Duration;
   dismissable: DismissMode;
+  category?: NotificationCategory;
   /** Wall-clock millis. Used to sort the history newest-first. */
   createdAt: number;
   /** History bookkeeping; toggled when the user opens the panel. */

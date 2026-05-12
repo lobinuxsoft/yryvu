@@ -87,7 +87,10 @@ export function openRemoteHeaderContextMenu(
           const url = await getRemoteUrl(path, remote);
           deps.openEditRemoteDialog(remote, url);
         } catch (err) {
-          notify.error(`Edit ${remote} failed`, { message: String(err) });
+          notify.error(`Edit ${remote} failed`, {
+            message: String(err),
+            category: "repoObject",
+          });
         }
       },
     });

@@ -35,11 +35,11 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
     try {
       await fetchPrune(path);
       refresh();
-      notify.success("Fetched all remotes");
+      notify.success("Fetched all remotes", { category: "remoteSync" });
     } catch (err) {
       const msg = String(err);
       setDialogError(`Refresh failed: ${msg}`);
-      notify.error("Fetch failed", { message: msg });
+      notify.error("Fetch failed", { message: msg, category: "remoteSync" });
     } finally {
       setRefreshingRemote(false);
     }
@@ -54,9 +54,12 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
     try {
       await fetchPrune(path, remote);
       refresh();
-      notify.success(`Fetched ${remote}`);
+      notify.success(`Fetched ${remote}`, { category: "remoteSync" });
     } catch (err) {
-      notify.error(`Fetch ${remote} failed`, { message: String(err) });
+      notify.error(`Fetch ${remote} failed`, {
+        message: String(err),
+        category: "remoteSync",
+      });
     }
   }
 
@@ -75,7 +78,7 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
       await addRemote(path, name, url);
       closeDialog();
       refresh();
-      notify.success(`Added remote ${name}`);
+      notify.success(`Added remote ${name}`, { category: "repoObject" });
     } catch (err) {
       setDialogError(String(err));
     }
@@ -95,7 +98,7 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
       await setRemoteUrl(path, d.name, url);
       closeDialog();
       refresh();
-      notify.success(`Updated ${d.name} URL`);
+      notify.success(`Updated ${d.name} URL`, { category: "repoObject" });
     } catch (err) {
       setDialogError(String(err));
     }
@@ -110,7 +113,7 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
       await removeRemote(path, d.name);
       closeDialog();
       refresh();
-      notify.success(`Removed remote ${d.name}`);
+      notify.success(`Removed remote ${d.name}`, { category: "repoObject" });
     } catch (err) {
       setDialogError(String(err));
     }

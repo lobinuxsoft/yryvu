@@ -32,13 +32,14 @@
 //! # Module layout
 //!
 //! Each section lives in its own sub-module (`general`, `ui`, `tabs`,
-//! `commit`, `tools`, `editor`) and is re-exported here. The IPC
-//! contract — every name resolvable at
+//! `commit`, `tools`, `editor`, `notifications`) and is re-exported
+//! here. The IPC contract — every name resolvable at
 //! `yryvu_bridge::preferences::<Name>` — is preserved by `pub use`.
 
 pub mod commit;
 pub mod editor;
 pub mod general;
+pub mod notifications;
 pub mod tabs;
 pub mod tools;
 pub mod ui;
@@ -46,6 +47,7 @@ pub mod ui;
 pub use commit::CommitPreferences;
 pub use editor::{EditorPreferences, EolCharacter};
 pub use general::GeneralPreferences;
+pub use notifications::NotificationsPreferences;
 pub use tabs::{PermanentTabState, PermanentTabs, Tab, TabsPreferences};
 pub use tools::{
     build_terminal_spawn, ExternalTerminal, TerminalSpawnError, TerminalSpawnSpec, ToolPreferences,
@@ -101,6 +103,8 @@ pub struct Preferences {
     pub tools: ToolPreferences,
     #[serde(default)]
     pub editor: EditorPreferences,
+    #[serde(default)]
+    pub notifications: NotificationsPreferences,
 }
 
 impl Default for Preferences {
@@ -113,6 +117,7 @@ impl Default for Preferences {
             commit: CommitPreferences::default(),
             tools: ToolPreferences::default(),
             editor: EditorPreferences::default(),
+            notifications: NotificationsPreferences::default(),
         }
     }
 }

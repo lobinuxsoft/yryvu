@@ -65,10 +65,13 @@ export function createTagHandlers(deps: TagHandlersDeps) {
             return `${s.name} from ${s.scope.remotes.length} remote(s)`;
         }
       })();
-      notify.success("Tag deleted", { message: msg });
+      notify.success("Tag deleted", { message: msg, category: "repoObject" });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Delete tag failed", { message: String(err) });
+      notify.error("Delete tag failed", {
+        message: String(err),
+        category: "repoObject",
+      });
     }
   }
 
@@ -82,10 +85,16 @@ export function createTagHandlers(deps: TagHandlersDeps) {
       await annotateTag(path, s.name, message);
       closeDialog();
       refresh();
-      notify.success("Tag annotated", { message: s.name });
+      notify.success("Tag annotated", {
+        message: s.name,
+        category: "repoObject",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Annotate tag failed", { message: String(err) });
+      notify.error("Annotate tag failed", {
+        message: String(err),
+        category: "repoObject",
+      });
     }
   }
 
@@ -94,9 +103,15 @@ export function createTagHandlers(deps: TagHandlersDeps) {
     if (!path) return;
     try {
       await pushTag(path, remote, name);
-      notify.success("Tag pushed", { message: `${name} → ${remote}` });
+      notify.success("Tag pushed", {
+        message: `${name} → ${remote}`,
+        category: "remoteSync",
+      });
     } catch (err) {
-      notify.error("Push tag failed", { message: String(err) });
+      notify.error("Push tag failed", {
+        message: String(err),
+        category: "remoteSync",
+      });
     }
   }
 

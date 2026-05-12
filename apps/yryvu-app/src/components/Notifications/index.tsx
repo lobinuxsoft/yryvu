@@ -16,6 +16,7 @@ export type {
   DismissMode,
   Duration,
   NotificationAction,
+  NotificationCategory,
   NotificationItem,
   NotificationOptions,
   Severity,

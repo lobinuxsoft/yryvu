@@ -38,9 +38,15 @@ export function createRefHandlers(deps: RefHandlersDeps) {
       refreshGraph();
       refresh();
       refreshWorkingTree();
-      notify.success("Rebased", { message: `onto ${target}` });
+      notify.success("Rebased", {
+        message: `onto ${target}`,
+        category: "branch",
+      });
     } catch (err) {
-      notify.error("Rebase failed", { message: String(err) });
+      notify.error("Rebase failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -57,10 +63,13 @@ export function createRefHandlers(deps: RefHandlersDeps) {
       if (result.kind === "conflict") {
         setDialog({ kind: "merge-result", result });
       } else {
-        notify.success("Pulled");
+        notify.success("Pulled", { category: "remoteSync" });
       }
     } catch (err) {
-      notify.error("Pull failed", { message: String(err) });
+      notify.error("Pull failed", {
+        message: String(err),
+        category: "remoteSync",
+      });
     }
   }
 
@@ -73,9 +82,12 @@ export function createRefHandlers(deps: RefHandlersDeps) {
       // refreshGraph so the remote-tracking ref renders at the new tip.
       refreshGraph();
       refresh();
-      notify.success("Pushed");
+      notify.success("Pushed", { category: "remoteSync" });
     } catch (err) {
-      notify.error("Push failed", { message: String(err) });
+      notify.error("Push failed", {
+        message: String(err),
+        category: "remoteSync",
+      });
     }
   }
 
@@ -90,9 +102,15 @@ export function createRefHandlers(deps: RefHandlersDeps) {
       refreshGraph();
       refresh();
       refreshWorkingTree();
-      notify.success("Reset HEAD", { message: `${mode} → ${sha.slice(0, 7)}` });
+      notify.success("Reset HEAD", {
+        message: `${mode} → ${sha.slice(0, 7)}`,
+        category: "branch",
+      });
     } catch (err) {
-      notify.error("Reset failed", { message: String(err) });
+      notify.error("Reset failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -109,10 +127,14 @@ export function createRefHandlers(deps: RefHandlersDeps) {
       refresh();
       notify.success("Upstream updated", {
         message: upstream ?? "(cleared)",
+        category: "branch",
       });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Set upstream failed", { message: String(err) });
+      notify.error("Set upstream failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 

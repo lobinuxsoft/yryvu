@@ -101,10 +101,16 @@ export function createCommitOps(deps: CommitOpsDeps) {
       refreshGraph();
       refreshBranches();
       refreshWorkingTree();
-      notify.success("Checked out commit", { message: shortSha });
+      notify.success("Checked out commit", {
+        message: shortSha,
+        category: "branch",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Checkout failed", { message: String(err) });
+      notify.error("Checkout failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -118,10 +124,16 @@ export function createCommitOps(deps: CommitOpsDeps) {
       refreshGraph();
       refreshBranches();
       refreshWorkingTree();
-      notify.success("Checked out commit", { message: `Auto-stashed → ${shortSha}` });
+      notify.success("Checked out commit", {
+        message: `Auto-stashed → ${shortSha}`,
+        category: "branch",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Checkout failed", { message: String(err) });
+      notify.error("Checkout failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -136,10 +148,16 @@ export function createCommitOps(deps: CommitOpsDeps) {
       closeDialog();
       refreshGraph();
       refreshBranches();
-      notify.success("Branch created", { message: `${name} @ ${state.shortSha}` });
+      notify.success("Branch created", {
+        message: `${name} @ ${state.shortSha}`,
+        category: "branch",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Create branch failed", { message: String(err) });
+      notify.error("Create branch failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -158,10 +176,14 @@ export function createCommitOps(deps: CommitOpsDeps) {
       refreshBranches();
       notify.success("Tag created", {
         message: state.annotated ? `${name} (annotated)` : name,
+        category: "repoObject",
       });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Create tag failed", { message: String(err) });
+      notify.error("Create tag failed", {
+        message: String(err),
+        category: "repoObject",
+      });
     }
   }
 
@@ -178,10 +200,16 @@ export function createCommitOps(deps: CommitOpsDeps) {
       // mixed puts them in the working tree; hard wipes both. All three
       // change what the WIP panel must show.
       refreshWorkingTree();
-      notify.success(`Reset (${mode})`, { message: shortSha });
+      notify.success(`Reset (${mode})`, {
+        message: shortSha,
+        category: "branch",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Reset failed", { message: String(err) });
+      notify.error("Reset failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -197,10 +225,16 @@ export function createCommitOps(deps: CommitOpsDeps) {
       // applies write a new commit and the WT stays clean — either way
       // the panel needs to refetch.
       refreshWorkingTree();
-      notify.success("Cherry-picked", { message: shortSha });
+      notify.success("Cherry-picked", {
+        message: shortSha,
+        category: "commit",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Cherry-pick failed", { message: String(err) });
+      notify.error("Cherry-pick failed", {
+        message: String(err),
+        category: "commit",
+      });
     }
   }
 
@@ -213,10 +247,13 @@ export function createCommitOps(deps: CommitOpsDeps) {
       refreshGraph();
       refreshBranches();
       refreshWorkingTree();
-      notify.success("Reverted", { message: shortSha });
+      notify.success("Reverted", { message: shortSha, category: "commit" });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Revert failed", { message: String(err) });
+      notify.error("Revert failed", {
+        message: String(err),
+        category: "commit",
+      });
     }
   }
 

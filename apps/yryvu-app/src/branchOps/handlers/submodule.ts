@@ -36,10 +36,16 @@ export function createSubmoduleHandlers(deps: SubmoduleHandlersDeps) {
       closeDialog();
       refresh();
       refreshWorkingTree();
-      notify.success("Submodule removed", { message: s.path });
+      notify.success("Submodule removed", {
+        message: s.path,
+        category: "repoObject",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Remove submodule failed", { message: String(err) });
+      notify.error("Remove submodule failed", {
+        message: String(err),
+        category: "repoObject",
+      });
     }
   }
 
@@ -55,10 +61,16 @@ export function createSubmoduleHandlers(deps: SubmoduleHandlersDeps) {
       closeDialog();
       refresh();
       refreshWorkingTree();
-      notify.success("Submodule added", { message: target });
+      notify.success("Submodule added", {
+        message: target,
+        category: "repoObject",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Add submodule failed", { message: String(err) });
+      notify.error("Add submodule failed", {
+        message: String(err),
+        category: "repoObject",
+      });
     }
   }
 

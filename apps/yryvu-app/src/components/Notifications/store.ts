@@ -2,10 +2,12 @@
 
 import { createSignal } from "solid-js";
 
+import { preferences } from "../../state/preferences";
 import {
   DURATION_MS,
   type DismissMode,
   type Duration,
+  type NotificationCategory,
   type NotificationItem,
   type NotificationOptions,
   type Severity,
@@ -39,6 +41,30 @@ function defaultDismissableFor(severity: Severity): DismissMode {
   return severity === "error" || severity === "loading" ? "x-only" : "default";
 }
 
+/**
+ * Sentinel id returned when a toast is gated out by
+ * `NotificationsPreferences` (issue #334). Callers that hold the id
+ * to dismiss later (typical for `loading` flows) treat the empty
+ * string as "nothing to dismiss" — `dismissToast("")` is a no-op.
+ */
+const GATED_ID = "";
+
+/**
+ * True when this notification should be suppressed under the user's
+ * `NotificationsPreferences`. `loading` severity bypasses gating
+ * because it carries progress signal the user explicitly asked for;
+ * a toast without a `category` is always emitted (legacy / one-off
+ * callers); a not-yet-loaded preferences resource passes through.
+ */
+function isGatedOut(severity: Severity, category?: NotificationCategory): boolean {
+  if (severity === "loading") return false;
+  if (!category) return false;
+  const prefs = preferences();
+  if (!prefs) return false;
+  const field = `${category}Notifications` as const;
+  return prefs.notifications[field] === false;
+}
+
 let idCounter = 0;
 function nextId(): string {
   idCounter += 1;
@@ -70,6 +96,8 @@ export function notify(
   title: string,
   opts: NotificationOptions = {},
 ): string {
+  if (isGatedOut(severity, opts.category)) return GATED_ID;
+
   const id = nextId();
   const item: NotificationItem = {
     id,
@@ -79,6 +107,7 @@ export function notify(
     actions: opts.actions ?? [],
     duration: opts.duration ?? defaultDurationFor(severity),
     dismissable: opts.dismissable ?? defaultDismissableFor(severity),
+    category: opts.category,
     createdAt: Date.now(),
     read: false,
   };

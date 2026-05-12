@@ -35,9 +35,9 @@ export function openStashContextMenu(
         try {
           await stashApply(path, index);
           refreshWorkingTree();
-          notify.success("Stash applied", { message: label });
+          notify.success("Stash applied", { message: label, category: "stash" });
         } catch (err) {
-          notify.error("Apply failed", { message: String(err) });
+          notify.error("Apply failed", { message: String(err), category: "stash" });
         }
       },
     },
@@ -47,9 +47,9 @@ export function openStashContextMenu(
         try {
           await stashPopAt(path, index);
           refreshWorkingTree();
-          notify.success("Stash popped", { message: label });
+          notify.success("Stash popped", { message: label, category: "stash" });
         } catch (err) {
-          notify.error("Pop failed", { message: String(err) });
+          notify.error("Pop failed", { message: String(err), category: "stash" });
         }
       },
     },
@@ -66,9 +66,9 @@ export function openStashContextMenu(
           // does live in the objects DB until git GC (~90 days), so
           // a determined user can `git stash apply <sha>` from a
           // terminal — but from yryvu's UI it's gone for good.
-          notify.info("Stash dropped", { message: label });
+          notify.info("Stash dropped", { message: label, category: "stash" });
         } catch (err) {
-          notify.error("Drop failed", { message: String(err) });
+          notify.error("Drop failed", { message: String(err), category: "stash" });
         }
       },
     },

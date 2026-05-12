@@ -93,7 +93,10 @@ export function RightPanel() {
       // Per-file stage failures are atypical (the path either exists or
       // doesn't); notify so the user knows they hit one. Successful
       // stages stay silent — they happen on every hover-reveal click.
-      notify.error("Stage failed", { message: String(err) });
+      notify.error("Stage failed", {
+        message: String(err),
+        category: "commit",
+      });
     }
     refreshWorkingTree();
   }
@@ -104,7 +107,10 @@ export function RightPanel() {
     try {
       await unstageFiles(p, paths);
     } catch (err) {
-      notify.error("Unstage failed", { message: String(err) });
+      notify.error("Unstage failed", {
+        message: String(err),
+        category: "commit",
+      });
     }
     refreshWorkingTree();
   }
@@ -115,7 +121,10 @@ export function RightPanel() {
     try {
       await stageAll(p);
     } catch (err) {
-      notify.error("Stage all failed", { message: String(err) });
+      notify.error("Stage all failed", {
+        message: String(err),
+        category: "commit",
+      });
     }
     refreshWorkingTree();
   }
@@ -126,7 +135,10 @@ export function RightPanel() {
     try {
       await unstageAll(p);
     } catch (err) {
-      notify.error("Unstage all failed", { message: String(err) });
+      notify.error("Unstage all failed", {
+        message: String(err),
+        category: "commit",
+      });
     }
     refreshWorkingTree();
   }
@@ -148,9 +160,13 @@ export function RightPanel() {
       await discardPaths(p, paths);
       notify.success("Discarded", {
         message: paths.length === 1 ? paths[0] : `${paths.length} files`,
+        category: "commit",
       });
     } catch (err) {
-      notify.error("Discard failed", { message: String(err) });
+      notify.error("Discard failed", {
+        message: String(err),
+        category: "commit",
+      });
     }
     refreshWorkingTree();
   }
@@ -180,6 +196,7 @@ export function RightPanel() {
     } catch (err) {
       notify.error(opts.amend ? "Amend failed" : "Commit failed", {
         message: String(err),
+        category: "commit",
       });
       return;
     }
@@ -191,6 +208,7 @@ export function RightPanel() {
     setInspectorMode("details");
     notify.success(opts.amend ? "Amended" : "Commit created", {
       message: newSha.slice(0, 7),
+      category: "commit",
     });
   }
 
@@ -207,6 +225,7 @@ export function RightPanel() {
       // rewriting their message.
       notify.error("Commit and push failed", {
         message: `${String(err)} — if the commit went through, retry push alone.`,
+        category: "commit",
       });
       refreshWorkingTree();
       refreshGraph();
@@ -219,7 +238,10 @@ export function RightPanel() {
     refreshBranches();
     setSelectedCommit(newSha);
     setInspectorMode("details");
-    notify.success("Commit and push", { message: newSha.slice(0, 7) });
+    notify.success("Commit and push", {
+      message: newSha.slice(0, 7),
+      category: "commit",
+    });
   }
 
   return (

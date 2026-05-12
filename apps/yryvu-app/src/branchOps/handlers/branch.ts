@@ -30,10 +30,13 @@ export function createBranchHandlers(deps: BranchHandlersDeps) {
       await createBranch(path, name, s.from);
       closeDialog();
       refresh();
-      notify.success("Branch created", { message: name });
+      notify.success("Branch created", { message: name, category: "branch" });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Create branch failed", { message: String(err) });
+      notify.error("Create branch failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -52,10 +55,14 @@ export function createBranchHandlers(deps: BranchHandlersDeps) {
       refresh();
       notify.success("Branch renamed", {
         message: `${s.oldName} → ${newName}`,
+        category: "branch",
       });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Rename branch failed", { message: String(err) });
+      notify.error("Rename branch failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -70,6 +77,7 @@ export function createBranchHandlers(deps: BranchHandlersDeps) {
       refresh();
       notify.success("Branch deleted", {
         message: force ? `${s.name} (forced)` : s.name,
+        category: "branch",
       });
     } catch (err) {
       const msg = String(err);
@@ -81,7 +89,7 @@ export function createBranchHandlers(deps: BranchHandlersDeps) {
         return;
       }
       setDialogError(msg);
-      notify.error("Delete branch failed", { message: msg });
+      notify.error("Delete branch failed", { message: msg, category: "branch" });
     }
   }
 

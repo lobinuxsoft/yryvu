@@ -34,27 +34,36 @@ export function createMergeHandlers(deps: MergeHandlersDeps) {
       refreshWorkingTree();
       switch (result.kind) {
         case "already-up-to-date":
-          notify.success("Merge: already up to date", { message: s.source });
+          notify.success("Merge: already up to date", {
+            message: s.source,
+            category: "branch",
+          });
           break;
         case "fast-forward":
           notify.success("Fast-forward merge", {
             message: `${s.source} → ${result.new_head.slice(0, 7)}`,
+            category: "branch",
           });
           break;
         case "merged":
           notify.success("Merge commit", {
             message: `${s.source} → ${result.new_head.slice(0, 7)}`,
+            category: "branch",
           });
           break;
         case "conflict":
           notify.error("Merge conflicts", {
             message: result.paths.join(", "),
+            category: "branch",
           });
           break;
       }
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Merge failed", { message: String(err) });
+      notify.error("Merge failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -69,10 +78,14 @@ export function createMergeHandlers(deps: MergeHandlersDeps) {
       refresh();
       notify.success("Remote branch deleted", {
         message: `${s.remote}/${s.name}`,
+        category: "branch",
       });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Delete remote branch failed", { message: String(err) });
+      notify.error("Delete remote branch failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -84,10 +97,13 @@ export function createMergeHandlers(deps: MergeHandlersDeps) {
       closeDialog();
       refresh();
       refreshWorkingTree();
-      notify.success("Merge aborted");
+      notify.success("Merge aborted", { category: "branch" });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Abort merge failed", { message: String(err) });
+      notify.error("Abort merge failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 

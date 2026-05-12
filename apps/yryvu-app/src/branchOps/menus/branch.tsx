@@ -143,7 +143,7 @@ export function openBranchContextMenu(
       label: "Copy branch name",
       onSelect: () => {
         void navigator.clipboard.writeText(b.name);
-        notify.info("Branch name copied", { message: b.name });
+        notify.info("Branch name copied", { message: b.name, category: "branch" });
       },
     },
   ];

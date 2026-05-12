@@ -49,10 +49,13 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
       closeDialog();
       refresh();
       refreshWorkingTree();
-      notify.success("Checked out", { message: target });
+      notify.success("Checked out", { message: target, category: "branch" });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Checkout failed", { message: String(err) });
+      notify.error("Checkout failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -65,10 +68,16 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
       closeDialog();
       refresh();
       refreshWorkingTree();
-      notify.success("Checked out", { message: `Auto-stashed → ${target}` });
+      notify.success("Checked out", {
+        message: `Auto-stashed → ${target}`,
+        category: "branch",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Checkout failed", { message: String(err) });
+      notify.error("Checkout failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -86,10 +95,14 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
       refreshWorkingTree();
       notify.success("Checked out", {
         message: `Auto-stashed → ${fullRemoteName}`,
+        category: "branch",
       });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Checkout failed", { message: String(err) });
+      notify.error("Checkout failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -128,10 +141,16 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
       closeDialog();
       refresh();
       refreshWorkingTree();
-      notify.success("Checked out", { message: fullRemoteName });
+      notify.success("Checked out", {
+        message: fullRemoteName,
+        category: "branch",
+      });
     } catch (err) {
       setDialogError(String(err));
-      notify.error("Checkout failed", { message: String(err) });
+      notify.error("Checkout failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 
@@ -148,9 +167,15 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
       await checkoutCommit(path, sha);
       refresh();
       refreshWorkingTree();
-      notify.success("Checked out tag", { message: tagName });
+      notify.success("Checked out tag", {
+        message: tagName,
+        category: "branch",
+      });
     } catch (err) {
-      notify.error("Checkout tag failed", { message: String(err) });
+      notify.error("Checkout tag failed", {
+        message: String(err),
+        category: "branch",
+      });
     }
   }
 

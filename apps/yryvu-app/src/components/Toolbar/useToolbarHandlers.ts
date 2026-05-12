@@ -19,6 +19,7 @@ import {
   type PullType,
 } from "../../state";
 import { dismissToast, notify } from "../Notifications";
+import type { NotificationCategory } from "../Notifications";
 import type { SplitButtonOption } from "./SplitButton";
 
 export type ConfirmKind = "force-pull" | "force-push";
@@ -46,23 +47,29 @@ export function useToolbarHandlers(opts: HandlersOptions) {
     label: string,
     successTitle: string,
     fn: () => Promise<string | void>,
+    category: NotificationCategory,
   ): Promise<void> {
     const path = repoPath();
     if (!path) return;
     setPending(label);
+    // Loading toasts bypass gating by design — the user explicitly
+    // asked for the op and wants progress signal.
     const loadingId = notify.loading(`${label}…`);
     try {
       const successMessage = await fn();
       dismissToast(loadingId);
-      notify.success(
-        successTitle,
-        typeof successMessage === "string"
+      notify.success(successTitle, {
+        ...(typeof successMessage === "string"
           ? { message: successMessage }
-          : undefined,
-      );
+          : {}),
+        category,
+      });
     } catch (err) {
       dismissToast(loadingId);
-      notify.error(`${label} failed`, { message: String(err) });
+      notify.error(`${label} failed`, {
+        message: String(err),
+        category,
+      });
     } finally {
       setPending(null);
     }
@@ -84,26 +91,41 @@ export function useToolbarHandlers(opts: HandlersOptions) {
   }
 
   async function runPullMerge() {
-    await withOp("Pull", "Pull complete", async () => {
-      const result = await pull(repoPath()!, "fast-forward-or-merge");
-      refreshAfterRemoteOp();
-      return pullStrategyMessage(result);
-    });
+    await withOp(
+      "Pull",
+      "Pull complete",
+      async () => {
+        const result = await pull(repoPath()!, "fast-forward-or-merge");
+        refreshAfterRemoteOp();
+        return pullStrategyMessage(result);
+      },
+      "remoteSync",
+    );
   }
 
   async function runPullFFOnly() {
-    await withOp("Pull (FF only)", "Pull complete", async () => {
-      const result = await pull(repoPath()!, "fast-forward-only");
-      refreshAfterRemoteOp();
-      return pullStrategyMessage(result);
-    });
+    await withOp(
+      "Pull (FF only)",
+      "Pull complete",
+      async () => {
+        const result = await pull(repoPath()!, "fast-forward-only");
+        refreshAfterRemoteOp();
+        return pullStrategyMessage(result);
+      },
+      "remoteSync",
+    );
   }
 
   async function runFetchAll() {
-    await withOp("Fetch all", "Fetched all remotes", async () => {
-      await fetchPrune(repoPath()!);
-      refreshAfterRemoteOp();
-    });
+    await withOp(
+      "Fetch all",
+      "Fetched all remotes",
+      async () => {
+        await fetchPrune(repoPath()!);
+        refreshAfterRemoteOp();
+      },
+      "remoteSync",
+    );
   }
 
   async function runForcePull() {
@@ -116,14 +138,20 @@ export function useToolbarHandlers(opts: HandlersOptions) {
         refreshAfterRemoteOp();
         refreshWorkingTree();
       },
+      "remoteSync",
     );
   }
 
   async function runPush() {
-    await withOp("Push", "Push complete", async () => {
-      await push(repoPath()!);
-      refreshAfterRemoteOp();
-    });
+    await withOp(
+      "Push",
+      "Push complete",
+      async () => {
+        await push(repoPath()!);
+        refreshAfterRemoteOp();
+      },
+      "remoteSync",
+    );
   }
 
   async function runForcePushWithLease() {
@@ -135,6 +163,7 @@ export function useToolbarHandlers(opts: HandlersOptions) {
         await push(repoPath()!, { forceWithLease: true });
         refreshAfterRemoteOp();
       },
+      "remoteSync",
     );
   }
 
@@ -159,19 +188,29 @@ export function useToolbarHandlers(opts: HandlersOptions) {
   }
 
   async function onStash() {
-    await withOp("Stash", "Stashed working tree", async () => {
-      await stashPush(repoPath()!);
-      refreshWorkingTree();
-      refreshAfterRemoteOp();
-    });
+    await withOp(
+      "Stash",
+      "Stashed working tree",
+      async () => {
+        await stashPush(repoPath()!);
+        refreshWorkingTree();
+        refreshAfterRemoteOp();
+      },
+      "stash",
+    );
   }
 
   async function onPop() {
-    await withOp("Stash pop", "Stash applied", async () => {
-      await stashPop(repoPath()!);
-      refreshWorkingTree();
-      refreshAfterRemoteOp();
-    });
+    await withOp(
+      "Stash pop",
+      "Stash applied",
+      async () => {
+        await stashPop(repoPath()!);
+        refreshWorkingTree();
+        refreshAfterRemoteOp();
+      },
+      "stash",
+    );
   }
 
   function runPullDefault() {

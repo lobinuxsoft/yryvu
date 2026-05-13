@@ -37,6 +37,7 @@ function makePrefs(overrides: Partial<NotificationsPreferences> = {}): Preferenc
     editor: {} as Preferences["editor"],
     notifications: { ...defaultNotificationsPrefs(), ...overrides },
     issueTracker: {} as Preferences["issueTracker"],
+    gpg: {} as Preferences["gpg"],
   };
 }
 
@@ -130,6 +131,7 @@ describe("notify gating against NotificationsPreferences", () => {
       editor: {} as Preferences["editor"],
       notifications: {} as NotificationsPreferences,
       issueTracker: {} as Preferences["issueTracker"],
+      gpg: {} as Preferences["gpg"],
     };
     const id = storeMod.notify("success", "Pulled", { category: "remoteSync" });
     expect(id).not.toBe("");

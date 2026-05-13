@@ -9,6 +9,7 @@ import {
   type GeneralPreferences,
   type NotificationsPreferences,
   type Preferences,
+  type ToolPreferences,
   type UiPreferences,
 } from "../ipc";
 import { persistedEnum } from "./storage";
@@ -73,6 +74,7 @@ interface PreferencesPatch {
   general?: Partial<GeneralPreferences>;
   ui?: Partial<UiPreferences>;
   notifications?: Partial<NotificationsPreferences>;
+  tools?: Partial<ToolPreferences>;
 }
 
 /// Apply a partial update to the persisted preferences. Merges per
@@ -92,6 +94,7 @@ export async function updatePreferences(patch: PreferencesPatch): Promise<void> 
       ...current.notifications,
       ...(patch.notifications ?? {}),
     },
+    tools: { ...current.tools, ...(patch.tools ?? {}) },
   };
   const saved = await ipcSetPreferences(next);
   mutatePreferencesResource(saved);

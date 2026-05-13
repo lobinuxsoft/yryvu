@@ -1,47 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { For, createEffect, createMemo, createSignal, type JSX } from "solid-js";
+import { For, createEffect, createSignal, type JSX } from "solid-js";
 
 import type { EditorPreferences, EolCharacter } from "../../../ipc";
 import { preferences, updatePreferences } from "../../../state/preferences";
 
-/// Suggestion lists for the font `<datalist>`. There is no Tauri command
-/// to enumerate system fonts today, so we curate common cross-platform
-/// families. Free text remains valid — the datalist is hint-only.
-const MONOSPACE_FONTS: readonly string[] = [
-  "FiraCode Nerd Font Mono",
-  "JetBrains Mono",
-  "Cascadia Code",
-  "Cascadia Mono",
-  "Source Code Pro",
-  "Iosevka",
-  "Hack",
-  "Inconsolata",
-  "Menlo",
-  "Monaco",
-  "Consolas",
-  "SF Mono",
-  "DejaVu Sans Mono",
-  "Liberation Mono",
-  "Ubuntu Mono",
-  "Courier New",
-];
-
-const PROPORTIONAL_FONTS: readonly string[] = [
-  "Inter",
-  "Roboto",
-  "SF Pro Text",
-  "Segoe UI",
-  "Helvetica Neue",
-  "Helvetica",
-  "Arial",
-  "Verdana",
-  "system-ui",
-  "sans-serif",
-];
-
-const FONT_SIZE_MIN = 8;
-const FONT_SIZE_MAX = 32;
 const TAB_SIZE_MIN = 1;
 const TAB_SIZE_MAX = 16;
 
@@ -51,11 +14,7 @@ function clampInt(raw: string, fallback: number, min: number, max: number): numb
   return Math.max(min, Math.min(max, parsed));
 }
 
-type BoolField =
-  | "showOnlyMonospace"
-  | "wordWrap"
-  | "showLineNumbers"
-  | "syntaxHighlighting";
+type BoolField = "wordWrap" | "showLineNumbers" | "syntaxHighlighting";
 
 const DISPLAY_TOGGLES: ReadonlyArray<{
   field: Extract<BoolField, "showLineNumbers" | "syntaxHighlighting">;
@@ -75,31 +34,32 @@ const DISPLAY_TOGGLES: ReadonlyArray<{
 ];
 
 /**
- * Editor preferences panel — font, formatting, display (issue #342,
- * wave 2 of #190). Backend in PR #332. DiffView / FileDiffTab consumer
- * wiring lands in a separate follow-up.
+ * Editor preferences panel — formatting + display (issue #342, wave 2
+ * of #190; trimmed by #344). Backend in PR #332. DiffView / FileDiffTab
+ * consumer wiring lands in a separate follow-up.
  *
- * Numeric inputs keep their local signal as a string so the input can
- * be momentarily empty during editing; persistence parses + clamps to
- * the safe range. The EOL `<select>` follows Ui.tsx's ref-imperative
- * pattern — declarative `selected=` loses to browser user-interaction
- * tracking once the user has touched the control.
+ * Font / fontSize / showOnlyMonospace lived here originally; #344
+ * dropped them because UI themes already define `--font-mono` and
+ * `UiPreferences.zoom` scales globally — having a second knob for the
+ * same value was redundant.
  *
- * Toggle rows reuse `.notifications-panel__*` selectors (4th panel with
- * toggles — extraction to `toggle-row.css` is a separate refactor PR).
+ * Tab-size keeps its local signal as a string so the input can be
+ * momentarily empty during editing; persistence parses + clamps to
+ * the safe range and falls back to the currently-persisted value on
+ * a typo (not `min`, so the user doesn't lose their setting).
+ *
+ * The EOL `<select>` follows Ui.tsx's ref-imperative pattern —
+ * declarative `selected=` loses to browser user-interaction tracking
+ * once the user has touched the control.
  */
 export function EditorPanel(): JSX.Element {
   let eolSelectRef: HTMLSelectElement | undefined;
 
-  const [fontLocal, setFontLocal] = createSignal("");
-  const [fontSizeLocal, setFontSizeLocal] = createSignal("");
   const [tabSizeLocal, setTabSizeLocal] = createSignal("");
 
   createEffect(() => {
     const prefs = preferences();
     if (!prefs) return;
-    setFontLocal(prefs.editor.font);
-    setFontSizeLocal(String(prefs.editor.fontSize));
     setTabSizeLocal(String(prefs.editor.tabSize));
   });
 
@@ -122,96 +82,14 @@ export function EditorPanel(): JSX.Element {
     return prefs ? (prefs.editor[field] as boolean) : false;
   };
 
-  const showOnlyMonospace = () => boolValue("showOnlyMonospace");
-
-  const fontSuggestions = createMemo<readonly string[]>(() =>
-    showOnlyMonospace()
-      ? MONOSPACE_FONTS
-      : [...MONOSPACE_FONTS, ...PROPORTIONAL_FONTS],
-  );
-
   return (
     <div class="preferences__section-body">
-      <h3 class="preferences__section-title">Font</h3>
+      <h3 class="preferences__section-title">Formatting</h3>
       <p class="ui-panel__helper">
-        Type any installed font family — the suggestions below cover
-        common monospace options; flip the toggle to also see
-        proportional ones. Applies to diff and file views.
+        These settings apply to diff and file views. The editor font and
+        size come from your active theme (UI section) and the global
+        zoom; this panel covers everything else.
       </p>
-
-      <div class="editor-panel__field">
-        <label class="ui-panel__label" for="editor-panel-font">
-          Font family
-        </label>
-        <input
-          id="editor-panel-font"
-          class="editor-panel__input"
-          type="text"
-          list="editor-panel-font-suggestions"
-          placeholder="FiraCode Nerd Font Mono"
-          value={fontLocal()}
-          disabled={!ready()}
-          onInput={(e) => setFontLocal(e.currentTarget.value)}
-          onChange={(e) => persist({ font: e.currentTarget.value })}
-        />
-        <datalist id="editor-panel-font-suggestions">
-          <For each={fontSuggestions()}>
-            {(name) => <option value={name} />}
-          </For>
-        </datalist>
-      </div>
-
-      <div class="editor-panel__field editor-panel__field--narrow">
-        <label class="ui-panel__label" for="editor-panel-font-size">
-          Font size (px)
-        </label>
-        <input
-          id="editor-panel-font-size"
-          class="editor-panel__input editor-panel__input--numeric"
-          type="number"
-          min={FONT_SIZE_MIN}
-          max={FONT_SIZE_MAX}
-          step={1}
-          value={fontSizeLocal()}
-          disabled={!ready()}
-          onInput={(e) => setFontSizeLocal(e.currentTarget.value)}
-          onChange={(e) => {
-            const fallback = preferences()?.editor.fontSize ?? FONT_SIZE_MIN;
-            persist({
-              fontSize: clampInt(
-                e.currentTarget.value,
-                fallback,
-                FONT_SIZE_MIN,
-                FONT_SIZE_MAX,
-              ),
-            });
-          }}
-        />
-      </div>
-
-      <label class="notifications-panel__row">
-        <input
-          type="checkbox"
-          class="notifications-panel__toggle"
-          checked={showOnlyMonospace()}
-          disabled={!ready()}
-          onChange={(e) =>
-            persist({ showOnlyMonospace: e.currentTarget.checked })
-          }
-        />
-        <span class="notifications-panel__label">
-          <span class="notifications-panel__label-text">
-            Monospace suggestions only
-          </span>
-          <span class="notifications-panel__hint">
-            Filter the font family dropdown to fixed-width fonts.
-          </span>
-        </span>
-      </label>
-
-      <h3 class="preferences__section-title editor-panel__sub-heading">
-        Formatting
-      </h3>
 
       <div class="editor-panel__field editor-panel__field--narrow">
         <label class="ui-panel__label" for="editor-panel-eol">

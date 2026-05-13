@@ -88,15 +88,14 @@ export interface ToolPreferences {
 /// `<select>` value directly.
 export type EolCharacter = "lf" | "crlf";
 
-/// Mirrors `yryvu_bridge::preferences::EditorPreferences` (#190).
-/// Backend persistence only — DiffView / FileDiffTab will consume the
-/// settings (font, line numbers, syntax highlighting, EOL on write) in
-/// a follow-up sub-PR. Whitespace display, multi-mode word wrap, and
-/// EOL preserve are out of scope (not in GK bundle).
+/// Mirrors `yryvu_bridge::preferences::EditorPreferences` (#190,
+/// trimmed by #344). DiffView / FileDiffTab will consume the surviving
+/// settings (line numbers, syntax highlighting, EOL on write, tab size,
+/// word wrap) in a follow-up. Font and font-size were dropped because
+/// UI themes already define `--font-mono` and `UiPreferences.zoom`
+/// scales globally. Whitespace display, multi-mode word wrap, and EOL
+/// preserve are out of scope (not in GK bundle).
 export interface EditorPreferences {
-  font: string;
-  showOnlyMonospace: boolean;
-  fontSize: number;
   eolCharacter: EolCharacter;
   wordWrap: boolean;
   tabSize: number;

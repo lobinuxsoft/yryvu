@@ -20,6 +20,7 @@ export * from "./release_notes";
 export * from "./remote";
 export * from "./repo_management";
 export * from "./smart_branches";
+export * from "./sparse_checkout";
 export * from "./staging";
 export * from "./stashes";
 export * from "./submodules";

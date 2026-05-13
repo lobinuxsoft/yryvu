@@ -41,6 +41,7 @@ import { ExperimentalPanel } from "./panels/Experimental";
 import { IntegrationsPanel } from "./panels/Integrations";
 import { NotificationsPanel } from "./panels/Notifications";
 import { ToolsPanel } from "./panels/Tools";
+import { CommitPanel } from "./panels/Commit";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -58,7 +59,7 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "commit",
     label: "Commit",
     icon: IconCodeCommit,
-    panel: () => Placeholder({ section: "Commit", issue: 3 }),
+    panel: CommitPanel,
     issue: 3,
   },
   {

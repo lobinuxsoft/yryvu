@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Git Flow preferences panel — reuses `.tools-panel__input` for text
+   inputs; only owns sub-heading spacing + row gaps. */
+
+.gitflow-panel__sub-heading {
+  margin-top: 24px;
+}
+
+.gitflow-panel__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+}
+
+.gitflow-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

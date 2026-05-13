@@ -42,6 +42,7 @@ import { IntegrationsPanel } from "./panels/Integrations";
 import { NotificationsPanel } from "./panels/Notifications";
 import { ToolsPanel } from "./panels/Tools";
 import { CommitPanel } from "./panels/Commit";
+import { EditorPanel } from "./panels/Editor";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -66,7 +67,8 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "editor",
     label: "Editor",
     icon: IconCode,
-    panel: () => Placeholder({ section: "Editor" }),
+    panel: EditorPanel,
+    issue: 190,
   },
   {
     id: "encoding",

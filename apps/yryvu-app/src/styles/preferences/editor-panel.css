@@ -1,0 +1,63 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Editor preferences panel — font / formatting / display. Toggle rows
+   reuse `.notifications-panel__*` selectors; this file owns the text /
+   numeric / select inputs and the sub-heading spacing. */
+
+.editor-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 480px;
+  margin-bottom: 16px;
+}
+
+.editor-panel__field--narrow {
+  max-width: 240px;
+}
+
+.editor-panel__input,
+.editor-panel__select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--fg-0);
+  font: inherit;
+  font-size: 12px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.editor-panel__input--numeric {
+  font-family: var(--font-mono);
+  width: 100px;
+}
+
+.editor-panel__input:focus,
+.editor-panel__select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.editor-panel__input:disabled,
+.editor-panel__select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.editor-panel__select {
+  appearance: none;
+  padding-right: 32px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--fg-2) 50%),
+    linear-gradient(135deg, var(--fg-2) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.editor-panel__sub-heading {
+  margin-top: 24px;
+}

@@ -7,6 +7,7 @@ import {
   resetPreferences as ipcResetPreferences,
   setPreferences as ipcSetPreferences,
   type CommitPreferences,
+  type EditorPreferences,
   type GeneralPreferences,
   type NotificationsPreferences,
   type Preferences,
@@ -77,6 +78,7 @@ interface PreferencesPatch {
   notifications?: Partial<NotificationsPreferences>;
   tools?: Partial<ToolPreferences>;
   commit?: Partial<CommitPreferences>;
+  editor?: Partial<EditorPreferences>;
 }
 
 /// Apply a partial update to the persisted preferences. Merges per
@@ -98,6 +100,7 @@ export async function updatePreferences(patch: PreferencesPatch): Promise<void> 
     },
     tools: { ...current.tools, ...(patch.tools ?? {}) },
     commit: { ...current.commit, ...(patch.commit ?? {}) },
+    editor: { ...current.editor, ...(patch.editor ?? {}) },
   };
   const saved = await ipcSetPreferences(next);
   mutatePreferencesResource(saved);

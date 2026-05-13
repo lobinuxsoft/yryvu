@@ -103,6 +103,17 @@ export interface EditorPreferences {
   syntaxHighlighting: boolean;
 }
 
+/// Mirrors `yryvu_bridge::preferences::IssueTrackerPreferences` (#306).
+/// Holds the global default pattern + linkify / auto-detect toggles.
+/// Per-repo overrides live in the repo's own `.git/config` under
+/// `[yryvu] issueTrackerUrl` and travel via separate commands in
+/// `ipc/issue_tracker.ts` rather than this struct.
+export interface IssueTrackerPreferences {
+  defaultUrlPattern: string | null;
+  linkifyInCommits: boolean;
+  autoDetectProvider: boolean;
+}
+
 /// Mirrors `yryvu_bridge::preferences::NotificationsPreferences`
 /// (#193). yryvu deviation from GK — GK exposes only Desktop +
 /// Marketing toggles which don't map here. Six per-category bools
@@ -128,6 +139,7 @@ export interface Preferences {
   tools: ToolPreferences;
   editor: EditorPreferences;
   notifications: NotificationsPreferences;
+  issueTracker: IssueTrackerPreferences;
 }
 
 export function getPreferences(): Promise<Preferences> {

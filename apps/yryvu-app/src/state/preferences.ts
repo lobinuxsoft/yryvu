@@ -9,6 +9,7 @@ import {
   type CommitPreferences,
   type EditorPreferences,
   type GeneralPreferences,
+  type IssueTrackerPreferences,
   type NotificationsPreferences,
   type Preferences,
   type ToolPreferences,
@@ -79,6 +80,7 @@ interface PreferencesPatch {
   tools?: Partial<ToolPreferences>;
   commit?: Partial<CommitPreferences>;
   editor?: Partial<EditorPreferences>;
+  issueTracker?: Partial<IssueTrackerPreferences>;
 }
 
 /// Apply a partial update to the persisted preferences. Merges per
@@ -101,6 +103,10 @@ export async function updatePreferences(patch: PreferencesPatch): Promise<void> 
     tools: { ...current.tools, ...(patch.tools ?? {}) },
     commit: { ...current.commit, ...(patch.commit ?? {}) },
     editor: { ...current.editor, ...(patch.editor ?? {}) },
+    issueTracker: {
+      ...current.issueTracker,
+      ...(patch.issueTracker ?? {}),
+    },
   };
   const saved = await ipcSetPreferences(next);
   mutatePreferencesResource(saved);

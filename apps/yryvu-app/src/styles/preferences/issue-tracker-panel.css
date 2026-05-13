@@ -1,0 +1,53 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Issue Tracker preferences panel — global default + per-repo override.
+   Toggle rows reuse `.notifications-panel__*` selectors; this file owns
+   the text input + sub-heading spacing + actions cluster. */
+
+.issue-tracker-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 600px;
+  margin-bottom: 16px;
+}
+
+.issue-tracker-panel__input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--fg-0);
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.issue-tracker-panel__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.issue-tracker-panel__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.issue-tracker-panel__input::placeholder {
+  color: var(--fg-3);
+  font-style: italic;
+}
+
+.issue-tracker-panel__sub-heading {
+  margin-top: 24px;
+}
+
+.issue-tracker-panel__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}

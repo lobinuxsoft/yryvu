@@ -1,0 +1,55 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Notifications preferences panel — six category toggles. */
+
+.notifications-panel__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 16px;
+  max-width: 520px;
+}
+
+.notifications-panel__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.notifications-panel__row:hover {
+  background: var(--bg-2);
+}
+
+.notifications-panel__toggle {
+  margin-top: 2px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.notifications-panel__toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.notifications-panel__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notifications-panel__label-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg-0);
+}
+
+.notifications-panel__hint {
+  font-size: 12px;
+  color: var(--fg-2);
+  line-height: 1.4;
+}

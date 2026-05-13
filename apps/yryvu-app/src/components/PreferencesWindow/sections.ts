@@ -39,6 +39,7 @@ import { GeneralPanel } from "./panels/General";
 import { UiPanel } from "./panels/Ui";
 import { ExperimentalPanel } from "./panels/Experimental";
 import { IntegrationsPanel } from "./panels/Integrations";
+import { NotificationsPanel } from "./panels/Notifications";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -130,7 +131,8 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "notifications",
     label: "Notifications",
     icon: IconBell,
-    panel: () => Placeholder({ section: "Notifications" }),
+    panel: NotificationsPanel,
+    issue: 193,
   },
   {
     id: "profiles",

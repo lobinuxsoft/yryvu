@@ -85,14 +85,14 @@ pub fn write_custom_value(
     })?;
     // Local config (the repo's own `.git/config`), not the global /
     // system files — per-repo overrides must not leak into other repos.
-    let config_path = repo
-        .path()
-        .join("config")
-        .canonicalize()
-        .map_err(|e| CustomConfigError::ConfigAccess {
-            path: repo.path().join("config").display().to_string(),
-            source: git2::Error::from_str(&e.to_string()),
-        })?;
+    let config_path =
+        repo.path()
+            .join("config")
+            .canonicalize()
+            .map_err(|e| CustomConfigError::ConfigAccess {
+                path: repo.path().join("config").display().to_string(),
+                source: git2::Error::from_str(&e.to_string()),
+            })?;
     let mut local =
         git2::Config::open(&config_path).map_err(|e| CustomConfigError::ConfigAccess {
             path: config_path.display().to_string(),

@@ -134,15 +134,13 @@ pub fn provider_issue_url_pattern(
 ) -> Option<String> {
     match service {
         HostingService::GitHub => Some(format!("https://github.com/{owner}/{repo}/issues/{{id}}")),
-        HostingService::GitLab => Some(format!(
-            "https://gitlab.com/{owner}/{repo}/-/issues/{{id}}"
-        )),
+        HostingService::GitLab => {
+            Some(format!("https://gitlab.com/{owner}/{repo}/-/issues/{{id}}"))
+        }
         HostingService::Bitbucket => Some(format!(
             "https://bitbucket.org/{owner}/{repo}/issues/{{id}}"
         )),
-        HostingService::Gitea => Some(format!(
-            "https://codeberg.org/{owner}/{repo}/issues/{{id}}"
-        )),
+        HostingService::Gitea => Some(format!("https://codeberg.org/{owner}/{repo}/issues/{{id}}")),
         HostingService::Unknown => None,
     }
 }

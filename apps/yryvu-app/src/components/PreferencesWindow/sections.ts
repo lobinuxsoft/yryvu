@@ -40,6 +40,7 @@ import { UiPanel } from "./panels/Ui";
 import { ExperimentalPanel } from "./panels/Experimental";
 import { IntegrationsPanel } from "./panels/Integrations";
 import { NotificationsPanel } from "./panels/Notifications";
+import { ToolsPanel } from "./panels/Tools";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -164,7 +165,7 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "tools",
     label: "External tools",
     icon: IconTools,
-    panel: () => Placeholder({ section: "External tools", issue: 105 }),
+    panel: ToolsPanel,
     issue: 105,
   },
 ];

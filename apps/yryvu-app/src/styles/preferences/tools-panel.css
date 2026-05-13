@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* External tools preferences panel — terminal path + args. */
+
+.tools-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 520px;
+  margin-bottom: 20px;
+}
+
+.tools-panel__input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--fg-0);
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.tools-panel__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.tools-panel__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tools-panel__input::placeholder {
+  color: var(--fg-3);
+  font-style: italic;
+}

@@ -46,6 +46,7 @@ import { EditorPanel } from "./panels/Editor";
 import { IssueTrackerPanel } from "./panels/IssueTracker";
 import { GitHooksPanel } from "./panels/GitHooks";
 import { GpgPanel } from "./panels/Gpg";
+import { GitflowPanel } from "./panels/Gitflow";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -104,8 +105,8 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "gitflow",
     label: "Git Flow",
     icon: IconBranch,
-    panel: () => Placeholder({ section: "Git Flow", issue: 19 }),
-    issue: 19,
+    panel: GitflowPanel,
+    issue: 305,
   },
   {
     id: "githooks",

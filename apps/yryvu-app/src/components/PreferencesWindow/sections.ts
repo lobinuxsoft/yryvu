@@ -44,6 +44,7 @@ import { ToolsPanel } from "./panels/Tools";
 import { CommitPanel } from "./panels/Commit";
 import { EditorPanel } from "./panels/Editor";
 import { IssueTrackerPanel } from "./panels/IssueTracker";
+import { GitHooksPanel } from "./panels/GitHooks";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -109,7 +110,8 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "githooks",
     label: "Git hooks",
     icon: IconPlug,
-    panel: () => Placeholder({ section: "Git hooks" }),
+    panel: GitHooksPanel,
+    issue: 192,
   },
   {
     id: "integrations",

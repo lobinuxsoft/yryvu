@@ -1,0 +1,79 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Git hooks preferences panel — list with toggle + status pill +
+   per-row Open button. */
+
+.githooks-panel__list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 600px;
+}
+
+.githooks-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  border: 1px solid transparent;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.githooks-panel__row:hover {
+  background: var(--bg-2);
+  border-color: var(--border);
+}
+
+.githooks-panel__toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.githooks-panel__toggle {
+  cursor: pointer;
+}
+
+.githooks-panel__toggle:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.githooks-panel__name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-0);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.githooks-panel__pill {
+  flex: 0 0 auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.githooks-panel__pill--on {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.githooks-panel__pill--off {
+  background: var(--bg-3);
+  color: var(--fg-2);
+}

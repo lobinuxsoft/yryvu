@@ -10,6 +10,7 @@ export * from "./clone";
 export * from "./commits";
 export * from "./integrationStorage";
 export * from "./diff";
+export * from "./hooks";
 export * from "./init";
 export * from "./issue_tracker";
 export * from "./merge";

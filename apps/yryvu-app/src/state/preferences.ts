@@ -7,6 +7,7 @@ import {
   resetPreferences as ipcResetPreferences,
   setPreferences as ipcSetPreferences,
   type GeneralPreferences,
+  type NotificationsPreferences,
   type Preferences,
   type UiPreferences,
 } from "../ipc";
@@ -71,6 +72,7 @@ export { preferences };
 interface PreferencesPatch {
   general?: Partial<GeneralPreferences>;
   ui?: Partial<UiPreferences>;
+  notifications?: Partial<NotificationsPreferences>;
 }
 
 /// Apply a partial update to the persisted preferences. Merges per
@@ -86,6 +88,10 @@ export async function updatePreferences(patch: PreferencesPatch): Promise<void> 
     ...current,
     general: { ...current.general, ...(patch.general ?? {}) },
     ui: { ...current.ui, ...(patch.ui ?? {}) },
+    notifications: {
+      ...current.notifications,
+      ...(patch.notifications ?? {}),
+    },
   };
   const saved = await ipcSetPreferences(next);
   mutatePreferencesResource(saved);

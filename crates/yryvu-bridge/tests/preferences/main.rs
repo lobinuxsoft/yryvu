@@ -13,6 +13,7 @@
 mod commit;
 mod editor;
 mod general;
+mod gpg;
 mod issue_tracker;
 mod notifications;
 mod tabs;

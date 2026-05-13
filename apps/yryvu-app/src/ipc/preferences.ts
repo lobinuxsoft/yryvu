@@ -103,6 +103,20 @@ export interface EditorPreferences {
   syntaxHighlighting: boolean;
 }
 
+/// Mirrors `yryvu_bridge::preferences::GpgPreferences` (#104, subset).
+/// `signingKeyId` is a free-form fingerprint or email Git resolves via
+/// its own `user.signingkey` rules; `null` means "use Git's own
+/// resolution". The original issue body also called for key-list
+/// enumeration (`gpg --list-secret-keys`), passphrase caching, and a
+/// test-sign button — those require shelling out to `gpg` and a
+/// per-profile model (blocked by #22), so they stay out of scope.
+export interface GpgPreferences {
+  signingKeyId: string | null;
+  signCommitsByDefault: boolean;
+  signTagsByDefault: boolean;
+  sshSigningEnabled: boolean;
+}
+
 /// Mirrors `yryvu_bridge::preferences::IssueTrackerPreferences` (#306).
 /// Holds the global default pattern + linkify / auto-detect toggles.
 /// Per-repo overrides live in the repo's own `.git/config` under
@@ -140,6 +154,7 @@ export interface Preferences {
   editor: EditorPreferences;
   notifications: NotificationsPreferences;
   issueTracker: IssueTrackerPreferences;
+  gpg: GpgPreferences;
 }
 
 export function getPreferences(): Promise<Preferences> {

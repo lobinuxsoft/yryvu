@@ -45,6 +45,7 @@ import { CommitPanel } from "./panels/Commit";
 import { EditorPanel } from "./panels/Editor";
 import { IssueTrackerPanel } from "./panels/IssueTracker";
 import { GitHooksPanel } from "./panels/GitHooks";
+import { GpgPanel } from "./panels/Gpg";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -96,7 +97,7 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "gpg",
     label: "GPG",
     icon: IconKey,
-    panel: () => Placeholder({ section: "GPG", issue: 104 }),
+    panel: GpgPanel,
     issue: 104,
   },
   {

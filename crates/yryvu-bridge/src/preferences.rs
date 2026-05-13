@@ -39,6 +39,7 @@
 pub mod commit;
 pub mod editor;
 pub mod general;
+pub mod issue_tracker;
 pub mod notifications;
 pub mod tabs;
 pub mod tools;
@@ -47,6 +48,7 @@ pub mod ui;
 pub use commit::CommitPreferences;
 pub use editor::{EditorPreferences, EolCharacter};
 pub use general::GeneralPreferences;
+pub use issue_tracker::IssueTrackerPreferences;
 pub use notifications::NotificationsPreferences;
 pub use tabs::{PermanentTabState, PermanentTabs, Tab, TabsPreferences};
 pub use tools::{
@@ -105,6 +107,8 @@ pub struct Preferences {
     pub editor: EditorPreferences,
     #[serde(default)]
     pub notifications: NotificationsPreferences,
+    #[serde(default)]
+    pub issue_tracker: IssueTrackerPreferences,
 }
 
 impl Default for Preferences {
@@ -118,6 +122,7 @@ impl Default for Preferences {
             tools: ToolPreferences::default(),
             editor: EditorPreferences::default(),
             notifications: NotificationsPreferences::default(),
+            issue_tracker: IssueTrackerPreferences::default(),
         }
     }
 }

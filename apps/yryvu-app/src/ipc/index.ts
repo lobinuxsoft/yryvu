@@ -11,6 +11,7 @@ export * from "./commits";
 export * from "./integrationStorage";
 export * from "./diff";
 export * from "./init";
+export * from "./issue_tracker";
 export * from "./merge";
 export * from "./preferences";
 export * from "./release_notes";

@@ -147,3 +147,9 @@ export {
   resetPreferences,
   type PreferenceSectionId,
 } from "./preferences";
+// `issue-tracker` is intentionally NOT re-exported here. It imports
+// `./preferences` whose `createResource` fetcher fires `invoke()` at
+// module-eval time; pulling that into the barrel would force every
+// consumer of `state` (including node-env tests that only need
+// `repoPath`) to drag in `@tauri-apps/api/core`. Consumers that need
+// the issue-tracker signals import directly from `state/issue-tracker`.

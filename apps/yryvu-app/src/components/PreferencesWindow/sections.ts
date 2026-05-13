@@ -43,6 +43,7 @@ import { NotificationsPanel } from "./panels/Notifications";
 import { ToolsPanel } from "./panels/Tools";
 import { CommitPanel } from "./panels/Commit";
 import { EditorPanel } from "./panels/Editor";
+import { IssueTrackerPanel } from "./panels/IssueTracker";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -121,8 +122,8 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "issue_tracker",
     label: "Issue tracker",
     icon: IconListOl,
-    panel: () => Placeholder({ section: "Issue tracker", issue: 97 }),
-    issue: 97,
+    panel: IssueTrackerPanel,
+    issue: 306,
   },
   {
     id: "lfs",

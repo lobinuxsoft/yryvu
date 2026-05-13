@@ -846,13 +846,11 @@ fn tools_partial_section_fills_per_field_defaults() {
 
 #[test]
 fn editor_defaults_match_documented() {
-    // Issue #190 — pin every default in one place so a drift in the
-    // sub-struct's Default impl shows up immediately, not when a user
-    // notices their diff viewer renders differently post-upgrade.
+    // Issue #190 (trimmed by #344) — pin every default in one place so
+    // a drift in the sub-struct's Default impl shows up immediately,
+    // not when a user notices their diff viewer renders differently
+    // post-upgrade.
     let e = Preferences::default().editor;
-    assert_eq!(e.font, "monospace");
-    assert!(e.show_only_monospace);
-    assert_eq!(e.font_size, 13);
     assert_eq!(e.eol_character, EolCharacter::Lf);
     assert!(!e.word_wrap);
     assert_eq!(e.tab_size, 4);
@@ -865,9 +863,6 @@ fn editor_all_fields_flipped_roundtrip() {
     let dir = TempDir::new().unwrap();
     let prefs = Preferences {
         editor: EditorPreferences {
-            font: "JetBrains Mono".to_string(),
-            show_only_monospace: false,
-            font_size: 18,
             eol_character: EolCharacter::Crlf,
             word_wrap: true,
             tab_size: 2,
@@ -910,9 +905,6 @@ fn editor_serializes_as_camel_case() {
     let prefs = Preferences::default();
     let json = serde_json::to_string(&prefs).unwrap();
     for key in [
-        "\"font\"",
-        "\"showOnlyMonospace\"",
-        "\"fontSize\"",
         "\"eolCharacter\"",
         "\"wordWrap\"",
         "\"tabSize\"",
@@ -938,67 +930,35 @@ fn editor_missing_section_falls_back_to_defaults() {
 fn editor_partial_section_fills_per_field_defaults() {
     // Per-field `#[serde(default)]` means a section with only some
     // keys present must fill the missing ones individually, not
-    // reject. A user that bumped only `fontSize` should not lose the
+    // reject. A user that bumped only `tabSize` should not lose the
     // rest of the section on next load.
     let dir = TempDir::new().unwrap();
     std::fs::write(
         file_path(dir.path()),
-        r#"{"version": 1, "editor": {"fontSize": 16}}"#,
+        r#"{"version": 1, "editor": {"tabSize": 2}}"#,
     )
     .unwrap();
     let prefs = load(dir.path()).unwrap();
-    assert_eq!(prefs.editor.font_size, 16);
-    assert_eq!(prefs.editor.font, "monospace");
+    assert_eq!(prefs.editor.tab_size, 2);
     assert_eq!(prefs.editor.eol_character, EolCharacter::Lf);
     assert!(prefs.editor.show_line_numbers);
 }
 
 #[test]
-fn editor_font_size_custom_value_roundtrips() {
-    // Walk a sensible range to catch any rename / camelCase drift on
-    // every value the picker is allowed to produce.
+fn editor_legacy_font_keys_ignored() {
+    // #344 dropped font / fontSize / showOnlyMonospace; preferences
+    // files written before the cleanup still contain those keys.
+    // Serde must accept them silently so users don't lose their
+    // unrelated editor settings on first load post-upgrade.
     let dir = TempDir::new().unwrap();
-    for size in [9_u16, 11, 13, 15, 18, 24] {
-        let prefs = Preferences {
-            editor: EditorPreferences {
-                font_size: size,
-                ..EditorPreferences::default()
-            },
-            ..Preferences::default()
-        };
-        save(dir.path(), &prefs).unwrap();
-        let loaded = load(dir.path()).unwrap();
-        assert_eq!(
-            loaded.editor.font_size, size,
-            "font_size {size} did not round-trip"
-        );
-    }
-}
-
-#[test]
-fn editor_font_utf8_roundtrips() {
-    // Font names are free-form strings that must survive non-ASCII
-    // bytes — accented family names, fonts with quotes, etc.
-    let dir = TempDir::new().unwrap();
-    for name in [
-        "monospace",
-        "JetBrains Mono",
-        "Iosevka Term Curly",
-        "Source Code Pro",
-        "M+ 1mn",
-        "Cascadia Mono PL",
-    ] {
-        let prefs = Preferences {
-            editor: EditorPreferences {
-                font: name.to_string(),
-                ..EditorPreferences::default()
-            },
-            ..Preferences::default()
-        };
-        save(dir.path(), &prefs).unwrap();
-        let loaded = load(dir.path()).unwrap();
-        assert_eq!(loaded.editor.font, name);
-    }
+    std::fs::write(
+        file_path(dir.path()),
+        r#"{"version": 1, "editor": {"font": "JetBrains Mono", "fontSize": 16, "showOnlyMonospace": false, "tabSize": 2}}"#,
+    )
+    .unwrap();
+    let prefs = load(dir.path()).unwrap();
+    assert_eq!(prefs.editor.tab_size, 2);
+    assert_eq!(prefs.editor.eol_character, EolCharacter::Lf);
 }
 
 #[test]

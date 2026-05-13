@@ -1,19 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Editor preferences (issue #190) — port of GitKraken's
-//! `EditorPreferences` tab. Eight fields KEEP, validated against
-//! `app/src/strings/en-us.json` (12 strings with prefix
-//! `EditorPreferences-`):
+//! `EditorPreferences` tab, trimmed by #344 once the wave-2 panel
+//! smoke surfaced redundancy with UI theming.
 //!
-//! - `Font` → font family.
-//! - `ShowOnlyMonospace` → font picker filter.
-//! - `FontSize` → numeric, pixels.
+//! Five fields KEEP — the ones orthogonal to UI theming + zoom:
+//!
 //! - `EOLCharacter` (+ `EOLCharacterLF` / `EOLCharacterCRLF`) → enum
 //!   with two values; no "preserve" mode in the bundle.
 //! - `WordWrap` → boolean toggle; no multi-mode enum in the bundle.
 //! - `TabSize` → numeric, spaces per tab.
 //! - `ShowLineNumbers` → boolean toggle.
 //! - `SyntaxHighlighting` → boolean toggle.
+//!
+//! Three fields DROPPED in #344 because the UI section already covers
+//! them — `editor.font` was subsumed by theme tokens (`--font-mono` in
+//! `tokens.css`), `editor.fontSize` by `UiPreferences.zoom` (global
+//! scale), and `editor.showOnlyMonospace` only filtered the panel's
+//! own datalist with no external consumer. Serde tolerates unknown
+//! fields by default, so legacy on-disk preferences files with the
+//! three legacy keys keep loading — the values are silently dropped on
+//! next save.
 //!
 //! `NoFontsFound` is an error-state string handled by the View, not a
 //! persisted setting.
@@ -24,24 +31,17 @@
 //! cover them. File separate issues if yryvu wants any of those as a
 //! deviation.
 //!
-//! Backend-only; the panel View lands in a follow-up sub-PR.
+//! Backend-only; the panel View landed in PR #343.
 
 use serde::{Deserialize, Serialize};
 
-/// `Preferences > Editor` panel state (issue #190). Mirrors the eight
-/// GK settings whose `EditorPreferences-*` strings have a matching
-/// control in the panel render. Apply-time wiring (DiffView / FileDiffTab
-/// consuming font, line numbers, syntax highlighting, EOL on write)
-/// lives in follow-up issues — this struct is persistence only.
+/// `Preferences > Editor` panel state (issue #190, trimmed by #344).
+/// Apply-time wiring (DiffView / FileDiffTab consuming line numbers,
+/// syntax highlighting, EOL on write) lives in follow-up issues — this
+/// struct is persistence only.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorPreferences {
-    #[serde(default = "default_font")]
-    pub font: String,
-    #[serde(default = "default_true")]
-    pub show_only_monospace: bool,
-    #[serde(default = "default_font_size")]
-    pub font_size: u16,
     #[serde(default)]
     pub eol_character: EolCharacter,
     #[serde(default)]
@@ -57,9 +57,6 @@ pub struct EditorPreferences {
 impl Default for EditorPreferences {
     fn default() -> Self {
         Self {
-            font: default_font(),
-            show_only_monospace: true,
-            font_size: default_font_size(),
             eol_character: EolCharacter::default(),
             word_wrap: false,
             tab_size: default_tab_size(),
@@ -81,21 +78,6 @@ pub enum EolCharacter {
     /// `\r\n` — Windows native, kept for users who edit files that must
     /// remain CRLF (e.g. `.bat` scripts, some legacy Windows toolchains).
     Crlf,
-}
-
-/// CSS generic family that is always resolvable on every platform. The
-/// View will offer a real font picker once #190's wave-2 panel lands,
-/// but the persisted default needs to render correctly before that.
-fn default_font() -> String {
-    "monospace".to_string()
-}
-
-/// 13 px is the GK default-ish font size for the diff viewer and the
-/// most common "code reading" size on a 1080p display. The View will
-/// gate to a sensible range without forcing a schema bump if the upper
-/// bound moves.
-fn default_font_size() -> u16 {
-    13
 }
 
 /// 4 spaces matches `core.autocrlf=input` / `editorconfig`-style

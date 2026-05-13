@@ -1,0 +1,49 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Commit preferences panel — template textarea + defaults. Toggle rows
+   reuse `.notifications-panel__*` selectors; this file owns only the
+   bits unique to the commit panel (textarea + sub-heading spacing). */
+
+.commit-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 640px;
+  margin-bottom: 16px;
+}
+
+.commit-panel__textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--fg-0);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 110px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.commit-panel__textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.commit-panel__textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.commit-panel__textarea::placeholder {
+  color: var(--fg-3);
+  font-style: italic;
+  white-space: pre-line;
+}
+
+.commit-panel__sub-heading {
+  margin-top: 24px;
+}

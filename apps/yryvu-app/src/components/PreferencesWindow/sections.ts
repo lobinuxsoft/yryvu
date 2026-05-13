@@ -47,6 +47,7 @@ import { IssueTrackerPanel } from "./panels/IssueTracker";
 import { GitHooksPanel } from "./panels/GitHooks";
 import { GpgPanel } from "./panels/Gpg";
 import { GitflowPanel } from "./panels/Gitflow";
+import { SparseCheckoutPanel } from "./panels/SparseCheckout";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -153,7 +154,8 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "sparse_checkout",
     label: "Sparse checkout",
     icon: IconFilter,
-    panel: () => Placeholder({ section: "Sparse checkout" }),
+    panel: SparseCheckoutPanel,
+    issue: 309,
   },
   {
     id: "ssh",

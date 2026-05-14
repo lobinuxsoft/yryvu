@@ -253,6 +253,7 @@ mod tests {
             html_url: "x".to_string(),
             base_ref: "main".to_string(),
             head_ref: "x".to_string(),
+            head_sha: "deadbeef".to_string(),
             labels: vec![],
             assignees: vec![],
             requested_reviewers: vec![],

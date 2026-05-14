@@ -1,13 +1,63 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 import type { PullRequestSummary } from "../../ipc";
+import { setSelectedCommit } from "../../state";
+import { ContextMenu, type ContextMenuItem } from "../ContextMenu";
 import { CiBadge, ReviewBadge } from "./pullRequestBadges";
 import { LabelChips, UserAvatarCluster } from "./pullRequestChips";
 
 interface PullRequestRowProps {
   pr: PullRequestSummary;
+}
+
+/// Compose the 5-action kebab menu for a PR row. Mirrors the
+/// `PullRequestBar-*` strings from the GK bundle audit, restricted
+/// to actions that don't need a detail view (those land with #91/#92).
+function buildMenuItems(pr: PullRequestSummary): ContextMenuItem[] {
+  return [
+    {
+      label: "View pull request in browser",
+      onSelect: () => {
+        void openUrl(pr.htmlUrl);
+      },
+    },
+    {
+      label: "Copy pull request link",
+      onSelect: () => {
+        void navigator.clipboard.writeText(pr.htmlUrl);
+      },
+    },
+    {
+      label: "Review pull request",
+      onSelect: () => {
+        void openUrl(`${pr.htmlUrl}/files`);
+      },
+    },
+    {
+      label: "Go to head commit in graph",
+      disabled: !pr.headSha,
+      title: pr.headSha
+        ? undefined
+        : "Head SHA not available — opening the PR in the browser will refresh it",
+      onSelect: () => {
+        if (pr.headSha) setSelectedCommit(pr.headSha);
+      },
+    },
+    {
+      label: "View CI checks in browser",
+      disabled: pr.ciStatus === null,
+      title:
+        pr.ciStatus === null
+          ? "No CI runs reported on the head commit"
+          : undefined,
+      onSelect: () => {
+        void openUrl(`${pr.htmlUrl}/checks`);
+      },
+    },
+  ];
 }
 
 /// Relative-time formatter — same shape as `stashRows.relativeTime`
@@ -58,10 +108,26 @@ function hasSecondaryContent(pr: PullRequestSummary): boolean {
 
 export function PullRequestRow(props: PullRequestRowProps) {
   const pr = () => props.pr;
+  const [menuAt, setMenuAt] = createSignal<{ x: number; y: number } | null>(
+    null,
+  );
+  const openMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    setMenuAt({ x: e.clientX, y: e.clientY });
+  };
+  const openMenuFromButton = (e: MouseEvent & { currentTarget: HTMLElement }) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    // Anchor the menu at the button's bottom-right so the labels read
+    // naturally to the left; ContextMenu clamps to the viewport if
+    // there's no room.
+    setMenuAt({ x: rect.right, y: rect.bottom });
+  };
   return (
     <div
       class="sidebar__branch-row sidebar__row--pull-request"
       title={`${pr().title} (#${pr().number}) — opened ${relativeTime(pr().createdAt)} by ${pr().author.login}`}
+      onContextMenu={openMenu}
     >
       <div class="sidebar__pr-row__primary">
         <Show when={pr().author.avatarUrl}>
@@ -81,6 +147,15 @@ export function PullRequestRow(props: PullRequestRowProps) {
           {badgeLabel(pr())}
         </span>
         <span class="sidebar__row-meta">{relativeTime(pr().updatedAt)}</span>
+        <button
+          type="button"
+          class="sidebar__pr-row__kebab"
+          title="Pull request actions"
+          aria-label="Pull request actions"
+          onClick={openMenuFromButton}
+        >
+          ⋮
+        </button>
       </div>
       <Show when={hasSecondaryContent(pr())}>
         <div class="sidebar__pr-row__secondary">
@@ -93,6 +168,16 @@ export function PullRequestRow(props: PullRequestRowProps) {
           <ReviewBadge decision={pr().reviewDecision} />
           <CiBadge status={pr().ciStatus} />
         </div>
+      </Show>
+      <Show when={menuAt()}>
+        {(anchor) => (
+          <ContextMenu
+            x={anchor().x}
+            y={anchor().y}
+            items={buildMenuItems(pr())}
+            onClose={() => setMenuAt(null)}
+          />
+        )}
       </Show>
     </div>
   );

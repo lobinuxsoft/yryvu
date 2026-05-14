@@ -179,6 +179,11 @@ export interface PullRequestSummary {
   htmlUrl: string;
   baseRef: string;
   headRef: string;
+  /// Head commit SHA. Used by the "Go to in graph" kebab action to
+  /// navigate the commit graph to this PR's tip. Empty string when
+  /// the backend couldn't resolve it (defensive — GitHub's live API
+  /// always returns a SHA).
+  headSha: string;
   labels: Label[];
   assignees: UserInfo[];
   requestedReviewers: UserInfo[];

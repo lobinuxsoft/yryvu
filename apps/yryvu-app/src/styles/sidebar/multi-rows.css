@@ -101,6 +101,27 @@
   padding-left: 22px; /* align under the title, past avatar + counter */
 }
 
+/* Kebab trigger for the PR row's context menu. Hidden by default,
+   revealed on row hover so the chip area isn't visually noisy. */
+.sidebar__pr-row__kebab {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--fg-3);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  opacity: 0;
+}
+.sidebar__row--pull-request:hover .sidebar__pr-row__kebab,
+.sidebar__pr-row__kebab:focus {
+  opacity: 1;
+}
+.sidebar__pr-row__kebab:hover {
+  color: var(--fg-0);
+}
+
 /* Label chip — provider colour applied via inline style; text colour
    flips between white / fg-0 based on the YIQ luma the component
    computes (data-dark attribute). */

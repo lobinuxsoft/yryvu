@@ -90,6 +90,9 @@ pub struct PullRequestSummary {
     /// (`owner:branch`) is dropped — fold it back in if cross-fork
     /// PRs need owner attribution beyond the author avatar.
     pub head_ref: String,
+    /// Head commit SHA, used by the "Go to in graph" context-menu
+    /// action to navigate the commit graph to this PR's tip.
+    pub head_sha: String,
     /// Labels applied to the PR (REST inline). Frontend renders the
     /// first 3 as chips + a `+N` overflow when there are more.
     #[serde(default)]
@@ -148,6 +151,12 @@ struct GhPullUser {
 struct GhPullRef {
     #[serde(rename = "ref")]
     ref_name: String,
+    /// Tip SHA. `#[serde(default)]` keeps tests that pre-date the
+    /// wave-2 head-sha field passing — GitHub's live API always
+    /// returns this, so an empty value only ever comes from test
+    /// fixtures that don't care about the SHA.
+    #[serde(default)]
+    sha: String,
 }
 
 /// GitHub's REST label shape. `color` is a 6-digit hex string without
@@ -186,6 +195,7 @@ fn project(raw: GhPull) -> PullRequestSummary {
         html_url: raw.html_url,
         base_ref: raw.base.ref_name,
         head_ref: raw.head.ref_name,
+        head_sha: raw.head.sha,
         labels: raw
             .labels
             .into_iter()

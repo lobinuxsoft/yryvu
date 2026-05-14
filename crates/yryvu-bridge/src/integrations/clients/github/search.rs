@@ -125,7 +125,7 @@ fn build_search_query(q: &str) -> String {
         "query {{ search(query: \"{escaped}\", type: ISSUE, first: 50) {{ nodes {{ ... on PullRequest {{ \
          number title state isDraft url createdAt updatedAt \
          author {{ login avatarUrl }} \
-         baseRefName headRefName \
+         baseRefName headRefName headRefOid \
          labels(first: 10) {{ nodes {{ name color }} }} \
          assignees(first: 10) {{ nodes {{ login avatarUrl }} }} \
          reviewRequests(first: 10) {{ nodes {{ requestedReviewer {{ ... on User {{ login avatarUrl }} }} }} }} \
@@ -159,6 +159,7 @@ fn project_node(node: GhSearchPr) -> Option<PullRequestSummary> {
         html_url: node.url.unwrap_or_default(),
         base_ref: node.base_ref_name.unwrap_or_default(),
         head_ref: node.head_ref_name.unwrap_or_default(),
+        head_sha: node.head_ref_oid.unwrap_or_default(),
         labels: node
             .labels
             .map(|l| {
@@ -258,6 +259,7 @@ struct GhSearchPr {
     author: Option<GhSearchUser>,
     base_ref_name: Option<String>,
     head_ref_name: Option<String>,
+    head_ref_oid: Option<String>,
     labels: Option<GhSearchLabels>,
     assignees: Option<GhSearchUsers>,
     review_requests: Option<GhSearchReviewRequests>,

@@ -34,17 +34,20 @@ pub enum PullRequestState {
 
 /// Resolved code-review status surfaced to the UI. Populated by the
 /// GraphQL enrichment pass — REST `/pulls` doesn't carry it. `None`
-/// when the enrichment couldn't complete (network error mid-call,
-/// repo without any review activity, etc) so the badge stays
-/// gracefully blank instead of showing a misleading state.
+/// when the PR has no required reviewers / no reviews / GraphQL
+/// enrichment failed so the badge stays gracefully blank instead of
+/// showing a misleading state.
+///
+/// Matches GitHub's `PullRequestReviewDecision` GraphQL enum:
+/// `APPROVED | CHANGES_REQUESTED | REVIEW_REQUIRED`. `COMMENTED` and
+/// `DISMISSED` are properties of individual reviews, not the
+/// aggregate decision — they don't surface here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReviewDecision {
     Approved,
     ChangesRequested,
     ReviewRequired,
-    Commented,
-    Dismissed,
 }
 
 /// Resolved CI status — collapsed from GitHub's `statusCheckRollup`
@@ -497,14 +500,6 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&ReviewDecision::ReviewRequired).unwrap(),
             "\"review_required\""
-        );
-        assert_eq!(
-            serde_json::to_string(&ReviewDecision::Commented).unwrap(),
-            "\"commented\""
-        );
-        assert_eq!(
-            serde_json::to_string(&ReviewDecision::Dismissed).unwrap(),
-            "\"dismissed\""
         );
     }
 

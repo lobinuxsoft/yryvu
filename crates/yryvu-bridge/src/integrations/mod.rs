@@ -21,8 +21,8 @@ mod sidecar;
 mod types;
 
 pub use clients::{
-    list_prs, preflight, CiStatus, Label, PullRequestState, PullRequestSummary, ReviewDecision,
-    UserInfo,
+    enrich_github_prs, list_prs, preflight, CiStatus, Label, PullRequestState, PullRequestSummary,
+    ReviewDecision, UserInfo,
 };
 pub use keyring::{get_token, remove_token, save_token};
 pub use sidecar::{read as read_sidecar, write as write_sidecar, IntegrationsConfig};

@@ -14,7 +14,7 @@
 mod github;
 mod types;
 
-pub use github::{CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};
+pub use github::{enrich_prs as enrich_github_prs, CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};
 pub use types::{Label, UserInfo};
 
 use crate::backend::BackendError;

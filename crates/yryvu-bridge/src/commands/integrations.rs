@@ -143,7 +143,7 @@ pub async fn integration_list_prs(
     .map_err(|e| e.to_string())?
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("integration '{integration_type}' is not connected"))?;
-    integrations::list_prs(
+    let mut prs = integrations::list_prs(
         &integration_type,
         &auth.token,
         auth.hostname.as_deref(),
@@ -151,7 +151,26 @@ pub async fn integration_list_prs(
         &repo,
     )
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    // GraphQL enrichment fills in reviewDecision + statusCheckRollup
+    // on each PR. Soft-fail: if the enrichment call fails (network
+    // blip, GraphQL rate-limit, etc) we log + return the unenriched
+    // list so the user still sees titles instead of an empty panel.
+    // Only GitHub flavours have a GraphQL endpoint; others stay
+    // unenriched silently.
+    if integration_type == "github" || integration_type == "githubEnterprise" {
+        let hostname = if integration_type == "githubEnterprise" {
+            auth.hostname.as_deref()
+        } else {
+            None
+        };
+        if let Err(err) =
+            integrations::enrich_github_prs(&auth.token, hostname, &owner, &repo, &mut prs).await
+        {
+            eprintln!("github GraphQL enrichment failed (badges blank): {err}");
+        }
+    }
+    Ok(prs)
 }
 
 /// Returned by [`oauth_begin`]. The frontend opens `authorize_url` in

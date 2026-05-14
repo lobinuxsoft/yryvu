@@ -27,9 +27,6 @@ pub use search::search_mrs;
 
 use crate::backend::BackendError;
 
-/// HTTP User-Agent sent to every GitLab endpoint.
-pub(super) const USER_AGENT: &str = "yryvu";
-
 /// Resolve the GraphQL endpoint URL for a `.com` or self-hosted
 /// GitLab. gitlab.com uses `https://gitlab.com/api/graphql`;
 /// self-hosted appends `/api/graphql` to the user-supplied hostname.

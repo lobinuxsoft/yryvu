@@ -7,13 +7,15 @@
 //! pagination control (limit=100 covers virtually every PR; truly
 //! enormous PRs fall back to a "diff truncated" hint in v1).
 
+use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::backend::BackendError;
 
+use super::super::http::{self, GITHUB_PATCH_QUIRKS, GITHUB_QUIRKS};
 use super::super::types::{Label, UserInfo};
+use super::api_base;
 use super::prs::{CiStatus, PullRequestState, ReviewDecision};
-use super::{api_base, USER_AGENT};
 
 /// Extended PR detail returned by [`get_pr_detail`] — superset of the
 /// list-row `PullRequestSummary` with body, mergeability, and aggregate
@@ -121,57 +123,18 @@ impl PrAction {
     }
 }
 
-/// Shared GET helper for the detail endpoints. Same status-code
-/// mapping as `prs::list_prs` — Unauthorized / Rate-limited / 404 /
-/// 5xx — but the URL is passed in so the caller controls pagination.
+/// Thin wrapper over [`http::execute`] — every detail endpoint is a
+/// GET with the GitHub Accept header + standard quirks.
 async fn get(url: &str, token: &str) -> Result<reqwest::Response, BackendError> {
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let resp = client
-        .get(url)
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github.v3+json")
-        .send()
-        .await
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let status = resp.status();
-    if status == reqwest::StatusCode::UNAUTHORIZED {
-        return Err(BackendError::InvalidToken);
-    }
-    if status == reqwest::StatusCode::FORBIDDEN {
-        let remaining = resp
-            .headers()
-            .get("x-ratelimit-remaining")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u64>().ok());
-        if remaining == Some(0) {
-            let reset_at = resp
-                .headers()
-                .get("x-ratelimit-reset")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.parse::<u64>().ok())
-                .unwrap_or(0);
-            return Err(BackendError::RateLimited { reset_at });
-        }
-        return Err(BackendError::InvalidToken);
-    }
-    if status == reqwest::StatusCode::NOT_FOUND {
-        return Err(BackendError::NetworkError {
-            detail: format!("not found or token cannot see it: {url}"),
-        });
-    }
-    if !status.is_success() {
-        return Err(BackendError::NetworkError {
-            detail: format!("unexpected HTTP {status} from GitHub: {url}"),
-        });
-    }
-    Ok(resp)
+    let client = http::client()?;
+    let req = http::authed(
+        &client,
+        Method::GET,
+        url,
+        token,
+        "application/vnd.github.v3+json",
+    );
+    http::execute(req, GITHUB_QUIRKS).await
 }
 
 /// Fetch the full PR record. Single REST round-trip; the response
@@ -187,9 +150,10 @@ pub async fn get_pr_detail(
     let base = api_base(hostname)?;
     let url = format!("{base}/repos/{owner}/{repo}/pulls/{number}");
     let resp = get(&url, token).await?;
-    let raw: GhPullDetail = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding /pulls/{number} response: {e}"),
-    })?;
+    let raw: GhPullDetail = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error(&format!("decoding /pulls/{number} response"), e))?;
     Ok(project_detail(raw))
 }
 
@@ -206,9 +170,10 @@ pub async fn list_pr_commits(
     let base = api_base(hostname)?;
     let url = format!("{base}/repos/{owner}/{repo}/pulls/{number}/commits?per_page=100");
     let resp = get(&url, token).await?;
-    let raw: Vec<GhPrCommit> = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding /commits response: {e}"),
-    })?;
+    let raw: Vec<GhPrCommit> = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding /commits response", e))?;
     Ok(raw.into_iter().map(project_commit).collect())
 }
 
@@ -226,9 +191,10 @@ pub async fn list_pr_files(
     let base = api_base(hostname)?;
     let url = format!("{base}/repos/{owner}/{repo}/pulls/{number}/files?per_page=100");
     let resp = get(&url, token).await?;
-    let raw: Vec<GhPrFile> = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding /files response: {e}"),
-    })?;
+    let raw: Vec<GhPrFile> = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding /files response", e))?;
     Ok(raw.into_iter().map(project_file).collect())
 }
 
@@ -245,9 +211,10 @@ pub async fn list_pr_checks(
     let base = api_base(hostname)?;
     let url = format!("{base}/repos/{owner}/{repo}/commits/{head_sha}/check-runs?per_page=100");
     let resp = get(&url, token).await?;
-    let raw: GhCheckRunsResp = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding /check-runs response: {e}"),
-    })?;
+    let raw: GhCheckRunsResp = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding /check-runs response", e))?;
     Ok(raw.check_runs.into_iter().map(project_check).collect())
 }
 
@@ -264,42 +231,23 @@ pub async fn pr_action(
 ) -> Result<PullRequestDetail, BackendError> {
     let base = api_base(hostname)?;
     let url = format!("{base}/repos/{owner}/{repo}/pulls/{number}");
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let resp = client
-        .patch(&url)
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github.v3+json")
-        .json(&action.body())
-        .send()
+    let client = http::client()?;
+    let req = http::authed(
+        &client,
+        Method::PATCH,
+        &url,
+        token,
+        "application/vnd.github.v3+json",
+    )
+    .json(&action.body());
+    // PATCH-specific quirks: 403 most likely means the read-only PAT
+    // lacks the write `repo` scope; surface that advice instead of the
+    // generic InvalidToken.
+    let resp = http::execute(req, GITHUB_PATCH_QUIRKS).await?;
+    let raw: GhPullDetail = resp
+        .json()
         .await
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let status = resp.status();
-    if status == reqwest::StatusCode::UNAUTHORIZED {
-        return Err(BackendError::InvalidToken);
-    }
-    if status == reqwest::StatusCode::FORBIDDEN {
-        // Most likely cause for 403 on PATCH: token has `read:*` but
-        // not the write `repo` scope. Surface explicitly.
-        return Err(BackendError::InsufficientScopes {
-            granted: "read-only".to_string(),
-            required: "repo (write)".to_string(),
-        });
-    }
-    if !status.is_success() {
-        return Err(BackendError::NetworkError {
-            detail: format!("unexpected HTTP {status} from GitHub PATCH /pulls"),
-        });
-    }
-    let raw: GhPullDetail = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding PATCH /pulls response: {e}"),
-    })?;
+        .map_err(|e| http::decode_error("decoding PATCH /pulls response", e))?;
     Ok(project_detail(raw))
 }
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { For, Switch, Match, type JSX } from "solid-js";
+import { For, type JSX } from "solid-js";
 
 import { parseBlocks, type Block, type InlineNode } from "../ReleaseNotes/markdown";
 
@@ -18,8 +18,6 @@ function renderInline(nodes: InlineNode[]): JSX.Element[] {
       case "code":
         return <code class="pr-detail__inline-code">{n.value}</code>;
       case "link":
-        // External targets only — the parser doesn't emit relative
-        // hrefs from GitHub PR bodies in practice.
         return (
           <a href={n.href} target="_blank" rel="noopener noreferrer">
             {n.text}
@@ -27,6 +25,36 @@ function renderInline(nodes: InlineNode[]): JSX.Element[] {
         );
     }
   });
+}
+
+/// Render one block. Native TS `switch` narrows the discriminated
+/// union without the `Extract<...>` casts that the Solid
+/// `Switch`/`Match` wrapper requires.
+function renderBlock(b: Block): JSX.Element {
+  switch (b.kind) {
+    case "h1":
+      return <h1>{renderInline(b.inline)}</h1>;
+    case "h2":
+      return <h2>{renderInline(b.inline)}</h2>;
+    case "h3":
+      return <h3>{renderInline(b.inline)}</h3>;
+    case "p":
+      return <p>{renderInline(b.inline)}</p>;
+    case "ul":
+      return (
+        <ul>
+          <For each={b.items}>{(item) => <li>{renderInline(item)}</li>}</For>
+        </ul>
+      );
+    case "pre":
+      return (
+        <pre>
+          <code>{b.code}</code>
+        </pre>
+      );
+    case "hr":
+      return <hr />;
+  }
 }
 
 interface MarkdownProps {
@@ -41,39 +69,7 @@ export function Markdown(props: MarkdownProps): JSX.Element {
   const blocks = (): Block[] => parseBlocks(props.source);
   return (
     <div class="pr-detail__markdown">
-      <For each={blocks()}>
-        {(b) => (
-          <Switch>
-            <Match when={b.kind === "h1"}>
-              <h1>{renderInline((b as Extract<Block, { kind: "h1" }>).inline)}</h1>
-            </Match>
-            <Match when={b.kind === "h2"}>
-              <h2>{renderInline((b as Extract<Block, { kind: "h2" }>).inline)}</h2>
-            </Match>
-            <Match when={b.kind === "h3"}>
-              <h3>{renderInline((b as Extract<Block, { kind: "h3" }>).inline)}</h3>
-            </Match>
-            <Match when={b.kind === "p"}>
-              <p>{renderInline((b as Extract<Block, { kind: "p" }>).inline)}</p>
-            </Match>
-            <Match when={b.kind === "ul"}>
-              <ul>
-                <For each={(b as Extract<Block, { kind: "ul" }>).items}>
-                  {(item) => <li>{renderInline(item)}</li>}
-                </For>
-              </ul>
-            </Match>
-            <Match when={b.kind === "pre"}>
-              <pre>
-                <code>{(b as Extract<Block, { kind: "pre" }>).code}</code>
-              </pre>
-            </Match>
-            <Match when={b.kind === "hr"}>
-              <hr />
-            </Match>
-          </Switch>
-        )}
-      </For>
+      <For each={blocks()}>{renderBlock}</For>
     </div>
   );
 }

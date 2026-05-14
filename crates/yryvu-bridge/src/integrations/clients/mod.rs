@@ -14,6 +14,7 @@
 mod gitea;
 mod github;
 mod gitlab;
+mod http;
 mod types;
 
 pub use gitea::{list_prs as list_gitea_prs, search_prs as search_gitea_prs};

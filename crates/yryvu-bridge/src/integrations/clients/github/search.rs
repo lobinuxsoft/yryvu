@@ -12,14 +12,16 @@
 //! GraphQL endpoint matches [`super::graphql`]: `/graphql` on
 //! github.com, `<host>/api/graphql` on GHE.
 
+use reqwest::Method;
 use serde::Deserialize;
 use serde_json::json;
 
 use crate::backend::BackendError;
 
+use super::super::http::{self, GITHUB_QUIRKS};
 use super::super::types::{Label, UserInfo};
+use super::api_base;
 use super::prs::{CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};
-use super::{api_base, USER_AGENT};
 
 /// Search pull requests matching `dsl` within `owner/repo`. `dsl` is
 /// raw user-typed text — translation to GitHub search syntax happens
@@ -34,64 +36,30 @@ pub async fn search_prs(
     repo: &str,
     dsl: &str,
 ) -> Result<Vec<PullRequestSummary>, BackendError> {
+    // `api_base` runs only to honour the same hostname validation as
+    // the REST path — GraphQL lives at a parallel URL.
+    let _ = api_base(hostname)?;
     let endpoint = match hostname {
         None => "https://api.github.com/graphql".to_string(),
         Some(h) => format!("{}/api/graphql", h.trim_end_matches('/')),
     };
-    // `api_base` is invoked only to honour the same hostname
-    // validation as the rest of the client. Discard the result —
-    // GraphQL doesn't go through `/api/v3`.
-    let _ = api_base(hostname)?;
     let q = super::dsl::to_github_search(owner, repo, dsl);
     let query = build_search_query(&q);
 
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let resp = client
-        .post(&endpoint)
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github.v3+json")
-        .json(&json!({ "query": query }))
-        .send()
+    let client = http::client()?;
+    let req = http::authed(
+        &client,
+        Method::POST,
+        &endpoint,
+        token,
+        "application/vnd.github.v3+json",
+    )
+    .json(&json!({ "query": query }));
+    let resp = http::execute(req, GITHUB_QUIRKS).await?;
+    let body: GhSearchResp = resp
+        .json()
         .await
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-
-    let status = resp.status();
-    if status == reqwest::StatusCode::UNAUTHORIZED {
-        return Err(BackendError::InvalidToken);
-    }
-    if status == reqwest::StatusCode::FORBIDDEN {
-        let remaining = resp
-            .headers()
-            .get("x-ratelimit-remaining")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u64>().ok());
-        if remaining == Some(0) {
-            let reset_at = resp
-                .headers()
-                .get("x-ratelimit-reset")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.parse::<u64>().ok())
-                .unwrap_or(0);
-            return Err(BackendError::RateLimited { reset_at });
-        }
-        return Err(BackendError::InvalidToken);
-    }
-    if !status.is_success() {
-        return Err(BackendError::NetworkError {
-            detail: format!("unexpected HTTP {status} from GitHub GraphQL search"),
-        });
-    }
-
-    let body: GhSearchResp = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding GraphQL search response: {e}"),
-    })?;
+        .map_err(|e| http::decode_error("decoding GraphQL search response", e))?;
     if let Some(errors) = body.errors {
         if !errors.is_empty() {
             return Err(BackendError::NetworkError {

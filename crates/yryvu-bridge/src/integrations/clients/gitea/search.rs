@@ -17,7 +17,7 @@ use crate::backend::BackendError;
 use super::super::github::PullRequestSummary;
 use super::api_base;
 use super::dsl::{parse_filters, GiteaFilters};
-use super::prs::{get, project, GiteaPull};
+use super::prs::{get, GiteaPull};
 
 /// Search pull requests in `owner/repo` matching `dsl`. `dsl` is the
 /// raw user-typed text — parsing happens internally via
@@ -33,10 +33,11 @@ pub async fn search_prs(
     let filters = parse_filters(dsl);
     let url = build_search_url(&base, owner, repo, &filters);
     let resp = get(&url, token).await?;
-    let raw: Vec<GiteaPull> = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding /pulls search response: {e}"),
-    })?;
-    Ok(raw.into_iter().map(project).collect())
+    let raw: Vec<GiteaPull> = resp
+        .json()
+        .await
+        .map_err(|e| super::super::http::decode_error("decoding /pulls search response", e))?;
+    Ok(raw.into_iter().map(PullRequestSummary::from).collect())
 }
 
 fn build_search_url(base: &str, owner: &str, repo: &str, f: &GiteaFilters) -> String {

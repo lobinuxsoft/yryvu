@@ -12,6 +12,8 @@ use tauri::{AppHandle, Manager};
 
 use crate::integrations::{self, oauth, AuthData, PullRequestSummary, UserInfo};
 
+use super::integration_routing::{is_self_hosted, ProviderFamily};
+
 /// Resolve the sidecar JSON path under the app's local data dir. Same
 /// shape as the preferences sidecar — kept separate because they have
 /// different schemas + lifecycles.
@@ -156,32 +158,21 @@ pub async fn integration_list_prs(
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("integration '{integration_type}' is not connected"))?;
 
-    let is_github = integration_type == "github" || integration_type == "githubEnterprise";
-    let is_gitlab = integration_type == "gitlab" || integration_type == "gitlabSelfHosted";
-    let is_gitea = integration_type == "gitea" || integration_type == "giteaSelfHosted";
-    let hostname = if integration_type == "githubEnterprise"
-        || integration_type == "gitlabSelfHosted"
-        || integration_type == "giteaSelfHosted"
-    {
-        auth.hostname.as_deref()
-    } else {
-        None
-    };
+    let hostname = is_self_hosted(&integration_type)
+        .then_some(auth.hostname.as_deref())
+        .flatten();
     // Treat blank / whitespace-only DSL as "no filter".
     let dsl = filter_dsl
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty());
 
-    if is_github {
-        if let Some(dsl) = dsl {
-            // Search path — GraphQL `search` returns enriched PRs in
-            // a single round-trip; no separate enrich call.
-            integrations::search_github_prs(&auth.token, hostname, &owner, &repo, dsl)
-                .await
-                .map_err(|e| e.to_string())
-        } else {
-            // List path — REST `/pulls` + soft-fail GraphQL enrich.
+    match (
+        ProviderFamily::from_integration_type(&integration_type),
+        dsl,
+    ) {
+        // GitHub list path: REST `/pulls` + soft-fail GraphQL enrich.
+        (ProviderFamily::Github, None) => {
             let mut prs =
                 integrations::list_prs(&integration_type, &auth.token, hostname, &owner, &repo)
                     .await
@@ -194,37 +185,41 @@ pub async fn integration_list_prs(
             }
             Ok(prs)
         }
-    } else if is_gitlab {
-        // GitLab GraphQL returns already-enriched MRs in both list
-        // and search paths — no separate enrich step.
-        if let Some(dsl) = dsl {
-            integrations::search_gitlab_mrs(&auth.token, hostname, &owner, &repo, dsl)
+        // GitHub search path: GraphQL already enriches; no second call.
+        (ProviderFamily::Github, Some(dsl)) => {
+            integrations::search_github_prs(&auth.token, hostname, &owner, &repo, dsl)
                 .await
                 .map_err(|e| e.to_string())
-        } else {
+        }
+        // GitLab: GraphQL on both paths, no separate enrich.
+        (ProviderFamily::Gitlab, None) => {
             integrations::list_gitlab_mrs(&auth.token, hostname, &owner, &repo)
                 .await
                 .map_err(|e| e.to_string())
         }
-    } else if is_gitea {
-        // Gitea has no GraphQL — review/CI status stay None in wave 1.
-        // Search and list both go through the REST `/pulls` endpoint;
-        // the search variant just adds extra query params.
-        if let Some(dsl) = dsl {
-            integrations::search_gitea_prs(&auth.token, hostname, &owner, &repo, dsl)
+        (ProviderFamily::Gitlab, Some(dsl)) => {
+            integrations::search_gitlab_mrs(&auth.token, hostname, &owner, &repo, dsl)
                 .await
                 .map_err(|e| e.to_string())
-        } else {
+        }
+        // Gitea: REST only, badges null (no GraphQL upstream).
+        (ProviderFamily::Gitea, None) => {
             integrations::list_gitea_prs(&auth.token, hostname, &owner, &repo)
                 .await
                 .map_err(|e| e.to_string())
         }
-    } else {
+        (ProviderFamily::Gitea, Some(dsl)) => {
+            integrations::search_gitea_prs(&auth.token, hostname, &owner, &repo, dsl)
+                .await
+                .map_err(|e| e.to_string())
+        }
         // Other providers: dispatcher returns NotImplemented until
         // per-provider clients land.
-        integrations::list_prs(&integration_type, &auth.token, hostname, &owner, &repo)
-            .await
-            .map_err(|e| e.to_string())
+        (ProviderFamily::Other, _) => {
+            integrations::list_prs(&integration_type, &auth.token, hostname, &owner, &repo)
+                .await
+                .map_err(|e| e.to_string())
+        }
     }
 }
 

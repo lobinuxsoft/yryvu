@@ -5,9 +5,10 @@
 //! - [`preflight`] — `GET /user` token validation + scope check.
 //! - [`prs`] — pull request listing (REST `GET /repos/{owner}/{repo}/pulls`).
 //!
-//! Each submodule stays under the 400 LOC cap. Shared HTTP helpers
-//! (User-Agent header, error mapping, base URL resolution) live here
-//! in `mod.rs` so each call site re-uses the same conventions.
+//! Each submodule stays under the 400 LOC cap. Cross-cutting HTTP
+//! plumbing (client builder, status-code mapping, auth headers) lives
+//! in [`super::http`]; this module only owns the GitHub-specific base
+//! URL helper.
 
 mod detail;
 mod dsl;
@@ -26,9 +27,6 @@ pub use prs::{list_prs, CiStatus, PullRequestState, PullRequestSummary, ReviewDe
 pub use search::search_prs;
 
 use crate::backend::BackendError;
-
-/// HTTP User-Agent value sent to every GitHub API endpoint.
-pub(super) const USER_AGENT: &str = "yryvu";
 
 /// Resolve the API base URL for a `.com` or self-hosted endpoint.
 /// yryvu strips trailing slashes from user-supplied hostnames before

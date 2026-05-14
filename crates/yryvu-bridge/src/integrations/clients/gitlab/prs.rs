@@ -361,18 +361,14 @@ mod tests {
 
     #[test]
     fn project_state_locked_collapses_to_closed() {
-        let raw = parse_node(
-            r#"{ "iid": "1", "state": "locked", "author": { "username": "x" } }"#,
-        );
+        let raw = parse_node(r#"{ "iid": "1", "state": "locked", "author": { "username": "x" } }"#);
         let summary = project_node(raw);
         assert_eq!(summary.state, PullRequestState::Closed);
     }
 
     #[test]
     fn project_state_merged() {
-        let raw = parse_node(
-            r#"{ "iid": "1", "state": "merged", "author": { "username": "x" } }"#,
-        );
+        let raw = parse_node(r#"{ "iid": "1", "state": "merged", "author": { "username": "x" } }"#);
         let summary = project_node(raw);
         assert_eq!(summary.state, PullRequestState::Merged);
     }
@@ -407,7 +403,10 @@ mod tests {
         }"#,
         );
         let summary = project_node(raw);
-        assert_eq!(summary.review_decision, Some(ReviewDecision::ReviewRequired));
+        assert_eq!(
+            summary.review_decision,
+            Some(ReviewDecision::ReviewRequired)
+        );
     }
 
     #[test]

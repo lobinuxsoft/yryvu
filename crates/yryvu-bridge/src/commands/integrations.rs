@@ -158,13 +158,12 @@ pub async fn integration_list_prs(
 
     let is_github = integration_type == "github" || integration_type == "githubEnterprise";
     let is_gitlab = integration_type == "gitlab" || integration_type == "gitlabSelfHosted";
-    let hostname = if integration_type == "githubEnterprise"
-        || integration_type == "gitlabSelfHosted"
-    {
-        auth.hostname.as_deref()
-    } else {
-        None
-    };
+    let hostname =
+        if integration_type == "githubEnterprise" || integration_type == "gitlabSelfHosted" {
+            auth.hostname.as_deref()
+        } else {
+            None
+        };
     // Treat blank / whitespace-only DSL as "no filter".
     let dsl = filter_dsl
         .as_deref()

@@ -153,15 +153,15 @@ export function AuxSections(props: Props) {
             <Match when={pullRequests.loading}>
               <p class="sidebar__empty">Loading…</p>
             </Match>
-            <Match when={pullRequests()?.kind === "not-github"}>
+            <Match when={pullRequests()?.kind === "unsupported-provider"}>
               <p class="sidebar__empty">
-                Pull-request panel is GitHub-only in v1. GitLab and Gitea
-                arrive in #16 / #17.
+                Pull-request panel supports GitHub and GitLab in v1.
+                Gitea support arrives in #17.
               </p>
             </Match>
             <Match when={pullRequests()?.kind === "bare-or-unparseable"}>
               <p class="sidebar__empty">
-                Repo has no recognisable GitHub origin remote.
+                Repo has no recognisable origin remote.
               </p>
             </Match>
             <Match when={pullRequests()?.kind === "not-connected"}>

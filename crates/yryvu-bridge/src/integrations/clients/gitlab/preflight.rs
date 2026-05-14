@@ -26,8 +26,7 @@ use crate::backend::BackendError;
 use super::super::types::UserInfo;
 use super::{graphql_endpoint, USER_AGENT};
 
-const PREFLIGHT_QUERY: &str =
-    "query { currentUser { username name avatarUrl } }";
+const PREFLIGHT_QUERY: &str = "query { currentUser { username name avatarUrl } }";
 
 /// Validate `token` against the GitLab API and return the
 /// authenticated user's info. Maps HTTP status codes to typed

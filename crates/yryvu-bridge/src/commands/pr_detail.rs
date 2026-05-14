@@ -15,9 +15,7 @@ use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
 
-use crate::integrations::{
-    self, CheckRun, PrAction, PrCommit, PrFile, PullRequestDetail,
-};
+use crate::integrations::{self, CheckRun, PrAction, PrCommit, PrFile, PullRequestDetail};
 
 fn sidecar_path(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
@@ -68,15 +66,9 @@ pub async fn integration_get_pr_detail(
     unsupported_provider(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
-    integrations::get_github_pr_detail(
-        &auth.token,
-        hostname.as_deref(),
-        &owner,
-        &repo,
-        number,
-    )
-    .await
-    .map_err(|e| e.to_string())
+    integrations::get_github_pr_detail(&auth.token, hostname.as_deref(), &owner, &repo, number)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -90,15 +82,9 @@ pub async fn integration_list_pr_commits(
     unsupported_provider(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
-    integrations::list_github_pr_commits(
-        &auth.token,
-        hostname.as_deref(),
-        &owner,
-        &repo,
-        number,
-    )
-    .await
-    .map_err(|e| e.to_string())
+    integrations::list_github_pr_commits(&auth.token, hostname.as_deref(), &owner, &repo, number)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -112,15 +98,9 @@ pub async fn integration_list_pr_files(
     unsupported_provider(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
-    integrations::list_github_pr_files(
-        &auth.token,
-        hostname.as_deref(),
-        &owner,
-        &repo,
-        number,
-    )
-    .await
-    .map_err(|e| e.to_string())
+    integrations::list_github_pr_files(&auth.token, hostname.as_deref(), &owner, &repo, number)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -134,15 +114,9 @@ pub async fn integration_list_pr_checks(
     unsupported_provider(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
-    integrations::list_github_pr_checks(
-        &auth.token,
-        hostname.as_deref(),
-        &owner,
-        &repo,
-        &head_sha,
-    )
-    .await
-    .map_err(|e| e.to_string())
+    integrations::list_github_pr_checks(&auth.token, hostname.as_deref(), &owner, &repo, &head_sha)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// `action` is `close | reopen | convertToDraft | markReadyForReview`

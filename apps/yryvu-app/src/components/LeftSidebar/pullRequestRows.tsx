@@ -5,6 +5,8 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 
 import type { PullRequestSummary } from "../../ipc";
 import { setSelectedCommit } from "../../state";
+import { openPrDetail } from "../../state/pr-detail";
+import { activePrContext } from "../../state/pull-requests";
 import { ContextMenu, type ContextMenuItem } from "../ContextMenu";
 import { CiBadge, ReviewBadge } from "./pullRequestBadges";
 import { LabelChips, UserAvatarCluster } from "./pullRequestChips";
@@ -13,11 +15,30 @@ interface PullRequestRowProps {
   pr: PullRequestSummary;
 }
 
-/// Compose the 5-action kebab menu for a PR row. Mirrors the
-/// `PullRequestBar-*` strings from the GK bundle audit, restricted
-/// to actions that don't need a detail view (those land with #91/#92).
+/// Open the in-app detail panel for this PR. Pulls integration
+/// metadata from the live resource context so we don't need to
+/// re-classify the repo per click.
+function openDetail(pr: PullRequestSummary) {
+  const ctx = activePrContext();
+  if (!ctx) return;
+  openPrDetail({
+    integrationType: ctx.integrationType,
+    owner: ctx.owner,
+    repo: ctx.repo,
+    number: pr.number,
+    headSha: pr.headSha,
+  });
+}
+
+/// Compose the 6-action kebab menu for a PR row. The leading item
+/// mirrors the in-app detail view (#91); the rest mirror the
+/// `PullRequestBar-*` strings from the GK bundle audit.
 function buildMenuItems(pr: PullRequestSummary): ContextMenuItem[] {
   return [
+    {
+      label: "Open pull request detail",
+      onSelect: () => openDetail(pr),
+    },
     {
       label: "View pull request in browser",
       onSelect: () => {
@@ -117,6 +138,7 @@ export function PullRequestRow(props: PullRequestRowProps) {
   };
   const openMenuFromButton = (e: MouseEvent & { currentTarget: HTMLElement }) => {
     e.preventDefault();
+    e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     // Anchor the menu at the button's bottom-right so the labels read
     // naturally to the left; ContextMenu clamps to the viewport if
@@ -128,6 +150,7 @@ export function PullRequestRow(props: PullRequestRowProps) {
       class="sidebar__branch-row sidebar__row--pull-request"
       title={`${pr().title} (#${pr().number}) — opened ${relativeTime(pr().createdAt)} by ${pr().author.login}`}
       onContextMenu={openMenu}
+      onClick={() => openDetail(pr())}
     >
       <div class="sidebar__pr-row__primary">
         <Show when={pr().author.avatarUrl}>

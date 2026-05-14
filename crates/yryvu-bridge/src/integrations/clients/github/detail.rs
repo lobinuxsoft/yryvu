@@ -558,7 +558,8 @@ mod tests {
             "comments": 7,
             "mergeable": true,
             "mergeable_state": "clean",
-        })).unwrap();
+        }))
+        .unwrap();
         let d = project_detail(raw);
         assert_eq!(d.number, 91);
         assert_eq!(d.state, PullRequestState::Open);

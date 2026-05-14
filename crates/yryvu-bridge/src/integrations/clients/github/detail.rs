@@ -8,13 +8,14 @@
 //! enormous PRs fall back to a "diff truncated" hint in v1).
 
 use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::backend::BackendError;
 
-use super::super::http::{self, GITHUB_PATCH_QUIRKS, GITHUB_QUIRKS};
+use super::super::http::{self, GITHUB_QUIRKS};
 use super::super::types::{Label, UserInfo};
 use super::api_base;
+use super::detail_raw::{GhCheckRun, GhCheckRunsResp, GhPrCommit, GhPrFile, GhPullDetail};
 use super::prs::{CiStatus, PullRequestState, ReviewDecision};
 
 /// Extended PR detail returned by [`get_pr_detail`] — superset of the
@@ -101,26 +102,6 @@ pub struct CheckRun {
     pub details_url: Option<String>,
     pub started_at: Option<String>,
     pub completed_at: Option<String>,
-}
-
-/// Action verb routed by [`pr_action`] to the appropriate REST mutation.
-#[derive(Debug, Clone, Copy)]
-pub enum PrAction {
-    Close,
-    Reopen,
-    ConvertToDraft,
-    MarkReadyForReview,
-}
-
-impl PrAction {
-    fn body(self) -> serde_json::Value {
-        match self {
-            PrAction::Close => serde_json::json!({ "state": "closed" }),
-            PrAction::Reopen => serde_json::json!({ "state": "open" }),
-            PrAction::ConvertToDraft => serde_json::json!({ "draft": true }),
-            PrAction::MarkReadyForReview => serde_json::json!({ "draft": false }),
-        }
-    }
 }
 
 /// Thin wrapper over [`http::execute`] — every detail endpoint is a
@@ -218,40 +199,7 @@ pub async fn list_pr_checks(
     Ok(raw.check_runs.into_iter().map(project_check).collect())
 }
 
-/// Apply a PR action via `PATCH /pulls/{number}`. Returns the
-/// post-mutation PR detail so the frontend can refresh without an
-/// extra GET.
-pub async fn pr_action(
-    token: &str,
-    hostname: Option<&str>,
-    owner: &str,
-    repo: &str,
-    number: u64,
-    action: PrAction,
-) -> Result<PullRequestDetail, BackendError> {
-    let base = api_base(hostname)?;
-    let url = format!("{base}/repos/{owner}/{repo}/pulls/{number}");
-    let client = http::client()?;
-    let req = http::authed(
-        &client,
-        Method::PATCH,
-        &url,
-        token,
-        "application/vnd.github.v3+json",
-    )
-    .json(&action.body());
-    // PATCH-specific quirks: 403 most likely means the read-only PAT
-    // lacks the write `repo` scope; surface that advice instead of the
-    // generic InvalidToken.
-    let resp = http::execute(req, GITHUB_PATCH_QUIRKS).await?;
-    let raw: GhPullDetail = resp
-        .json()
-        .await
-        .map_err(|e| http::decode_error("decoding PATCH /pulls response", e))?;
-    Ok(project_detail(raw))
-}
-
-fn project_detail(raw: GhPullDetail) -> PullRequestDetail {
+pub(super) fn project_detail(raw: GhPullDetail) -> PullRequestDetail {
     let state = if raw.merged_at.is_some() {
         PullRequestState::Merged
     } else if raw.state.as_deref() == Some("closed") {
@@ -383,247 +331,6 @@ fn project_check(raw: GhCheckRun) -> CheckRun {
     }
 }
 
-#[derive(Debug, Deserialize, Default)]
-struct GhPullDetail {
-    number: Option<u64>,
-    title: Option<String>,
-    state: Option<String>,
-    #[serde(default)]
-    draft: Option<bool>,
-    merged_at: Option<String>,
-    closed_at: Option<String>,
-    user: Option<GhUserMini>,
-    created_at: Option<String>,
-    updated_at: Option<String>,
-    html_url: Option<String>,
-    body: Option<String>,
-    base: Option<GhRef>,
-    head: Option<GhRef>,
-    #[serde(default)]
-    labels: Option<Vec<GhLabelMini>>,
-    #[serde(default)]
-    assignees: Option<Vec<GhUserMini>>,
-    #[serde(default)]
-    requested_reviewers: Option<Vec<GhUserMini>>,
-    milestone: Option<GhMilestoneMini>,
-    mergeable: Option<bool>,
-    mergeable_state: Option<String>,
-    additions: Option<u64>,
-    deletions: Option<u64>,
-    changed_files: Option<u64>,
-    comments: Option<u64>,
-}
-
-#[derive(Debug, Deserialize, Default)]
-struct GhUserMini {
-    login: String,
-    avatar_url: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct GhRef {
-    #[serde(rename = "ref")]
-    ref_name: String,
-    sha: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct GhLabelMini {
-    name: String,
-    color: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct GhMilestoneMini {
-    title: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GhPrCommit {
-    sha: Option<String>,
-    commit: Option<GhCommitInner>,
-    author: Option<GhUserMini>,
-}
-
-#[derive(Debug, Deserialize, Default)]
-struct GhCommitInner {
-    message: Option<String>,
-    author: Option<GhCommitAuthor>,
-}
-
-#[derive(Debug, Deserialize, Default)]
-struct GhCommitAuthor {
-    name: Option<String>,
-    date: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GhPrFile {
-    filename: Option<String>,
-    status: Option<String>,
-    additions: Option<u64>,
-    deletions: Option<u64>,
-    patch: Option<String>,
-    previous_filename: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GhCheckRunsResp {
-    check_runs: Vec<GhCheckRun>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GhCheckRun {
-    name: Option<String>,
-    status: Option<String>,
-    conclusion: Option<String>,
-    details_url: Option<String>,
-    started_at: Option<String>,
-    completed_at: Option<String>,
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn project_detail_open_pr_basic() {
-        let raw: GhPullDetail = serde_json::from_value(serde_json::json!({
-            "number": 91,
-            "title": "Add detail view",
-            "state": "open",
-            "draft": false,
-            "user": { "login": "lobinuxsoft", "avatar_url": "https://a/m" },
-            "created_at": "2026-05-14T10:00:00Z",
-            "updated_at": "2026-05-14T11:00:00Z",
-            "html_url": "https://github.com/o/r/pull/91",
-            "body": "Detail body here.",
-            "base": { "ref": "development", "sha": "basesha" },
-            "head": { "ref": "91-feat-detail", "sha": "headsha" },
-            "additions": 1500,
-            "deletions": 80,
-            "changed_files": 42,
-            "comments": 7,
-            "mergeable": true,
-            "mergeable_state": "clean",
-        }))
-        .unwrap();
-        let d = project_detail(raw);
-        assert_eq!(d.number, 91);
-        assert_eq!(d.state, PullRequestState::Open);
-        assert_eq!(d.body, "Detail body here.");
-        assert_eq!(d.additions, 1500);
-        assert_eq!(d.changed_files, 42);
-        assert_eq!(d.mergeable, Some(true));
-        assert_eq!(d.mergeable_state.as_deref(), Some("clean"));
-    }
-
-    #[test]
-    fn project_detail_merged_state() {
-        let raw: GhPullDetail = serde_json::from_value(serde_json::json!({
-            "number": 1,
-            "state": "closed",
-            "merged_at": "2026-05-10T12:00:00Z",
-            "user": { "login": "x", "avatar_url": "x" },
-            "base": { "ref": "main", "sha": "x" },
-            "head": { "ref": "f", "sha": "x" }
-        }))
-        .unwrap();
-        let d = project_detail(raw);
-        assert_eq!(d.state, PullRequestState::Merged);
-        assert!(d.merged_at.is_some());
-    }
-
-    #[test]
-    fn project_commit_short_sha_takes_first_7() {
-        let raw: GhPrCommit = serde_json::from_value(serde_json::json!({
-            "sha": "abcdef1234567890",
-            "commit": {
-                "message": "fix: thing",
-                "author": { "name": "Alice", "date": "2026-05-14T10:00:00Z" }
-            },
-            "author": { "login": "alice", "avatar_url": "https://a/a" }
-        }))
-        .unwrap();
-        let c = project_commit(raw);
-        assert_eq!(c.short_sha, "abcdef1");
-        assert_eq!(c.author.login, "alice");
-        assert_eq!(c.message, "fix: thing");
-    }
-
-    #[test]
-    fn project_commit_falls_back_to_commit_author_when_no_github_user() {
-        // Commits authored by an email that doesn't map to a GitHub
-        // user (synced via SSH push without GitHub identity) come
-        // back with `author: null` — we surface the commit-time name.
-        let raw: GhPrCommit = serde_json::from_value(serde_json::json!({
-            "sha": "abc",
-            "commit": {
-                "message": "x",
-                "author": { "name": "Anon", "date": "2026-05-14T10:00:00Z" }
-            },
-            "author": null
-        }))
-        .unwrap();
-        let c = project_commit(raw);
-        assert_eq!(c.author.login, "Anon");
-        assert!(c.author.avatar_url.is_empty());
-    }
-
-    #[test]
-    fn project_file_renamed_keeps_previous() {
-        let raw: GhPrFile = serde_json::from_value(serde_json::json!({
-            "filename": "new.rs",
-            "previous_filename": "old.rs",
-            "status": "renamed",
-            "additions": 0,
-            "deletions": 0,
-            "patch": null
-        }))
-        .unwrap();
-        let f = project_file(raw);
-        assert_eq!(f.filename, "new.rs");
-        assert_eq!(f.previous_filename.as_deref(), Some("old.rs"));
-        assert_eq!(f.status, "renamed");
-    }
-
-    #[test]
-    fn project_check_partial_completion() {
-        let raw: GhCheckRun = serde_json::from_value(serde_json::json!({
-            "name": "build",
-            "status": "in_progress",
-            "conclusion": null,
-            "details_url": "https://gh/run/123",
-            "started_at": "2026-05-14T10:00:00Z"
-        }))
-        .unwrap();
-        let c = project_check(raw);
-        assert_eq!(c.status, "in_progress");
-        assert_eq!(c.conclusion, None);
-        assert_eq!(c.details_url.as_deref(), Some("https://gh/run/123"));
-    }
-
-    #[test]
-    fn pr_action_body_close() {
-        let body = PrAction::Close.body();
-        assert_eq!(body["state"], "closed");
-    }
-
-    #[test]
-    fn pr_action_body_reopen() {
-        let body = PrAction::Reopen.body();
-        assert_eq!(body["state"], "open");
-    }
-
-    #[test]
-    fn pr_action_body_convert_draft() {
-        let body = PrAction::ConvertToDraft.body();
-        assert_eq!(body["draft"], true);
-    }
-
-    #[test]
-    fn pr_action_body_mark_ready() {
-        let body = PrAction::MarkReadyForReview.body();
-        assert_eq!(body["draft"], false);
-    }
-}
+#[path = "detail_tests.rs"]
+mod tests;

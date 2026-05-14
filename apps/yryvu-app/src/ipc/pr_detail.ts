@@ -86,6 +86,10 @@ export type PrActionVerb =
   | "convertToDraft"
   | "markReadyForReview";
 
+/// Strategy GitHub applies when merging the PR. Matches the backend
+/// `MergeMethod` enum verbatim (serialised lowercase).
+export type MergeMethod = "merge" | "squash" | "rebase";
+
 export function integrationGetPrDetail(
   integrationType: string,
   owner: string,
@@ -155,5 +159,35 @@ export function integrationPrAction(
     repo,
     number,
     action,
+  });
+}
+
+/// Merge a PR via `PUT /pulls/{n}/merge`. On success, optionally
+/// drops the source branch via `DELETE /git/refs/heads/{headRef}`.
+/// Returns the post-mutation detail so the panel refreshes in one
+/// round-trip.
+export interface MergeOptions {
+  method: MergeMethod;
+  commitTitle?: string;
+  commitMessage?: string;
+  deleteSourceBranch: boolean;
+}
+
+export function integrationMergePr(
+  integrationType: string,
+  owner: string,
+  repo: string,
+  number: number,
+  options: MergeOptions,
+): Promise<PullRequestDetail> {
+  return invoke<PullRequestDetail>("integration_merge_pr", {
+    integrationType,
+    owner,
+    repo,
+    number,
+    method: options.method,
+    commitTitle: options.commitTitle ?? null,
+    commitMessage: options.commitMessage ?? null,
+    deleteSourceBranch: options.deleteSourceBranch,
   });
 }

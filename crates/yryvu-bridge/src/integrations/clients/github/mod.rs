@@ -11,17 +11,20 @@
 //! URL helper.
 
 mod detail;
+mod detail_raw;
 mod dsl;
 mod graphql;
+mod merge;
 mod preflight;
 mod prs;
 mod search;
 
 pub use detail::{
-    get_pr_detail, list_pr_checks, list_pr_commits, list_pr_files, pr_action, CheckRun, PrAction,
-    PrCommit, PrFile, PullRequestDetail,
+    get_pr_detail, list_pr_checks, list_pr_commits, list_pr_files, CheckRun, PrCommit, PrFile,
+    PullRequestDetail,
 };
 pub use graphql::enrich_prs;
+pub use merge::{delete_branch, merge_pr, pr_action, MergeMethod, MergeRequest, PrAction};
 pub use preflight::preflight_github;
 pub use prs::{list_prs, CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};
 pub use search::search_prs;

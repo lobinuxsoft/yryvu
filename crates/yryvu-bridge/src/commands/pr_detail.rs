@@ -15,7 +15,9 @@ use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
 
-use crate::integrations::{self, CheckRun, PrAction, PrCommit, PrFile, PullRequestDetail};
+use crate::integrations::{
+    self, CheckRun, MergeMethod, MergeRequest, PrAction, PrCommit, PrFile, PullRequestDetail,
+};
 
 use super::integration_routing::{is_self_hosted, ProviderFamily};
 
@@ -153,4 +155,70 @@ pub async fn integration_pr_action(
     )
     .await
     .map_err(|e| e.to_string())
+}
+
+/// Merge a PR via `PUT /pulls/{number}/merge`. `method` is one of
+/// `merge | squash | rebase` (matches the frontend enum verbatim).
+/// On success, optionally fires a `DELETE /git/refs/heads/{headRef}`
+/// to drop the source branch — failures of that follow-up don't fail
+/// the merge (the user's primary intent already succeeded).
+///
+/// Argument count is gated by the Tauri IPC surface (each param maps
+/// to one camelCase key on the JS side); refactoring into a wrapper
+/// struct would force the frontend to serialise an envelope, costing
+/// more than it saves.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn integration_merge_pr(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+    number: u64,
+    method: String,
+    commit_title: Option<String>,
+    commit_message: Option<String>,
+    delete_source_branch: bool,
+) -> Result<PullRequestDetail, String> {
+    require_github(&integration_type)?;
+    let auth = load_auth(&app, integration_type.clone()).await?;
+    let hostname = pick_hostname(&integration_type, &auth);
+    let parsed_method = match method.as_str() {
+        "merge" => MergeMethod::Merge,
+        "squash" => MergeMethod::Squash,
+        "rebase" => MergeMethod::Rebase,
+        other => return Err(format!("unknown merge method: '{other}'")),
+    };
+    let request = MergeRequest {
+        method: parsed_method,
+        commit_title,
+        commit_message,
+    };
+    let detail = integrations::github_merge_pr(
+        &auth.token,
+        hostname.as_deref(),
+        &owner,
+        &repo,
+        number,
+        request,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+    if delete_source_branch {
+        if let Err(err) = integrations::github_delete_branch(
+            &auth.token,
+            hostname.as_deref(),
+            &owner,
+            &repo,
+            &detail.head_ref,
+        )
+        .await
+        {
+            // Soft-fail: the merge already succeeded, so we surface
+            // the branch-delete failure as a log without flipping
+            // the command result.
+            eprintln!("github delete branch failed (branch survives): {err}");
+        }
+    }
+    Ok(detail)
 }

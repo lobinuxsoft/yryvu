@@ -19,11 +19,12 @@ mod types;
 
 pub use gitea::{list_prs as list_gitea_prs, search_prs as search_gitea_prs};
 pub use github::{
-    enrich_prs as enrich_github_prs, get_pr_detail as get_github_pr_detail,
-    list_pr_checks as list_github_pr_checks, list_pr_commits as list_github_pr_commits,
-    list_pr_files as list_github_pr_files, pr_action as github_pr_action,
-    search_prs as search_github_prs, CheckRun, CiStatus, PrAction, PrCommit, PrFile,
-    PullRequestDetail, PullRequestState, PullRequestSummary, ReviewDecision,
+    delete_branch as github_delete_branch, enrich_prs as enrich_github_prs,
+    get_pr_detail as get_github_pr_detail, list_pr_checks as list_github_pr_checks,
+    list_pr_commits as list_github_pr_commits, list_pr_files as list_github_pr_files,
+    merge_pr as github_merge_pr, pr_action as github_pr_action, search_prs as search_github_prs,
+    CheckRun, CiStatus, MergeMethod, MergeRequest, PrAction, PrCommit, PrFile, PullRequestDetail,
+    PullRequestState, PullRequestSummary, ReviewDecision,
 };
 pub use gitlab::{list_mrs as list_gitlab_mrs, search_mrs as search_gitlab_mrs};
 pub use types::{Label, UserInfo};

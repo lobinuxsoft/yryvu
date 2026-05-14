@@ -157,7 +157,10 @@ pub async fn integration_list_prs(
     .ok_or_else(|| format!("integration '{integration_type}' is not connected"))?;
 
     let is_github = integration_type == "github" || integration_type == "githubEnterprise";
-    let hostname = if integration_type == "githubEnterprise" {
+    let is_gitlab = integration_type == "gitlab" || integration_type == "gitlabSelfHosted";
+    let hostname = if integration_type == "githubEnterprise"
+        || integration_type == "gitlabSelfHosted"
+    {
         auth.hostname.as_deref()
     } else {
         None
@@ -189,9 +192,21 @@ pub async fn integration_list_prs(
             }
             Ok(prs)
         }
+    } else if is_gitlab {
+        // GitLab GraphQL returns already-enriched MRs in both list
+        // and search paths — no separate enrich step.
+        if let Some(dsl) = dsl {
+            integrations::search_gitlab_mrs(&auth.token, hostname, &owner, &repo, dsl)
+                .await
+                .map_err(|e| e.to_string())
+        } else {
+            integrations::list_gitlab_mrs(&auth.token, hostname, &owner, &repo)
+                .await
+                .map_err(|e| e.to_string())
+        }
     } else {
-        // Non-GitHub providers: REST only, no enrichment, no search
-        // until per-provider clients land (#16 / #17).
+        // Other providers: dispatcher returns NotImplemented until
+        // per-provider clients land (#17 Gitea etc).
         integrations::list_prs(&integration_type, &auth.token, hostname, &owner, &repo)
             .await
             .map_err(|e| e.to_string())

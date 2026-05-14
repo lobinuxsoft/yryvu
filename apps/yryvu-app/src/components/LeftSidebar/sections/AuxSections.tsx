@@ -13,6 +13,7 @@ import {
 } from "../../Icons";
 import { SidebarSection } from "../SidebarSection";
 import { PullRequestRow } from "../pullRequestRows";
+import { PullRequestToolbar } from "../pullRequestToolbar";
 import { StashRow } from "../stashRows";
 import { SubmoduleRow } from "../submoduleRows";
 import { WorktreeRow } from "../worktreeRows";
@@ -120,12 +121,14 @@ export function AuxSections(props: Props) {
         </SidebarSection>
       </Show>
 
-      {/* Provider-backed PR section — walking-skeleton scope of #15.
-          GitHub repos with an `"github"` integration configured fetch
-          live data via `integration_list_prs`; other states fall
-          through to the inline-connect CTA or a small empty hint.
-          Hidden during filter since the filter targets local refs only;
-          PR filtering is wave 2 of #15. */}
+      {/* Provider-backed PR section — wave-2 scope of #360.
+          GitHub repos with the `"github"` integration configured fetch
+          live data via `integration_list_prs`; the filter toolbar
+          drives the GraphQL search dispatch path on the backend.
+          Other states fall through to the inline-connect CTA or a
+          small empty hint. Hidden during the LeftSidebar branch
+          filter (sidebar __row__ filter targets local refs; PR
+          filtering is independent and lives on the PR toolbar). */}
       <Show
         when={!props.data.isFiltering() && !hiddenSections().has("PULL_REQUESTS")}
       >
@@ -140,6 +143,9 @@ export function AuxSections(props: Props) {
           }
           onContextMenu={props.ops.openSectionContextMenu}
         >
+          <Show when={repoPath() && pullRequests()?.kind === "ready"}>
+            <PullRequestToolbar />
+          </Show>
           <Switch fallback={<InlineConnectCta kind="pull-requests" />}>
             <Match when={!repoPath()}>
               <p class="sidebar__empty">Open a repo to list pull requests</p>

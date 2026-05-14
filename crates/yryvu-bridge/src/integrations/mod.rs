@@ -20,7 +20,10 @@ pub mod oauth;
 mod sidecar;
 mod types;
 
-pub use clients::{list_prs, preflight, PullRequestState, PullRequestSummary, UserInfo};
+pub use clients::{
+    enrich_github_prs, list_prs, preflight, search_github_prs, CiStatus, Label, PullRequestState,
+    PullRequestSummary, ReviewDecision, UserInfo,
+};
 pub use keyring::{get_token, remove_token, save_token};
 pub use sidecar::{read as read_sidecar, write as write_sidecar, IntegrationsConfig};
 pub use types::{AuthData, IntegrationEntry, SIDECAR_VERSION};

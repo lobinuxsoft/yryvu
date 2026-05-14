@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createResource } from "solid-js";
+import { createResource, createSignal } from "solid-js";
 
 import {
   getRepoProviderInfo,
@@ -35,10 +35,61 @@ export type PullRequestsResult =
   | { kind: "not-connected" }
   | { kind: "error"; detail: string };
 
-async function fetchPullRequests(path: string): Promise<PullRequestsResult> {
+/**
+ * Sort options surfaced in the toolbar. `newest` (the GitHub default)
+ * maps to "no sort token" — the REST `/pulls` endpoint already
+ * returns newest-first.
+ */
+export type PrSortKey =
+  | "newest"
+  | "oldest"
+  | "most_updated"
+  | "most_commented";
+
+const [prFilterDsl, setPrFilterDsl] = createSignal<string>("");
+const [prSort, setPrSort] = createSignal<PrSortKey>("newest");
+
+export { prFilterDsl, setPrFilterDsl, prSort, setPrSort };
+
+/// Translate the toolbar sort selection into a GitHub search `sort:`
+/// token. `newest` returns `""` (no token); the REST default already
+/// orders by creation date desc, so omitting the token keeps us on
+/// the cheaper REST path when the filter is also empty.
+function sortToken(sort: PrSortKey): string {
+  switch (sort) {
+    case "newest":
+      return "";
+    case "oldest":
+      return "sort:created-asc";
+    case "most_updated":
+      return "sort:updated-desc";
+    case "most_commented":
+      return "sort:comments-desc";
+  }
+}
+
+/// Compose the toolbar's freeform filter text + sort selection into a
+/// single DSL string ready for `integrationListPrs`. Empty string =
+/// take the REST list path; non-empty = take the GraphQL search path.
+function buildDsl(filter: string, sort: PrSortKey): string {
+  const trimmed = filter.trim();
+  const token = sortToken(sort);
+  if (!trimmed && !token) return "";
+  if (!trimmed) return token;
+  if (!token) return trimmed;
+  return `${trimmed} ${token}`;
+}
+
+interface PrSourceKey {
+  path: string;
+  filter: string;
+  sort: PrSortKey;
+}
+
+async function fetchPullRequests(source: PrSourceKey): Promise<PullRequestsResult> {
   let info: RepoProviderInfo;
   try {
-    info = await getRepoProviderInfo(path);
+    info = await getRepoProviderInfo(source.path);
   } catch (err) {
     return { kind: "error", detail: String(err) };
   }
@@ -57,8 +108,14 @@ async function fetchPullRequests(path: string): Promise<PullRequestsResult> {
   if (!configured.includes("github")) {
     return { kind: "not-connected" };
   }
+  const dsl = buildDsl(source.filter, source.sort);
   try {
-    const prs = await integrationListPrs("github", info.owner, info.repo);
+    const prs = await integrationListPrs(
+      "github",
+      info.owner,
+      info.repo,
+      dsl || undefined,
+    );
     return { kind: "ready", prs };
   } catch (err) {
     const detail = String(err);
@@ -74,19 +131,21 @@ async function fetchPullRequests(path: string): Promise<PullRequestsResult> {
 }
 
 /**
- * Pull-request list resource — keyed on `repoPath()`. Refetches when
- * the user opens a different repo. Returns the discriminated
- * [`PullRequestsResult`] so the panel can pick the right empty state
- * without re-running provider classification.
- *
- * Walking-skeleton scope for #15: REST-only, no filters / sort /
- * pagination / refresh-on-focus. Wave 2 adds refetch triggers (focus,
- * post-push hooks, manual refresh button).
+ * Pull-request list resource — keyed on the tuple
+ * `(repoPath, filter, sort)`. Refetches when the user opens a
+ * different repo OR mutates the filter / sort. Returns the
+ * discriminated [`PullRequestsResult`] so the panel can pick the
+ * right empty state without re-running provider classification.
  */
 export const [pullRequests, { refetch: refetchPullRequests }] = createResource<
   PullRequestsResult,
-  string
+  PrSourceKey
 >(
-  () => repoPath(),
+  () => {
+    const path = repoPath();
+    return path
+      ? { path, filter: prFilterDsl(), sort: prSort() }
+      : (undefined as unknown as PrSourceKey);
+  },
   fetchPullRequests,
 );

@@ -9,11 +9,16 @@
 //! (User-Agent header, error mapping, base URL resolution) live here
 //! in `mod.rs` so each call site re-uses the same conventions.
 
+mod dsl;
+mod graphql;
 mod preflight;
 mod prs;
+mod search;
 
+pub use graphql::enrich_prs;
 pub use preflight::preflight_github;
-pub use prs::{list_prs, PullRequestState, PullRequestSummary};
+pub use prs::{list_prs, CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};
+pub use search::search_prs;
 
 use crate::backend::BackendError;
 

@@ -7,14 +7,14 @@ every "right panel" configuration through a single `RightPanelType` enum:
 ```js
 RightPanelType = {
   COMMIT_DETAILS:   ... ,
-  EXPLAIN_COMMITS:  ...,   // AI — out of scope for chajá
+  EXPLAIN_COMMITS:  ...,   // AI — out of scope for yryvu
   EXPLAIN_WIP:      ...,   // AI — out of scope
   EXPLAIN_BRANCH:   ...,   // AI — out of scope
 }
 ```
 
 The commit inspector is the `COMMIT_DETAILS` case. The explain panels reuse
-the same outer shell but mount a different inner component — chajá only
+the same outer shell but mount a different inner component — yryvu only
 cares about the commit one.
 
 ## Top-level component tree
@@ -64,7 +64,7 @@ one above the **commit message input** on the staging/commit side, NOT
 the inspector side. The staging tab state is `detailPanelTabIds`
 (`commit | stash | cloudPatch | codeSuggest`). Don't conflate.
 
-Chajá's inspector is a single-panel design, same as GitKraken.
+Yryvu's inspector is a single-panel design, same as GitKraken.
 
 ## Visibility gating
 
@@ -117,7 +117,7 @@ layout.CommitMessage = {
 This second slice is the height of the **commit message editor on the
 staging side**, not the inspector's height. The name `rightPanelHeight`
 is misleading — it's really "commit message textarea pending height."
-Don't reuse that path for the inspector in chajá; use a distinct
+Don't reuse that path for the inspector in yryvu; use a distinct
 `DetailPanel.height` setting.
 
 ## Resize
@@ -164,14 +164,14 @@ the `<Resizable>`, not a class toggle.
 - Saga: `toggleDetailPanelSaga` flips `layout.DetailPanel.open` in the
   profile settings.
 
-## Chajá implications
+## Yryvu implications
 
 1. Single-panel design, no tab switcher on the inspector. The "tabs"
    strings in the bundle are for the staging side.
 2. Persist width/height in a profile-scoped setting keyed off repo
    identity, not redux UI state — match `layout.DetailPanel.{width,
    height, open}` semantics so the user's choice survives repo switches.
-3. Min dimensions: width 353, height 566. These are GK's numbers; chajá
+3. Min dimensions: width 353, height 566. These are GK's numbers; yryvu
    can keep them verbatim for 1:1 feel or tighten them to save real
    estate on smaller windows.
 4. Bind a toggle shortcut (`Cmd/Ctrl+K`) to open/close the panel.

@@ -42,7 +42,7 @@ Ve.exports = JSON.parse('{"releaseNotesVersion":"12.0.1"}');
 
 This JSON module ships in the bundle and is the source of truth for "what version is this app". Embedded as a separate module rather than a constant so the bundler can swap it at build time.
 
-For chajá, the equivalent is `apps/chaja-app/src-tauri/tauri.conf.json` `package.version` — readable from Tauri via `getVersion()`. Use that as the seed instead of bundling a separate JSON.
+For yryvu, the equivalent is `apps/yryvu-app/src-tauri/tauri.conf.json` `package.version` — readable from Tauri via `getVersion()`. Use that as the seed instead of bundling a separate JSON.
 
 ## Auto-open on launch (bundle:55942-55968)
 
@@ -61,7 +61,7 @@ Logic:
 
 The `getCurrentProfileRememberTabs` selector likely gates this with a "show release notes on update" preference.
 
-For chajá, store `lastReleaseNotesDisplayed` in `preferences.json` under `general.lastReleaseNotesDisplayed`. Compare against Tauri's `getVersion()` at app boot. Default behavior: show on first run + on any version change.
+For yryvu, store `lastReleaseNotesDisplayed` in `preferences.json` under `general.lastReleaseNotesDisplayed`. Compare against Tauri's `getVersion()` at app boot. Default behavior: show on first run + on any version change.
 
 ## Content rendering
 
@@ -71,7 +71,7 @@ The bundle does NOT contain inline release-notes markdown. The `RELEASE_NOTES` t
 - Embedded markdown in a separate chunk loaded on-demand.
 - Bundled JSON keyed by version.
 
-For chajá, the simplest path:
+For yryvu, the simplest path:
 1. Ship a `CHANGELOG.md` in the repo (release-please already maintains this).
 2. The RELEASE_NOTES tab loads `CHANGELOG.md` via Tauri's `tauri::path::resource_dir()` + read.
 3. Renders via the existing markdown renderer (already needed for #60 per-filetype renderer dispatcher; if not present yet, port `marked` or `markdown-it`).

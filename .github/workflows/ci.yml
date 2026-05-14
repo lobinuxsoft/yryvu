@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/chaja-app
+        working-directory: apps/yryvu-app
     steps:
       - uses: actions/checkout@v4
 

@@ -56,7 +56,7 @@ getShortSha = sha => sha && sha !== workDirType ? sha.substring(0, 6) : sha
 ```
 
 **6 characters**, not 7 (git CLI default) or 8 (GitHub default). If
-chajá wants to match, truncate to 6. The WIP pseudo-sha returns the
+yryvu wants to match, truncate to 6. The WIP pseudo-sha returns the
 `workDirType` sentinel unchanged so the "copy SHA" button is suppressed.
 
 ## Copy SHA flow
@@ -156,7 +156,7 @@ Cherry-pick and revert are handled via:
 Merge commits are implicit via having 2+ parents (the comma-separated
 parent row is the only visual cue).
 
-Chajá can add badges if it wants (matches GitHub/Jira conventions), but
+Yryvu can add badges if it wants (matches GitHub/Jira conventions), but
 this would be a **deviation** from 1:1 GK parity. Flag this as a choice.
 
 ## Ref pills attached to commit
@@ -166,7 +166,7 @@ on the graph row itself (covered in `gitkraken-graph/06-ref-pills.md`),
 not duplicated in the right panel. If a commit has 5 branches pointing
 at it, you see 5 pills on the row; none in the inspector.
 
-If chajá wants to show ref pills in the inspector header (a reasonable
+If yryvu wants to show ref pills in the inspector header (a reasonable
 UX upgrade), it's a deviation — worth doing behind an opt-in flag at
 first.
 
@@ -182,7 +182,7 @@ via `CommitDiffSection-DateByAuthorName` = `"{0} by {1}"`, where `{0}` is
 formatted via `formatDateTime(ts, DATE_RELATIVE)` → moment's `fromNow()`.
 A full-absolute date is on the `title` attribute (tooltip).
 
-## Chajá implications
+## Yryvu implications
 
 1. **Short-SHA**: 6 chars (`sha[0..6]`). Not 7.
 2. **Copy-SHA**: reusable `CopyToClipboard` wrapper around the SHA

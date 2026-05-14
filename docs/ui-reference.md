@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 
-# Chajá UX reference
+# Yryvu UX reference
 
 > **Read this first — what this document is and is NOT.**
 >
-> Chajá's product scope is **all of Git, exposed through user-friendly UX**.
+> Yryvu's product scope is **all of Git, exposed through user-friendly UX**.
 > Not "all of GitKraken". GitKraken Desktop 11.10.0 is studied here because it
 > is currently the best-executed UX in the market for a Git client — so it
 > serves as our **inspiration source** for layout, interaction, and visual
@@ -35,7 +35,7 @@ peers we study for implementation hints are listed in [§9](#9-open-source-refer
 
 > **Status (2026-04-17):** first pass of the audit. Some states were viewed during
 > the session but not preserved to disk; those are marked ⚠ in the figure captions
-> and need re-capture in a follow-up. Chajá-side implementation status is tracked
+> and need re-capture in a follow-up. Yryvu-side implementation status is tracked
 > per-feature in the GitHub issue tracker; [§11](#11-issue-mapping) cross-references
 > each spec section against its owning issue.
 
@@ -79,13 +79,13 @@ peers we study for implementation hints are listed in [§9](#9-open-source-refer
 
 ## 1. Overview
 
-Chajá is a cross-platform Git client built with Tauri 2, Rust, and SolidJS. Its
+Yryvu is a cross-platform Git client built with Tauri 2, Rust, and SolidJS. Its
 target UX is an exact clone of GitKraken Desktop's layout and interaction model,
 so that users of GitKraken can switch without relearning. The open-source angle
 is a second-class benefit; the first-class goal is UX parity.
 
 This doc is the contract between the layout observed in GitKraken and the
-implementation in Chajá. Any deviation (because GitKraken's implementation is
+implementation in Yryvu. Any deviation (because GitKraken's implementation is
 paid, proprietary, or requires a cloud service we don't have) is called out
 explicitly in [§12](#12-features-not-cloned).
 
@@ -156,7 +156,7 @@ Persistent sections (always visible):
   Contains: search input, filter icon, and four sub-filters (My, Assigned to
   me, Awaiting my review, All) each with its own count.
 - **GitHub Issues** — repository/org selector, filter, issue list with counts.
-- **Teams** — collaborative features; largely out of scope for Chajá.
+- **Teams** — collaborative features; largely out of scope for Yryvu.
 
 Conditional sections (appear only when applicable state exists):
 - **Stashes** — visible only when at least one stash exists. See
@@ -303,7 +303,7 @@ with team.
 ## 4. Context menus
 
 GitKraken uses **different** context menus depending on the target, and some
-are state-aware. Chajá must dispatch by target type and, where applicable,
+are state-aware. Yryvu must dispatch by target type and, where applicable,
 branch tracking state.
 
 ### 4.1 Commit context
@@ -481,7 +481,7 @@ Layout:
   - **From Repo → To Repo** (supports fork → upstream PRs).
   - **Branch → Branch** (source on the left, target on the right).
 - **Title** field, with a "Generate title and description" AI action (omitted
-  in Chajá).
+  in Yryvu).
 - **Description** textarea.
 - **Submit as draft** checkbox with help tooltip `?`.
 - Action buttons: `[Cancel]` and `[Create Pull Request]` (primary, disabled
@@ -504,7 +504,7 @@ empty.
 ## 6. Keyboard shortcuts
 
 All shortcuts are literal from GitKraken Desktop 11.10.0, reproduced here as
-the Chajá target. `Cmd` on macOS, `Ctrl` on Windows/Linux.
+the Yryvu target. `Cmd` on macOS, `Ctrl` on Windows/Linux.
 
 ### File
 | Shortcut | Action |
@@ -598,17 +598,17 @@ preserves panel state per tab.
 
 ## 8. Theming
 
-Chajá's CSS is token-driven. All colour values flow through
+Yryvu's CSS is token-driven. All colour values flow through
 `:root[data-theme="dark|light"]` blocks, and the current theme is applied by
 setting `data-theme` on `document.documentElement` from a persisted SolidJS
 signal. Dark is the default.
 
 New themes (user-custom or vendor) add another `[data-theme="…"]` block. No
 component CSS should hardcode colours. See the tokens in
-`apps/chaja-app/src/App.css`.
+`apps/yryvu-app/src/App.css`.
 
 Out of scope for this doc: the **selector UI** for switching themes lives in
-issue [#27](https://github.com/lobinuxsoft/chaja/issues/27).
+issue [#27](https://github.com/lobinuxsoft/yryvu/issues/27).
 
 ---
 
@@ -697,25 +697,25 @@ them. Columns:
 
 | § | Area | Issue | Status |
 |---|---|---|---|
-| [§2.1 Native menu bar](#21-native-menu-bar) | Shell | [#29](https://github.com/lobinuxsoft/chaja/issues/29) | done |
-| [§2.2 Tab bar](#22-tab-bar) | Shell | [#29](https://github.com/lobinuxsoft/chaja/issues/29) (partial — multi-tab pending) | open (follow-up) |
-| [§2.3 Repo toolbar](#23-repo-toolbar) | Shell | [#29](https://github.com/lobinuxsoft/chaja/issues/29) (stubs) + [#4](https://github.com/lobinuxsoft/chaja/issues/4) (Pull/Push impl) | done / open |
-| [§2.4 Left sidebar](#24-left-sidebar) | Shell + branches | [#29](https://github.com/lobinuxsoft/chaja/issues/29) + [#5](https://github.com/lobinuxsoft/chaja/issues/5) | done / open |
-| [§2.5 Main area](#25-main-area) | Graph | [#1](https://github.com/lobinuxsoft/chaja/issues/1) | done (node-render bug open) |
-| [§2.6 Right panel](#26-right-panel-inspector) | Details + staging | [#29](https://github.com/lobinuxsoft/chaja/issues/29) (stack) + [#2](https://github.com/lobinuxsoft/chaja/issues/2) (staging) + [#6](https://github.com/lobinuxsoft/chaja/issues/6) (diff) | done / open |
-| [§2.7 Status bar](#27-status-bar) | Shell | [#29](https://github.com/lobinuxsoft/chaja/issues/29) | done |
-| [§3.1 Cold start](#31-cold-start--new-tab) | Shell | [#29](https://github.com/lobinuxsoft/chaja/issues/29) | done |
-| [§3.3 Diff viewer](#33-diff-viewer) | Diff | [#6](https://github.com/lobinuxsoft/chaja/issues/6) | open |
+| [§2.1 Native menu bar](#21-native-menu-bar) | Shell | [#29](https://github.com/lobinuxsoft/yryvu/issues/29) | done |
+| [§2.2 Tab bar](#22-tab-bar) | Shell | [#29](https://github.com/lobinuxsoft/yryvu/issues/29) (partial — multi-tab pending) | open (follow-up) |
+| [§2.3 Repo toolbar](#23-repo-toolbar) | Shell | [#29](https://github.com/lobinuxsoft/yryvu/issues/29) (stubs) + [#4](https://github.com/lobinuxsoft/yryvu/issues/4) (Pull/Push impl) | done / open |
+| [§2.4 Left sidebar](#24-left-sidebar) | Shell + branches | [#29](https://github.com/lobinuxsoft/yryvu/issues/29) + [#5](https://github.com/lobinuxsoft/yryvu/issues/5) | done / open |
+| [§2.5 Main area](#25-main-area) | Graph | [#1](https://github.com/lobinuxsoft/yryvu/issues/1) | done (node-render bug open) |
+| [§2.6 Right panel](#26-right-panel-inspector) | Details + staging | [#29](https://github.com/lobinuxsoft/yryvu/issues/29) (stack) + [#2](https://github.com/lobinuxsoft/yryvu/issues/2) (staging) + [#6](https://github.com/lobinuxsoft/yryvu/issues/6) (diff) | done / open |
+| [§2.7 Status bar](#27-status-bar) | Shell | [#29](https://github.com/lobinuxsoft/yryvu/issues/29) | done |
+| [§3.1 Cold start](#31-cold-start--new-tab) | Shell | [#29](https://github.com/lobinuxsoft/yryvu/issues/29) | done |
+| [§3.3 Diff viewer](#33-diff-viewer) | Diff | [#6](https://github.com/lobinuxsoft/yryvu/issues/6) | open |
 | [§3.4 Preferences](#34-preferences-window) | Settings | future | open |
-| [§4.1 Commit context menu](#41-commit-context) | Commit | [#3](https://github.com/lobinuxsoft/chaja/issues/3) + follow-ups | open |
-| [§4.2 Local branch context](#42-local-branch-context) | Branches | [#5](https://github.com/lobinuxsoft/chaja/issues/5) | open |
-| [§4.3 Remote branch context](#43-remote-branch-context) | Branches | [#5](https://github.com/lobinuxsoft/chaja/issues/5) | open |
-| [§4.4 Unstaged file context](#44-unstaged-file-context) | Staging | [#2](https://github.com/lobinuxsoft/chaja/issues/2) | open |
-| [§4.5 Stash context](#45-stash-context) | Stash | [#12](https://github.com/lobinuxsoft/chaja/issues/12) | open |
-| [§5.1 Create PR dialog](#51-create-pull-request) | PR | [#15](https://github.com/lobinuxsoft/chaja/issues/15) + [#16](https://github.com/lobinuxsoft/chaja/issues/16) + [#17](https://github.com/lobinuxsoft/chaja/issues/17) | open |
-| [§6 Keyboard shortcuts](#6-keyboard-shortcuts) | Shell | [#29](https://github.com/lobinuxsoft/chaja/issues/29) | done |
+| [§4.1 Commit context menu](#41-commit-context) | Commit | [#3](https://github.com/lobinuxsoft/yryvu/issues/3) + follow-ups | open |
+| [§4.2 Local branch context](#42-local-branch-context) | Branches | [#5](https://github.com/lobinuxsoft/yryvu/issues/5) | open |
+| [§4.3 Remote branch context](#43-remote-branch-context) | Branches | [#5](https://github.com/lobinuxsoft/yryvu/issues/5) | open |
+| [§4.4 Unstaged file context](#44-unstaged-file-context) | Staging | [#2](https://github.com/lobinuxsoft/yryvu/issues/2) | open |
+| [§4.5 Stash context](#45-stash-context) | Stash | [#12](https://github.com/lobinuxsoft/yryvu/issues/12) | open |
+| [§5.1 Create PR dialog](#51-create-pull-request) | PR | [#15](https://github.com/lobinuxsoft/yryvu/issues/15) + [#16](https://github.com/lobinuxsoft/yryvu/issues/16) + [#17](https://github.com/lobinuxsoft/yryvu/issues/17) | open |
+| [§6 Keyboard shortcuts](#6-keyboard-shortcuts) | Shell | [#29](https://github.com/lobinuxsoft/yryvu/issues/29) | done |
 | [§7 Split-button pattern](#7-interaction-patterns) | Primitives | part of owning feature issues | open |
-| [§8 Theming](#8-theming) | Tokens | infra [#29](https://github.com/lobinuxsoft/chaja/issues/29) + selector [#27](https://github.com/lobinuxsoft/chaja/issues/27) | done / open |
+| [§8 Theming](#8-theming) | Tokens | infra [#29](https://github.com/lobinuxsoft/yryvu/issues/29) + selector [#27](https://github.com/lobinuxsoft/yryvu/issues/27) | done / open |
 
 When a feature issue is picked up, its PR body should link back to the
 relevant spec section using the anchor, e.g.
@@ -732,12 +732,12 @@ We intentionally skip:
   "Generate title and description" in PR creation. These depend on
   GitKraken's paid cloud. Our roadmap has no AI equivalent.
 - **Cloud Patches**: GitKraken-proprietary patch-sharing. Issue
-  [#26](https://github.com/lobinuxsoft/chaja/issues/26) tracks a low-priority
+  [#26](https://github.com/lobinuxsoft/yryvu/issues/26) tracks a low-priority
   alternative.
 - **Integrations upsell panel** on cold start ("Connect More Integrations").
   We replace it with a local Resources panel.
 - **PRO license badge** and renewal/card-on-file notifications in the status
-  bar. Chajá ships under AGPL; the badge reads `OSS`.
+  bar. Yryvu ships under AGPL; the badge reads `OSS`.
 - **Follow-us-on-Twitter** and marketing entries in the Help menu.
 - **Support Logs submenu** in Help (GitKraken-specific telemetry pipeline).
 

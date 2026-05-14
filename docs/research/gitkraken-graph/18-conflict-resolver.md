@@ -98,7 +98,7 @@ menu. Validation error key: `INVALID_PARAMETER_MERGETOOL_FRAME`.
 - Abort: `mergeAbort` (exported by the merge sagas module:
   `at.mergeAbort = at.merge = at.makePerformMergeCommit = ...`).
 
-## Chajá implications
+## Yryvu implications
 
 - **Monaco is heavy** (~3 MB JS). For a Tauri app, lazy-load it only
   when a conflict exists, or replace with CodeMirror 6 (modular) or a
@@ -109,7 +109,7 @@ menu. Validation error key: `INVALID_PARAMETER_MERGETOOL_FRAME`.
 - **AI assist can be gated behind a feature flag** — skip initially.
 - **Marker parser is ~50 lines of Rust**, no libgit2 involvement
   needed: split the file on `<<<<<<<`, `=======`, `>>>>>>>` lines.
-- **Preserve git markers on disk.** Don't invent a Chajá-specific
+- **Preserve git markers on disk.** Don't invent a Yryvu-specific
   format — interoperability with git CLI + other tools matters.
 
 ## Source locations

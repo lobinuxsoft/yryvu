@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Thin aggregator — sub-files live in ./preferences/. Order: shell
+   chrome, then nav + content scaffolding, then the integrations panel
+   (shell, form, state). */
+@import "./preferences/shell.css";
+@import "./preferences/nav.css";
+@import "./preferences/content.css";
+@import "./preferences/integrations-shell.css";
+@import "./preferences/integrations-form.css";
+@import "./preferences/integrations-state.css";
+@import "./preferences/ui-panel.css";
+@import "./preferences/notifications-panel.css";
+@import "./preferences/tools-panel.css";
+@import "./preferences/commit-panel.css";
+@import "./preferences/editor-panel.css";
+@import "./preferences/issue-tracker-panel.css";
+@import "./preferences/githooks-panel.css";
+@import "./preferences/gpg-panel.css";
+@import "./preferences/gitflow-panel.css";
+@import "./preferences/sparse-panel.css";

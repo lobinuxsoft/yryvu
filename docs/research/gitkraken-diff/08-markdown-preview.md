@@ -94,7 +94,7 @@ scrolls to that heading within the preview pane — no route change.
 - **No math / mermaid rendering** in default setup. Might appear via
   enabled plugin but not observed in first pass.
 
-## Chajá implications
+## Yryvu implications
 
 - **Use `solid-markdown`** (Solid port of `react-markdown`) — keeps the
   same unified/remark/rehype pipeline, just Solid components.

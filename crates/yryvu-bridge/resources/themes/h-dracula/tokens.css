@@ -1,0 +1,56 @@
+:root[data-theme="h-dracula"] {
+
+    /* Layers — Background → Current Line → Selection */
+    --bg-0: #21222c;
+    --bg-1: #282a36;
+    --bg-2: #343746;
+    --bg-3: #44475a;
+    --bg-4: #5a5e7a;
+    --accent: #bd93f9;
+    --accent-hover: #cba6fb;
+    --accent-fg: #21222c;
+
+    /* Foreground — Foreground → Comment */
+    --fg-0: #f8f8f2;
+    --fg-1: #d6d6d2;
+    --fg-2: #989aa5;
+    --fg-3: #6272a4;
+
+    /* Status — Dracula accents */
+    --success: #50fa7b;
+    --warning: #f1fa8c;
+    --danger: #ff5555;
+    --info: #8be9fd;
+
+    /* Lane palette — full Dracula accent rotation */
+    --lane-0: #8be9fd;
+    --lane-1: #6272a4;
+    --lane-2: #bd93f9;
+    --lane-3: #ff79c6;
+    --lane-4: #ffb86c;
+    --lane-5: #ff5555;
+    --lane-6: #f1fa8c;
+    --lane-7: #50fa7b;
+    --lane-8: #8be9fd;
+    --lane-9: #bd93f9;
+
+    /* Geometry — graph dimensions */
+    --row-h: 28px;
+    --lane-w: 22px;
+    --gutter: 28px;
+    --commit-r: 11px;
+
+    /* Typography */
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'FiraCode Nerd Font Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+
+    color-scheme: dark;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-feature-settings: "calt" 1, "liga" 1;
+    font-variant-ligatures: contextual;
+    text-rendering: optimizeLegibility;
+}

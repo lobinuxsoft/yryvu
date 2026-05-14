@@ -1,0 +1,231 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   FileList widget — issue #61, 1:1 port of GitKraken's RightPanel file list.
+   Dimensions grepped from the render bundle: FILE_NODE_HEIGHT=32,
+   TREE_VIEW_LEVEL_INDENT=15, FILE_NODE_CONTENTS_PADDING_LEFT=10,
+   FILE_NODE_CONTENTS_DIRECTORY_PADDING_LEFT=3.
+   Shares `.changed-files__*` status / path / stats classes with the pre-#61
+   inspector, so visual anatomy stays identical across rows.
+   ======================================================================== */
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.file-list__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--bg-2);
+}
+
+.file-list__toolbar-modes {
+  display: inline-flex;
+  border: 1px solid var(--bg-2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.file-list__mode {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 3px 8px;
+  color: var(--fg-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.file-list__mode[data-active="true"] {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
+.file-list__mode:hover:not([data-active="true"]) {
+  background: color-mix(in srgb, var(--bg-2) 50%, transparent);
+}
+
+.file-list__expand-toggle {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--bg-2);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  color: var(--fg-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.file-list__expand-toggle:hover:not(:disabled) {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
+.file-list__expand-toggle:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.file-list__filter {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-0);
+  border: 1px solid var(--bg-2);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  color: var(--fg-1);
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.file-list__filter::placeholder { color: var(--fg-3); }
+
+.file-list__filter:focus {
+  outline: none;
+  border-color: var(--info);
+}
+
+.file-list__items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Each row is a flex container so file-row + optional actions sit side
+   by side. Hover on the <li> tints the inner button and reveals actions
+   uniformly across both halves. */
+.file-list__items > li {
+  display: flex;
+  align-items: stretch;
+}
+
+.file-list__row,
+.file-list__dir {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  color: var(--fg-1);
+  font-size: 12px;
+  cursor: pointer;
+  padding-right: 6px;
+}
+
+.file-list__items > li:hover .file-list__row,
+.file-list__items > li:hover .file-list__dir { background: var(--bg-2); }
+
+.file-list__row[data-active="true"] {
+  background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
+  color: var(--fg-0);
+}
+
+/* -------- Per-file hover actions (Stage / Discard / Unstage) ----------
+   Working-tree variants only; committed lists never pass actions. */
+.file-list__row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-right: 6px;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+
+.file-list__items > li:hover .file-list__row-actions,
+.file-list__items > li:has(.file-list__row[data-active="true"]) .file-list__row-actions {
+  opacity: 1;
+}
+
+.file-list__row-action {
+  background: transparent;
+  color: var(--fg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.file-list__row-action:hover {
+  background: var(--accent);
+  color: var(--fg-0);
+  border-color: var(--accent);
+}
+
+.file-list__row-action[data-variant="danger"]:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.file-list__dir-chevron {
+  display: inline-block;
+  width: 12px;
+  transition: transform 120ms ease;
+  color: var(--fg-3);
+  flex-shrink: 0;
+}
+
+.file-list__dir-chevron[data-collapsed="false"] {
+  transform: rotate(90deg);
+}
+
+.file-list__dir-name {
+  font-family: var(--font-mono);
+  color: var(--fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Loading skeleton — placeholder rows shown while the diff IPC resolves.
+   Shimmer animation keeps the band visually alive without claiming a
+   specific count or path; geometry mirrors real Row.tsx so the column
+   doesn't reflow when the data lands. */
+.file-list__items--skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+.file-list__row--skeleton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.file-list__skeleton-icon,
+.file-list__skeleton-bar {
+  display: inline-block;
+  height: 10px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-2) 0%,
+    var(--bg-3) 50%,
+    var(--bg-2) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: file-list-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.file-list__skeleton-icon {
+  width: 14px;
+  flex: 0 0 auto;
+}
+.file-list__skeleton-bar {
+  flex: 0 0 auto;
+}
+@keyframes file-list-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

@@ -139,13 +139,13 @@ line-range selection to the back-end and expects the index to refresh.
   is recomputed against the full file instead of the hunks-only
   rendering; the navigation still works, just over a different index.
 
-## Chajá implications
+## Yryvu implications
 
 - **Store next/prev callbacks in a global signal**, same architecture —
   the toolbar is far from the editor in the component tree, and the
   signal is the clean channel.
 - **Use Monaco's `getLineChanges()`** directly — no need to reimplement
-  hunk walking on top of `chaja-bridge` diff output.
+  hunk walking on top of `yryvu-bridge` diff output.
 - **Wire the line-mapping helpers** (`getDiffLineInformationForOriginal`
   / `...ForModified`) for staging. They handle add/delete gap cases
   correctly and save us from writing that logic.
@@ -153,7 +153,7 @@ line-range selection to the back-end and expects the index to refresh.
   recompute `{currentHunk, isMultiLine}` signals — the context menu
   renders off these. Don't try to compute at menu-open time; Monaco's
   selection can change between the prepare-menu and open-menu events.
-- **No wrap on next/prev** — matches GK exactly, avoid adding chajá
+- **No wrap on next/prev** — matches GK exactly, avoid adding yryvu
   innovation.
 
 ## Source locations

@@ -117,7 +117,7 @@ Observed error constant `DirectoryReadErrorTimeout`. When directory
 listing takes too long (e.g., monorepo with 100k+ files), surfaces a
 fallback. Threshold not captured; requires further research.
 
-## Chajá implications
+## Yryvu implications
 
 - **Adopt the 50 MB diff cap** — mirrors GitKraken and matches typical
   git limits. Configurable in Experimental preferences (#107) for users

@@ -1,9 +1,9 @@
 # GitKraken Tab System — Audit Overview
 
 Bundle reference: `/var/mnt/DATA/gitkraken-extract/app/src/render/static/entryPoints/main/render.bundle.js` (12.0.1).
-Pretty fork: `/tmp/gk-bundle-pretty.js` (regenerable via `bunx js-beautify` — see `project_chaja.md`). Line numbers below are **pretty-fork offsets**.
+Pretty fork: `/tmp/gk-bundle-pretty.js` (regenerable via `bunx js-beautify` — see `project_yryvu.md`). Line numbers below are **pretty-fork offsets**.
 
-This audit unblocks **#135** (tab bar overhaul) — the chajá tab strip currently renders only `REPO`-type pills with a dead `+` button. GK ships a full tab subsystem: 6 tab types, 13 operation types, a queue-serialized dispatcher, persistence to profile, dropdown menu with closed-tabs stack, and 9 keybinds. This document tree maps every piece against bundle offsets so each sub-PR can port its slice 1:1.
+This audit unblocks **#135** (tab bar overhaul) — the yryvu tab strip currently renders only `REPO`-type pills with a dead `+` button. GK ships a full tab subsystem: 6 tab types, 13 operation types, a queue-serialized dispatcher, persistence to profile, dropdown menu with closed-tabs stack, and 9 keybinds. This document tree maps every piece against bundle offsets so each sub-PR can port its slice 1:1.
 
 ## Module boundary
 
@@ -31,7 +31,7 @@ Sequenced so each lands an end-to-end vertical slice without breaking the build:
 
 Sub-PRs 6 and 7 are independent of each other and can land in any order. Sub-PR 8 is **#39** — keep it as its own GitHub issue rather than folding it under #135.
 
-Out-of-scope: `CLI` tab type (chajá ships no terminal), `FOCUS_VIEW` (GK Launchpad is proprietary). Both surface in the bundle but stay unported. See `11-out-of-scope-proprietary.md`.
+Out-of-scope: `CLI` tab type (yryvu ships no terminal), `FOCUS_VIEW` (GK Launchpad is proprietary). Both surface in the bundle but stay unported. See `11-out-of-scope-proprietary.md`.
 
 ## File map
 
@@ -56,11 +56,11 @@ Every claim in these docs cites a `bundle:OFFSET` so it can be re-verified with 
 
 ## Port policy
 
-Per `feedback_copy_gk_code_adapted.md` (2026-04-30), porting code verbatim from the bundle and adapting it to the chajá stack is authorized. The expected pattern per sub-PR:
+Per `feedback_copy_gk_code_adapted.md` (2026-04-30), porting code verbatim from the bundle and adapting it to the yryvu stack is authorized. The expected pattern per sub-PR:
 
 1. Extract the relevant module from `/tmp/gk-bundle-pretty.js` (the offsets in these docs).
 2. Drop into a scratch `.ts` for reference.
 3. Re-implement in idiomatic Solid (signals instead of Redux sagas, `createSignal` / `createMemo` instead of selectors, `for await` instead of channel takes).
 4. Commit message references the bundle offset: `feat(tabs): port queue dispatcher (bundle @ 1795-2195)`.
 
-GK is AGPL-3.0; chajá is AGPL-3.0; the port is license-clean as long as we ship source.
+GK is AGPL-3.0; yryvu is AGPL-3.0; the port is license-clean as long as we ship source.

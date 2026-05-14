@@ -155,7 +155,7 @@ UncommittedFileList-UnstagedFilesTitleSummary       = "Unstaged Files ({0})"
 
 Each is a collapsible section with its own count badge in the header.
 
-## Chajá implications
+## Yryvu implications
 
 - **Use the `types` enum 1:1**. Don't add COPIED or TYPECHANGE as
   distinct values — they collapse into ADDED / MODIFIED per git's
@@ -169,7 +169,7 @@ Each is a collapsible section with its own count badge in the header.
 - **Sectioned file list** when conflicts present — four sections max
   (Conflicted / Resolved / Staged / Unstaged).
 - **No COPIED badge** — git's copy detection is opt-in (`--find-copies`
-  flag), and GitKraken leaves it off. Chajá follows suit unless the
+  flag), and GitKraken leaves it off. Yryvu follows suit unless the
   user explicitly enables it in preferences.
 
 ## Source locations

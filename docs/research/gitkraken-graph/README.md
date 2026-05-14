@@ -1,7 +1,7 @@
 # GitKraken commit graph — research notes
 
 Reverse-engineering notes on how GitKraken Desktop renders its commit graph,
-captured to inform Chajá's renderer design. **Not code** — algorithmic
+captured to inform Yryvu's renderer design. **Not code** — algorithmic
 pseudocode, concrete dimensions, and behavioral observations only.
 
 ## Licensing posture
@@ -11,14 +11,14 @@ and visual constants** observed by running their minified bundle through grep
 and deobfuscation. They do not include verbatim source code.
 
 - Algorithms / heuristics: not copyrightable in most jurisdictions. Fair game
-  to reimplement from scratch in Chajá.
+  to reimplement from scratch in Yryvu.
 - Concrete dimensions (pixel values, color hex codes): facts. Fair game.
 - Method names / property names: facts, used as grep anchors for reproduction.
 - Minified code fragments: not copied here. If you need to verify a claim,
   re-grep the bundle yourself (paths below).
 
 **Rule**: read these notes, then reimplement from scratch in your own style.
-Do not paste anything from the GitKraken bundle into Chajá source.
+Do not paste anything from the GitKraken bundle into Yryvu source.
 
 ## How this research was produced
 
@@ -63,7 +63,7 @@ Two research rounds: see file order below.
 | [23-command-palette.md](23-command-palette.md) | Domain-scoped fuzzy finder (no command runner), two-axis frecency, scoped hotkey registry | 4 |
 | [24-theme-system.md](24-theme-system.md) | Flat dictionary → CSS custom properties, live reload, profile-scoped, custom themes deprecated | 4 |
 
-## Chajá implementation status (2026-04-20)
+## Yryvu implementation status (2026-04-20)
 
 What we already match:
 - Topological sort (Kahn with committer_time desc) — equivalent behavior.

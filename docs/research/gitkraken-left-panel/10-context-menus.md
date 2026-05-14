@@ -166,7 +166,7 @@ These appear in the menus but require GK service:
 - `ContextMenu-CopyDeepLinkForBranch` / `…ForCommit` / `…ForTag` /
   `…ForRemote` / `…OnRemote` (and the `Failed` variants) — these
   generate `gitkraken://...` URIs that re-open in the desktop GK
-  client. **Skip.** chajá can implement its own `chaja://...` URI
+  client. **Skip.** yryvu can implement its own `yryvu://...` URI
   scheme later if the maintainers want.
 - `ContextMenu-OpenGijLinkFor*` — "GitKraken in JetBrains" — opens
   the commit / file diff inside JetBrains IDEs via the GK service.
@@ -178,7 +178,7 @@ These appear in the menus but require GK service:
 - `ContextMenu-GenerateCommit*` — AI commit message generation.
   **Skip.**
 
-## chajá implementation hint
+## yryvu implementation hint
 
 - One menu builder per row type, mirroring GK's
   `popup{Branch,Remote,Tag,Stash,Worktree,Submodule,PR,Issue}Menu`
@@ -193,4 +193,4 @@ These appear in the menus but require GK service:
   entry. The remaining menu is large enough.
 - Accelerator labels (e.g. `Ctrl+Shift+M` for merge) appear in GK
   on Win/Linux but not all entries have shortcuts. Document the
-  observed shortcuts in chajá's keybinding doc; don't invent new ones.
+  observed shortcuts in yryvu's keybinding doc; don't invent new ones.

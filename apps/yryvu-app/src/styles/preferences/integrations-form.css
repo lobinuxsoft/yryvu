@@ -1,0 +1,145 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Integrations connection form — right-hand pane content. Header,
+   PAT entry actions, the row card, and the trailing hint copy. */
+
+.integrations__pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.integrations-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 640px;
+}
+
+.integrations-form__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.integrations-form__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.integrations-form__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-0);
+}
+
+.integrations-form__subtitle {
+  font-size: 12px;
+  color: var(--fg-2);
+}
+
+.integrations-form__sep {
+  margin: 0 6px;
+  color: var(--fg-3);
+}
+
+.integrations-form__hostname {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-1);
+}
+
+.integrations-form__edit {
+  margin-left: 6px;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.integrations-form__edit:hover {
+  filter: brightness(1.15);
+}
+
+.integrations-form__pat-link {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.integrations-form__pat-link:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+.integrations-form__pat-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  text-decoration: none;
+}
+
+.pat-entry__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.pat-entry__generate-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg-0);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pat-entry__generate-link:hover {
+  background: var(--bg-3);
+}
+.pat-entry__generate-link code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg-1);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.integrations-form__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-md);
+}
+
+.integrations-form__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.integrations-form__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-2);
+  line-height: 1.5;
+}

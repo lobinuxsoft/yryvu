@@ -166,7 +166,7 @@ offset ~11020000.
 Merge commits and the WIP commit do **not** animate on creation.
 Only real content commits.
 
-## Chajá implications
+## Yryvu implications
 
 SolidJS port should implement overlays as a **composable list of
 optional render functions** rather than a monolithic `NodeIcon`
@@ -195,13 +195,13 @@ compositor maps over the list and filters nulls. Three wins:
 3. **Z-order** is literal array order, the most readable encoding.
 
 Accessibility concern GK doesn't handle: the PR-state color is the
-only cue for PR status on screen. Chajá should add `<title>`
+only cue for PR status on screen. Yryvu should add `<title>`
 children (SVG's tooltip mechanism) on every overlay so screen
 readers and keyboard hovers can discriminate "open PR" from
 "draft PR" without relying on 2 px of color.
 
 Performance note: the avatar cache is the single most expensive
-overlay. Chajá should key it on `email` (Gravatar) or
+overlay. Yryvu should key it on `email` (Gravatar) or
 `username@host` (GitHub/GitLab) rather than URL — URLs change when
 Gravatar rotates defaults, causing cache misses that hit the network
 on every repo reopen. 512 entries is reasonable; go higher only if

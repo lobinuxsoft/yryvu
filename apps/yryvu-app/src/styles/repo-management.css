@@ -1,0 +1,318 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ========================================================================
+   Repo Management permanent tab body — issue #209.
+
+   Three vertical zones: header (action buttons + filter), scrollable
+   list of repo rows, conditional footer (multi-select bulk actions).
+   ======================================================================== */
+
+.repo-management {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-0);
+  color: var(--fg-1);
+  overflow: hidden;
+}
+
+.repo-management__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+  flex-shrink: 0;
+}
+
+.repo-management__brand-mark {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  mask: url("../assets/silhouette.svg") no-repeat center / contain;
+  -webkit-mask: url("../assets/silhouette.svg") no-repeat center / contain;
+  flex-shrink: 0;
+}
+
+.repo-management__brand-text {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.repo-management__brand-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-0);
+  letter-spacing: 0.02em;
+}
+
+.repo-management__brand-section {
+  font-size: 12px;
+  color: var(--fg-2);
+}
+
+.repo-management__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bg-3);
+  background: var(--bg-1);
+  flex-shrink: 0;
+}
+
+.repo-management__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.repo-management__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-2);
+  color: var(--fg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.repo-management__btn:hover:not(:disabled) {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+
+.repo-management__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.repo-management__btn--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.repo-management__btn--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.repo-management__btn--danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--bg-0);
+}
+
+/* Hover-only × on each row for "remove from recents". Same opacity-
+   transition pattern as .tab__close so muscle memory carries between
+   the tab pills and the Repo Management list. */
+.repo-management__row-remove {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: var(--fg-3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 80ms ease;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.repo-management__row:hover .repo-management__row-remove {
+  opacity: 1;
+}
+
+.repo-management__row-remove:hover {
+  background: var(--bg-3);
+  color: var(--danger);
+}
+
+.repo-management__filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  color: var(--fg-3);
+}
+
+.repo-management__filter:focus-within {
+  border-color: var(--info);
+  background: var(--bg-0);
+}
+
+.repo-management__filter input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--fg-0);
+  font-size: 12px;
+  outline: none;
+  padding: 4px 0;
+}
+
+.repo-management__filter input::placeholder {
+  color: var(--fg-3);
+}
+
+.repo-management__refresh {
+  background: transparent;
+  border: 0;
+  color: var(--fg-3);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+}
+
+.repo-management__refresh:hover {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+
+.repo-management__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.repo-management__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+
+.repo-management__row:hover {
+  background: var(--bg-1);
+}
+
+.repo-management__row.is-selected {
+  background: var(--bg-2);
+  border-left-color: var(--info);
+}
+
+.repo-management__row.is-stale {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.repo-management__row-check {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.repo-management__row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.repo-management__row-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-management__row-path {
+  font-size: 11px;
+  color: var(--fg-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: "FiraCodeNF", monospace;
+}
+
+.repo-management__row-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--bg-2);
+  border-radius: 10px;
+  font-size: 11px;
+  color: var(--fg-2);
+  flex-shrink: 0;
+}
+
+.repo-management__row-dirty {
+  color: var(--warning);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.repo-management__row-error {
+  color: var(--danger);
+  font-size: 11px;
+  font-style: italic;
+  flex-shrink: 0;
+}
+
+.repo-management__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--fg-2);
+  padding: 48px 24px;
+}
+
+.repo-management__empty-mark {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 16px;
+  background: var(--fg-3);
+  mask: url("../assets/silhouette.svg") no-repeat center / contain;
+  -webkit-mask: url("../assets/silhouette.svg") no-repeat center / contain;
+  opacity: 0.4;
+}
+
+.repo-management__empty h2 {
+  color: var(--fg-0);
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.repo-management__empty p {
+  font-size: 13px;
+  margin: 0;
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+.repo-management__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-1);
+  border-top: 1px solid var(--bg-3);
+  flex-shrink: 0;
+}
+
+.repo-management__footer-count {
+  flex: 1;
+  font-size: 12px;
+  color: var(--fg-2);
+}

@@ -122,7 +122,7 @@ interface DiffEditorProps {
 has focus, the app's global command dispatcher is suspended so that
 Monaco's `Ctrl+F`, `Ctrl+G`, etc. take precedence. Redispatched on blur.
 
-## Chajá implications
+## Yryvu implications
 
 - **Ship Monaco as a separate chunk** from the main app bundle. For Tauri
   + Solid, this means either `monaco-editor/esm` with `vite-plugin-monaco`

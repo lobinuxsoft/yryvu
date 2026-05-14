@@ -132,7 +132,7 @@ If a pruned remote was the trunk candidate (unusual, but possible
 when `origin/HEAD` disappears), `computeTrunkSaga` re-runs and may
 fall back to the next candidate per doc 05's priority list.
 
-## Chajá implications
+## Yryvu implications
 
 For a Rust + Tauri + SolidJS client:
 
@@ -154,7 +154,7 @@ For a Rust + Tauri + SolidJS client:
   network filesystems.
 - **Prune visibility**: expose the pruned-refs diff as a toast
   notification — GK hides it silently, which is a UX bug that has
-  annoyed users. Chajá can do better here.
+  annoyed users. Yryvu can do better here.
 
 The single biggest risk is **watcher scope**: watching all of
 `.git/` on a 10 GB monorepo with a busy index triggers hundreds of

@@ -2,7 +2,7 @@
 
 This doc enumerates every Integrations-adjacent surface that
 requires the GitKraken backend service / hosted infrastructure to
-function. chajá explicitly does **not** implement these — but
+function. yryvu explicitly does **not** implement these — but
 contributors should understand *why* each one is skipped, not just
 that it is.
 
@@ -21,10 +21,10 @@ Without it, the OAuth flow can't complete because GK's published
 OAuth apps are registered with the proxy's redirect URLs, not
 local ones.
 
-**chajá equivalent:** chajá registers its **own** OAuth apps per
-provider (`chaja` on GitHub, `chaja-app` on GitLab, etc.) and
+**yryvu equivalent:** yryvu registers its **own** OAuth apps per
+provider (`yryvu` on GitHub, `yryvu-app` on GitLab, etc.) and
 runs raw OAuth + PKCE against each provider directly. See
-`03-oauth-flow.md`. Replace `authEndpointName` with chajá-side
+`03-oauth-flow.md`. Replace `authEndpointName` with yryvu-side
 client_id mappings.
 
 ## `gkProjects.apiProvider` / GK Workspaces / Launchpad
@@ -51,8 +51,8 @@ The `apiProvider` strings (`"github"`, `"github_enterprise"`,
 correlate desktop-stored credentials with hosted-aggregator
 records.
 
-**chajá equivalent:** none. chajá is single-repo. Drop `gkProjects`
-from chajá's mirror of the table.
+**yryvu equivalent:** none. yryvu is single-repo. Drop `gkProjects`
+from yryvu's mirror of the table.
 
 ## `requiresProToAuthenticate`
 
@@ -68,7 +68,7 @@ from chajá's mirror of the table.
 license server. Enterprise/self-hosted integrations are gated
 behind the paywall.
 
-**chajá equivalent:** **none.** chajá has no Pro tier — every
+**yryvu equivalent:** **none.** yryvu has no Pro tier — every
 provider is available to every user. Drop this field.
 
 ## `enabledInGitKrakenEnterprise`
@@ -81,7 +81,7 @@ variants, false for cloud variants.
 distributed/licensed binary. The flag is meaningless outside
 GK's licensing infrastructure.
 
-**chajá equivalent:** **none.** Drop the field.
+**yryvu equivalent:** **none.** Drop the field.
 
 ## `launchpadTabLabelTranslation`
 
@@ -100,7 +100,7 @@ launchpadTabLabelTranslation: {
 **Why it requires the GK service:** Launchpad / FocusView is the
 cross-repo aggregator UI, hosted by GK.
 
-**chajá equivalent:** **none.** Drop the field.
+**yryvu equivalent:** **none.** Drop the field.
 
 ## `refreshTokenRouteName`
 
@@ -113,9 +113,9 @@ route: `${getApiUrl}/oauth/${refreshTokenRouteName}/refresh`.
 **Why it requires the GK service:** same as `authEndpointName` —
 the proxy holds the client_secret needed for refresh.
 
-**chajá equivalent:** chajá hits providers' refresh endpoints
+**yryvu equivalent:** yryvu hits providers' refresh endpoints
 directly with PKCE-issued refresh tokens. Drop the field; replace
-with chajá-side refresh URL mapping in code.
+with yryvu-side refresh URL mapping in code.
 
 ## `google` and `sso` integration entries
 
@@ -139,9 +139,9 @@ top-bar "Sign in to GitKraken" menu, not as per-provider
 integrations.
 
 **Why they require the GK service:** they ARE login *to* GK. There
-is no GK account in chajá to sign into.
+is no GK account in yryvu to sign into.
 
-**chajá equivalent:** **none.** Drop both entries.
+**yryvu equivalent:** **none.** Drop both entries.
 
 ## SSO login deep-link (`bundle:138712`)
 
@@ -153,11 +153,11 @@ yield call(openExternal,
 GK's enterprise SSO flow — opens browser to the GK auth proxy
 which then federates to the user's company IDP.
 
-**chajá equivalent:** **none.** chajá has no GK account; SSO into
+**yryvu equivalent:** **none.** yryvu has no GK account; SSO into
 provider tokens (e.g. GitHub Enterprise behind Okta) is just
 GitHub Enterprise's own SSO flow which the user does in-browser
-when authorising chajá's OAuth app. No special handling needed in
-chajá's code.
+when authorising yryvu's OAuth app. No special handling needed in
+yryvu's code.
 
 ## GitKraken AI assist for integrations
 
@@ -170,7 +170,7 @@ but they consume integration tokens to fetch the context.
 holds the model API keys; even BYO-key flows route through GK
 code paths.
 
-**chajá equivalent:** **none in v1.** Per chajá's MVP scope (and
+**yryvu equivalent:** **none in v1.** Per yryvu's MVP scope (and
 matching the LeftPanel audit's same call): no AI features.
 
 ## `gkapi.gitkraken.com` / `gitkraken.dev` URLs
@@ -180,18 +180,18 @@ Search the bundle for any URL ending in `gitkraken.com` or
 `84877`, `228535` — all opens via `openExternal`). These are
 either:
 
-1. Help / documentation URLs (fine to mirror with chajá's docs
+1. Help / documentation URLs (fine to mirror with yryvu's docs
    site if it exists)
 2. GK service URLs (Cloud Patches, Workspaces, GitKraken account)
    — never mirror
 
-When in doubt, **don't link to a GK URL from chajá**. The chajá
-team can replace help links with chajá's own docs (or upstream
+When in doubt, **don't link to a GK URL from yryvu**. The yryvu
+team can replace help links with yryvu's own docs (or upstream
 provider docs).
 
-## What chajá's mirror of the integrations table SHOULD look like
+## What yryvu's mirror of the integrations table SHOULD look like
 
-After dropping all the proprietary fields, the chajá table is
+After dropping all the proprietary fields, the yryvu table is
 ~half the size:
 
 ```rust
@@ -206,7 +206,7 @@ struct IntegrationProvider {
     icon:               IconRef,
     pull_request:       Option<PullRequestSupport>,
     auth_type:          AuthType,            // OAUTH | PAT | USER_PASS
-    chaja_oauth:        Option<OAuthConfig>, // chajá's per-provider OAuth client config
+    yryvu_oauth:        Option<OAuthConfig>, // yryvu's per-provider OAuth client config
     generate_token_path:    Option<&'static str>,
     old_generate_token_path: Option<&'static str>,
     generate_token_params:   Option<&'static str>,
@@ -230,21 +230,21 @@ A maintainer reading the bundle will encounter these fields and
 strings in every per-provider record. Without this audit they
 might mistakenly mirror them, then waste days wiring up a
 "workspaces" surface or a "Pro tier paywall" that has no business
-existing in chajá.
+existing in yryvu.
 
-The chajá team should:
+The yryvu team should:
 
 1. **Recognise** these field names on sight when reading GK's code.
-2. **Have a one-line answer** for "why doesn't chajá have
+2. **Have a one-line answer** for "why doesn't yryvu have
    Workspaces / Cloud Patches / Launchpad?": those are GK-hosted
-   aggregators that require GK's backend; chajá is single-repo,
+   aggregators that require GK's backend; yryvu is single-repo,
    client-only.
 3. **Ship without them.** Don't be tempted by the `gkProjects`
-   field or the launchpad i18n keys — they're dead code in chajá's
+   field or the launchpad i18n keys — they're dead code in yryvu's
    universe.
 
-If chajá ever wants cross-repo PR triage, design it from scratch
+If yryvu ever wants cross-repo PR triage, design it from scratch
 as a local-only feature (e.g. "open these N repos as tabs, query
 each one's PRs in parallel, render a flat list in a new tab").
 Don't try to be a GK Workspaces clone; that needs infrastructure
-chajá doesn't have.
+yryvu doesn't have.

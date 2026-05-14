@@ -1,4 +1,4 @@
-# Contributing to Chajá
+# Contributing to Yryvu
 
 Thank you for your interest in contributing! This document outlines the development workflow, code standards, and dev environment setup.
 
@@ -15,8 +15,8 @@ Thank you for your interest in contributing! This document outlines the developm
 
 ## Stack
 
-- **Backend (`crates/chaja-bridge`, `crates/graph-core`)** — Rust 1.85+, gix + git2 hybrid backend, Tauri command surface.
-- **Frontend (`apps/chaja-app`)** — SolidJS + TypeScript + Vite + Tauri v2.
+- **Backend (`crates/yryvu-bridge`, `crates/graph-core`)** — Rust 1.85+, gix + git2 hybrid backend, Tauri command surface.
+- **Frontend (`apps/yryvu-app`)** — SolidJS + TypeScript + Vite + Tauri v2.
 - **Build system** — Cargo workspace + Bun for the frontend.
 
 ## Issue-First Development
@@ -101,7 +101,7 @@ gh pr create --base development --title "feat: add OAuth flow scaffold" --body "
 - **Comments**: English; default to writing none — explain *WHY* not *WHAT*.
 - **Files over 400 LOC** are flagged as monolithic in PR review. Split into focused submodules.
 - **Security**: never log secrets, tokens, or `.env*` content. Never commit credentials.
-- **Tests**: integration tests against a real test repo (`chaja-testbed`). Mocks discouraged for git ops.
+- **Tests**: integration tests against a real test repo (`yryvu-testbed`). Mocks discouraged for git ops.
 
 ## Dev Environment Setup
 
@@ -114,17 +114,17 @@ gh pr create --base development --title "feat: add OAuth flow scaffold" --body "
 ### First run
 
 ```bash
-git clone https://github.com/lobinuxsoft/chaja.git
-cd chaja
+git clone https://github.com/lobinuxsoft/yryvu.git
+cd yryvu
 
 # Install frontend deps
-cd apps/chaja-app && bun install && cd ../..
+cd apps/yryvu-app && bun install && cd ../..
 
 # Build the workspace once to populate the cache
 cargo build
 
 # Run dev (frontend hot-reload + Rust rebuild on change)
-cd apps/chaja-app && bun tauri dev
+cd apps/yryvu-app && bun tauri dev
 ```
 
 ### OAuth secrets (for testing the integrations panel)
@@ -137,7 +137,7 @@ CHAJA_GITHUB_OAUTH_CLIENT_ID=<your_github_oauth_app_client_id>
 CHAJA_GITHUB_OAUTH_CLIENT_SECRET=<your_github_oauth_app_client_secret>
 ```
 
-The `crates/chaja-bridge/build.rs` reads `.env.local` at build time and exposes the values to the binary via `option_env!`. Builds without `.env.local` work fine — the OAuth flow short-circuits with `OAuthNotConfigured` and the rest of the app is unaffected.
+The `crates/yryvu-bridge/build.rs` reads `.env.local` at build time and exposes the values to the binary via `option_env!`. Builds without `.env.local` work fine — the OAuth flow short-circuits with `OAuthNotConfigured` and the rest of the app is unaffected.
 
 ### Release builds (maintainer only)
 
@@ -159,7 +159,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 
 # Frontend type-check
-cd apps/chaja-app && bun run typecheck
+cd apps/yryvu-app && bun run typecheck
 ```
 
 ## Labels
@@ -175,8 +175,8 @@ When creating issues, use appropriate labels:
 
 ## Getting Help
 
-- **Questions**: Open a [Discussion](https://github.com/lobinuxsoft/chaja/discussions)
-- **Bugs**: Create an [Issue](https://github.com/lobinuxsoft/chaja/issues)
+- **Questions**: Open a [Discussion](https://github.com/lobinuxsoft/yryvu/discussions)
+- **Bugs**: Create an [Issue](https://github.com/lobinuxsoft/yryvu/issues)
 - **Security disclosures**: see [SECURITY.md](SECURITY.md)
 
 ## License

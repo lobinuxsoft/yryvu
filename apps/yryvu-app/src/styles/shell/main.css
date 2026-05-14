@@ -1,0 +1,28 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Main area (hosts CommitGraph or empty state). Owns the graph
+   column-width CSS vars; lane colors come from the active theme
+   (`--lane-0`..`--lane-9` defined per-theme in resources/themes/). */
+
+.main {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-0);
+}
+
+/* Column layout shared between the header row and the CommitGraph body
+   (kept in CSS vars so both stay in sync). Defaults are overridden inline
+   by CommitGraph on mount from `graphColumnWidths` (persisted user prefs). */
+.main {
+  --graph-col-branch: 130px;
+  --graph-col-graph: 200px;
+  --graph-col-gap: 8px;
+  --graph-col-padding: 12px;
+}
+
+.main__graph-host {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}

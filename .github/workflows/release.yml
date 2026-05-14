@@ -22,10 +22,10 @@ env:
   # Display + slug constants used by every step that names a binary,
   # bundle, AppDir entry, or icon. Bumped here once and the rest of
   # the workflow follows.
-  BIN_NAME: chaja-app
-  APP_DISPLAY_NAME: Chajá
+  BIN_NAME: yryvu-app
+  APP_DISPLAY_NAME: Yryvu
   APP_DESCRIPTION: Cross-platform Git client built with Rust + Tauri 2 + SolidJS
-  DESKTOP_ID: chaja
+  DESKTOP_ID: yryvu
 
 jobs:
   build:
@@ -77,20 +77,20 @@ jobs:
           bun-version: latest
 
       - name: Install frontend dependencies
-        working-directory: apps/chaja-app
+        working-directory: apps/yryvu-app
         run: bun install --frozen-lockfile
 
       - name: Install tauri-cli
         run: cargo install tauri-cli --version "^2" --locked
 
       # OAuth credentials are injected via GitHub Repo Secrets and read
-      # by `crates/chaja-bridge/build.rs`, which forwards them to the
+      # by `crates/yryvu-bridge/build.rs`, which forwards them to the
       # library via `cargo:rustc-env=`. When the secrets are unset
       # (e.g. forks running this workflow), `option_env!()` returns
       # `None` and the OAuth flow short-circuits — the build still
       # succeeds, the OAuth panel just shows `Not configured`.
       - name: Build Tauri bundles
-        working-directory: apps/chaja-app
+        working-directory: apps/yryvu-app
         env:
           CHAJA_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.CHAJA_GITHUB_OAUTH_CLIENT_ID }}
           CHAJA_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CHAJA_GITHUB_OAUTH_CLIENT_SECRET }}
@@ -142,20 +142,20 @@ jobs:
 
       - name: Prepare AppDir
         run: |
-          mkdir -p chaja.AppDir/usr/bin
-          cp "artifacts/binary/${BIN_NAME}" "chaja.AppDir/usr/bin/${BIN_NAME}"
-          chmod +x "chaja.AppDir/usr/bin/${BIN_NAME}"
+          mkdir -p yryvu.AppDir/usr/bin
+          cp "artifacts/binary/${BIN_NAME}" "yryvu.AppDir/usr/bin/${BIN_NAME}"
+          chmod +x "yryvu.AppDir/usr/bin/${BIN_NAME}"
 
-          # Tauri stores icons under apps/chaja-app/src-tauri/icons/.
+          # Tauri stores icons under apps/yryvu-app/src-tauri/icons/.
           # Use the 256-px PNG to preserve resolution; appimagetool
           # rescales to the embedded thumbnail size automatically.
-          ICON_SRC="apps/chaja-app/src-tauri/icons/128x128@2x.png"
+          ICON_SRC="apps/yryvu-app/src-tauri/icons/128x128@2x.png"
           if [ ! -f "$ICON_SRC" ]; then
-            ICON_SRC="apps/chaja-app/src-tauri/icons/icon.png"
+            ICON_SRC="apps/yryvu-app/src-tauri/icons/icon.png"
           fi
-          cp "$ICON_SRC" "chaja.AppDir/${DESKTOP_ID}.png"
+          cp "$ICON_SRC" "yryvu.AppDir/${DESKTOP_ID}.png"
 
-          cat > "chaja.AppDir/${DESKTOP_ID}.desktop" << DESKTOP_EOF
+          cat > "yryvu.AppDir/${DESKTOP_ID}.desktop" << DESKTOP_EOF
           [Desktop Entry]
           Name=${APP_DISPLAY_NAME}
           Comment=${APP_DESCRIPTION}
@@ -171,10 +171,10 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           # Bundle direct .so deps with linuxdeploy.
-          ./linuxdeploy --appdir chaja.AppDir \
-            --executable "chaja.AppDir/usr/bin/${BIN_NAME}" \
-            --desktop-file "chaja.AppDir/${DESKTOP_ID}.desktop" \
-            --icon-file "chaja.AppDir/${DESKTOP_ID}.png"
+          ./linuxdeploy --appdir yryvu.AppDir \
+            --executable "yryvu.AppDir/usr/bin/${BIN_NAME}" \
+            --desktop-file "yryvu.AppDir/${DESKTOP_ID}.desktop" \
+            --icon-file "yryvu.AppDir/${DESKTOP_ID}.png"
 
           # WebKit2GTK helpers (WebKitWebProcess, WebKitNetworkProcess,
           # injected-bundle) are dlopen'd from a path hardcoded inside
@@ -197,12 +197,12 @@ jobs:
             fi
           fi
 
-          WEBKIT_HARDCODED=$(strings "chaja.AppDir/usr/lib/libwebkit2gtk-4.1.so.0" 2>/dev/null | grep -m1 '/webkit2gtk-4.1$')
+          WEBKIT_HARDCODED=$(strings "yryvu.AppDir/usr/lib/libwebkit2gtk-4.1.so.0" 2>/dev/null | grep -m1 '/webkit2gtk-4.1$')
           if [ -n "$WEBKIT_DIR" ] && [ -n "$WEBKIT_HARDCODED" ]; then
             WEBKIT_RELATIVE="././${WEBKIT_HARDCODED#/usr}"
             echo "Patching WebKit path: $WEBKIT_HARDCODED -> $WEBKIT_RELATIVE"
-            LC_ALL=C sed -i "s|$WEBKIT_HARDCODED|$WEBKIT_RELATIVE|g" "chaja.AppDir/usr/lib/libwebkit2gtk-4.1.so.0"
-            HELPERS_DEST="chaja.AppDir${WEBKIT_HARDCODED#/usr}"
+            LC_ALL=C sed -i "s|$WEBKIT_HARDCODED|$WEBKIT_RELATIVE|g" "yryvu.AppDir/usr/lib/libwebkit2gtk-4.1.so.0"
+            HELPERS_DEST="yryvu.AppDir${WEBKIT_HARDCODED#/usr}"
             mkdir -p "$HELPERS_DEST"
             cp "$WEBKIT_DIR/WebKitWebProcess" "$HELPERS_DEST/"
             cp "$WEBKIT_DIR/WebKitNetworkProcess" "$HELPERS_DEST/"
@@ -213,29 +213,29 @@ jobs:
             echo "::warning::WebKit helpers or library not found"
           fi
 
-          # GLib compiled schemas (settings backend chajá leans on
+          # GLib compiled schemas (settings backend yryvu leans on
           # transitively via tauri-plugin-dialog).
           if [ -f "/usr/share/glib-2.0/schemas/gschemas.compiled" ]; then
-            mkdir -p chaja.AppDir/usr/share/glib-2.0/schemas
-            cp /usr/share/glib-2.0/schemas/gschemas.compiled chaja.AppDir/usr/share/glib-2.0/schemas/
+            mkdir -p yryvu.AppDir/usr/share/glib-2.0/schemas
+            cp /usr/share/glib-2.0/schemas/gschemas.compiled yryvu.AppDir/usr/share/glib-2.0/schemas/
           fi
 
           # GIO modules (TLS support) — required for HTTPS in
           # webkit-network-process.
           GIO_DIR=$(pkg-config --variable=giomoduledir gio-2.0 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/gio/modules")
           if [ -d "$GIO_DIR" ]; then
-            mkdir -p chaja.AppDir/usr/lib/gio/modules
-            cp "$GIO_DIR"/*.so chaja.AppDir/usr/lib/gio/modules/
+            mkdir -p yryvu.AppDir/usr/lib/gio/modules
+            cp "$GIO_DIR"/*.so yryvu.AppDir/usr/lib/gio/modules/
           fi
 
           # GDK pixbuf loaders (image format decoders).
           PIXBUF_DIR="/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0"
           if compgen -G "$PIXBUF_DIR/loaders/*.so" > /dev/null 2>&1; then
-            mkdir -p chaja.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders
-            cp "$PIXBUF_DIR/loaders"/*.so chaja.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders/
+            mkdir -p yryvu.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders
+            cp "$PIXBUF_DIR/loaders"/*.so yryvu.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders/
             if command -v gdk-pixbuf-query-loaders &>/dev/null; then
-              GDK_PIXBUF_MODULEDIR="chaja.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders" \
-                gdk-pixbuf-query-loaders > "chaja.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+              GDK_PIXBUF_MODULEDIR="yryvu.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders" \
+                gdk-pixbuf-query-loaders > "yryvu.AppDir/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
             fi
           fi
 
@@ -259,11 +259,11 @@ jobs:
               opus vorbis ogg audioconvert audioresample videoconvertscale
               autodetect volume opengl gio
             )
-            mkdir -p chaja.AppDir/usr/lib/gstreamer-1.0
+            mkdir -p yryvu.AppDir/usr/lib/gstreamer-1.0
             for plugin in "${GST_PLUGINS[@]}"; do
               FOUND=$(compgen -G "$GST_PLUGIN_DIR/libgst${plugin}.*" 2>/dev/null | head -1)
               if [ -n "$FOUND" ]; then
-                cp "$FOUND" chaja.AppDir/usr/lib/gstreamer-1.0/
+                cp "$FOUND" yryvu.AppDir/usr/lib/gstreamer-1.0/
               else
                 echo "::warning::GStreamer plugin not found: $plugin"
               fi
@@ -280,8 +280,8 @@ jobs:
               GST_SCANNER=$(find /usr -name "gst-plugin-scanner" -path "*/gstreamer-1.0/*" 2>/dev/null | head -1)
             fi
             if [ -n "$GST_SCANNER" ]; then
-              mkdir -p chaja.AppDir/usr/libexec/gstreamer-1.0
-              cp "$GST_SCANNER" chaja.AppDir/usr/libexec/gstreamer-1.0/
+              mkdir -p yryvu.AppDir/usr/libexec/gstreamer-1.0
+              cp "$GST_SCANNER" yryvu.AppDir/usr/libexec/gstreamer-1.0/
             else
               echo "::warning::GStreamer plugin scanner not found"
             fi
@@ -294,8 +294,8 @@ jobs:
           # linuxdeploy left an AppRun symlink to the binary in place;
           # remove it so we can write our own wrapper without losing
           # the binary.
-          rm -f chaja.AppDir/AppRun
-          cat > chaja.AppDir/AppRun << APPRUN_EOF
+          rm -f yryvu.AppDir/AppRun
+          cat > yryvu.AppDir/AppRun << APPRUN_EOF
           #!/bin/bash
           SELF=\$(readlink -f "\$0")
           HERE=\${SELF%/*}
@@ -321,7 +321,7 @@ jobs:
           export PATH="\${HERE}/usr/bin:\${PATH}"
           exec "\${HERE}/usr/bin/${BIN_NAME}" "\$@"
           APPRUN_EOF
-          chmod +x chaja.AppDir/AppRun
+          chmod +x yryvu.AppDir/AppRun
 
       - name: Build AppImage
         env:
@@ -330,15 +330,15 @@ jobs:
           # Read the version straight from the manifest. Stops a stale
           # constant in this workflow drifting from the truth.
           VERSION=$(jq -r '."."' .release-please-manifest.json)
-          OUTPUT="Chaja_${VERSION}_amd64.AppImage"
-          ARCH=x86_64 ./appimagetool chaja.AppDir "$OUTPUT"
+          OUTPUT="Yryvu_${VERSION}_amd64.AppImage"
+          ARCH=x86_64 ./appimagetool yryvu.AppDir "$OUTPUT"
           ls -la "$OUTPUT"
 
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
           name: bundles-appimage
-          path: Chaja_*_amd64.AppImage
+          path: Yryvu_*_amd64.AppImage
           if-no-files-found: error
 
   upload-assets:
@@ -383,11 +383,11 @@ jobs:
 
             | File | Description |
             |------|-------------|
-            | `*.deb` | Debian / Ubuntu (`sudo apt install ./chaja-app_*.deb`). NOTE: Fedora atomic distros (Bazzite, Silverblue) cannot install this — use the AppImage. |
-            | `Chaja_*_amd64.AppImage` | Portable Linux binary with bundled WebKit/GStreamer/pixbuf — works across distros without manual env-var overrides (`chmod +x` then run). |
+            | `*.deb` | Debian / Ubuntu (`sudo apt install ./yryvu-app_*.deb`). NOTE: Fedora atomic distros (Bazzite, Silverblue) cannot install this — use the AppImage. |
+            | `Yryvu_*_amd64.AppImage` | Portable Linux binary with bundled WebKit/GStreamer/pixbuf — works across distros without manual env-var overrides (`chmod +x` then run). |
             | `*.msi` | Windows installer (unsigned — SmartScreen will warn). |
             | `checksums-sha256.txt` | SHA-256 checksums for all files. |
 
-            > **Note:** unsigned alpha builds. Windows SmartScreen and macOS Gatekeeper will warn — this is normal until code signing lands. See [SECURITY.md](https://github.com/lobinuxsoft/chaja/blob/main/SECURITY.md) for the disclosure path if you suspect a tampered binary.
+            > **Note:** unsigned alpha builds. Windows SmartScreen and macOS Gatekeeper will warn — this is normal until code signing lands. See [SECURITY.md](https://github.com/lobinuxsoft/yryvu/blob/main/SECURITY.md) for the disclosure path if you suspect a tampered binary.
           files: artifacts/*
           generate_release_notes: false

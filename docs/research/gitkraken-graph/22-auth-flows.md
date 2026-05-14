@@ -129,7 +129,7 @@ callback credentialCb(url, usernameHint, allowedTypes):
     return creds
 ```
 
-## Chajá implications
+## Yryvu implications
 
 - **Split credential storage into transport vs integration buckets**
   from the start — mixing them makes PAT invalidation a nightmare.

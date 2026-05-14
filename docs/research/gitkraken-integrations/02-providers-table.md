@@ -28,12 +28,12 @@ fields recur across providers:
 | `generateTokenPath` | relative path on provider host to the PAT-creation page (deep-linked from Connect dialog) |
 | `oldGenerateTokenPath` | older path, used as fallback for older self-hosted versions |
 | `generateTokenParams` | querystring appended to the PAT URL (`scopes=repo,admin:org,…`) |
-| `requiresProToAuthenticate` | **GK paywall flag — chajá ignores** |
-| `enabledInGitKrakenEnterprise` | **GK on-prem distribution — chajá ignores** |
+| `requiresProToAuthenticate` | **GK paywall flag — yryvu ignores** |
+| `enabledInGitKrakenEnterprise` | **GK on-prem distribution — yryvu ignores** |
 | `minimumSupportedVersion` | for self-hosted entries, lowest API version GK guarantees |
 | `isSelfHosted` | distinguishes `.com` vs on-prem variants |
 | `alternateHostnamesForUrls` | URL detection — Azure has `["vs-ssh.visualstudio.com", "ssh.dev.azure.com", "dev.azure.com"]` (`bundle:166806`) |
-| `gkProjects.apiProvider` | **GK Workspaces / Launchpad — chajá ignores** |
+| `gkProjects.apiProvider` | **GK Workspaces / Launchpad — yryvu ignores** |
 | `issuesAreTiedToOneRepo` | true for GitHub/GitLab; false for Jira/Trello/AzureBoards |
 | `allowEmptyIssueFilterText` | whether the filter editor accepts an empty query DSL |
 | `replaceAvatarsWithDefaultIcons` | flag for providers without avatar APIs |
@@ -77,7 +77,7 @@ generateTokenPath:       "/settings/tokens/new"
 generateTokenParams:     "scopes=repo,admin:org,admin:public_key,workflow&description=GitKraken"
 roles:                   [HOSTING_SERVICE, issueTracker]    (no login role)
 minimumSupportedVersion: "2.20.0"
-requiresProToAuthenticate: true       ← GK paywall, chajá ignores
+requiresProToAuthenticate: true       ← GK paywall, yryvu ignores
 pullRequest.supportsDrafts: false
 pullRequestViewSupported: false       ← no in-app review for GH Enterprise
 gkProjects.apiProvider:  "github_enterprise"
@@ -117,7 +117,7 @@ authType:                PAT
 generateTokenPath:       "/-/user_settings/personal_access_tokens"
 oldGenerateTokenPath:    "/-/profile/personal_access_tokens"
 minimumSupportedVersion: "13.4.0"
-requiresProToAuthenticate: true        ← GK paywall, chajá ignores
+requiresProToAuthenticate: true        ← GK paywall, yryvu ignores
 roles:                   [HOSTING_SERVICE, issueTracker]
 gkProjects.apiProvider:  "gitlab_self_hosted"
 ```
@@ -267,7 +267,7 @@ is added via `addTrelloAppKeyAndToken` (`bundle:146644`,
 roles: [gn]    ← login only
 ```
 
-**Out of scope for chajá.** These represent the GK-account login
+**Out of scope for yryvu.** These represent the GK-account login
 options shown on the Sign In screen, not per-provider integrations.
 
 ## Cross-provider feature matrix
@@ -284,13 +284,13 @@ Distilled from the `pullRequest` sub-objects:
 | bitbucketServer   | no  | no  | no  | n/a | no  |
 | azureDevops       | no  | yes | yes | n/a | yes |
 
-Use this table when chajá's PR-create UI decides which form fields
+Use this table when yryvu's PR-create UI decides which form fields
 to render. Don't toggle visibility based on `provider === "github"`
 — read the field, mirror GK's data-driven approach.
 
-## chajá deviation: drop GK-only fields
+## yryvu deviation: drop GK-only fields
 
-The following fields exist in GK's table but chajá MUST NOT mirror:
+The following fields exist in GK's table but yryvu MUST NOT mirror:
 
 - `requiresProToAuthenticate`
 - `enabledInGitKrakenEnterprise`
@@ -298,12 +298,12 @@ The following fields exist in GK's table but chajá MUST NOT mirror:
 - `launchpadTabLabelTranslation`
 - `refreshTokenRouteName` (only meaningful with the GK auth proxy)
 - `authEndpointName` (only meaningful with the GK auth proxy —
-  chajá's OAuth talks directly to provider endpoints)
+  yryvu's OAuth talks directly to provider endpoints)
 
-Replace `authEndpointName` with `chajaOauthClientId` per provider
-(chajá's own registered OAuth app per provider). See `03-oauth-flow.md`.
+Replace `authEndpointName` with `yryvuOauthClientId` per provider
+(yryvu's own registered OAuth app per provider). See `03-oauth-flow.md`.
 
-## chajá note: keep the table data-driven
+## yryvu note: keep the table data-driven
 
 The single biggest architectural win in GK's design is that
 *everything downstream of Integrations is keyed by `integrationType`*
@@ -312,7 +312,7 @@ character glyphs, supported features, etc. Don't fork into per-provider
 hardcoded UI components; build one rendering pass that reads the
 table.
 
-## Auth modes — provider reality vs GK enum vs chajá v1
+## Auth modes — provider reality vs GK enum vs yryvu v1
 
 GK collapses every auth combination into 3 enums (`bundle:201657`):
 
@@ -335,15 +335,15 @@ bundle):
 | Azure DevOps | ✅ Entra ID | ✅ | ❌ | |
 | Jira Cloud | ✅ | ✅ API Token | ❌ | |
 | Jira Server / Data Center | ❌ | ✅ | ⚠️ legacy | self-hosted only |
-| Trello | ❌ | custom app-key+token | ❌ | not OAuth2 — chajá skips v1 |
+| Trello | ❌ | custom app-key+token | ❌ | not OAuth2 — yryvu skips v1 |
 
 **SSH is not in this table** — SSH is a git transport for push/fetch,
-not an API auth mode. chajá already handles SSH via
+not an API auth mode. yryvu already handles SSH via
 `build_credentials_callbacks` (SSH agent → credential helper →
 default) for git ops. Provider integrations live entirely on top of
 HTTPS APIs; the SSH layer is orthogonal.
 
-### chajá v1 decision: OAuth primary + PAT fallback. Skip user+pass.
+### yryvu v1 decision: OAuth primary + PAT fallback. Skip user+pass.
 
 - **Primary path**: OAuth (PKCE direct to provider, no GK auth proxy).
 - **Fallback path**: PAT — universal, every provider that matters
@@ -351,10 +351,10 @@ HTTPS APIs; the SSH layer is orthogonal.
 - **Drop entirely**: `USERNAME_AND_PASSWORD` mode. Only Jira Server /
   Data Center on-prem still accepts it, and even there PAT is the
   recommended replacement. The two `⚠️ legacy` entries above are
-  niche enough that chajá v1 punts; reintroduce only if a real user
+  niche enough that yryvu v1 punts; reintroduce only if a real user
   asks.
 
-Effect on the data-driven rendering: chajá's local copy of the
+Effect on the data-driven rendering: yryvu's local copy of the
 provider table replaces GK's `authType: "USERNAME_AND_PASSWORD"`
 entries with `authType: "PAT"`. The `04-pat-fallback.md` PAT-entry
 flow then covers them transparently.

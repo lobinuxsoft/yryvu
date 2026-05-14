@@ -1,0 +1,109 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Theme-independent tokens + a-yryvu fallback colors.
+ *
+ * The active theme overrides via `:root[data-theme="<id>"]` selectors
+ * injected at startup by the theme system (#292). The `:root` rule
+ * below ships the a-yryvu tokens as the baseline so the first paint
+ * renders on a sane stack before injection completes — and so the
+ * self-healing fallback chain in commit 4 has something to fall back
+ * to if every theme fails to load.
+ *
+ * Chrome shim tokens (`--border`, `--font-sans`, `--selected-row`)
+ * derive from theme color tokens so a single theme switch propagates
+ * to every chrome rule without each rule needing to know the theme
+ * model.
+ */
+
+:root {
+  /* Layers — deep matte black to violet-tinged elevation (a-yryvu) */
+  --bg-0: #050708;
+  --bg-1: #0d101b;
+  --bg-2: #131626;
+  --bg-3: #1a2038;
+  --bg-4: #232a52;
+  --accent: #5b64b8;
+  --accent-hover: #7286c3;
+  --accent-fg: #f5f8ff;
+
+  /* Foreground — pale cyan ladder */
+  --fg-0: #caedf2;
+  --fg-1: #a9d4f2;
+  --fg-2: #7a8cb6;
+  --fg-3: #4b5c94;
+
+  /* Status — wine warm + cool complements */
+  --success: #6ab5a0;
+  --warning: #c4a872;
+  --danger: #c66594;
+  --info: #7f9dd8;
+
+  /* Lane palette — themes override per-id; chrome reads `--lane-N` via
+     `laneColor()` in components/CommitGraph/RowRenderer/geometry.ts */
+  --lane-0: #5b64b8;
+  --lane-1: #7286c3;
+  --lane-2: #94aee0;
+  --lane-3: #c66594;
+  --lane-4: #ab5a8a;
+  --lane-5: #6ab5a0;
+  --lane-6: #c4a872;
+  --lane-7: #8b7ab5;
+  --lane-8: #d4a4b8;
+  --lane-9: #4b86c2;
+
+  color-scheme: dark;
+
+  /* Geometry */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+
+  --panel-width-left: 240px;
+  --panel-width-right: 340px;
+  --panel-width-left-collapsed: 44px;
+  --toolbar-height: 56px;
+  --tabs-height: 36px;
+  --statusbar-height: 28px;
+
+  /* Default graph-column widths — overridden inline by CommitGraph on
+     mount from the persisted `graphColumns`. */
+  --graph-col-message: 300px;
+  --graph-col-author: 130px;
+  --graph-col-date-time: 130px;
+  --graph-col-sha: 130px;
+
+  /* Typography */
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'FiraCode Nerd Font Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: var(--font-ui);
+
+  /* Chrome shim — derives from theme color tokens so a theme switch
+     propagates to all consumers (border outlines, selection highlights). */
+  --border: var(--bg-3);
+  --selected-row: color-mix(in srgb, var(--accent) 18%, transparent);
+
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--fg-0);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}

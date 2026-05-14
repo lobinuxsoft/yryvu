@@ -103,7 +103,7 @@ Two separate sagas:
 - `saveGraphZoneSize(zone, repoPath, width)` → wraps in a
   `REPO_SETTINGS` lock and calls `setRepoSetting(widthRepoSettingPath, ...)`.
 
-## Chajá implications
+## Yryvu implications
 
 - Two separate stores from day one: **profile-level order/mode, repo-level
   width**. Don't conflate them.

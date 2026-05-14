@@ -1,0 +1,9 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* GPG signing preferences panel — reuses `.tools-panel__*` for the
+   key-id input and `.notifications-panel__*` for toggle rows; only
+   needs the sub-heading spacing. */
+
+.gpg-panel__sub-heading {
+  margin-top: 24px;
+}

@@ -128,6 +128,57 @@ export function integrationPreflight(
 }
 
 /**
+ * Resolved pull-request state — `merged` is inferred when GitHub
+ * returns `state: "closed"` plus a non-null `merged_at`.
+ */
+export type PullRequestState = "open" | "closed" | "merged";
+
+/**
+ * Flat row payload returned by `integration_list_prs`. Walking-skeleton
+ * scope for #15 — title + number + author + state badge + relative
+ * opened/updated time. Labels chips, reviewers, CI / review status,
+ * and merge form land in wave 2.
+ */
+export interface PullRequestSummary {
+  number: number;
+  title: string;
+  state: PullRequestState;
+  draft: boolean;
+  author: UserInfo;
+  createdAt: string;
+  updatedAt: string;
+  htmlUrl: string;
+  baseRef: string;
+  headRef: string;
+}
+
+/**
+ * List pull requests for `owner/repo` on the named provider. The
+ * backend pulls the token + hostname from the keyring + sidecar — the
+ * frontend never holds credentials.
+ *
+ * Errors propagate as backend strings; the caller matches on
+ * substrings to surface toasts:
+ * - `"is not connected"` — integration was never configured / was
+ *   disconnected. The UI should fall back to the inline-connect CTA.
+ * - `"token rejected by provider"` — token revoked since last preflight.
+ * - `"rate-limited"` — back off until reset.
+ * - `"not found or token cannot see it"` — owner/repo wrong or the
+ *   token lacks the `repo` scope for that repository.
+ */
+export function integrationListPrs(
+  integrationType: string,
+  owner: string,
+  repo: string,
+): Promise<PullRequestSummary[]> {
+  return invoke<PullRequestSummary[]>("integration_list_prs", {
+    integrationType,
+    owner,
+    repo,
+  });
+}
+
+/**
  * Result of `oauth_begin` — the URL to open in the user's browser plus
  * an opaque session id that `oauth_await` / `oauth_cancel` need.
  */

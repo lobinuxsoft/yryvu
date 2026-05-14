@@ -14,6 +14,7 @@
 mod github;
 mod types;
 
+pub use github::{PullRequestState, PullRequestSummary};
 pub use types::UserInfo;
 
 use crate::backend::BackendError;
@@ -36,6 +37,30 @@ pub async fn preflight(
             "bitbucket" | "bitbucketServer" => "Bitbucket preflight (lands in its own PR)",
             "azureDevops" => "Azure DevOps preflight (lands in its own PR)",
             "jiraCloud" | "jiraServer" => "Jira preflight (lands in its own PR)",
+            "trello" => "Trello not in yryvu v1 scope",
+            _ => "unknown integration type",
+        })),
+    }
+}
+
+/// Dispatcher: list pull requests for `owner/repo` via the matching
+/// provider's client. Mirrors [`preflight`] dispatch shape so the
+/// command layer stays uniform across surfaces.
+pub async fn list_prs(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+) -> Result<Vec<PullRequestSummary>, BackendError> {
+    match integration_type {
+        "github" => github::list_prs(token, None, owner, repo).await,
+        "githubEnterprise" => github::list_prs(token, hostname, owner, repo).await,
+        other => Err(BackendError::NotImplemented(match other {
+            "gitlab" | "gitlabSelfHosted" => "GitLab PR list (lands in its own PR)",
+            "bitbucket" | "bitbucketServer" => "Bitbucket PR list (lands in its own PR)",
+            "azureDevops" => "Azure DevOps PR list (lands in its own PR)",
+            "jiraCloud" | "jiraServer" => "Jira has no PR concept — issue tracker instead",
             "trello" => "Trello not in yryvu v1 scope",
             _ => "unknown integration type",
         })),

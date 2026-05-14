@@ -43,3 +43,35 @@
   color: var(--fg-3);
   font-family: "FiraCodeNF", monospace;
 }
+
+/* Pull-request row avatar — small circular thumbnail at the row's
+   leading edge. Falls back gracefully when the provider's avatar URL
+   fails to load (the broken-image glyph stays inside the round mask). */
+.sidebar__row-avatar {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-3);
+}
+
+/* State badge for pull-request rows. `data-state` matches the
+   discriminated union from the backend so colours stay in lockstep
+   with the surface label. */
+.sidebar__row-badge--pr-state[data-state="open"] {
+  background: var(--success);
+  color: var(--bg-0);
+}
+.sidebar__row-badge--pr-state[data-state="merged"] {
+  background: var(--info);
+  color: var(--bg-0);
+}
+.sidebar__row-badge--pr-state[data-state="closed"] {
+  background: var(--danger);
+  color: var(--bg-0);
+}
+.sidebar__row-badge--pr-state[data-state="draft"] {
+  background: var(--bg-3);
+  color: var(--fg-2);
+}

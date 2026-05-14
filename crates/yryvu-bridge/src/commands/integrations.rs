@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
-use crate::integrations::{self, oauth, AuthData, UserInfo};
+use crate::integrations::{self, oauth, AuthData, PullRequestSummary, UserInfo};
 
 /// Resolve the sidecar JSON path under the app's local data dir. Same
 /// shape as the preferences sidecar — kept separate because they have
@@ -120,6 +120,38 @@ pub async fn integration_preflight(
     integrations::preflight(&integration_type, &token, hostname.as_deref())
         .await
         .map_err(|e| e.to_string())
+}
+
+/// List pull requests for `owner/repo` on the provider named by
+/// `integration_type`. Walking-skeleton scope for #15 — REST only,
+/// no filters / sort / GraphQL enrichment. The token + hostname are
+/// pulled from the keyring + sidecar so the frontend never holds
+/// credentials.
+#[tauri::command]
+pub async fn integration_list_prs(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+) -> Result<Vec<PullRequestSummary>, String> {
+    let path = sidecar_path(&app)?;
+    let auth = tauri::async_runtime::spawn_blocking({
+        let integration_type = integration_type.clone();
+        move || integrations::get_integration(&path as &Path, &integration_type)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("integration '{integration_type}' is not connected"))?;
+    integrations::list_prs(
+        &integration_type,
+        &auth.token,
+        auth.hostname.as_deref(),
+        &owner,
+        &repo,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// Returned by [`oauth_begin`]. The frontend opens `authorize_url` in

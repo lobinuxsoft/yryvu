@@ -152,11 +152,7 @@ mod tests {
     fn tokenise_mixed_kv_and_freeform() {
         assert_eq!(
             tokenise("bug author:foo state:open"),
-            vec![
-                free("bug"),
-                kv("author", "foo"),
-                kv("state", "open"),
-            ]
+            vec![free("bug"), kv("author", "foo"), kv("state", "open"),]
         );
     }
 

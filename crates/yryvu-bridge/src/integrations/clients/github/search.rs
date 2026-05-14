@@ -106,10 +106,7 @@ pub async fn search_prs(
             });
         }
     }
-    let nodes = body
-        .data
-        .map(|d| d.search.nodes)
-        .unwrap_or_default();
+    let nodes = body.data.map(|d| d.search.nodes).unwrap_or_default();
     Ok(nodes.into_iter().filter_map(project_node).collect())
 }
 

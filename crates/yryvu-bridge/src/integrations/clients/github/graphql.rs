@@ -16,8 +16,8 @@ use serde_json::json;
 
 use crate::backend::BackendError;
 
-use super::{api_base, USER_AGENT};
 use super::prs::{CiStatus, PullRequestSummary, ReviewDecision};
+use super::{api_base, USER_AGENT};
 
 /// Fold review decision + CI rollup state onto each summary in
 /// `prs`. No-op when the list is empty. Errors propagate as

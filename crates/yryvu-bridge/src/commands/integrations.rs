@@ -122,11 +122,6 @@ pub async fn integration_preflight(
         .map_err(|e| e.to_string())
 }
 
-/// List pull requests for `owner/repo` on the provider named by
-/// `integration_type`. Walking-skeleton scope for #15 — REST only,
-/// no filters / sort / GraphQL enrichment. The token + hostname are
-/// pulled from the keyring + sidecar so the frontend never holds
-/// credentials.
 /// List pull requests for `owner/repo` on the named provider.
 ///
 /// Two dispatch paths:
@@ -182,15 +177,10 @@ pub async fn integration_list_prs(
                 .map_err(|e| e.to_string())
         } else {
             // List path — REST `/pulls` + soft-fail GraphQL enrich.
-            let mut prs = integrations::list_prs(
-                &integration_type,
-                &auth.token,
-                hostname,
-                &owner,
-                &repo,
-            )
-            .await
-            .map_err(|e| e.to_string())?;
+            let mut prs =
+                integrations::list_prs(&integration_type, &auth.token, hostname, &owner, &repo)
+                    .await
+                    .map_err(|e| e.to_string())?;
             if let Err(err) =
                 integrations::enrich_github_prs(&auth.token, hostname, &owner, &repo, &mut prs)
                     .await
@@ -202,15 +192,9 @@ pub async fn integration_list_prs(
     } else {
         // Non-GitHub providers: REST only, no enrichment, no search
         // until per-provider clients land (#16 / #17).
-        integrations::list_prs(
-            &integration_type,
-            &auth.token,
-            hostname,
-            &owner,
-            &repo,
-        )
-        .await
-        .map_err(|e| e.to_string())
+        integrations::list_prs(&integration_type, &auth.token, hostname, &owner, &repo)
+            .await
+            .map_err(|e| e.to_string())
     }
 }
 

@@ -19,8 +19,8 @@ import { repoPath } from "./repo-base";
  * - `ready` — happy path, render the list (may still be empty).
  * - `no-repo` — no repo is open.
  * - `unsupported-provider` — repo is on a provider we don't yet
- *   support a panel for (Bitbucket / Gitea / etc). GitHub (#15/#360)
- *   and GitLab (#16) are supported; Gitea arrives in #17.
+ *   support a panel for (Bitbucket / Azure / etc). GitHub (#15/#360),
+ *   GitLab (#16) and Gitea / Forgejo (#17) are supported.
  * - `bare-or-unparseable` — bare repo, zero-remote, or origin URL
  *   that doesn't split into `(owner, repo)`.
  * - `not-connected` — supported provider but the integration isn't
@@ -36,8 +36,8 @@ export type PullRequestsResult =
   | { kind: "error"; detail: string };
 
 /// Hosting services with a PR/MR list-panel backend implemented.
-/// Extend when new per-provider clients land (#17 Gitea etc).
-const SUPPORTED_SERVICES: ReadonlyArray<HostingService> = ["github", "gitlab"];
+/// Extend when new per-provider clients land.
+const SUPPORTED_SERVICES: ReadonlyArray<HostingService> = ["github", "gitlab", "gitea"];
 
 /// Map a yryvu HostingService to the keyring integration_type used by
 /// the connected-state check. For github/gitlab the names happen to

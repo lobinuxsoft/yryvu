@@ -158,12 +158,15 @@ pub async fn integration_list_prs(
 
     let is_github = integration_type == "github" || integration_type == "githubEnterprise";
     let is_gitlab = integration_type == "gitlab" || integration_type == "gitlabSelfHosted";
-    let hostname =
-        if integration_type == "githubEnterprise" || integration_type == "gitlabSelfHosted" {
-            auth.hostname.as_deref()
-        } else {
-            None
-        };
+    let is_gitea = integration_type == "gitea" || integration_type == "giteaSelfHosted";
+    let hostname = if integration_type == "githubEnterprise"
+        || integration_type == "gitlabSelfHosted"
+        || integration_type == "giteaSelfHosted"
+    {
+        auth.hostname.as_deref()
+    } else {
+        None
+    };
     // Treat blank / whitespace-only DSL as "no filter".
     let dsl = filter_dsl
         .as_deref()
@@ -203,9 +206,22 @@ pub async fn integration_list_prs(
                 .await
                 .map_err(|e| e.to_string())
         }
+    } else if is_gitea {
+        // Gitea has no GraphQL — review/CI status stay None in wave 1.
+        // Search and list both go through the REST `/pulls` endpoint;
+        // the search variant just adds extra query params.
+        if let Some(dsl) = dsl {
+            integrations::search_gitea_prs(&auth.token, hostname, &owner, &repo, dsl)
+                .await
+                .map_err(|e| e.to_string())
+        } else {
+            integrations::list_gitea_prs(&auth.token, hostname, &owner, &repo)
+                .await
+                .map_err(|e| e.to_string())
+        }
     } else {
         // Other providers: dispatcher returns NotImplemented until
-        // per-provider clients land (#17 Gitea etc).
+        // per-provider clients land.
         integrations::list_prs(&integration_type, &auth.token, hostname, &owner, &repo)
             .await
             .map_err(|e| e.to_string())

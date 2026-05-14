@@ -11,10 +11,12 @@
 //! [`BackendError::NotImplemented`] — UI degrades gracefully (the
 //! integration stays in the "mocked connect" path).
 
+mod gitea;
 mod github;
 mod gitlab;
 mod types;
 
+pub use gitea::{list_prs as list_gitea_prs, search_prs as search_gitea_prs};
 pub use github::{
     enrich_prs as enrich_github_prs, search_prs as search_github_prs, CiStatus, PullRequestState,
     PullRequestSummary, ReviewDecision,
@@ -40,6 +42,8 @@ pub async fn preflight(
         "githubEnterprise" => github::preflight_github(token, hostname).await,
         "gitlab" => gitlab::preflight_gitlab(token, None).await,
         "gitlabSelfHosted" => gitlab::preflight_gitlab(token, hostname).await,
+        "gitea" => gitea::preflight_gitea(token, None).await,
+        "giteaSelfHosted" => gitea::preflight_gitea(token, hostname).await,
         other => Err(BackendError::NotImplemented(match other {
             "bitbucket" | "bitbucketServer" => "Bitbucket preflight (lands in its own PR)",
             "azureDevops" => "Azure DevOps preflight (lands in its own PR)",
@@ -67,6 +71,8 @@ pub async fn list_prs(
         "githubEnterprise" => github::list_prs(token, hostname, owner, repo).await,
         "gitlab" => gitlab::list_mrs(token, None, owner, repo).await,
         "gitlabSelfHosted" => gitlab::list_mrs(token, hostname, owner, repo).await,
+        "gitea" => gitea::list_prs(token, None, owner, repo).await,
+        "giteaSelfHosted" => gitea::list_prs(token, hostname, owner, repo).await,
         other => Err(BackendError::NotImplemented(match other {
             "bitbucket" | "bitbucketServer" => "Bitbucket PR list (lands in its own PR)",
             "azureDevops" => "Azure DevOps PR list (lands in its own PR)",

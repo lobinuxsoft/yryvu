@@ -21,9 +21,10 @@ mod sidecar;
 mod types;
 
 pub use clients::{
-    enrich_github_prs, get_github_pr_detail, github_pr_action, list_gitea_prs,
-    list_github_pr_checks, list_github_pr_commits, list_github_pr_files, list_gitlab_mrs, list_prs,
-    preflight, search_gitea_prs, search_github_prs, search_gitlab_mrs, CheckRun, CiStatus, Label,
+    enrich_github_prs, get_github_pr_detail, github_delete_branch, github_merge_pr,
+    github_pr_action, list_gitea_prs, list_github_pr_checks, list_github_pr_commits,
+    list_github_pr_files, list_gitlab_mrs, list_prs, preflight, search_gitea_prs,
+    search_github_prs, search_gitlab_mrs, CheckRun, CiStatus, Label, MergeMethod, MergeRequest,
     PrAction, PrCommit, PrFile, PullRequestDetail, PullRequestState, PullRequestSummary,
     ReviewDecision, UserInfo,
 };

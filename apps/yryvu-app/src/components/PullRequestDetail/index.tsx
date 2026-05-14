@@ -17,6 +17,7 @@ import { Checks } from "./Checks";
 import { Commits } from "./Commits";
 import { Conversation } from "./Conversation";
 import { Files } from "./Files";
+import { MergeForm } from "./MergeForm";
 
 type SubTab = "conversation" | "commits" | "files" | "checks";
 
@@ -33,6 +34,7 @@ export function PullRequestDetailPanel() {
   const [active, setActive] = createSignal<SubTab>("conversation");
   const [actionInFlight, setActionInFlight] = createSignal<PrActionVerb | null>(null);
   const [actionError, setActionError] = createSignal<string | null>(null);
+  const [mergeFormOpen, setMergeFormOpen] = createSignal(false);
 
   async function runAction(verb: PrActionVerb) {
     const ref = activePrDetail();
@@ -100,6 +102,22 @@ export function PullRequestDetailPanel() {
                   </div>
                 </header>
                 <div class="pr-detail__actions-bar">
+                  <Show
+                    when={
+                      detail().state === "open" &&
+                      !detail().draft &&
+                      detail().mergeableState === "clean"
+                    }
+                  >
+                    <button
+                      type="button"
+                      class="pr-detail__action-btn pr-detail__action-btn--primary"
+                      disabled={actionInFlight() !== null || mergeFormOpen()}
+                      onClick={() => setMergeFormOpen(true)}
+                    >
+                      Merge PR
+                    </button>
+                  </Show>
                   <Show when={detail().state === "open"}>
                     <button
                       type="button"
@@ -114,7 +132,7 @@ export function PullRequestDetailPanel() {
                       fallback={
                         <button
                           type="button"
-                          class="pr-detail__action-btn pr-detail__action-btn--primary"
+                          class="pr-detail__action-btn"
                           disabled={actionInFlight() !== null}
                           onClick={() => runAction("markReadyForReview")}
                         >
@@ -153,6 +171,12 @@ export function PullRequestDetailPanel() {
                     )}
                   </Show>
                 </div>
+                <Show when={mergeFormOpen()}>
+                  <MergeForm
+                    detail={detail()}
+                    onClose={() => setMergeFormOpen(false)}
+                  />
+                </Show>
                 <nav class="pr-detail__subtabs">
                   <For each={SUB_TABS}>
                     {(t) => (

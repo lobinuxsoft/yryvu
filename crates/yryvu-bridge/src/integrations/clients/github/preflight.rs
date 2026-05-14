@@ -19,7 +19,8 @@ use serde::Deserialize;
 
 use crate::backend::BackendError;
 
-use super::types::UserInfo;
+use super::super::types::UserInfo;
+use super::{api_base, USER_AGENT};
 
 const REQUIRED_SCOPES_V1: &[&str] = &["repo", "read:org"];
 
@@ -64,24 +65,6 @@ struct GhUser {
     avatar_url: String,
 }
 
-/// Resolve the API base URL for a `.com` or self-hosted endpoint.
-/// yryvu strips trailing slashes from user-supplied hostnames before
-/// concatenating to avoid `//api/v3/user`.
-fn api_base(hostname: Option<&str>) -> Result<String, BackendError> {
-    match hostname {
-        None => Ok("https://api.github.com".to_string()),
-        Some(h) => {
-            let trimmed = h.trim_end_matches('/');
-            if trimmed.is_empty() {
-                return Err(BackendError::NetworkError {
-                    detail: "empty hostname for GH Enterprise".to_string(),
-                });
-            }
-            Ok(format!("{trimmed}/api/v3"))
-        }
-    }
-}
-
 /// Validate `token` against the GitHub API and return the
 /// authenticated user's info. Maps HTTP status codes + headers to
 /// typed [`BackendError`] variants so the UI can surface specific
@@ -93,7 +76,7 @@ pub async fn preflight_github(
 ) -> Result<UserInfo, BackendError> {
     let base = api_base(hostname)?;
     let client = reqwest::Client::builder()
-        .user_agent("yryvu")
+        .user_agent(USER_AGENT)
         .build()
         .map_err(|e| BackendError::NetworkError {
             detail: e.to_string(),
@@ -183,35 +166,6 @@ pub async fn preflight_github(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn api_base_dot_com() {
-        assert_eq!(api_base(None).unwrap(), "https://api.github.com");
-    }
-
-    #[test]
-    fn api_base_ghe_appends_v3() {
-        assert_eq!(
-            api_base(Some("https://ghe.example.com")).unwrap(),
-            "https://ghe.example.com/api/v3"
-        );
-    }
-
-    #[test]
-    fn api_base_strips_trailing_slash() {
-        assert_eq!(
-            api_base(Some("https://ghe.example.com/")).unwrap(),
-            "https://ghe.example.com/api/v3"
-        );
-    }
-
-    #[test]
-    fn api_base_rejects_empty_hostname() {
-        assert!(matches!(
-            api_base(Some("/")),
-            Err(BackendError::NetworkError { .. })
-        ));
-    }
 
     #[test]
     fn scope_admin_implies_read() {

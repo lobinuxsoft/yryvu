@@ -14,8 +14,8 @@
 mod github;
 mod types;
 
-pub use github::{PullRequestState, PullRequestSummary};
-pub use types::UserInfo;
+pub use github::{CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};
+pub use types::{Label, UserInfo};
 
 use crate::backend::BackendError;
 

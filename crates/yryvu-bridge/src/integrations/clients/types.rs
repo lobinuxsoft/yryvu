@@ -21,3 +21,17 @@ pub struct UserInfo {
     /// HTTPS; the frontend uses it as `<img src>` directly.
     pub avatar_url: String,
 }
+
+/// Provider-agnostic label shape — GitHub / GitLab / Gitea all model
+/// labels as `{ name, color }`. Color is a 6-digit hex string WITHOUT
+/// the leading `#` (matching GitHub's REST API); the frontend prepends
+/// `#` when applying as a `background-color` CSS value.
+///
+/// GitLab returns color with a leading `#`; that provider's adapter
+/// strips it before producing this shape.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Label {
+    pub name: String,
+    pub color: String,
+}

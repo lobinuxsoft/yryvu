@@ -13,7 +13,7 @@ mod preflight;
 mod prs;
 
 pub use preflight::preflight_github;
-pub use prs::{list_prs, PullRequestState, PullRequestSummary};
+pub use prs::{list_prs, CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};
 
 use crate::backend::BackendError;
 

@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! GitHub pull-request listing — walking-skeleton scope for #15.
+//! GitHub pull-request listing.
 //!
-//! REST-only via `GET /repos/{owner}/{repo}/pulls?state=all&per_page=50`.
-//! No filters DSL, no sort, no GraphQL for review/CI status — those
-//! land in wave 2 of #15. The shape returned to the frontend is
-//! intentionally flat so the row card can render with zero post-
-//! processing.
+//! REST via `GET /repos/{owner}/{repo}/pulls?state=all&per_page=50`.
+//! The list payload returns `labels[]`, `assignees[]`, and
+//! `requested_reviewers[]` inline — no extra round-trip for chip
+//! rendering. Review status + CI status are NOT in the REST shape;
+//! they get folded on later by [`super::graphql::enrich_prs`] (#360).
 //!
 //! GitHub's REST PR list omits `user.name`; we surface `login` as the
 //! display name to avoid a per-PR `/users/{login}` round-trip.
-//! Wave 2 may upgrade to GraphQL where author display name is one
-//! field on the same node.
 
 use serde::{Deserialize, Serialize};
 
 use crate::backend::BackendError;
 
-use super::super::types::UserInfo;
+use super::super::types::{Label, UserInfo};
 use super::{api_base, USER_AGENT};
 
 /// Resolved state of a pull request as surfaced to the UI.
@@ -34,16 +32,39 @@ pub enum PullRequestState {
     Merged,
 }
 
-/// Flat per-PR row payload — matches the `PullRequestBar` anatomy
-/// in the GK bundle (title + number + author + state badge +
-/// relative opened/updated time). camelCase serialization so the
-/// frontend store can use the response object as-is.
-///
-/// Out of scope for v1 (wave 2 of #15):
-/// - assignees / reviewers / labels chips
-/// - review status (approved / changes-requested / pending)
-/// - CI status (success / failure / pending)
-/// - merge conflict indicator
+/// Resolved code-review status surfaced to the UI. Populated by the
+/// GraphQL enrichment pass — REST `/pulls` doesn't carry it. `None`
+/// when the enrichment couldn't complete (network error mid-call,
+/// repo without any review activity, etc) so the badge stays
+/// gracefully blank instead of showing a misleading state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReviewDecision {
+    Approved,
+    ChangesRequested,
+    ReviewRequired,
+    Commented,
+    Dismissed,
+}
+
+/// Resolved CI status — collapsed from GitHub's `statusCheckRollup`
+/// shape (which itself blends classic status checks + the newer check
+/// runs). `None` when the head commit has no checks at all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CiStatus {
+    Success,
+    Failure,
+    Pending,
+    Error,
+    Expected,
+}
+
+/// Flat per-PR row payload — matches the `PullRequestBar` anatomy in
+/// the GK bundle (title + number + author + state badge + chip
+/// clusters + review/CI badges + relative opened/updated time).
+/// camelCase serialization so the frontend store can use the response
+/// object as-is.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PullRequestSummary {
@@ -62,10 +83,31 @@ pub struct PullRequestSummary {
     pub html_url: String,
     /// Target branch name (e.g. `main`).
     pub base_ref: String,
-    /// Source branch name (e.g. `15-featgithub-pr-list-panel`).
-    /// `head.label` (`owner:branch`) is dropped — wave 2 may surface
-    /// it for cross-fork PRs.
+    /// Source branch name (e.g. `360-feat-wave-2`). `head.label`
+    /// (`owner:branch`) is dropped — fold it back in if cross-fork
+    /// PRs need owner attribution beyond the author avatar.
     pub head_ref: String,
+    /// Labels applied to the PR (REST inline). Frontend renders the
+    /// first 3 as chips + a `+N` overflow when there are more.
+    #[serde(default)]
+    pub labels: Vec<Label>,
+    /// Assignees (REST inline). Avatar cluster — up to 3 visible +
+    /// overflow.
+    #[serde(default)]
+    pub assignees: Vec<UserInfo>,
+    /// Requested reviewers (REST inline). Avatar cluster — up to 3
+    /// visible + overflow. Excludes reviewers who have already
+    /// submitted a review (GitHub drops them from this list).
+    #[serde(default)]
+    pub requested_reviewers: Vec<UserInfo>,
+    /// Code-review decision. `None` when GraphQL enrichment skipped
+    /// or failed — badge renders blank.
+    #[serde(default)]
+    pub review_decision: Option<ReviewDecision>,
+    /// CI rollup state. `None` when the head commit has no status
+    /// checks or GraphQL enrichment skipped.
+    #[serde(default)]
+    pub ci_status: Option<CiStatus>,
 }
 
 /// Raw shape of one entry in GitHub's `GET /repos/{owner}/{repo}/pulls`
@@ -84,6 +126,12 @@ struct GhPull {
     html_url: String,
     base: GhPullRef,
     head: GhPullRef,
+    #[serde(default)]
+    labels: Vec<GhLabel>,
+    #[serde(default)]
+    assignees: Vec<GhPullUser>,
+    #[serde(default)]
+    requested_reviewers: Vec<GhPullUser>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -99,6 +147,23 @@ struct GhPullRef {
     ref_name: String,
 }
 
+/// GitHub's REST label shape. `color` is a 6-digit hex string without
+/// the leading `#`. We drop `description` + `default` flag — the chip
+/// only renders the name + colour.
+#[derive(Debug, Deserialize)]
+struct GhLabel {
+    name: String,
+    color: String,
+}
+
+fn gh_user_to_info(raw: GhPullUser) -> UserInfo {
+    UserInfo {
+        display_name: raw.login.clone(),
+        login: raw.login,
+        avatar_url: raw.avatar_url,
+    }
+}
+
 fn project(raw: GhPull) -> PullRequestSummary {
     let state = if raw.merged_at.is_some() {
         PullRequestState::Merged
@@ -112,16 +177,28 @@ fn project(raw: GhPull) -> PullRequestSummary {
         title: raw.title,
         state,
         draft: raw.draft,
-        author: UserInfo {
-            display_name: raw.user.login.clone(),
-            login: raw.user.login,
-            avatar_url: raw.user.avatar_url,
-        },
+        author: gh_user_to_info(raw.user),
         created_at: raw.created_at,
         updated_at: raw.updated_at,
         html_url: raw.html_url,
         base_ref: raw.base.ref_name,
         head_ref: raw.head.ref_name,
+        labels: raw
+            .labels
+            .into_iter()
+            .map(|l| Label {
+                name: l.name,
+                color: l.color,
+            })
+            .collect(),
+        assignees: raw.assignees.into_iter().map(gh_user_to_info).collect(),
+        requested_reviewers: raw
+            .requested_reviewers
+            .into_iter()
+            .map(gh_user_to_info)
+            .collect(),
+        review_decision: None,
+        ci_status: None,
     }
 }
 
@@ -225,6 +302,81 @@ mod tests {
         assert_eq!(summary.author.display_name, "lobinuxsoft");
         assert_eq!(summary.base_ref, "development");
         assert_eq!(summary.head_ref, "15-feat-pr-list");
+        // Missing label / assignee / reviewer arrays → serde(default)
+        // gives empty Vec.
+        assert!(summary.labels.is_empty());
+        assert!(summary.assignees.is_empty());
+        assert!(summary.requested_reviewers.is_empty());
+        // Enrichment hasn't run yet → both badges blank.
+        assert!(summary.review_decision.is_none());
+        assert!(summary.ci_status.is_none());
+    }
+
+    #[test]
+    fn project_with_labels_and_chips() {
+        let raw = parse(
+            r#"{
+            "number": 360,
+            "title": "wave-2",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "user": { "login": "x", "avatar_url": "x" },
+            "created_at": "x",
+            "updated_at": "x",
+            "html_url": "x",
+            "base": { "ref": "main" },
+            "head": { "ref": "wave-2" },
+            "labels": [
+                { "name": "bug", "color": "d93f0b" },
+                { "name": "wave-2", "color": "0e8a16" }
+            ],
+            "assignees": [
+                { "login": "alice", "avatar_url": "https://avatars.example/alice" }
+            ],
+            "requested_reviewers": [
+                { "login": "bob", "avatar_url": "https://avatars.example/bob" },
+                { "login": "carol", "avatar_url": "https://avatars.example/carol" }
+            ]
+        }"#,
+        );
+        let summary = project(raw);
+        assert_eq!(summary.labels.len(), 2);
+        assert_eq!(summary.labels[0].name, "bug");
+        assert_eq!(summary.labels[0].color, "d93f0b");
+        assert_eq!(summary.assignees.len(), 1);
+        assert_eq!(summary.assignees[0].login, "alice");
+        assert_eq!(summary.requested_reviewers.len(), 2);
+        assert_eq!(summary.requested_reviewers[1].login, "carol");
+    }
+
+    #[test]
+    fn project_with_extra_label_fields_ignored() {
+        // GitHub's REST returns more on labels (`id`, `description`,
+        // `default`, `url`, etc). Our GhLabel deserialises only
+        // `name`+`color`; serde drops the rest silently.
+        let raw = parse(
+            r#"{
+            "number": 1,
+            "title": "x",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "user": { "login": "x", "avatar_url": "x" },
+            "created_at": "x",
+            "updated_at": "x",
+            "html_url": "x",
+            "base": { "ref": "main" },
+            "head": { "ref": "x" },
+            "labels": [
+                { "id": 123, "name": "good first issue", "color": "7057ff", "description": "Beginner-friendly", "default": true, "url": "https://api.github.com/..." }
+            ]
+        }"#,
+        );
+        let summary = project(raw);
+        assert_eq!(summary.labels.len(), 1);
+        assert_eq!(summary.labels[0].name, "good first issue");
+        assert_eq!(summary.labels[0].color, "7057ff");
     }
 
     #[test]
@@ -329,6 +481,54 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&PullRequestState::Closed).unwrap(),
             "\"closed\""
+        );
+    }
+
+    #[test]
+    fn review_decision_serializes_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&ReviewDecision::Approved).unwrap(),
+            "\"approved\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ReviewDecision::ChangesRequested).unwrap(),
+            "\"changes_requested\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ReviewDecision::ReviewRequired).unwrap(),
+            "\"review_required\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ReviewDecision::Commented).unwrap(),
+            "\"commented\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ReviewDecision::Dismissed).unwrap(),
+            "\"dismissed\""
+        );
+    }
+
+    #[test]
+    fn ci_status_serializes_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&CiStatus::Success).unwrap(),
+            "\"success\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CiStatus::Failure).unwrap(),
+            "\"failure\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CiStatus::Pending).unwrap(),
+            "\"pending\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CiStatus::Error).unwrap(),
+            "\"error\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CiStatus::Expected).unwrap(),
+            "\"expected\""
         );
     }
 }

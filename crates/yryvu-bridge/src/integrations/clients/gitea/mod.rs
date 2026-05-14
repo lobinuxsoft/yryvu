@@ -28,9 +28,6 @@ pub use search::search_prs;
 
 use crate::backend::BackendError;
 
-/// HTTP User-Agent sent to every Gitea endpoint.
-pub(super) const USER_AGENT: &str = "yryvu";
-
 /// Resolve the REST base URL for a default-instance or self-hosted
 /// Gitea / Forgejo. `gitea` default points at codeberg.org (the most
 /// visible public Gitea deployment); `giteaSelfHosted` appends

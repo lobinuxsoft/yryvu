@@ -17,6 +17,8 @@ use tauri::{AppHandle, Manager};
 
 use crate::integrations::{self, CheckRun, PrAction, PrCommit, PrFile, PullRequestDetail};
 
+use super::integration_routing::{is_self_hosted, ProviderFamily};
+
 fn sidecar_path(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     Ok(dir.join("integrations.json"))
@@ -27,28 +29,28 @@ async fn load_auth(
     integration_type: String,
 ) -> Result<integrations::AuthData, String> {
     let path = sidecar_path(app)?;
-    let auth = tauri::async_runtime::spawn_blocking({
+    tauri::async_runtime::spawn_blocking({
         let integration_type = integration_type.clone();
         move || integrations::get_integration(&path as &Path, &integration_type)
     })
     .await
     .map_err(|e| e.to_string())?
     .map_err(|e| e.to_string())?
-    .ok_or_else(|| format!("integration '{integration_type}' is not connected"))?;
-    Ok(auth)
+    .ok_or_else(|| format!("integration '{integration_type}' is not connected"))
 }
 
 fn pick_hostname(integration_type: &str, auth: &integrations::AuthData) -> Option<String> {
-    if integration_type == "githubEnterprise" {
-        auth.hostname.clone()
-    } else {
-        None
-    }
+    is_self_hosted(integration_type)
+        .then_some(auth.hostname.as_ref())
+        .flatten()
+        .cloned()
 }
 
-fn unsupported_provider(integration_type: &str) -> Result<(), String> {
-    match integration_type {
-        "github" | "githubEnterprise" => Ok(()),
+/// PR detail surface is GitHub-only in v1. Returns the typed error
+/// other providers should bubble up to the frontend's toast.
+fn require_github(integration_type: &str) -> Result<(), String> {
+    match ProviderFamily::from_integration_type(integration_type) {
+        ProviderFamily::Github => Ok(()),
         _ => Err(format!(
             "PR detail view is GitHub-only in v1; '{integration_type}' lands in its own PR"
         )),
@@ -63,7 +65,7 @@ pub async fn integration_get_pr_detail(
     repo: String,
     number: u64,
 ) -> Result<PullRequestDetail, String> {
-    unsupported_provider(&integration_type)?;
+    require_github(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     integrations::get_github_pr_detail(&auth.token, hostname.as_deref(), &owner, &repo, number)
@@ -79,7 +81,7 @@ pub async fn integration_list_pr_commits(
     repo: String,
     number: u64,
 ) -> Result<Vec<PrCommit>, String> {
-    unsupported_provider(&integration_type)?;
+    require_github(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     integrations::list_github_pr_commits(&auth.token, hostname.as_deref(), &owner, &repo, number)
@@ -95,7 +97,7 @@ pub async fn integration_list_pr_files(
     repo: String,
     number: u64,
 ) -> Result<Vec<PrFile>, String> {
-    unsupported_provider(&integration_type)?;
+    require_github(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     integrations::list_github_pr_files(&auth.token, hostname.as_deref(), &owner, &repo, number)
@@ -111,7 +113,7 @@ pub async fn integration_list_pr_checks(
     repo: String,
     head_sha: String,
 ) -> Result<Vec<CheckRun>, String> {
-    unsupported_provider(&integration_type)?;
+    require_github(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     integrations::list_github_pr_checks(&auth.token, hostname.as_deref(), &owner, &repo, &head_sha)
@@ -131,7 +133,7 @@ pub async fn integration_pr_action(
     number: u64,
     action: String,
 ) -> Result<PullRequestDetail, String> {
-    unsupported_provider(&integration_type)?;
+    require_github(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     let parsed = match action.as_str() {

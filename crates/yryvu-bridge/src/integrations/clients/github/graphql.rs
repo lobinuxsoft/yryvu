@@ -11,13 +11,15 @@
 
 use std::collections::HashMap;
 
+use reqwest::Method;
 use serde::Deserialize;
 use serde_json::json;
 
 use crate::backend::BackendError;
 
+use super::super::http::{self, GITHUB_QUIRKS};
+use super::api_base;
 use super::prs::{CiStatus, PullRequestSummary, ReviewDecision};
-use super::{api_base, USER_AGENT};
 
 /// Fold review decision + CI rollup state onto each summary in
 /// `prs`. No-op when the list is empty. Errors propagate as
@@ -46,53 +48,20 @@ pub async fn enrich_prs(
     };
 
     let query = build_query(owner, repo, prs.iter().map(|p| p.number));
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let resp = client
-        .post(&endpoint)
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github.v3+json")
-        .json(&json!({ "query": query }))
-        .send()
+    let client = http::client()?;
+    let req = http::authed(
+        &client,
+        Method::POST,
+        &endpoint,
+        token,
+        "application/vnd.github.v3+json",
+    )
+    .json(&json!({ "query": query }));
+    let resp = http::execute(req, GITHUB_QUIRKS).await?;
+    let body: GhGraphqlResp = resp
+        .json()
         .await
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-
-    let status = resp.status();
-    if status == reqwest::StatusCode::UNAUTHORIZED {
-        return Err(BackendError::InvalidToken);
-    }
-    if status == reqwest::StatusCode::FORBIDDEN {
-        let remaining = resp
-            .headers()
-            .get("x-ratelimit-remaining")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u64>().ok());
-        if remaining == Some(0) {
-            let reset_at = resp
-                .headers()
-                .get("x-ratelimit-reset")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.parse::<u64>().ok())
-                .unwrap_or(0);
-            return Err(BackendError::RateLimited { reset_at });
-        }
-        return Err(BackendError::InvalidToken);
-    }
-    if !status.is_success() {
-        return Err(BackendError::NetworkError {
-            detail: format!("unexpected HTTP {status} from GitHub GraphQL"),
-        });
-    }
-
-    let body: GhGraphqlResp = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding /graphql response: {e}"),
-    })?;
+        .map_err(|e| http::decode_error("decoding /graphql response", e))?;
     // GraphQL spec: `errors` may coexist with partial `data`. We treat
     // any top-level error as a hard failure so the user sees the issue
     // instead of silently-blank badges on some rows.

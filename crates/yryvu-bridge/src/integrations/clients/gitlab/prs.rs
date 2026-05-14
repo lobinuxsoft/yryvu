@@ -12,11 +12,14 @@
 use serde::Deserialize;
 use serde_json::json;
 
+use reqwest::Method;
+
 use crate::backend::BackendError;
 
 use super::super::github::{CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};
+use super::super::http::{self, GITLAB_QUIRKS};
 use super::super::types::{Label, UserInfo};
-use super::{graphql_endpoint, USER_AGENT};
+use super::graphql_endpoint;
 
 /// List merge requests in `owner/repo`. GitLab uses `fullPath` (e.g.
 /// `gitlab-org/gitlab`) for the project lookup; we synthesise that
@@ -32,9 +35,10 @@ pub async fn list_mrs(
     let query = build_list_query(&full_path);
 
     let resp = post_graphql(&endpoint, token, &query).await?;
-    let body: GlMrsResp = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding /graphql response: {e}"),
-    })?;
+    let body: GlMrsResp = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding /graphql response", e))?;
     if let Some(errors) = body.errors {
         if !errors.is_empty() {
             return Err(BackendError::NetworkError {
@@ -57,57 +61,18 @@ pub async fn list_mrs(
     Ok(nodes.into_iter().map(project_node).collect())
 }
 
-/// Shared HTTP helper — also reused by `super::search`. Maps GitLab's
-/// status codes to typed [`BackendError`] variants.
+/// Thin wrapper over [`http::execute`] — every MR endpoint is a POST
+/// to `/api/graphql` with the GitLab quirks (403 → InsufficientScopes
+/// because `read_user`-only tokens hit this).
 pub(super) async fn post_graphql(
     endpoint: &str,
     token: &str,
     query: &str,
 ) -> Result<reqwest::Response, BackendError> {
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let resp = client
-        .post(endpoint)
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/json")
-        .json(&json!({ "query": query }))
-        .send()
-        .await
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let status = resp.status();
-    if status == reqwest::StatusCode::UNAUTHORIZED {
-        return Err(BackendError::InvalidToken);
-    }
-    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        let reset_at = resp
-            .headers()
-            .get("ratelimit-reset")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(0);
-        return Err(BackendError::RateLimited { reset_at });
-    }
-    if status == reqwest::StatusCode::FORBIDDEN {
-        // GitLab tokens with `read_user` only (no `read_api`) hit
-        // 403 on MR queries. Surface as InsufficientScopes so the
-        // toast suggests granting `read_api`.
-        return Err(BackendError::InsufficientScopes {
-            granted: "unknown".to_string(),
-            required: "read_api".to_string(),
-        });
-    }
-    if !status.is_success() {
-        return Err(BackendError::NetworkError {
-            detail: format!("unexpected HTTP {status} from GitLab GraphQL"),
-        });
-    }
-    Ok(resp)
+    let client = http::client()?;
+    let req = http::authed(&client, Method::POST, endpoint, token, "application/json")
+        .json(&json!({ "query": query }));
+    http::execute(req, GITLAB_QUIRKS).await
 }
 
 fn build_list_query(full_path: &str) -> String {
@@ -134,13 +99,16 @@ pub(super) fn project_node(node: GlMrNode) -> PullRequestSummary {
         Some("closed") | Some("locked") => PullRequestState::Closed,
         _ => PullRequestState::Open,
     };
-    let author = node.author.unwrap_or_default();
+    let users = |conn: Option<GlUserConnection>| {
+        conn.map(|c| c.nodes.into_iter().map(UserInfo::from).collect())
+            .unwrap_or_default()
+    };
     PullRequestSummary {
         number: node.iid.and_then(|s| s.parse().ok()).unwrap_or(0),
         title: node.title.unwrap_or_default(),
         state,
         draft: node.draft.unwrap_or(false),
-        author: gl_user_to_info(author),
+        author: node.author.unwrap_or_default().into(),
         created_at: node.created_at.unwrap_or_default(),
         updated_at: node.updated_at.unwrap_or_default(),
         html_url: node.web_url.unwrap_or_default(),
@@ -149,52 +117,37 @@ pub(super) fn project_node(node: GlMrNode) -> PullRequestSummary {
         head_sha: node.sha.unwrap_or_default(),
         labels: node
             .labels
-            .map(|l| {
-                l.nodes
-                    .into_iter()
-                    .map(|n| Label {
-                        name: n.title,
-                        color: strip_hash(n.color),
-                    })
-                    .collect()
-            })
+            .map(|l| l.nodes.into_iter().map(Label::from).collect())
             .unwrap_or_default(),
-        assignees: node
-            .assignees
-            .map(|a| a.nodes.into_iter().map(gl_user_to_info).collect())
-            .unwrap_or_default(),
-        requested_reviewers: node
-            .reviewers
-            .map(|r| r.nodes.into_iter().map(gl_user_to_info).collect())
-            .unwrap_or_default(),
-        review_decision: derive_review_decision(
-            node.approvals_required,
-            node.approvals_left,
-            node.approved_by
-                .as_ref()
-                .map(|a| a.nodes.len())
-                .unwrap_or(0),
-        ),
+        assignees: users(node.assignees),
+        requested_reviewers: users(node.reviewers),
+        review_decision: derive_review_decision(node.approvals_required, node.approvals_left),
         ci_status: node
             .head_pipeline
-            .and_then(|p| p.status.as_deref().map(parse_ci))
-            .unwrap_or(None),
+            .and_then(|p| p.status.as_deref().and_then(parse_ci)),
     }
 }
 
-fn gl_user_to_info(raw: GlUser) -> UserInfo {
-    UserInfo {
-        display_name: raw.name.clone().unwrap_or_else(|| raw.username.clone()),
-        login: raw.username,
-        avatar_url: raw.avatar_url.unwrap_or_default(),
+impl From<GlUser> for UserInfo {
+    fn from(raw: GlUser) -> Self {
+        Self {
+            display_name: raw.name.clone().unwrap_or_else(|| raw.username.clone()),
+            login: raw.username,
+            avatar_url: raw.avatar_url.unwrap_or_default(),
+        }
     }
 }
 
-/// GitLab returns label colours WITH the leading `#`; yryvu's
-/// canonical Label shape stores them without (matching GitHub's REST
-/// API). Strip it here so frontend CSS rules apply uniformly.
-fn strip_hash(color: String) -> String {
-    color.trim_start_matches('#').to_string()
+/// GitLab returns label colours WITH the leading `#`; the canonical
+/// hex shape used by `Label` (and the GitHub adapter) strips it so
+/// frontend CSS rules apply uniformly.
+impl From<GlLabelNode> for Label {
+    fn from(raw: GlLabelNode) -> Self {
+        Self {
+            name: raw.title,
+            color: raw.color.trim_start_matches('#').to_string(),
+        }
+    }
 }
 
 /// Approximate GitHub-style [`ReviewDecision`] from GitLab's approval
@@ -206,21 +159,15 @@ fn strip_hash(color: String) -> String {
 /// - `ReviewRequired`: approvals are required but some are still
 ///   missing.
 /// - `None`: no approvals required (no review badge rendered).
-fn derive_review_decision(
-    required: Option<i32>,
-    left: Option<i32>,
-    _approved_count: usize,
-) -> Option<ReviewDecision> {
+fn derive_review_decision(required: Option<i32>, left: Option<i32>) -> Option<ReviewDecision> {
     let required = required?;
     if required <= 0 {
         return None;
     }
-    let left = left.unwrap_or(required);
-    if left <= 0 {
-        Some(ReviewDecision::Approved)
-    } else {
-        Some(ReviewDecision::ReviewRequired)
-    }
+    Some(match left.unwrap_or(required) {
+        n if n <= 0 => ReviewDecision::Approved,
+        _ => ReviewDecision::ReviewRequired,
+    })
 }
 
 /// Map GitLab's pipeline status enum onto yryvu's [`CiStatus`].
@@ -285,6 +232,11 @@ pub(super) struct GlMrNode {
     pub reviewers: Option<GlUserConnection>,
     pub approvals_required: Option<i32>,
     pub approvals_left: Option<i32>,
+    /// Present in the response shape but not consumed: the
+    /// `approvalsRequired` / `approvalsLeft` pair is sufficient for
+    /// the ReviewDecision derivation. Kept for forward-compat so a
+    /// future surface ("Approved by X, Y") can drop right in.
+    #[allow(dead_code)]
     pub approved_by: Option<GlUserConnection>,
     pub head_pipeline: Option<GlPipeline>,
 }

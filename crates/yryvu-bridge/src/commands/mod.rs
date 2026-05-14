@@ -12,6 +12,7 @@ mod commits;
 mod gitflow;
 mod hooks;
 mod init;
+mod integration_routing;
 mod integrations;
 mod issue_tracker;
 mod merge;

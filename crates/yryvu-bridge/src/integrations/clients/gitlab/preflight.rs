@@ -2,84 +2,36 @@
 
 //! GitLab token validation + `UserInfo` fetch via GraphQL `currentUser`.
 //!
-//! GitLab personal-access tokens carry one of three relevant scopes
-//! for yryvu:
-//!
-//! - `read_api` — sufficient for the MR list panel (read MRs,
-//!   projects, users).
-//! - `api` — superset of `read_api`; needed by future detail / merge
-//!   actions but no harm for v1.
-//! - `read_user` — too narrow (covers `currentUser` only); MR queries
-//!   will 403. We surface that as `InsufficientScopes` when the MR
-//!   query later fails — the preflight itself only verifies that the
-//!   token can name its bearer.
-//!
-//! Unlike GitHub, GitLab doesn't return granted scopes in a response
-//! header — `currentUser` succeeds for any token that authenticates.
-//! Scope adequacy gets checked at the first MR fetch instead.
+//! Required scope for v1: `read_user` (verifies token identity).
+//! `read_api` is the higher bar required to list MRs; checked at the
+//! first MR query via [`super::super::http::GITLAB_QUIRKS`] which
+//! maps 403 → `InsufficientScopes { required: "read_api" }`.
 
+use reqwest::Method;
 use serde::Deserialize;
 use serde_json::json;
 
 use crate::backend::BackendError;
 
+use super::super::http::{self, GITLAB_PREFLIGHT_QUIRKS};
 use super::super::types::UserInfo;
-use super::{graphql_endpoint, USER_AGENT};
+use super::graphql_endpoint;
 
 const PREFLIGHT_QUERY: &str = "query { currentUser { username name avatarUrl } }";
 
-/// Validate `token` against the GitLab API and return the
-/// authenticated user's info. Maps HTTP status codes to typed
-/// [`BackendError`] variants so the UI can surface the right toast.
 pub async fn preflight_gitlab(
     token: &str,
     hostname: Option<&str>,
 ) -> Result<UserInfo, BackendError> {
     let endpoint = graphql_endpoint(hostname)?;
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let resp = client
-        .post(&endpoint)
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/json")
-        .json(&json!({ "query": PREFLIGHT_QUERY }))
-        .send()
+    let client = http::client()?;
+    let req = http::authed(&client, Method::POST, &endpoint, token, "application/json")
+        .json(&json!({ "query": PREFLIGHT_QUERY }));
+    let resp = http::execute(req, GITLAB_PREFLIGHT_QUIRKS).await?;
+    let body: GlGraphqlResp = resp
+        .json()
         .await
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-
-    let status = resp.status();
-    if status == reqwest::StatusCode::UNAUTHORIZED {
-        return Err(BackendError::InvalidToken);
-    }
-    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        // GitLab uses `RateLimit-Reset` (RFC 9239) rather than
-        // X-RateLimit-Reset. Fall back to 0 when missing.
-        let reset_at = resp
-            .headers()
-            .get("ratelimit-reset")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(0);
-        return Err(BackendError::RateLimited { reset_at });
-    }
-    if status == reqwest::StatusCode::FORBIDDEN {
-        return Err(BackendError::InvalidToken);
-    }
-    if !status.is_success() {
-        return Err(BackendError::NetworkError {
-            detail: format!("unexpected HTTP {status} from GitLab GraphQL"),
-        });
-    }
-
-    let body: GlGraphqlResp = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding /graphql response: {e}"),
-    })?;
+        .map_err(|e| http::decode_error("decoding /graphql response", e))?;
     if let Some(errors) = body.errors {
         if !errors.is_empty() {
             return Err(BackendError::NetworkError {
@@ -97,12 +49,8 @@ pub async fn preflight_gitlab(
     let user = body
         .data
         .and_then(|d| d.current_user)
-        .ok_or_else(|| BackendError::InvalidToken)?;
-    Ok(UserInfo {
-        display_name: user.name.unwrap_or_else(|| user.username.clone()),
-        login: user.username,
-        avatar_url: user.avatar_url.unwrap_or_default(),
-    })
+        .ok_or(BackendError::InvalidToken)?;
+    Ok(user.into())
 }
 
 #[derive(Debug, Deserialize)]
@@ -127,6 +75,16 @@ struct GlCurrentUser {
     username: String,
     name: Option<String>,
     avatar_url: Option<String>,
+}
+
+impl From<GlCurrentUser> for UserInfo {
+    fn from(raw: GlCurrentUser) -> Self {
+        Self {
+            display_name: raw.name.unwrap_or_else(|| raw.username.clone()),
+            login: raw.username,
+            avatar_url: raw.avatar_url.unwrap_or_default(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]

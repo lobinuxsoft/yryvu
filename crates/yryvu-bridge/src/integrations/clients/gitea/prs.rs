@@ -6,13 +6,15 @@
 //! the REST shape and Gitea has no GraphQL, so we surface those as
 //! `None` (the badge stays blank). Revisit if users push back.
 
+use reqwest::Method;
 use serde::Deserialize;
 
 use crate::backend::BackendError;
 
 use super::super::github::{PullRequestState, PullRequestSummary};
+use super::super::http::{self, GITEA_QUIRKS};
 use super::super::types::{Label, UserInfo};
-use super::{api_base, USER_AGENT};
+use super::api_base;
 
 /// List pull requests in `owner/repo`. Gitea's `state=all` returns
 /// open + closed (incl. merged) — same semantics as GitHub.
@@ -25,141 +27,83 @@ pub async fn list_prs(
     let base = api_base(hostname)?;
     let url = format!("{base}/repos/{owner}/{repo}/pulls?state=all&limit=50&page=1");
     let resp = get(&url, token).await?;
-    let raw: Vec<GiteaPull> = resp.json().await.map_err(|e| BackendError::NetworkError {
-        detail: format!("decoding /pulls response: {e}"),
-    })?;
-    Ok(raw.into_iter().map(project).collect())
-}
-
-/// Shared GET helper reused by the search variant. Maps Gitea's
-/// status codes to typed [`BackendError`] variants.
-pub(super) async fn get(url: &str, token: &str) -> Result<reqwest::Response, BackendError> {
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let resp = client
-        .get(url)
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/json")
-        .send()
+    let raw: Vec<GiteaPull> = resp
+        .json()
         .await
-        .map_err(|e| BackendError::NetworkError {
-            detail: e.to_string(),
-        })?;
-    let status = resp.status();
-    if status == reqwest::StatusCode::UNAUTHORIZED {
-        return Err(BackendError::InvalidToken);
-    }
-    if status == reqwest::StatusCode::FORBIDDEN {
-        // Gitea tokens with insufficient scopes hit 403. Surface as
-        // InsufficientScopes so the toast suggests granting the right
-        // scopes; we can't recover the granted-set without a follow-up
-        // request, so granted stays "unknown".
-        return Err(BackendError::InsufficientScopes {
-            granted: "unknown".to_string(),
-            required: "read:repository, read:user".to_string(),
-        });
-    }
-    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        let reset_at = resp
-            .headers()
-            .get("x-ratelimit-reset")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(0);
-        return Err(BackendError::RateLimited { reset_at });
-    }
-    if status == reqwest::StatusCode::NOT_FOUND {
-        return Err(BackendError::NetworkError {
-            detail: format!("repository not found or token cannot see it: {url}"),
-        });
-    }
-    if !status.is_success() {
-        return Err(BackendError::NetworkError {
-            detail: format!("unexpected HTTP {status} from Gitea: {url}"),
-        });
-    }
-    Ok(resp)
+        .map_err(|e| http::decode_error("decoding /pulls response", e))?;
+    Ok(raw.into_iter().map(PullRequestSummary::from).collect())
 }
 
-pub(super) fn project(raw: GiteaPull) -> PullRequestSummary {
-    let state = if raw.merged.unwrap_or(false) {
-        PullRequestState::Merged
-    } else if raw.state.as_deref() == Some("closed") {
-        PullRequestState::Closed
-    } else {
-        PullRequestState::Open
-    };
-    let user = raw.user.unwrap_or_default();
-    PullRequestSummary {
-        number: raw.number.unwrap_or(0),
-        title: raw.title.unwrap_or_default(),
-        state,
-        draft: raw.draft.unwrap_or(false),
-        author: gitea_user_to_info(user),
-        created_at: raw.created_at.unwrap_or_default(),
-        updated_at: raw.updated_at.unwrap_or_default(),
-        html_url: raw.html_url.unwrap_or_default(),
-        base_ref: raw
-            .base
-            .as_ref()
-            .and_then(|b| b.ref_name.clone())
-            .unwrap_or_default(),
-        head_ref: raw
-            .head
-            .as_ref()
-            .and_then(|h| h.ref_name.clone())
-            .unwrap_or_default(),
-        head_sha: raw
-            .head
-            .as_ref()
-            .and_then(|h| h.sha.clone())
-            .unwrap_or_default(),
-        labels: raw
-            .labels
-            .unwrap_or_default()
-            .into_iter()
-            .map(|l| Label {
-                name: l.name,
-                color: strip_hash(l.color),
-            })
-            .collect(),
-        assignees: raw
-            .assignees
-            .unwrap_or_default()
-            .into_iter()
-            .map(gitea_user_to_info)
-            .collect(),
-        requested_reviewers: raw
-            .requested_reviewers
-            .unwrap_or_default()
-            .into_iter()
-            .map(gitea_user_to_info)
-            .collect(),
-        // Gitea has no GraphQL — review aggregate + CI rollup left
-        // blank in wave 1. Wave-2-style N+1 enrichment can be added
-        // later if user demand justifies the round-trip tax.
-        review_decision: None,
-        ci_status: None,
+/// Thin wrapper over [`http::execute`] reused by `super::search`.
+pub(super) async fn get(url: &str, token: &str) -> Result<reqwest::Response, BackendError> {
+    let client = http::client()?;
+    let req = http::authed(&client, Method::GET, url, token, "application/json");
+    http::execute(req, GITEA_QUIRKS).await
+}
+
+impl From<GiteaPull> for PullRequestSummary {
+    fn from(raw: GiteaPull) -> Self {
+        let state = match (raw.merged.unwrap_or(false), raw.state.as_deref()) {
+            (true, _) => PullRequestState::Merged,
+            (_, Some("closed")) => PullRequestState::Closed,
+            _ => PullRequestState::Open,
+        };
+        let users = |xs: Option<Vec<GiteaUser>>| -> Vec<UserInfo> {
+            xs.unwrap_or_default().into_iter().map(Into::into).collect()
+        };
+        let head = raw.head.as_ref();
+        Self {
+            number: raw.number.unwrap_or(0),
+            title: raw.title.unwrap_or_default(),
+            state,
+            draft: raw.draft.unwrap_or(false),
+            author: raw.user.unwrap_or_default().into(),
+            created_at: raw.created_at.unwrap_or_default(),
+            updated_at: raw.updated_at.unwrap_or_default(),
+            html_url: raw.html_url.unwrap_or_default(),
+            base_ref: raw
+                .base
+                .as_ref()
+                .and_then(|b| b.ref_name.clone())
+                .unwrap_or_default(),
+            head_ref: head.and_then(|h| h.ref_name.clone()).unwrap_or_default(),
+            head_sha: head.and_then(|h| h.sha.clone()).unwrap_or_default(),
+            labels: raw
+                .labels
+                .unwrap_or_default()
+                .into_iter()
+                .map(Label::from)
+                .collect(),
+            assignees: users(raw.assignees),
+            requested_reviewers: users(raw.requested_reviewers),
+            // Gitea has no GraphQL — review aggregate + CI rollup
+            // left blank in wave 1. Wave-2-style N+1 enrichment can
+            // be added later if user demand justifies it.
+            review_decision: None,
+            ci_status: None,
+        }
     }
 }
 
-fn gitea_user_to_info(raw: GiteaUser) -> UserInfo {
-    UserInfo {
-        display_name: raw.full_name.clone().unwrap_or_else(|| raw.login.clone()),
-        login: raw.login,
-        avatar_url: raw.avatar_url.unwrap_or_default(),
+impl From<GiteaUser> for UserInfo {
+    fn from(raw: GiteaUser) -> Self {
+        Self {
+            display_name: raw.full_name.unwrap_or_else(|| raw.login.clone()),
+            login: raw.login,
+            avatar_url: raw.avatar_url.unwrap_or_default(),
+        }
     }
 }
 
-/// Gitea label colours come prefixed with `#`. Strip it to match
-/// yryvu's canonical hex shape (no leading hash) — same convention as
-/// the GitLab adapter.
-fn strip_hash(color: String) -> String {
-    color.trim_start_matches('#').to_string()
+/// Gitea label colours come prefixed with `#`. Strip it to match the
+/// canonical hex shape used by [`Label`].
+impl From<GiteaLabel> for Label {
+    fn from(raw: GiteaLabel) -> Self {
+        Self {
+            name: raw.name,
+            color: raw.color.trim_start_matches('#').to_string(),
+        }
+    }
 }
 
 /// Raw shape of one entry in Gitea's `GET /repos/{owner}/{repo}/pulls`
@@ -232,7 +176,7 @@ mod tests {
             "head": { "ref": "feat-gitea", "sha": "deadbeef" }
         }"##,
         );
-        let summary = project(raw);
+        let summary = PullRequestSummary::from(raw);
         assert_eq!(summary.number, 42);
         assert_eq!(summary.state, PullRequestState::Open);
         assert_eq!(summary.author.login, "lobinuxsoft");
@@ -255,7 +199,7 @@ mod tests {
             "user": { "login": "x" }
         }"##,
         );
-        let summary = project(raw);
+        let summary = PullRequestSummary::from(raw);
         assert_eq!(summary.state, PullRequestState::Merged);
     }
 
@@ -269,7 +213,7 @@ mod tests {
             "user": { "login": "x" }
         }"##,
         );
-        let summary = project(raw);
+        let summary = PullRequestSummary::from(raw);
         assert_eq!(summary.state, PullRequestState::Closed);
     }
 
@@ -284,7 +228,7 @@ mod tests {
             "user": { "login": "x" }
         }"##,
         );
-        let summary = project(raw);
+        let summary = PullRequestSummary::from(raw);
         assert_eq!(summary.state, PullRequestState::Open);
         assert!(summary.draft);
     }
@@ -299,7 +243,7 @@ mod tests {
             "labels": [{ "name": "bug", "color": "#d93f0b" }]
         }"##,
         );
-        let summary = project(raw);
+        let summary = PullRequestSummary::from(raw);
         assert_eq!(summary.labels[0].name, "bug");
         assert_eq!(summary.labels[0].color, "d93f0b");
     }
@@ -315,7 +259,7 @@ mod tests {
             "requested_reviewers": [{ "login": "bob" }, { "login": "carol" }]
         }"##,
         );
-        let summary = project(raw);
+        let summary = PullRequestSummary::from(raw);
         assert_eq!(summary.assignees.len(), 1);
         assert_eq!(summary.assignees[0].login, "alice");
         assert_eq!(summary.requested_reviewers.len(), 2);

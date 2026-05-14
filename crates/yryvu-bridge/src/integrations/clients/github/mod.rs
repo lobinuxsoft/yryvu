@@ -9,12 +9,17 @@
 //! (User-Agent header, error mapping, base URL resolution) live here
 //! in `mod.rs` so each call site re-uses the same conventions.
 
+mod detail;
 mod dsl;
 mod graphql;
 mod preflight;
 mod prs;
 mod search;
 
+pub use detail::{
+    get_pr_detail, list_pr_checks, list_pr_commits, list_pr_files, pr_action, CheckRun, PrAction,
+    PrCommit, PrFile, PullRequestDetail,
+};
 pub use graphql::enrich_prs;
 pub use preflight::preflight_github;
 pub use prs::{list_prs, CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};

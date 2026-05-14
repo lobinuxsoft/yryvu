@@ -97,20 +97,33 @@ interface PrSourceKey {
   sort: PrSortKey;
 }
 
+/// Active integration metadata so consumers (kebab menu / row click)
+/// can open the PR detail panel without re-fetching the provider info.
+/// Updated by `fetchPullRequests` on every successful classification.
+const [activePrContext, setActivePrContext] = createSignal<
+  { integrationType: string; owner: string; repo: string } | null
+>(null);
+
+export { activePrContext };
+
 async function fetchPullRequests(source: PrSourceKey): Promise<PullRequestsResult> {
   let info: RepoProviderInfo;
   try {
     info = await getRepoProviderInfo(source.path);
   } catch (err) {
+    setActivePrContext(null);
     return { kind: "error", detail: String(err) };
   }
   if (!SUPPORTED_SERVICES.includes(info.service)) {
+    setActivePrContext(null);
     return { kind: "unsupported-provider", service: info.service };
   }
   if (!info.owner || !info.repo) {
+    setActivePrContext(null);
     return { kind: "bare-or-unparseable" };
   }
   const integrationType = integrationTypeFor(info.service);
+  setActivePrContext({ integrationType, owner: info.owner, repo: info.repo });
   let configured: string[];
   try {
     configured = await listConfiguredIntegrations();

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, Match, onCleanup, onMount, Show, Switch } from "solid-js";
 import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -10,6 +10,7 @@ import { CommitGraph } from "../CommitGraph";
 import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
 import { FileDiffTab } from "../FileDiffTab";
+import { PullRequestDetailPanel } from "../PullRequestDetail";
 import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
 import { DialogsHost } from "../LeftSidebar/DialogsHost";
@@ -255,14 +256,23 @@ export function AppShell() {
           }
         >
           <Show when={repoPath()} fallback={<ColdStart />}>
-            <Show when={mainView() === "graph"} fallback={<FileDiffTab />}>
-              <div class="main">
-                <GraphColumnHeaders />
-                <div class="main__graph-host">
-                  <CommitGraph repoPath={repoPath()!} />
+            <Switch
+              fallback={
+                <div class="main">
+                  <GraphColumnHeaders />
+                  <div class="main__graph-host">
+                    <CommitGraph repoPath={repoPath()!} />
+                  </div>
                 </div>
-              </div>
-            </Show>
+              }
+            >
+              <Match when={mainView() === "diff"}>
+                <FileDiffTab />
+              </Match>
+              <Match when={mainView() === "prDetail"}>
+                <PullRequestDetailPanel />
+              </Match>
+            </Switch>
           </Show>
         </Show>
       </div>

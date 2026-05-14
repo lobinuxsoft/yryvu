@@ -21,8 +21,10 @@ mod sidecar;
 mod types;
 
 pub use clients::{
-    enrich_github_prs, list_gitea_prs, list_gitlab_mrs, list_prs, preflight, search_gitea_prs,
-    search_github_prs, search_gitlab_mrs, CiStatus, Label, PullRequestState, PullRequestSummary,
+    enrich_github_prs, get_github_pr_detail, github_pr_action, list_gitea_prs,
+    list_github_pr_checks, list_github_pr_commits, list_github_pr_files, list_gitlab_mrs, list_prs,
+    preflight, search_gitea_prs, search_github_prs, search_gitlab_mrs, CheckRun, CiStatus, Label,
+    PrAction, PrCommit, PrFile, PullRequestDetail, PullRequestState, PullRequestSummary,
     ReviewDecision, UserInfo,
 };
 pub use keyring::{get_token, remove_token, save_token};

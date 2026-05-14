@@ -127,12 +127,29 @@ pub async fn integration_preflight(
 /// no filters / sort / GraphQL enrichment. The token + hostname are
 /// pulled from the keyring + sidecar so the frontend never holds
 /// credentials.
+/// List pull requests for `owner/repo` on the named provider.
+///
+/// Two dispatch paths:
+///
+/// - **No `filterDsl`** (and no provider-only-supported sort token):
+///   REST `GET /pulls` + a GraphQL `enrich` round-trip for
+///   review/CI status. Faster on the happy path.
+/// - **`filterDsl` non-empty**: GraphQL `search` connection in a
+///   single round-trip; the response already carries review/CI so
+///   no enrichment step runs. Used by the filter toolbar.
+///
+/// `filterDsl` is the raw user text from the toolbar's freeform
+/// input (post-dropdown serialization). The DSL is parsed and
+/// translated server-side via [`super::super::integrations::clients::
+/// github::dsl::to_github_search`]; the frontend never has to know
+/// GitHub search syntax.
 #[tauri::command]
 pub async fn integration_list_prs(
     app: AppHandle,
     integration_type: String,
     owner: String,
     repo: String,
+    filter_dsl: Option<String>,
 ) -> Result<Vec<PullRequestSummary>, String> {
     let path = sidecar_path(&app)?;
     let auth = tauri::async_runtime::spawn_blocking({
@@ -143,34 +160,58 @@ pub async fn integration_list_prs(
     .map_err(|e| e.to_string())?
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("integration '{integration_type}' is not connected"))?;
-    let mut prs = integrations::list_prs(
-        &integration_type,
-        &auth.token,
-        auth.hostname.as_deref(),
-        &owner,
-        &repo,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-    // GraphQL enrichment fills in reviewDecision + statusCheckRollup
-    // on each PR. Soft-fail: if the enrichment call fails (network
-    // blip, GraphQL rate-limit, etc) we log + return the unenriched
-    // list so the user still sees titles instead of an empty panel.
-    // Only GitHub flavours have a GraphQL endpoint; others stay
-    // unenriched silently.
-    if integration_type == "github" || integration_type == "githubEnterprise" {
-        let hostname = if integration_type == "githubEnterprise" {
-            auth.hostname.as_deref()
+
+    let is_github = integration_type == "github" || integration_type == "githubEnterprise";
+    let hostname = if integration_type == "githubEnterprise" {
+        auth.hostname.as_deref()
+    } else {
+        None
+    };
+    // Treat blank / whitespace-only DSL as "no filter".
+    let dsl = filter_dsl
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+
+    if is_github {
+        if let Some(dsl) = dsl {
+            // Search path — GraphQL `search` returns enriched PRs in
+            // a single round-trip; no separate enrich call.
+            integrations::search_github_prs(&auth.token, hostname, &owner, &repo, dsl)
+                .await
+                .map_err(|e| e.to_string())
         } else {
-            None
-        };
-        if let Err(err) =
-            integrations::enrich_github_prs(&auth.token, hostname, &owner, &repo, &mut prs).await
-        {
-            eprintln!("github GraphQL enrichment failed (badges blank): {err}");
+            // List path — REST `/pulls` + soft-fail GraphQL enrich.
+            let mut prs = integrations::list_prs(
+                &integration_type,
+                &auth.token,
+                hostname,
+                &owner,
+                &repo,
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+            if let Err(err) =
+                integrations::enrich_github_prs(&auth.token, hostname, &owner, &repo, &mut prs)
+                    .await
+            {
+                eprintln!("github GraphQL enrichment failed (badges blank): {err}");
+            }
+            Ok(prs)
         }
+    } else {
+        // Non-GitHub providers: REST only, no enrichment, no search
+        // until per-provider clients land (#16 / #17).
+        integrations::list_prs(
+            &integration_type,
+            &auth.token,
+            hostname,
+            &owner,
+            &repo,
+        )
+        .await
+        .map_err(|e| e.to_string())
     }
-    Ok(prs)
 }
 
 /// Returned by [`oauth_begin`]. The frontend opens `authorize_url` in

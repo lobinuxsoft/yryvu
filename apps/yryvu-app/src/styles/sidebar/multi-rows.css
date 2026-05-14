@@ -75,3 +75,115 @@
   background: var(--bg-3);
   color: var(--fg-2);
 }
+
+/* PR row gets a column layout to host the primary row (avatar +
+   title + state + meta) plus an optional secondary row (chips +
+   badges). When the PR has no wave-2 content the secondary row
+   isn't rendered → row keeps the walking-skeleton height. */
+.sidebar__row--pull-request {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.sidebar__pr-row__primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sidebar__pr-row__secondary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 22px; /* align under the title, past avatar + counter */
+}
+
+/* Label chip — provider colour applied via inline style; text colour
+   flips between white / fg-0 based on the YIQ luma the component
+   computes (data-dark attribute). */
+.sidebar__pr-label-chip {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar__pr-label-chip[data-dark="true"] {
+  color: var(--bg-0);
+}
+.sidebar__pr-label-chip[data-dark="false"] {
+  color: var(--fg-0);
+}
+
+.sidebar__pr-chip-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sidebar__pr-chip-overflow {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--fg-3);
+  font-family: "FiraCodeNF", monospace;
+}
+
+.sidebar__pr-avatar-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.sidebar__pr-avatar-cluster__avatar {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-3);
+  border: 1px solid var(--bg-1);
+}
+.sidebar__pr-avatar-cluster[data-kind="reviewers"]
+  .sidebar__pr-avatar-cluster__avatar {
+  border-color: var(--info);
+}
+
+/* Review badge — colour matches the decision semantics. */
+.sidebar__pr-review-badge[data-state="approved"] {
+  background: var(--success);
+  color: var(--bg-0);
+}
+.sidebar__pr-review-badge[data-state="changes_requested"] {
+  background: var(--danger);
+  color: var(--bg-0);
+}
+.sidebar__pr-review-badge[data-state="review_required"] {
+  background: var(--warning);
+  color: var(--bg-0);
+}
+
+/* CI badge — green/red/yellow/grey by state. */
+.sidebar__pr-ci-badge[data-state="success"] {
+  background: var(--success);
+  color: var(--bg-0);
+}
+.sidebar__pr-ci-badge[data-state="failure"] {
+  background: var(--danger);
+  color: var(--bg-0);
+}
+.sidebar__pr-ci-badge[data-state="pending"] {
+  background: var(--warning);
+  color: var(--bg-0);
+}
+.sidebar__pr-ci-badge[data-state="error"] {
+  background: var(--danger);
+  color: var(--bg-0);
+}
+.sidebar__pr-ci-badge[data-state="expected"] {
+  background: var(--bg-3);
+  color: var(--fg-2);
+}

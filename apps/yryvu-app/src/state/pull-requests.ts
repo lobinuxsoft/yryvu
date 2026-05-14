@@ -18,22 +18,33 @@ import { repoPath } from "./repo-base";
  *
  * - `ready` — happy path, render the list (may still be empty).
  * - `no-repo` — no repo is open.
- * - `not-github` — repo is on a non-GitHub provider; PR list panel
- *   is GitHub-only in walking-skeleton v1. GitLab / Gitea / Bitbucket
- *   wave in via #16 / #17.
+ * - `unsupported-provider` — repo is on a provider we don't yet
+ *   support a panel for (Bitbucket / Gitea / etc). GitHub (#15/#360)
+ *   and GitLab (#16) are supported; Gitea arrives in #17.
  * - `bare-or-unparseable` — bare repo, zero-remote, or origin URL
  *   that doesn't split into `(owner, repo)`.
- * - `not-connected` — GitHub repo but the integration isn't
+ * - `not-connected` — supported provider but the integration isn't
  *   configured; the panel renders the inline-connect CTA.
  * - `error` — backend call failed; surface the detail for the toast.
  */
 export type PullRequestsResult =
   | { kind: "ready"; prs: PullRequestSummary[] }
   | { kind: "no-repo" }
-  | { kind: "not-github"; service: HostingService }
+  | { kind: "unsupported-provider"; service: HostingService }
   | { kind: "bare-or-unparseable" }
   | { kind: "not-connected" }
   | { kind: "error"; detail: string };
+
+/// Hosting services with a PR/MR list-panel backend implemented.
+/// Extend when new per-provider clients land (#17 Gitea etc).
+const SUPPORTED_SERVICES: ReadonlyArray<HostingService> = ["github", "gitlab"];
+
+/// Map a yryvu HostingService to the keyring integration_type used by
+/// the connected-state check. For github/gitlab the names happen to
+/// match; if a future provider needs translation, fold it here.
+function integrationTypeFor(service: HostingService): string {
+  return service;
+}
 
 /**
  * Sort options surfaced in the toolbar. `newest` (the GitHub default)
@@ -93,25 +104,26 @@ async function fetchPullRequests(source: PrSourceKey): Promise<PullRequestsResul
   } catch (err) {
     return { kind: "error", detail: String(err) };
   }
-  if (info.service !== "github") {
-    return { kind: "not-github", service: info.service };
+  if (!SUPPORTED_SERVICES.includes(info.service)) {
+    return { kind: "unsupported-provider", service: info.service };
   }
   if (!info.owner || !info.repo) {
     return { kind: "bare-or-unparseable" };
   }
+  const integrationType = integrationTypeFor(info.service);
   let configured: string[];
   try {
     configured = await listConfiguredIntegrations();
   } catch (err) {
     return { kind: "error", detail: String(err) };
   }
-  if (!configured.includes("github")) {
+  if (!configured.includes(integrationType)) {
     return { kind: "not-connected" };
   }
   const dsl = buildDsl(source.filter, source.sort);
   try {
     const prs = await integrationListPrs(
-      "github",
+      integrationType,
       info.owner,
       info.repo,
       dsl || undefined,

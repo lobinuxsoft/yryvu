@@ -27,6 +27,8 @@ export type IntegrationType =
   | "githubEnterprise"
   | "gitlab"
   | "gitlabSelfHosted"
+  | "gitea"
+  | "giteaSelfHosted"
   | "bitbucket"
   | "bitbucketServer"
   | "azureDevops"
@@ -167,6 +169,43 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cohort: "v2",
     prCharacter: "!",
     tokenGenPath: "/-/user_settings/personal_access_tokens",
+    tokenGenParams: null,
+    tokenIsAppPassword: false,
+  },
+  {
+    // Gitea is yryvu-only — GK doesn't ship a Gitea integration.
+    // Default deployment is Codeberg.org (most-visible public Gitea
+    // instance); self-hosted variant covers everything else.
+    type: "gitea",
+    label: "Gitea",
+    verboseLabel: "Gitea / Codeberg",
+    hostnameLabel: "Codeberg.org",
+    hostname: "codeberg.org",
+    roles: ["HOSTING_SERVICE", "ISSUE_TRACKER"],
+    authType: "PAT",
+    isSelfHosted: false,
+    initials: "GT",
+    colorAccent: "#609926",
+    cohort: "v1",
+    prCharacter: "#",
+    tokenGenPath: "https://codeberg.org/user/settings/applications",
+    tokenGenParams: null,
+    tokenIsAppPassword: false,
+  },
+  {
+    type: "giteaSelfHosted",
+    label: "Gitea (Self-Hosted)",
+    verboseLabel: "Gitea / Forgejo Self-Hosted",
+    hostnameLabel: "Gitea / Forgejo Self-Hosted",
+    hostname: null,
+    roles: ["HOSTING_SERVICE", "ISSUE_TRACKER"],
+    authType: "PAT",
+    isSelfHosted: true,
+    initials: "GTS",
+    colorAccent: "#4d8a2a",
+    cohort: "v2",
+    prCharacter: "#",
+    tokenGenPath: "/user/settings/applications",
     tokenGenParams: null,
     tokenIsAppPassword: false,
   },

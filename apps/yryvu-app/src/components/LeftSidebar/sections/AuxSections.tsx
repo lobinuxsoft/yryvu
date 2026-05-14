@@ -155,8 +155,9 @@ export function AuxSections(props: Props) {
             </Match>
             <Match when={pullRequests()?.kind === "unsupported-provider"}>
               <p class="sidebar__empty">
-                Pull-request panel supports GitHub and GitLab in v1.
-                Gitea support arrives in #17.
+                Pull-request panel supports GitHub, GitLab and Gitea /
+                Forgejo. Other providers (Bitbucket, Azure DevOps) are
+                not on the v1 roadmap.
               </p>
             </Match>
             <Match when={pullRequests()?.kind === "bare-or-unparseable"}>

@@ -17,6 +17,7 @@
 //! those badges as `null` rather than pay the round-trip tax;
 //! revisit when users push back.
 
+mod clone_candidates;
 mod comments;
 mod create_pr;
 mod detail;
@@ -28,6 +29,7 @@ mod prs;
 mod repo_metadata;
 mod search;
 
+pub use clone_candidates::list_clone_candidates;
 pub use comments::{create_comment, list_comments};
 pub use create_pr::create_pr;
 pub use detail::{get_pr_detail, list_pr_checks, list_pr_commits, list_pr_files};

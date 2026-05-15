@@ -10,11 +10,13 @@ use std::sync::Arc;
 
 use tauri::ipc::Channel;
 
+use crate::integrations;
 use crate::repo::clone::{
     clone_repository as clone_impl, registry, CloneOptions, CloneProgress, ProgressEmit,
 };
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn clone_repository(
     session_id: String,
     url: String,
@@ -22,18 +24,29 @@ pub async fn clone_repository(
     branch: Option<String>,
     depth: Option<u32>,
     recurse_submodules: bool,
+    integration_type: Option<String>,
     on_progress: Channel<CloneProgress>,
 ) -> Result<String, String> {
     let cancel = registry::register(session_id.clone());
     let emit: ProgressEmit = Arc::new(move |p| {
         let _ = on_progress.send(p);
     });
+    // Pull the matching integration's token from the OS keyring when the
+    // caller flagged this clone as provider-driven (#374). Failure to
+    // resolve a token isn't fatal — the credentials callback still tries
+    // SSH agent + system git credential helper afterwards.
+    let integration_token = match integration_type.as_deref() {
+        Some(t) => integrations::get_token(t).ok().flatten(),
+        None => None,
+    };
     let opts = CloneOptions {
         url,
         dest_path: PathBuf::from(dest_path),
         branch,
         depth,
         recurse_submodules,
+        integration_type,
+        integration_token,
     };
     let session_for_cleanup = session_id.clone();
     let result = tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {

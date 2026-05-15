@@ -20,6 +20,7 @@ mod types;
 pub use gitea::{
     create_issue as create_gitea_issue, create_pr as create_gitea_pr,
     get_issue_detail as get_gitea_issue_detail, get_pr_detail as get_gitea_pr_detail,
+    list_clone_candidates as list_gitea_clone_candidates,
     list_collaborators as list_gitea_collaborators, list_issues as list_gitea_issues,
     list_labels as list_gitea_labels, list_milestones as list_gitea_milestones,
     list_pr_checks as list_gitea_pr_checks, list_pr_commits as list_gitea_pr_commits,
@@ -30,6 +31,7 @@ pub use github::{
     create_issue as create_github_issue, create_pr as create_github_pr,
     delete_branch as github_delete_branch, enrich_prs as enrich_github_prs,
     get_issue_detail as get_github_issue_detail, get_pr_detail as get_github_pr_detail,
+    list_clone_candidates as list_github_clone_candidates,
     list_collaborators as list_github_collaborators, list_issues as list_github_issues,
     list_labels as list_github_labels, list_milestones as list_github_milestones,
     list_pr_checks as list_github_pr_checks, list_pr_commits as list_github_pr_commits,
@@ -41,6 +43,7 @@ pub use github::{
 pub use gitlab::{
     create_issue as create_gitlab_issue, create_pr as create_gitlab_pr,
     get_issue_detail as get_gitlab_issue_detail, get_mr_detail as get_gitlab_mr_detail,
+    list_clone_candidates as list_gitlab_clone_candidates,
     list_collaborators as list_gitlab_collaborators, list_issues as list_gitlab_issues,
     list_labels as list_gitlab_labels, list_milestones as list_gitlab_milestones,
     list_mr_commits as list_gitlab_mr_commits, list_mr_files as list_gitlab_mr_files,
@@ -49,9 +52,9 @@ pub use gitlab::{
     search_mrs as search_gitlab_mrs, MrAction,
 };
 pub use types::{
-    Comment, CommentTarget, CreateCommentInput, CreateIssueInput, CreatePrInput, Identifier,
-    IssueDetail, IssueState, IssueSummary, Label, ProjectMergeMethod, ProjectMergeSettings,
-    ProjectSquashOption, UserInfo,
+    CloneRepoCandidate, Comment, CommentTarget, CreateCommentInput, CreateIssueInput,
+    CreatePrInput, Identifier, IssueDetail, IssueState, IssueSummary, Label, OwnerKind,
+    ProjectMergeMethod, ProjectMergeSettings, ProjectSquashOption, UserInfo,
 };
 
 use crate::backend::BackendError;
@@ -265,6 +268,33 @@ pub async fn list_milestones(
         _ => Err(BackendError::NotImplemented(
             "milestones listing not implemented for this provider",
         )),
+    }
+}
+
+/// Dispatcher: list every repo the authenticated user can clone via
+/// `integration_type`. Powers the Clone dialog's per-provider sub-tab
+/// (#374). Each provider returns a flat list; the frontend groups by
+/// `owner` for the GK-style org-headered dropdown.
+pub async fn list_clone_candidates(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+) -> Result<Vec<types::CloneRepoCandidate>, BackendError> {
+    match integration_type {
+        "github" => github::list_clone_candidates(token, None).await,
+        "githubEnterprise" => github::list_clone_candidates(token, hostname).await,
+        "gitlab" => gitlab::list_clone_candidates(token, None).await,
+        "gitlabSelfHosted" => gitlab::list_clone_candidates(token, hostname).await,
+        "gitea" => gitea::list_clone_candidates(token, None).await,
+        "giteaSelfHosted" => gitea::list_clone_candidates(token, hostname).await,
+        other => Err(BackendError::NotImplemented(match other {
+            "bitbucket" | "bitbucketServer" => "Bitbucket clone-candidates (lands in its own PR)",
+            "azureDevops" => "Azure DevOps clone-candidates (lands in its own PR)",
+            "jiraCloud" | "jiraServer" | "trello" => {
+                "issue-tracker / task-only providers don't expose repos to clone"
+            }
+            _ => "unknown integration type",
+        })),
     }
 }
 

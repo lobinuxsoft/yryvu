@@ -59,9 +59,7 @@ fn parse_action(action: &str) -> Result<(PrAction, MrAction), String> {
 }
 
 fn unsupported_for_detail(integration_type: &str) -> String {
-    format!(
-        "PR detail view supports GitHub and GitLab in v1; '{integration_type}' lands in its own PR"
-    )
+    format!("PR detail view is not implemented for provider '{integration_type}'")
 }
 
 #[tauri::command]
@@ -83,6 +81,11 @@ pub async fn integration_get_pr_detail(
         }
         ProviderFamily::Gitlab => {
             integrations::get_gitlab_mr_detail(&auth.token, host, &owner, &repo, number)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        ProviderFamily::Gitea => {
+            integrations::get_gitea_pr_detail(&auth.token, host, &owner, &repo, number)
                 .await
                 .map_err(|e| e.to_string())
         }
@@ -112,6 +115,11 @@ pub async fn integration_list_pr_commits(
                 .await
                 .map_err(|e| e.to_string())
         }
+        ProviderFamily::Gitea => {
+            integrations::list_gitea_pr_commits(&auth.token, host, &owner, &repo, number)
+                .await
+                .map_err(|e| e.to_string())
+        }
         _ => Err(unsupported_for_detail(&integration_type)),
     }
 }
@@ -135,6 +143,11 @@ pub async fn integration_list_pr_files(
         }
         ProviderFamily::Gitlab => {
             integrations::list_gitlab_mr_files(&auth.token, host, &owner, &repo, number)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        ProviderFamily::Gitea => {
+            integrations::list_gitea_pr_files(&auth.token, host, &owner, &repo, number)
                 .await
                 .map_err(|e| e.to_string())
         }
@@ -173,6 +186,11 @@ pub async fn integration_list_pr_checks(
                 .await
                 .map_err(|e| e.to_string())
         }
+        ProviderFamily::Gitea => {
+            integrations::list_gitea_pr_checks(&auth.token, host, &owner, &repo, &head_sha)
+                .await
+                .map_err(|e| e.to_string())
+        }
         _ => Err(unsupported_for_detail(&integration_type)),
     }
 }
@@ -204,6 +222,11 @@ pub async fn integration_pr_action(
                 .await
                 .map_err(|e| e.to_string())
         }
+        ProviderFamily::Gitea => {
+            integrations::gitea_pr_action(&auth.token, host, &owner, &repo, number, gh_action)
+                .await
+                .map_err(|e| e.to_string())
+        }
         _ => Err(unsupported_for_detail(&integration_type)),
     }
 }
@@ -231,14 +254,9 @@ pub async fn integration_merge_pr(
     commit_message: Option<String>,
     delete_source_branch: bool,
 ) -> Result<PullRequestDetail, String> {
-    match ProviderFamily::from_integration_type(&integration_type) {
-        ProviderFamily::Github => Ok(()),
-        _ => Err(format!(
-            "PR merge form is GitHub-only in v1; '{integration_type}' lands in #94"
-        )),
-    }?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
+    let host = hostname.as_deref();
     let parsed_method = match method.as_str() {
         "merge" => MergeMethod::Merge,
         "squash" => MergeMethod::Squash,
@@ -250,29 +268,37 @@ pub async fn integration_merge_pr(
         commit_title,
         commit_message,
     };
-    let detail = integrations::github_merge_pr(
-        &auth.token,
-        hostname.as_deref(),
-        &owner,
-        &repo,
-        number,
-        request,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-    if delete_source_branch {
-        if let Err(err) = integrations::github_delete_branch(
-            &auth.token,
-            hostname.as_deref(),
-            &owner,
-            &repo,
-            &detail.head_ref,
+    let detail = match ProviderFamily::from_integration_type(&integration_type) {
+        ProviderFamily::Github => {
+            integrations::github_merge_pr(&auth.token, host, &owner, &repo, number, request)
+                .await
+                .map_err(|e| e.to_string())?
+        }
+        ProviderFamily::Gitea => {
+            integrations::gitea_merge_pr(&auth.token, host, &owner, &repo, number, request)
+                .await
+                .map_err(|e| e.to_string())?
+        }
+        _ => {
+            return Err(format!(
+                "PR merge form is not implemented for '{integration_type}' (GitLab lands in #94)"
+            ));
+        }
+    };
+    if delete_source_branch
+        && matches!(
+            ProviderFamily::from_integration_type(&integration_type),
+            ProviderFamily::Github
         )
-        .await
+    {
+        // GH-only: branch delete after merge. Gitea handles the
+        // delete via the merge endpoint's `delete_branch_after_merge`
+        // toggle which lives in the frontend MergeForm (not wired
+        // yet — defer to a follow-up when users push back).
+        if let Err(err) =
+            integrations::github_delete_branch(&auth.token, host, &owner, &repo, &detail.head_ref)
+                .await
         {
-            // Soft-fail: the merge already succeeded, so we surface
-            // the branch-delete failure as a log without flipping
-            // the command result.
             eprintln!("github delete branch failed (branch survives): {err}");
         }
     }

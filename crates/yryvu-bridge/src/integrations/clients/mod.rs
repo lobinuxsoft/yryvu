@@ -18,10 +18,13 @@ mod http;
 mod types;
 
 pub use gitea::{
-    create_issue as create_gitea_issue, get_issue_detail as get_gitea_issue_detail,
+    create_issue as create_gitea_issue, create_pr as create_gitea_pr,
+    get_issue_detail as get_gitea_issue_detail, get_pr_detail as get_gitea_pr_detail,
     list_collaborators as list_gitea_collaborators, list_issues as list_gitea_issues,
     list_labels as list_gitea_labels, list_milestones as list_gitea_milestones,
-    list_prs as list_gitea_prs, search_prs as search_gitea_prs,
+    list_pr_checks as list_gitea_pr_checks, list_pr_commits as list_gitea_pr_commits,
+    list_pr_files as list_gitea_pr_files, list_prs as list_gitea_prs, merge_pr as gitea_merge_pr,
+    pr_action as gitea_pr_action, search_prs as search_gitea_prs,
 };
 pub use github::{
     create_issue as create_github_issue, create_pr as create_github_pr,
@@ -282,9 +285,8 @@ pub async fn create_pr(
         "githubEnterprise" => github::create_pr(token, hostname, owner, repo, input).await,
         "gitlab" => gitlab::create_pr(token, None, owner, repo, input).await,
         "gitlabSelfHosted" => gitlab::create_pr(token, hostname, owner, repo, input).await,
-        "gitea" | "giteaSelfHosted" => Err(BackendError::NotImplemented(
-            "PR creation on Gitea waits on Gitea PR detail (lands together)",
-        )),
+        "gitea" => gitea::create_pr(token, None, owner, repo, input).await,
+        "giteaSelfHosted" => gitea::create_pr(token, hostname, owner, repo, input).await,
         _ => Err(BackendError::NotImplemented(
             "PR creation not implemented for this provider",
         )),

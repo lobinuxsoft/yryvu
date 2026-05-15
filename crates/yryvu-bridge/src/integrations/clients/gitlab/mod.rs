@@ -22,7 +22,9 @@ mod detail;
 mod detail_raw;
 mod dsl;
 mod issues;
+mod merge;
 mod preflight;
+mod project_settings;
 mod prs;
 mod repo_metadata;
 mod search;
@@ -33,6 +35,7 @@ pub use detail::{
     get_mr_detail, list_mr_commits, list_mr_files, list_mr_pipelines, mr_action, MrAction,
 };
 pub use issues::{create_issue, get_issue_detail, list_issues};
+pub use merge::{merge_mr, rebase_mr};
 pub use preflight::preflight_gitlab;
 pub use prs::list_mrs;
 pub use repo_metadata::{list_collaborators, list_labels, list_milestones};

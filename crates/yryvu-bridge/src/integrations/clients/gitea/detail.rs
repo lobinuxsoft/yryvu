@@ -278,6 +278,7 @@ pub(super) fn project_pr(raw: GiteaPullDetail) -> PullRequestDetail {
         // is the Checks tab).
         review_decision: None,
         ci_status: None,
+        project_settings: None,
     }
 }
 

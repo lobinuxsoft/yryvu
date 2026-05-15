@@ -62,6 +62,7 @@ pub fn run() {
             yryvu_bridge::commands::integration_list_pr_checks,
             yryvu_bridge::commands::integration_pr_action,
             yryvu_bridge::commands::integration_merge_pr,
+            yryvu_bridge::commands::integration_rebase_mr,
             yryvu_bridge::commands::oauth_begin,
             yryvu_bridge::commands::oauth_await,
             yryvu_bridge::commands::oauth_cancel,

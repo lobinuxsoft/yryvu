@@ -231,11 +231,14 @@ pub async fn integration_pr_action(
     }
 }
 
-/// Merge a PR via `PUT /pulls/{number}/merge`. `method` is one of
-/// `merge | squash | rebase` (matches the frontend enum verbatim).
-/// On success, optionally fires a `DELETE /git/refs/heads/{headRef}`
-/// to drop the source branch — failures of that follow-up don't fail
-/// the merge (the user's primary intent already succeeded).
+/// Merge a PR via the matching provider's API. `method` is one of
+/// `merge | squash | rebase` (matches the frontend enum verbatim);
+/// providers project the canonical enum onto their native semantics.
+///
+/// `squash` is an independent toggle honoured only by GitLab — the
+/// other providers derive squash from `method == squash`. GitHub
+/// drops the source branch via a follow-up `DELETE /git/refs/heads`
+/// call; GitLab folds it into the merge body, Gitea defers it.
 ///
 /// Argument count is gated by the Tauri IPC surface (each param maps
 /// to one camelCase key on the JS side); refactoring into a wrapper
@@ -253,6 +256,7 @@ pub async fn integration_merge_pr(
     commit_title: Option<String>,
     commit_message: Option<String>,
     delete_source_branch: bool,
+    squash: Option<bool>,
 ) -> Result<PullRequestDetail, String> {
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
@@ -267,8 +271,10 @@ pub async fn integration_merge_pr(
         method: parsed_method,
         commit_title,
         commit_message,
+        squash,
     };
-    let detail = match ProviderFamily::from_integration_type(&integration_type) {
+    let family = ProviderFamily::from_integration_type(&integration_type);
+    let detail = match family {
         ProviderFamily::Github => {
             integrations::github_merge_pr(&auth.token, host, &owner, &repo, number, request)
                 .await
@@ -279,22 +285,26 @@ pub async fn integration_merge_pr(
                 .await
                 .map_err(|e| e.to_string())?
         }
+        ProviderFamily::Gitlab => integrations::gitlab_merge_mr(
+            &auth.token,
+            host,
+            &owner,
+            &repo,
+            number,
+            request,
+            delete_source_branch,
+        )
+        .await
+        .map_err(|e| e.to_string())?,
         _ => {
-            return Err(format!(
-                "PR merge form is not implemented for '{integration_type}' (GitLab lands in #94)"
-            ));
+            return Err(unsupported_for_detail(&integration_type));
         }
     };
-    if delete_source_branch
-        && matches!(
-            ProviderFamily::from_integration_type(&integration_type),
-            ProviderFamily::Github
-        )
-    {
-        // GH-only: branch delete after merge. Gitea handles the
-        // delete via the merge endpoint's `delete_branch_after_merge`
-        // toggle which lives in the frontend MergeForm (not wired
-        // yet — defer to a follow-up when users push back).
+    if delete_source_branch && matches!(family, ProviderFamily::Github) {
+        // GitHub only: branch delete is a separate `DELETE /git/refs`
+        // call. Failure here doesn't fail the merge (the user's
+        // primary intent already succeeded — branch lingers, audit
+        // log carries the reason).
         if let Err(err) =
             integrations::github_delete_branch(&auth.token, host, &owner, &repo, &detail.head_ref)
                 .await
@@ -303,4 +313,33 @@ pub async fn integration_merge_pr(
         }
     }
     Ok(detail)
+}
+
+/// Rebase a GitLab MR's source branch onto target via
+/// `PUT /merge_requests/:iid/rebase`. `skip_ci` suppresses the
+/// pipeline trigger that would otherwise fire on the rebased commits.
+/// GitLab returns 202 immediately; we re-fetch the detail so the
+/// panel sees the freshest state.
+#[tauri::command]
+pub async fn integration_rebase_mr(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+    number: u64,
+    skip_ci: bool,
+) -> Result<PullRequestDetail, String> {
+    let auth = load_auth(&app, integration_type.clone()).await?;
+    let hostname = pick_hostname(&integration_type, &auth);
+    let host = hostname.as_deref();
+    match ProviderFamily::from_integration_type(&integration_type) {
+        ProviderFamily::Gitlab => {
+            integrations::gitlab_rebase_mr(&auth.token, host, &owner, &repo, number, skip_ci)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        _ => Err(format!(
+            "rebase action is GitLab-only (got '{integration_type}')"
+        )),
+    }
 }

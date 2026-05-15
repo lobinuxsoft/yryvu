@@ -39,6 +39,18 @@ pub(super) struct GlDetailData {
 pub(super) struct GlDetailProject {
     #[serde(default)]
     pub(super) merge_request: Option<GlMrDetail>,
+    /// `MERGE` | `FF` | `REBASE_MERGE` — gates which method radios the
+    /// frontend offers in the merge form.
+    #[serde(default)]
+    pub(super) merge_method: Option<String>,
+    /// `never` | `always` | `default_off` | `default_on` — gates the
+    /// independent squash checkbox.
+    #[serde(default)]
+    pub(super) squash_option: Option<String>,
+    #[serde(default)]
+    pub(super) remove_source_branch_after_merge: Option<bool>,
+    #[serde(default)]
+    pub(super) allow_merge_on_skipped_pipeline: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -195,6 +207,10 @@ impl From<GlMrDetail> for PullRequestDetail {
             ci_status: raw
                 .head_pipeline
                 .and_then(|p| p.status.as_deref().and_then(parse_ci)),
+            // Filled in at the project-level projection in
+            // [`super::detail::get_mr_detail`] — the From only sees the
+            // MR scope.
+            project_settings: None,
         }
     }
 }

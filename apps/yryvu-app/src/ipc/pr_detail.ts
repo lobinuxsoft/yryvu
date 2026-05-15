@@ -10,6 +10,28 @@ import type {
   UserInfo,
 } from "./integrationStorage";
 
+/// GitLab project setting controlling how merges are committed.
+/// Mirrors the backend `ProjectMergeMethod` enum (camelCase wire form).
+export type ProjectMergeMethod = "merge" | "rebaseMerge" | "ff";
+
+/// GitLab project setting controlling whether commits are squashed at
+/// merge time. Mirrors the backend `ProjectSquashOption` enum.
+export type ProjectSquashOption =
+  | "never"
+  | "always"
+  | "defaultOff"
+  | "defaultOn";
+
+/// GitLab-only project merge config powering the merge form's
+/// radio gating + squash checkbox availability. `null` for GitHub /
+/// Gitea — the form falls back to unrestricted controls.
+export interface ProjectMergeSettings {
+  mergeMethod: ProjectMergeMethod;
+  squashOption: ProjectSquashOption;
+  removeSourceBranchAfterMergeDefault: boolean;
+  allowMergeOnSkippedPipeline: boolean;
+}
+
 /**
  * Extended PR record — superset of `PullRequestSummary` with body
  * (markdown), mergeability, and aggregate counts. Powers the 4-tab
@@ -45,6 +67,8 @@ export interface PullRequestDetail {
   comments: number;
   reviewDecision: ReviewDecision | null;
   ciStatus: CiStatus | null;
+  /// GitLab-only project merge config; `null` for GitHub / Gitea.
+  projectSettings: ProjectMergeSettings | null;
 }
 
 export interface PrCommit {
@@ -168,15 +192,23 @@ export function integrationPrAction(
   });
 }
 
-/// Merge a PR via `PUT /pulls/{n}/merge`. On success, optionally
-/// drops the source branch via `DELETE /git/refs/heads/{headRef}`.
-/// Returns the post-mutation detail so the panel refreshes in one
-/// round-trip.
+/// Merge a PR via the matching provider's API. On success, optionally
+/// drops the source branch (GitHub: separate `DELETE /git/refs`;
+/// GitLab: `should_remove_source_branch` in the merge body). Returns
+/// the post-mutation detail so the panel refreshes in one round-trip.
+///
+/// `squash` is GitLab-only: the GitLab API exposes squash as a flag
+/// independent of merge method, so the form can offer "merge with merge
+/// commit but squash all commits" combos. GitHub + Gitea derive squash
+/// from `method === "squash"`.
 export interface MergeOptions {
   method: MergeMethod;
   commitTitle?: string;
   commitMessage?: string;
   deleteSourceBranch: boolean;
+  /// GitLab-only squash override. `undefined` = backend defaults
+  /// (squash iff `method === "squash"`).
+  squash?: boolean;
 }
 
 export function integrationMergePr(
@@ -195,5 +227,27 @@ export function integrationMergePr(
     commitTitle: options.commitTitle ?? null,
     commitMessage: options.commitMessage ?? null,
     deleteSourceBranch: options.deleteSourceBranch,
+    squash: options.squash ?? null,
+  });
+}
+
+/// Rebase a GitLab MR's source branch onto target via
+/// `PUT /merge_requests/:iid/rebase`. `skipCi` suppresses the pipeline
+/// trigger that would otherwise fire on the rebased commits.
+/// GitLab-only — calling against GitHub / Gitea returns an error from
+/// the backend.
+export function integrationRebaseMr(
+  integrationType: string,
+  owner: string,
+  repo: string,
+  number: number,
+  skipCi: boolean,
+): Promise<PullRequestDetail> {
+  return invoke<PullRequestDetail>("integration_rebase_mr", {
+    integrationType,
+    owner,
+    repo,
+    number,
+    skipCi,
   });
 }

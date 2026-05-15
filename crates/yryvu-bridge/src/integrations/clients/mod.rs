@@ -45,11 +45,13 @@ pub use gitlab::{
     list_labels as list_gitlab_labels, list_milestones as list_gitlab_milestones,
     list_mr_commits as list_gitlab_mr_commits, list_mr_files as list_gitlab_mr_files,
     list_mr_pipelines as list_gitlab_mr_pipelines, list_mrs as list_gitlab_mrs,
-    mr_action as gitlab_mr_action, search_mrs as search_gitlab_mrs, MrAction,
+    merge_mr as gitlab_merge_mr, mr_action as gitlab_mr_action, rebase_mr as gitlab_rebase_mr,
+    search_mrs as search_gitlab_mrs, MrAction,
 };
 pub use types::{
     Comment, CommentTarget, CreateCommentInput, CreateIssueInput, CreatePrInput, Identifier,
-    IssueDetail, IssueState, IssueSummary, Label, UserInfo,
+    IssueDetail, IssueState, IssueSummary, Label, ProjectMergeMethod, ProjectMergeSettings,
+    ProjectSquashOption, UserInfo,
 };
 
 use crate::backend::BackendError;

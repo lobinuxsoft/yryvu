@@ -748,3 +748,41 @@
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* GitLab-only: header row holds the title + the standalone Rebase
+   button + skip-CI checkbox so the user can sync the source onto target
+   before deciding to merge. */
+.pr-detail__merge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pr-detail__merge-rebase {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pr-detail__merge-checkbox--inline {
+  font-size: 11px;
+  color: var(--fg-2);
+}
+
+/* Project-policy hint shown beneath the method radios — explains why
+   some radios may be disabled. */
+.pr-detail__merge-method-policy {
+  margin: -2px 0 4px;
+  font-size: 11px;
+  color: var(--fg-3);
+  font-style: italic;
+}
+
+/* Disabled-by-project method radio: keep the label visible but greyed
+   out so the user understands the option exists but isn't allowed. */
+.pr-detail__merge-method--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pr-detail__merge-method--disabled:hover {
+  background: transparent;
+}

@@ -17,11 +17,12 @@ use super::super::github::{CheckRun, PrCommit, PrFile, PullRequestDetail};
 use super::super::http::{self, GITLAB_QUIRKS};
 use super::detail_raw::{GlChangesResp, GlCommit, GlDetailResp, GlPipeline};
 use super::graphql_endpoint;
+use super::project_settings;
 
 /// REST v4 base URL — used by the commits / files / pipelines / state
 /// endpoints. GraphQL lives at [`graphql_endpoint`] and powers the
 /// detail fetch.
-fn rest_base(hostname: Option<&str>) -> Result<String, BackendError> {
+pub(super) fn rest_base(hostname: Option<&str>) -> Result<String, BackendError> {
     match hostname {
         None => Ok("https://gitlab.com/api/v4".to_string()),
         Some(h) => {
@@ -39,26 +40,33 @@ fn rest_base(hostname: Option<&str>) -> Result<String, BackendError> {
 /// Encoded `owner/repo` project path — GitLab routes everything via
 /// the URL-encoded full path because the project ID can also be a
 /// numeric primary key.
-fn project_path(owner: &str, repo: &str) -> String {
+pub(super) fn project_path(owner: &str, repo: &str) -> String {
     format!("{owner}%2F{repo}")
 }
 
 /// GraphQL document for the detail tab. One round-trip covers body,
 /// mergeability, approval state, head pipeline + author/labels/etc.
+/// Project-level fields (`mergeMethod`, `squashOption`, etc.) drive the
+/// merge-form gating in #94 and ride along on the same request — no
+/// extra round-trip.
 const DETAIL_QUERY: &str = "query($fullPath: ID!, $iid: String!) { \
-    project(fullPath: $fullPath) { mergeRequest(iid: $iid) { \
-        iid title description state draft webUrl createdAt updatedAt \
-        targetBranch sourceBranch sha mergeStatus mergeableDiscussionsState \
-        userNotesCount diffStatsSummary { additions deletions fileCount } \
-        author { username name avatarUrl } \
-        labels { nodes { title color } } \
-        assignees { nodes { username name avatarUrl } } \
-        reviewers { nodes { username name avatarUrl } } \
-        milestone { title } \
-        approvalsRequired approvalsLeft \
-        headPipeline { status } \
-        closedAt mergedAt \
-    } } }";
+    project(fullPath: $fullPath) { \
+        mergeMethod squashOption \
+        removeSourceBranchAfterMerge allowMergeOnSkippedPipeline \
+        mergeRequest(iid: $iid) { \
+            iid title description state draft webUrl createdAt updatedAt \
+            targetBranch sourceBranch sha mergeStatus mergeableDiscussionsState \
+            userNotesCount diffStatsSummary { additions deletions fileCount } \
+            author { username name avatarUrl } \
+            labels { nodes { title color } } \
+            assignees { nodes { username name avatarUrl } } \
+            reviewers { nodes { username name avatarUrl } } \
+            milestone { title } \
+            approvalsRequired approvalsLeft \
+            headPipeline { status } \
+            closedAt mergedAt \
+        } \
+    } }";
 
 /// Fetch the full MR record via GraphQL. Single round-trip, all the
 /// fields the four tabs need (body, mergeable*, approvals,
@@ -96,14 +104,19 @@ pub async fn get_mr_detail(
             });
         }
     }
-    let mr = body
+    let project = body
         .data
         .and_then(|d| d.project)
-        .and_then(|p| p.merge_request)
         .ok_or(BackendError::NetworkError {
-            detail: format!("MR !{iid} not found in {owner}/{repo}"),
+            detail: format!("project {owner}/{repo} not found"),
         })?;
-    Ok(mr.into())
+    let settings = project_settings::merge_settings(&project);
+    let mr = project.merge_request.ok_or(BackendError::NetworkError {
+        detail: format!("MR !{iid} not found in {owner}/{repo}"),
+    })?;
+    let mut detail: PullRequestDetail = mr.into();
+    detail.project_settings = settings;
+    Ok(detail)
 }
 
 pub async fn list_mr_commits(

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// straight into the `connected` state branch without remapping.
 ///
 /// Mirror of GK's `getUserByIntegrationType` shape (`bundle:203626`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserInfo {
     /// Stable login / handle (e.g. `lobinuxsoft`).

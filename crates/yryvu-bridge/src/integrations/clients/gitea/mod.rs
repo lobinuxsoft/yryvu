@@ -18,15 +18,21 @@
 //! revisit when users push back.
 
 mod comments;
+mod create_pr;
+mod detail;
 mod dsl;
 mod issues;
+mod merge;
 mod preflight;
 mod prs;
 mod repo_metadata;
 mod search;
 
 pub use comments::{create_comment, list_comments};
+pub use create_pr::create_pr;
+pub use detail::{get_pr_detail, list_pr_checks, list_pr_commits, list_pr_files};
 pub use issues::{create_issue, get_issue_detail, list_issues};
+pub use merge::{merge_pr, pr_action};
 pub use preflight::preflight_gitea;
 pub use prs::list_prs;
 pub use repo_metadata::{list_collaborators, list_labels, list_milestones};

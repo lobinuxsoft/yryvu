@@ -2,6 +2,7 @@
 
 import { createSignal, Show, type JSX } from "solid-js";
 import { notify } from "../../../Notifications";
+import { Tooltip } from "../../../Tooltip";
 import { ConnectButton } from "./ConnectButton";
 import { DisconnectButton } from "./DisconnectButton";
 import { PatEntryDialog } from "./PatEntryDialog";
@@ -233,19 +234,18 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
         </div>
 
         <Show when={acceptsPat() && state().tag === "disconnected"}>
-          <button
-            class="integrations-form__pat-link"
-            type="button"
-            disabled={patBlocked()}
-            title={
-              patBlocked()
-                ? "Configure the instance URL first"
-                : undefined
-            }
-            onClick={handleUsePat}
+          <Tooltip
+            text={patBlocked() ? "Configure the instance URL first" : null}
           >
-            Use {props.provider.tokenIsAppPassword ? "an" : "a"} {tokenLabel()} instead
-          </button>
+            <button
+              class="integrations-form__pat-link"
+              type="button"
+              disabled={patBlocked()}
+              onClick={handleUsePat}
+            >
+              Use {props.provider.tokenIsAppPassword ? "an" : "a"} {tokenLabel()} instead
+            </button>
+          </Tooltip>
         </Show>
 
         <p class="integrations-form__hint">

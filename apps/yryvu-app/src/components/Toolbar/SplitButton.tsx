@@ -3,6 +3,7 @@
 import { createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
 
 import { IconChevronDown } from "../Icons";
+import { Tooltip } from "../Tooltip";
 
 /**
  * Option in the dropdown half of a {@link SplitButton}. `destructive`
@@ -123,39 +124,43 @@ export function SplitButton(props: SplitButtonProps) {
             <For each={props.options}>
               {(option) => (
                 <li>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="split-button__option"
-                    classList={{
-                      "split-button__option--destructive": option.destructive,
-                    }}
-                    disabled={option.disabled}
-                    title={option.tooltip}
-                    onClick={() => handleSelect(option)}
-                  >
-                    <span
-                      class="split-button__radio"
+                  <Tooltip text={option.tooltip}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="split-button__option"
                       classList={{
-                        "split-button__radio--default": option.id === props.defaultOptionId,
-                        "split-button__radio--clickable":
-                          props.onSetDefault !== undefined && !option.disabled,
+                        "split-button__option--destructive": option.destructive,
                       }}
-                      role="radio"
-                      aria-checked={option.id === props.defaultOptionId}
-                      title={
-                        option.id === props.defaultOptionId
-                          ? "This is the default"
-                          : props.onSetDefault
-                            ? "Set as default"
-                            : undefined
-                      }
-                      onClick={(e) => handleSetDefault(e, option)}
+                      disabled={option.disabled}
+                      onClick={() => handleSelect(option)}
                     >
-                      <span class="split-button__radio-dot" />
-                    </span>
-                    <span class="split-button__option-label">{option.label}</span>
-                  </button>
+                      <Tooltip
+                        text={
+                          option.id === props.defaultOptionId
+                            ? "This is the default"
+                            : props.onSetDefault
+                              ? "Set as default"
+                              : null
+                        }
+                      >
+                        <span
+                          class="split-button__radio"
+                          classList={{
+                            "split-button__radio--default": option.id === props.defaultOptionId,
+                            "split-button__radio--clickable":
+                              props.onSetDefault !== undefined && !option.disabled,
+                          }}
+                          role="radio"
+                          aria-checked={option.id === props.defaultOptionId}
+                          onClick={(e) => handleSetDefault(e, option)}
+                        >
+                          <span class="split-button__radio-dot" />
+                        </span>
+                      </Tooltip>
+                      <span class="split-button__option-label">{option.label}</span>
+                    </button>
+                  </Tooltip>
                 </li>
               )}
             </For>

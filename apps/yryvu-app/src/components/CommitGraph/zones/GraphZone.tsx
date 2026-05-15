@@ -13,6 +13,7 @@ import {
 import { isRowMemberOfHoveredRef } from "../hoverDim";
 import { rowWrapperClass } from "../rowClass";
 import { CommitRowGraph, getRenderDims, ROW_HEIGHT } from "../RowRenderer";
+import { Tooltip } from "../../Tooltip";
 import type { ZoneDeps } from "./types";
 
 /**
@@ -44,6 +45,7 @@ export function GraphZone(props: { deps: ZoneDeps }) {
             }}
           >
             <Show when={dirtyFileCount() > 0}>
+              <Tooltip text="View working-directory changes">
               <li
                 class="commit-graph__wip-cell commit-graph__wip-cell--graph"
                 data-active={
@@ -57,7 +59,6 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                   "--wip-lane-color": `var(--column-${deps.layout.headColorIdx()}-color)`,
                 }}
                 onClick={(e) => deps.selection.handleWipClick(e)}
-                title="View working-directory changes"
               >
                 <span
                   class="commit-graph__wip-tint"
@@ -70,6 +71,7 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                   style={{ left: `${deps.layout.wipNodeX()}px` }}
                 />
               </li>
+              </Tooltip>
               {/* WIP-to-HEAD dashed connector — 1:1 with GitKraken's
                   `stroke-dasharray="5 5"` SVG path. Travels from the WIP
                   node's centre (row 0 midpoint) down to HEAD's circle

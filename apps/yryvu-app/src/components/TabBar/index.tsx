@@ -17,6 +17,7 @@
 import { createSignal, For, onCleanup, Show } from "solid-js";
 
 import { IconChevronDown, IconPlus } from "../Icons";
+import { Tooltip } from "../Tooltip";
 import {
   isTabDropdownOpen,
   selectedTabId,
@@ -179,28 +180,30 @@ export function TabBar() {
         )}
       </For>
 
-      <button
-        id={NEW_TAB_BUTTON_ID}
-        class="tabs__new"
-        type="button"
-        aria-label="New tab"
-        title="New tab (Ctrl+T)"
-        onClick={() => void openNewTab()}
-      >
-        <IconPlus />
-      </button>
+      <Tooltip text="New tab (Ctrl+T)">
+        <button
+          id={NEW_TAB_BUTTON_ID}
+          class="tabs__new"
+          type="button"
+          aria-label="New tab"
+          onClick={() => void openNewTab()}
+        >
+          <IconPlus />
+        </button>
+      </Tooltip>
 
-      <button
-        ref={chevronEl}
-        class="tabs__dropdown"
-        type="button"
-        aria-label="Tab menu"
-        aria-expanded={isTabDropdownOpen()}
-        title="Tab menu"
-        onClick={onChevronClick}
-      >
-        <IconChevronDown />
-      </button>
+      <Tooltip text="Tab menu">
+        <button
+          ref={chevronEl}
+          class="tabs__dropdown"
+          type="button"
+          aria-label="Tab menu"
+          aria-expanded={isTabDropdownOpen()}
+          onClick={onChevronClick}
+        >
+          <IconChevronDown />
+        </button>
+      </Tooltip>
 
       <Show when={isTabDropdownOpen() && anchor()}>
         <TabDropdown anchor={anchor()!} />

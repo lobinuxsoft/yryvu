@@ -2,10 +2,15 @@
 
 import { Show, type JSX } from "solid-js";
 
+import { Tooltip } from "../Tooltip";
+
 interface Props {
   icon: JSX.Element;
   label: string;
   disabled?: boolean;
+  /// Optional hover hint. Wrapped in `<Tooltip>` so it honours the
+  /// global `tooltipsEnabled` + `tooltipDelayMs` preferences (#316);
+  /// `aria-label` survives even when tooltips are visually disabled.
   title?: string;
   onClick?: () => void;
   /// Optional numeric overlay shown at the top-right of the icon.
@@ -16,20 +21,21 @@ interface Props {
 
 export function ToolbarBtn(props: Props) {
   return (
-    <button
-      class="toolbar__btn"
-      type="button"
-      disabled={props.disabled}
-      title={props.title}
-      onClick={props.onClick}
-    >
-      <span class="toolbar__btn-icon">
-        {props.icon}
-        <Show when={props.badge && props.badge > 0}>
-          <span class="toolbar__btn-badge">{props.badge}</span>
-        </Show>
-      </span>
-      <span class="toolbar__btn-label">{props.label}</span>
-    </button>
+    <Tooltip text={props.title}>
+      <button
+        class="toolbar__btn"
+        type="button"
+        disabled={props.disabled}
+        onClick={props.onClick}
+      >
+        <span class="toolbar__btn-icon">
+          {props.icon}
+          <Show when={props.badge && props.badge > 0}>
+            <span class="toolbar__btn-badge">{props.badge}</span>
+          </Show>
+        </span>
+        <span class="toolbar__btn-label">{props.label}</span>
+      </button>
+    </Tooltip>
   );
 }

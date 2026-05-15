@@ -14,6 +14,7 @@ import {
 import { isRowMemberOfHoveredRef } from "../hoverDim";
 import { rowWrapperClass } from "../rowClass";
 import { ROW_HEIGHT } from "../RowRenderer";
+import { Tooltip } from "../../Tooltip";
 import type { ZoneDeps } from "./types";
 
 /**
@@ -35,6 +36,7 @@ export function MessageZone(props: { deps: ZoneDeps }) {
           style={{ height: `${deps.layout.totalHeight()}px` }}
         >
           <Show when={dirtyFileCount() > 0}>
+            <Tooltip text="View working-directory changes">
             <li
               class="commit-graph__wip-cell commit-graph__wip-cell--messages"
               data-active={
@@ -44,7 +46,6 @@ export function MessageZone(props: { deps: ZoneDeps }) {
               }
               style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
               onClick={(e) => deps.selection.handleWipClick(e)}
-              title="View working-directory changes"
             >
               <input
                 class="commit-graph__wip-input"
@@ -60,6 +61,7 @@ export function MessageZone(props: { deps: ZoneDeps }) {
               />
               <span class="commit-graph__wip-badge">+{dirtyFileCount()}</span>
             </li>
+            </Tooltip>
           </Show>
           <For each={deps.virtualizer.getVirtualItems()}>
             {(item) => {

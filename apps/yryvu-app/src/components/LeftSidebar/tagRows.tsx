@@ -9,6 +9,7 @@ import {
   setHoveredRef,
 } from "../../state";
 import { IconTag, IconTagAnnotated } from "../Icons";
+import { Tooltip } from "../Tooltip";
 
 export interface TagRowProps {
   tag: TagInfo;
@@ -25,10 +26,10 @@ export function TagRow(props: TagRowProps) {
       ? props.tag.message
       : undefined;
   return (
+    <Tooltip text={tooltip()}>
     <div
       class="sidebar__branch-row sidebar__tag-row"
       data-annotated={props.tag.is_annotated ? "true" : "false"}
-      title={tooltip()}
       onClick={() => navigateToRef(props.tag.target_sha)}
       onMouseEnter={() =>
         setHoveredRef({ kind: "tag", name: props.tag.name })
@@ -43,5 +44,6 @@ export function TagRow(props: TagRowProps) {
       </span>
       <span class="sidebar__branch-name">{props.tag.name}</span>
     </div>
+    </Tooltip>
   );
 }

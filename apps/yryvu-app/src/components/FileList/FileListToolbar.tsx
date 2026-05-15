@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { Tooltip } from "../Tooltip";
 import {
   displayTree,
   filterQuery,
@@ -28,37 +29,40 @@ export function FileListToolbar(props: FileListToolbarProps) {
   return (
     <div class="file-list__toolbar" role="toolbar">
       <div class="file-list__toolbar-modes" role="group" aria-label="Display mode">
-        <button
-          type="button"
-          class="file-list__mode"
-          data-active={isTree() ? "false" : "true"}
-          title="Flat list"
-          onClick={() => setDisplayTree(props.repoId, false)}
-        >
-          Path
-        </button>
-        <button
-          type="button"
-          class="file-list__mode"
-          data-active={isTree() ? "true" : "false"}
-          title="Tree"
-          onClick={() => setDisplayTree(props.repoId, true)}
-        >
-          Tree
-        </button>
+        <Tooltip text="Flat list">
+          <button
+            type="button"
+            class="file-list__mode"
+            data-active={isTree() ? "false" : "true"}
+            onClick={() => setDisplayTree(props.repoId, false)}
+          >
+            Path
+          </button>
+        </Tooltip>
+        <Tooltip text="Tree">
+          <button
+            type="button"
+            class="file-list__mode"
+            data-active={isTree() ? "true" : "false"}
+            onClick={() => setDisplayTree(props.repoId, true)}
+          >
+            Tree
+          </button>
+        </Tooltip>
       </div>
 
-      <button
-        type="button"
-        class="file-list__expand-toggle"
-        title={expandLabel()}
-        disabled={!isTree()}
-        onClick={() =>
-          props.allExpanded ? props.onCollapseAll() : props.onExpandAll()
-        }
-      >
-        {expandLabel()}
-      </button>
+      <Tooltip text={expandLabel()}>
+        <button
+          type="button"
+          class="file-list__expand-toggle"
+          disabled={!isTree()}
+          onClick={() =>
+            props.allExpanded ? props.onCollapseAll() : props.onExpandAll()
+          }
+        >
+          {expandLabel()}
+        </button>
+      </Tooltip>
 
       <input
         type="search"

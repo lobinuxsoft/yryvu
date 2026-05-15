@@ -26,6 +26,7 @@ import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show }
 import { Portal } from "solid-js/web";
 
 import { NfIcon } from "../NfIcon";
+import { Tooltip } from "../Tooltip";
 import { performTabOperation } from "../../tabs/dispatcher";
 import { closeTabDropdown, closedTabs, tabs } from "../../tabs/state";
 import { type ClosedTab, type Tab } from "../../tabs/types";
@@ -156,15 +157,16 @@ export function TabDropdown(props: Props) {
                     <NfIcon code={iconCodeOf(t)} />
                   </span>
                   <span class="tab-dropdown__row-title">{titleOf(t)}</span>
-                  <button
-                    class="tab-dropdown__row-close"
-                    type="button"
-                    aria-label={`Close ${titleOf(t)}`}
-                    title="Close tab"
-                    onClick={(e) => handleClose(t.id, e)}
-                  >
-                    <NfIcon code="f00d" />
-                  </button>
+                  <Tooltip text="Close tab">
+                    <button
+                      class="tab-dropdown__row-close"
+                      type="button"
+                      aria-label={`Close ${titleOf(t)}`}
+                      onClick={(e) => handleClose(t.id, e)}
+                    >
+                      <NfIcon code="f00d" />
+                    </button>
+                  </Tooltip>
                 </div>
               )}
             </For>

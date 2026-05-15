@@ -8,6 +8,7 @@ import {
   showLeftPanel,
 } from "../../state";
 import { useBranchOps } from "../../branchOps";
+import { Tooltip } from "../Tooltip";
 import { AuxSections } from "./sections/AuxSections";
 import { RefsSections } from "./sections/RefsSections";
 import { StateBanner } from "./StateBanner";
@@ -44,14 +45,15 @@ export function LeftSidebar() {
   return (
     <aside class="sidebar" data-collapsed={collapsed() ? "true" : "false"}>
       <div class="sidebar__header">
-        <button
-          class="tabs__leading-btn"
-          type="button"
-          title={collapsed() ? "Expand sidebar" : "Collapse to icons"}
-          onClick={() => setCollapsed((v) => !v)}
-        >
-          {collapsed() ? "›" : "‹"}
-        </button>
+        <Tooltip text={collapsed() ? "Expand sidebar" : "Collapse to icons"}>
+          <button
+            class="tabs__leading-btn"
+            type="button"
+            onClick={() => setCollapsed((v) => !v)}
+          >
+            {collapsed() ? "›" : "‹"}
+          </button>
+        </Tooltip>
         <Show when={!collapsed()}>
           <span>Viewing</span>
           <span class="sidebar__item-badge">{data.branches()?.length ?? 0}</span>
@@ -59,11 +61,9 @@ export function LeftSidebar() {
       </div>
 
       <Show when={collapsed()}>
-        <div
-          class="sidebar__brand-rail"
-          title="Yryvu"
-          aria-label="Yryvu"
-        />
+        <Tooltip text="Yryvu">
+          <div class="sidebar__brand-rail" aria-label="Yryvu" />
+        </Tooltip>
       </Show>
 
       <Show when={!collapsed()}>
@@ -85,18 +85,19 @@ export function LeftSidebar() {
             }}
           />
           <Show when={data.isFiltering()}>
-            <button
-              type="button"
-              class="sidebar__filter-clear"
-              aria-label="Clear filter"
-              title="Clear filter"
-              onClick={() => {
-                setFilterQuery("");
-                filterInputEl?.focus();
-              }}
-            >
-              ×
-            </button>
+            <Tooltip text="Clear filter">
+              <button
+                type="button"
+                class="sidebar__filter-clear"
+                aria-label="Clear filter"
+                onClick={() => {
+                  setFilterQuery("");
+                  filterInputEl?.focus();
+                }}
+              >
+                ×
+              </button>
+            </Tooltip>
           </Show>
         </div>
       </Show>

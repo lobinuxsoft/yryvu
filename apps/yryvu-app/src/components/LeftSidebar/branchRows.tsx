@@ -8,6 +8,7 @@ import {
   navigateToRef,
   setHoveredRef,
 } from "../../state";
+import { Tooltip } from "../Tooltip";
 
 export interface LocalBranchRowProps {
   branch: BranchInfo;
@@ -17,14 +18,16 @@ export interface LocalBranchRowProps {
 
 export function LocalBranchRow(props: LocalBranchRowProps) {
   return (
-    <div
-      class="sidebar__branch-row"
-      data-active={props.branch.is_head ? "true" : "false"}
-      title={
+    <Tooltip
+      text={
         props.branch.upstream
           ? `tracks ${props.branch.upstream} — double-click to checkout`
           : "no upstream — double-click to checkout"
       }
+    >
+    <div
+      class="sidebar__branch-row"
+      data-active={props.branch.is_head ? "true" : "false"}
       onClick={() => navigateToRef(props.branch.tip_sha)}
       onContextMenu={(e) => props.onContextMenu(e, props.branch)}
       onDblClick={() => {
@@ -47,6 +50,7 @@ export function LocalBranchRow(props: LocalBranchRowProps) {
         </span>
       </Show>
     </div>
+    </Tooltip>
   );
 }
 

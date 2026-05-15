@@ -3,6 +3,7 @@
 import { createMemo, For, Show } from "solid-js";
 
 import type { CommitDetail, HostingService } from "../../../ipc";
+import { Tooltip } from "../../Tooltip";
 import { InspectorAvatar } from "./InspectorAvatar";
 
 /**
@@ -107,9 +108,11 @@ export function AuthorBlock(props: {
           size={40}
         />
         <div class="commit-detail__person-text">
-          <span class="commit-detail__person-name" title={props.detail.author_email}>
-            {props.detail.author_name}
-          </span>
+          <Tooltip text={props.detail.author_email}>
+            <span class="commit-detail__person-name">
+              {props.detail.author_name}
+            </span>
+          </Tooltip>
           <span class="commit-detail__person-meta">
             <span class="commit-detail__person-verb">authored</span>
             <span class="commit-detail__person-date">
@@ -129,12 +132,11 @@ export function AuthorBlock(props: {
             size={40}
           />
           <div class="commit-detail__person-text">
-            <span
-              class="commit-detail__person-name"
-              title={props.detail.committer_email!}
-            >
-              {props.detail.committer_name!}
-            </span>
+            <Tooltip text={props.detail.committer_email!}>
+              <span class="commit-detail__person-name">
+                {props.detail.committer_name!}
+              </span>
+            </Tooltip>
             <span class="commit-detail__person-meta">
               <span class="commit-detail__person-verb">committed</span>
               <span class="commit-detail__person-date">
@@ -151,14 +153,13 @@ export function AuthorBlock(props: {
           <ul class="commit-detail__coauthors-list">
             <For each={coAuthors()}>
               {(c) => (
-                <li
-                  class="commit-detail__coauthor"
-                  title={`${c.name} <${c.email}>`}
-                >
-                  <span class="inspector-avatar inspector-avatar--20">
-                    <span class="inspector-avatar__initials">{c.initials}</span>
-                  </span>
-                </li>
+                <Tooltip text={`${c.name} <${c.email}>`}>
+                  <li class="commit-detail__coauthor">
+                    <span class="inspector-avatar inspector-avatar--20">
+                      <span class="inspector-avatar__initials">{c.initials}</span>
+                    </span>
+                  </li>
+                </Tooltip>
               )}
             </For>
           </ul>

@@ -2,6 +2,8 @@
 
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 
+import { Tooltip } from "../Tooltip";
+
 export type CommitAction = "commit" | "commit-and-push";
 
 export interface CommitButtonProps {
@@ -42,26 +44,28 @@ export function CommitButton(props: CommitButtonProps) {
       ref={(el) => (rootEl = el)}
       data-mode={props.mode}
     >
-      <button
-        class="commit-panel__submit"
-        type="button"
-        disabled={props.disabled}
-        onClick={() => props.onCommit()}
-        title={props.title}
-      >
-        {props.label}
-      </button>
-      <button
-        class="commit-panel__submit-caret"
-        type="button"
-        disabled={props.disabled}
-        aria-haspopup="menu"
-        aria-expanded={menuOpen() ? "true" : "false"}
-        title="More commit actions"
-        onClick={() => setMenuOpen((v) => !v)}
-      >
-        ▾
-      </button>
+      <Tooltip text={props.title}>
+        <button
+          class="commit-panel__submit"
+          type="button"
+          disabled={props.disabled}
+          onClick={() => props.onCommit()}
+        >
+          {props.label}
+        </button>
+      </Tooltip>
+      <Tooltip text="More commit actions">
+        <button
+          class="commit-panel__submit-caret"
+          type="button"
+          disabled={props.disabled}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen() ? "true" : "false"}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          ▾
+        </button>
+      </Tooltip>
       <Show when={menuOpen()}>
         <ul class="commit-panel__submit-menu" role="menu">
           <li>

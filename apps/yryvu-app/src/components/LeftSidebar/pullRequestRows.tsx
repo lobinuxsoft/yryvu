@@ -8,6 +8,7 @@ import { setSelectedCommit } from "../../state";
 import { openPrDetail } from "../../state/pr-detail";
 import { activePrContext } from "../../state/pull-requests";
 import { ContextMenu, type ContextMenuItem } from "../ContextMenu";
+import { Tooltip } from "../Tooltip";
 import { CiBadge, ReviewBadge } from "./pullRequestBadges";
 import { LabelChips, UserAvatarCluster } from "./pullRequestChips";
 
@@ -146,9 +147,11 @@ export function PullRequestRow(props: PullRequestRowProps) {
     setMenuAt({ x: rect.right, y: rect.bottom });
   };
   return (
+    <Tooltip
+      text={`${pr().title} (#${pr().number}) — opened ${relativeTime(pr().createdAt)} by ${pr().author.login}`}
+    >
     <div
       class="sidebar__branch-row sidebar__row--pull-request"
-      title={`${pr().title} (#${pr().number}) — opened ${relativeTime(pr().createdAt)} by ${pr().author.login}`}
       onContextMenu={openMenu}
       onClick={() => openDetail(pr())}
     >
@@ -170,15 +173,16 @@ export function PullRequestRow(props: PullRequestRowProps) {
           {badgeLabel(pr())}
         </span>
         <span class="sidebar__row-meta">{relativeTime(pr().updatedAt)}</span>
-        <button
-          type="button"
-          class="sidebar__pr-row__kebab"
-          title="Pull request actions"
-          aria-label="Pull request actions"
-          onClick={openMenuFromButton}
-        >
-          ⋮
-        </button>
+        <Tooltip text="Pull request actions">
+          <button
+            type="button"
+            class="sidebar__pr-row__kebab"
+            aria-label="Pull request actions"
+            onClick={openMenuFromButton}
+          >
+            ⋮
+          </button>
+        </Tooltip>
       </div>
       <Show when={hasSecondaryContent(pr())}>
         <div class="sidebar__pr-row__secondary">
@@ -203,5 +207,6 @@ export function PullRequestRow(props: PullRequestRowProps) {
         )}
       </Show>
     </div>
+    </Tooltip>
   );
 }

@@ -6,6 +6,7 @@ import { repoPath } from "../../state";
 import { preferences, updatePreferences } from "../../state/preferences";
 import { DEFAULT_ZOOM, ZOOM_FACTORS } from "../../zoom";
 import { IconSearch } from "../Icons";
+import { Tooltip } from "../Tooltip";
 
 const ZOOM_FACTORS_DESC = [...ZOOM_FACTORS].reverse();
 
@@ -21,14 +22,17 @@ export function StatusBar() {
   return (
     <div class="statusbar">
       <Show when={repoPath()} fallback={<span class="statusbar__segment">No repository open</span>}>
-        <span class="statusbar__segment" title={repoPath()!}>
-          {repoPath()!.split("/").filter(Boolean).pop()}
-        </span>
+        <Tooltip text={repoPath()!}>
+          <span class="statusbar__segment">
+            {repoPath()!.split("/").filter(Boolean).pop()}
+          </span>
+        </Tooltip>
       </Show>
 
       <div class="statusbar__spacer" />
 
-      <label class="statusbar__segment statusbar__zoom" title="UI zoom">
+      <Tooltip text="UI zoom">
+      <label class="statusbar__segment statusbar__zoom">
         <IconSearch width={12} height={12} />
         <select
           class="statusbar__zoom-select"
@@ -45,6 +49,7 @@ export function StatusBar() {
           </For>
         </select>
       </label>
+      </Tooltip>
       <span class="statusbar__badge-pro">OSS</span>
       <span class="statusbar__segment">v0.1.0</span>
     </div>

@@ -3,6 +3,7 @@
 import { createMemo, For, Show } from "solid-js";
 
 import type { FileDiff } from "../../../ipc/diff";
+import { Tooltip } from "../../Tooltip";
 
 /**
  * Stat chip block for the inspector — 1:1 port of GitKraken's
@@ -85,12 +86,13 @@ export function CommitDiffSection(props: {
       data-testid="commit-detail-panel"
     >
       <Show when={props.loading}>
-        <span
-          class="commit-diff__spinner"
-          role="status"
-          aria-label="Computing diff"
-          title="Computing diff…"
-        />
+        <Tooltip text="Computing diff…">
+          <span
+            class="commit-diff__spinner"
+            role="status"
+            aria-label="Computing diff"
+          />
+        </Tooltip>
       </Show>
       <For each={CHIP_ORDER}>
         {(key) => (

@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ==========================================================================
+   Global animation override (#316). Driven by `<html data-animations>`
+   set from preferences via `wireAnimationMode`. When `never`, every
+   transition / animation / scroll-behavior is killed app-wide — except
+   loading spinners (loading feedback wins over motion-reduction, per
+   the issue's acceptance criterion).
+   ========================================================================== */
+
+[data-animations="never"] *,
+[data-animations="never"] *::before,
+[data-animations="never"] *::after {
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+
+/* Spinner exemption — high-specificity rule wins over the killswitch
+   above. Loading feedback should still rotate even with motion
+   suppressed; the user still needs to know the app is working.
+   Explicit list of every spinner class in the codebase. */
+[data-animations="never"] .integrations-status-pill__dot--spinning,
+[data-animations="never"] .commit-diff-spinner,
+[data-animations="never"] .integrations-spin,
+[data-animations="never"] .notifications-toast__spinner,
+[data-animations="never"] .sidebar-section__spinner {
+  animation-duration: 1s !important;
+  animation-iteration-count: infinite !important;
+}

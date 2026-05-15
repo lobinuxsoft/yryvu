@@ -23,6 +23,7 @@ import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
 import { notify } from "../Notifications";
 import { openCloneDialog } from "../Onboarding/CloneDialog/state";
+import { Tooltip } from "../Tooltip";
 import { openInitDialog } from "../Onboarding/InitDialog/state";
 import {
   ensureInitialized,
@@ -138,30 +139,29 @@ export function RepoManagementBody() {
       </div>
       <header class="repo-management__header">
         <div class="repo-management__actions">
-          <button
-            class="repo-management__btn"
-            type="button"
-            onClick={onOpenClick}
-            title="Open a local repository"
-          >
-            <NfIcon code="f07c" /> Open
-          </button>
-          <button
-            class="repo-management__btn"
-            type="button"
-            onClick={openCloneDialog}
-            title="Clone a remote repository"
-          >
-            <NfIcon code="f0c5" /> Clone
-          </button>
-          <button
-            class="repo-management__btn"
-            type="button"
-            onClick={openInitDialog}
-            title="Initialize a new repository"
-          >
-            <NfIcon code="f067" /> Init
-          </button>
+          <Tooltip text="Open a local repository">
+            <button class="repo-management__btn" type="button" onClick={onOpenClick}>
+              <NfIcon code="f07c" /> Open
+            </button>
+          </Tooltip>
+          <Tooltip text="Clone a remote repository">
+            <button
+              class="repo-management__btn"
+              type="button"
+              onClick={openCloneDialog}
+            >
+              <NfIcon code="f0c5" /> Clone
+            </button>
+          </Tooltip>
+          <Tooltip text="Initialize a new repository">
+            <button
+              class="repo-management__btn"
+              type="button"
+              onClick={openInitDialog}
+            >
+              <NfIcon code="f067" /> Init
+            </button>
+          </Tooltip>
         </div>
         <div class="repo-management__filter">
           <NfIcon code="f002" />
@@ -172,15 +172,16 @@ export function RepoManagementBody() {
             onInput={(e) => setQuery(e.currentTarget.value)}
             aria-label="Filter repos"
           />
-          <button
-            class="repo-management__refresh"
-            type="button"
-            onClick={refreshKnownRepos}
-            title="Refresh"
-            aria-label="Refresh"
-          >
-            <NfIcon code="f021" />
-          </button>
+          <Tooltip text="Refresh">
+            <button
+              class="repo-management__refresh"
+              type="button"
+              onClick={refreshKnownRepos}
+              aria-label="Refresh"
+            >
+              <NfIcon code="f021" />
+            </button>
+          </Tooltip>
         </div>
       </header>
 
@@ -209,61 +210,61 @@ export function RepoManagementBody() {
         <div class="repo-management__list" role="list" classList={{ "is-loading": loading() }}>
           <For each={filtered()}>
               {(repo) => (
-                <div
-                  class="repo-management__row"
-                  classList={{
-                    "is-selected": selected().has(repo.path),
-                    "is-stale": !!repo.error,
-                  }}
-                  role="listitem"
-                  onClick={(e) => onRowClick(repo, e)}
-                  title={repo.error ?? repo.path}
-                >
-                  <input
-                    type="checkbox"
-                    class="repo-management__row-check"
-                    checked={selected().has(repo.path)}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={() => toggleSelected(repo.path)}
-                    aria-label={`Select ${repo.name}`}
-                  />
-                  <div class="repo-management__row-main">
-                    <div class="repo-management__row-name">{repo.name}</div>
-                    <div class="repo-management__row-path">
-                      {breadcrumbOf(repo.path)}
-                    </div>
-                  </div>
-                  <Show when={repo.currentBranch}>
-                    <div class="repo-management__row-branch">
-                      <NfIcon code="f126" /> {repo.currentBranch}
-                    </div>
-                  </Show>
-                  <Show when={repo.dirtyCount > 0}>
-                    <div
-                      class="repo-management__row-dirty"
-                      title={`${repo.dirtyCount} uncommitted change${repo.dirtyCount === 1 ? "" : "s"}`}
-                    >
-                      ●&nbsp;{repo.dirtyCount}
-                    </div>
-                  </Show>
-                  <Show when={repo.error}>
-                    <div
-                      class="repo-management__row-error"
-                      title={repo.error ?? ""}
-                    >
-                      missing
-                    </div>
-                  </Show>
-                  <button
-                    class="repo-management__row-remove"
-                    type="button"
-                    aria-label={`Remove ${repo.name} from recents`}
-                    title="Remove from recents"
-                    onClick={(e) => onRemoveSingle(repo.path, e)}
+                <Tooltip text={repo.error ?? repo.path}>
+                  <div
+                    class="repo-management__row"
+                    classList={{
+                      "is-selected": selected().has(repo.path),
+                      "is-stale": !!repo.error,
+                    }}
+                    role="listitem"
+                    onClick={(e) => onRowClick(repo, e)}
                   >
-                    <NfIcon code="f00d" />
-                  </button>
-                </div>
+                    <input
+                      type="checkbox"
+                      class="repo-management__row-check"
+                      checked={selected().has(repo.path)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => toggleSelected(repo.path)}
+                      aria-label={`Select ${repo.name}`}
+                    />
+                    <div class="repo-management__row-main">
+                      <div class="repo-management__row-name">{repo.name}</div>
+                      <div class="repo-management__row-path">
+                        {breadcrumbOf(repo.path)}
+                      </div>
+                    </div>
+                    <Show when={repo.currentBranch}>
+                      <div class="repo-management__row-branch">
+                        <NfIcon code="f126" /> {repo.currentBranch}
+                      </div>
+                    </Show>
+                    <Show when={repo.dirtyCount > 0}>
+                      <Tooltip
+                        text={`${repo.dirtyCount} uncommitted change${repo.dirtyCount === 1 ? "" : "s"}`}
+                      >
+                        <div class="repo-management__row-dirty">
+                          ●&nbsp;{repo.dirtyCount}
+                        </div>
+                      </Tooltip>
+                    </Show>
+                    <Show when={repo.error}>
+                      <Tooltip text={repo.error ?? ""}>
+                        <div class="repo-management__row-error">missing</div>
+                      </Tooltip>
+                    </Show>
+                    <Tooltip text="Remove from recents">
+                      <button
+                        class="repo-management__row-remove"
+                        type="button"
+                        aria-label={`Remove ${repo.name} from recents`}
+                        onClick={(e) => onRemoveSingle(repo.path, e)}
+                      >
+                        <NfIcon code="f00d" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                </Tooltip>
               )}
             </For>
         </div>
@@ -281,30 +282,25 @@ export function RepoManagementBody() {
           >
             Open in tabs
           </button>
-          <button
-            class="repo-management__btn"
-            type="button"
-            disabled
-            title="Wire after backend bulk fetch lands"
-          >
-            Fetch
-          </button>
-          <button
-            class="repo-management__btn"
-            type="button"
-            disabled
-            title="Wire after backend bulk pull lands"
-          >
-            Pull
-          </button>
-          <button
-            class="repo-management__btn repo-management__btn--danger"
-            type="button"
-            onClick={onBulkRemove}
-            title="Remove the selected entries from the recents list"
-          >
-            Remove from recents
-          </button>
+          <Tooltip text="Wire after backend bulk fetch lands">
+            <button class="repo-management__btn" type="button" disabled>
+              Fetch
+            </button>
+          </Tooltip>
+          <Tooltip text="Wire after backend bulk pull lands">
+            <button class="repo-management__btn" type="button" disabled>
+              Pull
+            </button>
+          </Tooltip>
+          <Tooltip text="Remove the selected entries from the recents list">
+            <button
+              class="repo-management__btn repo-management__btn--danger"
+              type="button"
+              onClick={onBulkRemove}
+            >
+              Remove from recents
+            </button>
+          </Tooltip>
           <button
             class="repo-management__btn repo-management__btn--ghost"
             type="button"

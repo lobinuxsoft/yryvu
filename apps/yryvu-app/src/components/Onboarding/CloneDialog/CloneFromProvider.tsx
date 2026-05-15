@@ -22,6 +22,7 @@ import {
 import { integrationState } from "../../PreferencesWindow/panels/Integrations/state";
 import type { ProviderInfo } from "../../PreferencesWindow/panels/Integrations/providerTable";
 import { ProgressBar } from "../../ProgressBar";
+import { Tooltip } from "../../Tooltip";
 import { phaseLabel } from "./phaseLabel";
 import { closeCloneDialog, cloneDialog } from "./state";
 import { cancelCloneDialog, submitCloneDialog } from "./submit";
@@ -236,15 +237,16 @@ function ConnectedForm(props: { provider: ProviderInfo }) {
                             aria-selected={picked()?.fullName === row.fullName}
                             onClick={() => selectCandidate(row)}
                           >
-                            <span
-                              class="clone-from-provider__lock"
-                              aria-label={
-                                row.isPrivate ? "Private repository" : "Public repository"
-                              }
-                              title={row.isPrivate ? "Private" : "Public"}
-                            >
-                              {row.isPrivate ? "🔒" : ""}
-                            </span>
+                            <Tooltip text={row.isPrivate ? "Private" : "Public"}>
+                              <span
+                                class="clone-from-provider__lock"
+                                aria-label={
+                                  row.isPrivate ? "Private repository" : "Public repository"
+                                }
+                              >
+                                {row.isPrivate ? "🔒" : ""}
+                              </span>
+                            </Tooltip>
                             <span class="clone-from-provider__row-name">
                               {row.name}
                             </span>

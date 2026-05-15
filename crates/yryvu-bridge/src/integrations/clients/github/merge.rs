@@ -52,11 +52,19 @@ pub enum MergeMethod {
 
 /// Parameters for [`merge_pr`]. Title / message are optional — when
 /// `None`, GitHub falls back to the PR's title and description.
+///
+/// `squash` is GitLab-only: GitLab models squashing as a flag
+/// independent of `merge_method`, so the frontend can offer "merge with
+/// merge commit but squash all commits" combinations the GitHub /
+/// Gitea APIs don't expose. GitHub + Gitea ignore the field — squashing
+/// is selected via `MergeMethod::Squash` instead.
 #[derive(Debug, Clone, Default)]
 pub struct MergeRequest {
     pub method: MergeMethod,
     pub commit_title: Option<String>,
     pub commit_message: Option<String>,
+    /// GitLab-only squash toggle. `None` = use the project's default.
+    pub squash: Option<bool>,
 }
 
 impl MergeRequest {
@@ -227,6 +235,7 @@ mod tests {
             method: MergeMethod::Rebase,
             commit_title: Some("Squashed title".to_string()),
             commit_message: Some("Lengthy body".to_string()),
+            squash: None,
         };
         let body = req.body();
         assert_eq!(body["merge_method"], "rebase");

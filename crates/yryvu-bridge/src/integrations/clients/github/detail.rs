@@ -13,7 +13,7 @@ use serde::Serialize;
 use crate::backend::BackendError;
 
 use super::super::http::{self, GITHUB_QUIRKS};
-use super::super::types::{Label, UserInfo};
+use super::super::types::{Label, ProjectMergeSettings, UserInfo};
 use super::api_base;
 use super::detail_raw::{GhCheckRun, GhCheckRunsResp, GhPrCommit, GhPrFile, GhPullDetail};
 use super::prs::{CiStatus, PullRequestState, ReviewDecision};
@@ -58,6 +58,13 @@ pub struct PullRequestDetail {
     pub comments: u64,
     pub review_decision: Option<ReviewDecision>,
     pub ci_status: Option<CiStatus>,
+    /// GitLab-only project merge config (method gating + squash policy
+    /// + auto-delete-source default + skipped-pipeline policy).
+    ///
+    /// `None` for GitHub / Gitea — those providers don't expose
+    /// per-project merge settings, so the form falls back to
+    /// unrestricted radios.
+    pub project_settings: Option<ProjectMergeSettings>,
 }
 
 /// Single commit in a PR's commit list (`GET /pulls/{n}/commits`).
@@ -278,6 +285,7 @@ pub(super) fn project_detail(raw: GhPullDetail) -> PullRequestDetail {
         // without first hovering the list.
         review_decision: None,
         ci_status: None,
+        project_settings: None,
     }
 }
 

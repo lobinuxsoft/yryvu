@@ -193,6 +193,59 @@ pub struct CreatePrInput {
     pub milestone: Option<String>,
 }
 
+/// Project-level merge configuration surfaced by GitLab. The frontend
+/// merge form uses these to gate the method radios + the squash
+/// checkbox so only project-allowed paths are offered to the user.
+///
+/// GitHub + Gitea don't expose this concept (their merge availability is
+/// repo-write-permission gated and not configurable per-repo at this
+/// granularity), so [`PullRequestDetail::project_settings`] stays
+/// `None` for those providers.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectMergeSettings {
+    pub merge_method: ProjectMergeMethod,
+    pub squash_option: ProjectSquashOption,
+    /// Project-level "Auto-delete source branch on merge" default. The
+    /// merge form pre-checks the delete-branch checkbox when this is
+    /// true. Frontend-visible only.
+    pub remove_source_branch_after_merge_default: bool,
+    /// "Allow merge if pipeline is skipped" — when false, the
+    /// frontend disables the merge button while pipeline is `skipped`.
+    pub allow_merge_on_skipped_pipeline: bool,
+}
+
+/// GitLab project setting controlling how merges are committed. Maps
+/// 1:1 to the GraphQL `ProjectMergeMethod` enum: `MERGE`, `REBASE_MERGE`,
+/// `FF`. camelCase serialization for the frontend.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ProjectMergeMethod {
+    /// Standard merge — allows merge commits.
+    Merge,
+    /// Semi-linear history — source must be rebased onto target before
+    /// the merge commit lands.
+    RebaseMerge,
+    /// Fast-forward only — no merge commits, source must already be
+    /// linear on top of target.
+    Ff,
+}
+
+/// GitLab project setting controlling whether commits are squashed at
+/// merge time. Maps 1:1 to `ProjectMergeRequestsSquashOption`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ProjectSquashOption {
+    /// Squashing is forbidden by the project. Checkbox hidden.
+    Never,
+    /// Squashing is mandatory. Checkbox shown disabled+checked.
+    Always,
+    /// Squash checkbox shown enabled, defaults unchecked.
+    DefaultOff,
+    /// Squash checkbox shown enabled, defaults checked.
+    DefaultOn,
+}
+
 /// Extended issue payload for the detail panel — superset of
 /// [`IssueSummary`] with body markdown + the closed timestamp.
 /// Mirrors GK's `IssueTracker-*` detail surface in fields exposed.

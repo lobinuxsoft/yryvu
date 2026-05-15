@@ -11,8 +11,11 @@ import type { IntegrationState } from "./state";
  * bundle so future Playwright e2e fixtures can target it cross-app.
  */
 export function StatusPill(props: { state: IntegrationState }): JSX.Element {
-  const { state } = props;
-  switch (state.tag) {
+  // Read `props.state` inline on every access — destructuring (e.g.
+  // `const { state } = props`) snapshots the value at first render
+  // and breaks Solid reactivity, leaving the pill frozen on whatever
+  // state the component first saw.
+  switch (props.state.tag) {
     case "connected":
       return (
         <span
@@ -31,7 +34,7 @@ export function StatusPill(props: { state: IntegrationState }): JSX.Element {
           data-testid="integration-connection-status"
         >
           <span class="integrations-status-pill__dot integrations-status-pill__dot--spinning" />
-          {state.tag === "connecting" ? "Connecting…" : "Disconnecting…"}
+          {props.state.tag === "connecting" ? "Connecting…" : "Disconnecting…"}
         </span>
       );
     case "disconnected":

@@ -23,7 +23,7 @@ mod preflight;
 mod prs;
 mod search;
 
-pub use issues::list_issues;
+pub use issues::{get_issue_detail, list_issues};
 pub use preflight::preflight_gitea;
 pub use prs::list_prs;
 pub use search::search_prs;

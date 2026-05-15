@@ -18,24 +18,26 @@ mod http;
 mod types;
 
 pub use gitea::{
-    list_issues as list_gitea_issues, list_prs as list_gitea_prs, search_prs as search_gitea_prs,
+    get_issue_detail as get_gitea_issue_detail, list_issues as list_gitea_issues,
+    list_prs as list_gitea_prs, search_prs as search_gitea_prs,
 };
 pub use github::{
     delete_branch as github_delete_branch, enrich_prs as enrich_github_prs,
-    get_pr_detail as get_github_pr_detail, list_issues as list_github_issues,
-    list_pr_checks as list_github_pr_checks, list_pr_commits as list_github_pr_commits,
-    list_pr_files as list_github_pr_files, merge_pr as github_merge_pr,
-    pr_action as github_pr_action, search_prs as search_github_prs, CheckRun, CiStatus,
-    MergeMethod, MergeRequest, PrAction, PrCommit, PrFile, PullRequestDetail, PullRequestState,
-    PullRequestSummary, ReviewDecision,
+    get_issue_detail as get_github_issue_detail, get_pr_detail as get_github_pr_detail,
+    list_issues as list_github_issues, list_pr_checks as list_github_pr_checks,
+    list_pr_commits as list_github_pr_commits, list_pr_files as list_github_pr_files,
+    merge_pr as github_merge_pr, pr_action as github_pr_action, search_prs as search_github_prs,
+    CheckRun, CiStatus, MergeMethod, MergeRequest, PrAction, PrCommit, PrFile, PullRequestDetail,
+    PullRequestState, PullRequestSummary, ReviewDecision,
 };
 pub use gitlab::{
-    get_mr_detail as get_gitlab_mr_detail, list_issues as list_gitlab_issues,
-    list_mr_commits as list_gitlab_mr_commits, list_mr_files as list_gitlab_mr_files,
-    list_mr_pipelines as list_gitlab_mr_pipelines, list_mrs as list_gitlab_mrs,
-    mr_action as gitlab_mr_action, search_mrs as search_gitlab_mrs, MrAction,
+    get_issue_detail as get_gitlab_issue_detail, get_mr_detail as get_gitlab_mr_detail,
+    list_issues as list_gitlab_issues, list_mr_commits as list_gitlab_mr_commits,
+    list_mr_files as list_gitlab_mr_files, list_mr_pipelines as list_gitlab_mr_pipelines,
+    list_mrs as list_gitlab_mrs, mr_action as gitlab_mr_action, search_mrs as search_gitlab_mrs,
+    MrAction,
 };
-pub use types::{IssueState, IssueSummary, Label, UserInfo};
+pub use types::{IssueDetail, IssueState, IssueSummary, Label, UserInfo};
 
 use crate::backend::BackendError;
 
@@ -93,6 +95,30 @@ pub async fn list_prs(
             "trello" => "Trello not in yryvu v1 scope",
             _ => "unknown integration type",
         })),
+    }
+}
+
+/// Dispatcher: fetch one issue's detail via the matching provider's
+/// client. Returns the shared [`IssueDetail`] shape — the panel
+/// renders provider-agnostic.
+pub async fn get_issue_detail(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    number: u64,
+) -> Result<IssueDetail, BackendError> {
+    match integration_type {
+        "github" => github::get_issue_detail(token, None, owner, repo, number).await,
+        "githubEnterprise" => github::get_issue_detail(token, hostname, owner, repo, number).await,
+        "gitlab" => gitlab::get_issue_detail(token, None, owner, repo, number).await,
+        "gitlabSelfHosted" => gitlab::get_issue_detail(token, hostname, owner, repo, number).await,
+        "gitea" => gitea::get_issue_detail(token, None, owner, repo, number).await,
+        "giteaSelfHosted" => gitea::get_issue_detail(token, hostname, owner, repo, number).await,
+        _ => Err(BackendError::NotImplemented(
+            "issue detail not implemented for this provider",
+        )),
     }
 }
 

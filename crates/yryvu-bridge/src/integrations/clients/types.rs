@@ -78,3 +78,26 @@ pub struct IssueSummary {
     /// since issues often live or die by their discussion thread.
     pub comments: u64,
 }
+
+/// Extended issue payload for the detail panel — superset of
+/// [`IssueSummary`] with body markdown + the closed timestamp.
+/// Mirrors GK's `IssueTracker-*` detail surface in fields exposed.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueDetail {
+    pub number: u64,
+    pub title: String,
+    pub state: IssueState,
+    pub author: UserInfo,
+    pub created_at: String,
+    pub updated_at: String,
+    pub closed_at: Option<String>,
+    pub html_url: String,
+    pub body: String,
+    pub milestone: Option<String>,
+    #[serde(default)]
+    pub labels: Vec<Label>,
+    #[serde(default)]
+    pub assignees: Vec<UserInfo>,
+    pub comments: u64,
+}

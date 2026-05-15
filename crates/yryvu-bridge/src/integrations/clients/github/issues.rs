@@ -14,7 +14,7 @@ use serde::Deserialize;
 use crate::backend::BackendError;
 
 use super::super::http::{self, GITHUB_QUIRKS};
-use super::super::types::{IssueState, IssueSummary, Label, UserInfo};
+use super::super::types::{IssueDetail, IssueState, IssueSummary, Label, UserInfo};
 use super::api_base;
 
 /// List issues for `owner/repo`. PRs returned by the same endpoint
@@ -45,6 +45,35 @@ pub async fn list_issues(
         .filter(|row| row.pull_request.is_none())
         .map(IssueSummary::from)
         .collect())
+}
+
+/// Fetch a single issue's full detail. Same status-code mapping as
+/// the list endpoint via `GITHUB_QUIRKS`. Returns `IssueDetail` —
+/// superset of `IssueSummary` with body markdown + closed_at +
+/// milestone.
+pub async fn get_issue_detail(
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    number: u64,
+) -> Result<IssueDetail, BackendError> {
+    let base = api_base(hostname)?;
+    let url = format!("{base}/repos/{owner}/{repo}/issues/{number}");
+    let client = http::client()?;
+    let req = http::authed(
+        &client,
+        Method::GET,
+        &url,
+        token,
+        "application/vnd.github.v3+json",
+    );
+    let resp = http::execute(req, GITHUB_QUIRKS).await?;
+    let raw: GhIssueDetail = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding /issues/{n} response", e))?;
+    Ok(raw.into())
 }
 
 #[derive(Debug, Deserialize)]
@@ -112,6 +141,57 @@ impl From<GhIssue> for IssueSummary {
             created_at: raw.created_at,
             updated_at: raw.updated_at,
             html_url: raw.html_url,
+            comments: raw.comments,
+            labels: raw.labels.into_iter().map(Label::from).collect(),
+            assignees: raw.assignees.into_iter().map(UserInfo::from).collect(),
+        }
+    }
+}
+
+/// Single-issue REST response — superset of `GhIssue` with `body` +
+/// `closed_at` + `milestone`. The other fields are shared so we
+/// `#[serde(flatten)]` the common shape via re-deserialisation.
+#[derive(Debug, Deserialize)]
+struct GhIssueDetail {
+    number: u64,
+    title: String,
+    state: String,
+    user: GhIssueUser,
+    created_at: String,
+    updated_at: String,
+    closed_at: Option<String>,
+    html_url: String,
+    comments: u64,
+    body: Option<String>,
+    milestone: Option<GhMilestoneMini>,
+    #[serde(default)]
+    labels: Vec<GhIssueLabel>,
+    #[serde(default)]
+    assignees: Vec<GhIssueUser>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GhMilestoneMini {
+    title: Option<String>,
+}
+
+impl From<GhIssueDetail> for IssueDetail {
+    fn from(raw: GhIssueDetail) -> Self {
+        let state = match raw.state.as_str() {
+            "closed" => IssueState::Closed,
+            _ => IssueState::Open,
+        };
+        Self {
+            number: raw.number,
+            title: raw.title,
+            state,
+            author: raw.user.into(),
+            created_at: raw.created_at,
+            updated_at: raw.updated_at,
+            closed_at: raw.closed_at,
+            html_url: raw.html_url,
+            body: raw.body.unwrap_or_default(),
+            milestone: raw.milestone.and_then(|m| m.title),
             comments: raw.comments,
             labels: raw.labels.into_iter().map(Label::from).collect(),
             assignees: raw.assignees.into_iter().map(UserInfo::from).collect(),

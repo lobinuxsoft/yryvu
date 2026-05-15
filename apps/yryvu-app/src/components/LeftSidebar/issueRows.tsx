@@ -4,6 +4,8 @@ import { createSignal, Show } from "solid-js";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 import type { IssueSummary } from "../../ipc";
+import { openIssueDetail } from "../../state/issue-detail";
+import { activeIssuesContext } from "../../state/issues";
 import { ContextMenu, type ContextMenuItem } from "../ContextMenu";
 import { LabelChips, UserAvatarCluster } from "./pullRequestChips";
 
@@ -27,8 +29,26 @@ function relativeTime(iso: string): string {
   return `${Math.floor(mo / 12)}y ago`;
 }
 
+/// Open the in-app issue detail panel for `issue`. Pulls integration
+/// metadata from the live resource context so we don't need to
+/// re-classify the repo per click.
+function openDetail(issue: IssueSummary) {
+  const ctx = activeIssuesContext();
+  if (!ctx) return;
+  openIssueDetail({
+    integrationType: ctx.integrationType,
+    owner: ctx.owner,
+    repo: ctx.repo,
+    number: issue.number,
+  });
+}
+
 function buildMenuItems(issue: IssueSummary): ContextMenuItem[] {
   return [
+    {
+      label: "Open issue detail",
+      onSelect: () => openDetail(issue),
+    },
     {
       label: "View issue in browser",
       onSelect: () => {
@@ -61,15 +81,12 @@ export function IssueRow(props: IssueRowProps) {
     const rect = e.currentTarget.getBoundingClientRect();
     setMenuAt({ x: rect.right, y: rect.bottom });
   };
-  const openInBrowser = () => {
-    void openUrl(issue().htmlUrl);
-  };
   return (
     <div
       class="sidebar__branch-row sidebar__row--pull-request"
       title={`${issue().title} (#${issue().number}) — opened ${relativeTime(issue().createdAt)} by ${issue().author.login}`}
       onContextMenu={openMenu}
-      onClick={openInBrowser}
+      onClick={() => openDetail(issue())}
     >
       <div class="sidebar__pr-row__primary">
         <Show when={issue().author.avatarUrl}>

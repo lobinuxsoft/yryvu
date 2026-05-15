@@ -48,6 +48,7 @@ pub fn run() {
             yryvu_bridge::commands::integration_preflight,
             yryvu_bridge::commands::integration_list_prs,
             yryvu_bridge::commands::integration_list_issues,
+            yryvu_bridge::commands::integration_get_issue_detail,
             yryvu_bridge::commands::integration_get_pr_detail,
             yryvu_bridge::commands::integration_list_pr_commits,
             yryvu_bridge::commands::integration_list_pr_files,

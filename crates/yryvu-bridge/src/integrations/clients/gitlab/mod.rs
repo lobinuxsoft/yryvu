@@ -27,7 +27,7 @@ mod search;
 pub use detail::{
     get_mr_detail, list_mr_commits, list_mr_files, list_mr_pipelines, mr_action, MrAction,
 };
-pub use issues::list_issues;
+pub use issues::{get_issue_detail, list_issues};
 pub use preflight::preflight_gitlab;
 pub use prs::list_mrs;
 pub use search::search_mrs;

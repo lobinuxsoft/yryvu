@@ -262,6 +262,41 @@ export function integrationListIssues(
   });
 }
 
+/// Extended issue payload for the detail panel — superset of
+/// `IssueSummary` with body markdown + closed_at + milestone.
+export interface IssueDetail {
+  number: number;
+  title: string;
+  state: IssueState;
+  author: UserInfo;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+  htmlUrl: string;
+  body: string;
+  milestone: string | null;
+  labels: Label[];
+  assignees: UserInfo[];
+  comments: number;
+}
+
+/// Fetch a single issue's full detail. Same provider-routing as
+/// `integrationListIssues`; the backend returns the cross-provider
+/// `IssueDetail` shape.
+export function integrationGetIssueDetail(
+  integrationType: string,
+  owner: string,
+  repo: string,
+  number: number,
+): Promise<IssueDetail> {
+  return invoke<IssueDetail>("integration_get_issue_detail", {
+    integrationType,
+    owner,
+    repo,
+    number,
+  });
+}
+
 /**
  * Result of `oauth_begin` — the URL to open in the user's browser plus
  * an opaque session id that `oauth_await` / `oauth_cancel` need.

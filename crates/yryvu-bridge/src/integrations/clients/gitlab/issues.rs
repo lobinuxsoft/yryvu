@@ -14,7 +14,7 @@ use serde::Deserialize;
 use crate::backend::BackendError;
 
 use super::super::http::{self, GITLAB_QUIRKS};
-use super::super::types::{IssueState, IssueSummary, Label, UserInfo};
+use super::super::types::{IssueDetail, IssueState, IssueSummary, Label, UserInfo};
 
 /// Resolve the REST v4 base URL for issues. GraphQL handles MRs; the
 /// REST API is what the `/issues` endpoint speaks fluently.
@@ -54,6 +54,29 @@ pub async fn list_issues(
     Ok(raw.into_iter().map(IssueSummary::from).collect())
 }
 
+/// Fetch a single issue's full detail via REST v4. Returns the
+/// extended [`IssueDetail`] shape — body markdown + closed_at +
+/// milestone in addition to the summary fields.
+pub async fn get_issue_detail(
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    iid: u64,
+) -> Result<IssueDetail, BackendError> {
+    let base = rest_base(hostname)?;
+    let project = format!("{owner}%2F{repo}");
+    let url = format!("{base}/projects/{project}/issues/{iid}");
+    let client = http::client()?;
+    let req = http::authed(&client, Method::GET, &url, token, "application/json");
+    let resp = http::execute(req, GITLAB_QUIRKS).await?;
+    let raw: GlIssueDetail = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding /issues/{iid} response", e))?;
+    Ok(raw.into())
+}
+
 #[derive(Debug, Deserialize)]
 struct GlIssue {
     iid: u64,
@@ -87,25 +110,26 @@ impl From<GlUser> for UserInfo {
     }
 }
 
+fn gl_labels(raw: Vec<String>) -> Vec<Label> {
+    // GitLab's REST issue endpoint returns labels as plain string
+    // names (no colour). Colours live behind
+    // `?with_labels_details=true` which costs an extra round-trip;
+    // surface them with a neutral grey fill until users demand
+    // branded label colours on this surface.
+    raw.into_iter()
+        .map(|name| Label {
+            name,
+            color: "808080".to_string(),
+        })
+        .collect()
+}
+
 impl From<GlIssue> for IssueSummary {
     fn from(raw: GlIssue) -> Self {
         let state = match raw.state.as_str() {
             "closed" => IssueState::Closed,
             _ => IssueState::Open,
         };
-        // GitLab's REST issue list returns labels as plain string
-        // names (no colour). The colours live behind `?with_labels_details=true`
-        // which is an extra round-trip; for the row chips we accept
-        // the colour fallback (gray) until the user demands branded
-        // labels on this surface.
-        let labels = raw
-            .labels
-            .into_iter()
-            .map(|name| Label {
-                name,
-                color: "808080".to_string(),
-            })
-            .collect();
         Self {
             number: raw.iid,
             title: raw.title,
@@ -115,7 +139,57 @@ impl From<GlIssue> for IssueSummary {
             updated_at: raw.updated_at,
             html_url: raw.web_url,
             comments: raw.user_notes_count,
-            labels,
+            labels: gl_labels(raw.labels),
+            assignees: raw.assignees.into_iter().map(UserInfo::from).collect(),
+        }
+    }
+}
+
+/// Single-issue REST response — extends `GlIssue` with body +
+/// closed_at + milestone.
+#[derive(Debug, Deserialize)]
+struct GlIssueDetail {
+    iid: u64,
+    title: String,
+    state: String,
+    author: GlUser,
+    created_at: String,
+    updated_at: String,
+    closed_at: Option<String>,
+    web_url: String,
+    user_notes_count: u64,
+    description: Option<String>,
+    milestone: Option<GlMilestoneMini>,
+    #[serde(default)]
+    labels: Vec<String>,
+    #[serde(default)]
+    assignees: Vec<GlUser>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GlMilestoneMini {
+    title: Option<String>,
+}
+
+impl From<GlIssueDetail> for IssueDetail {
+    fn from(raw: GlIssueDetail) -> Self {
+        let state = match raw.state.as_str() {
+            "closed" => IssueState::Closed,
+            _ => IssueState::Open,
+        };
+        Self {
+            number: raw.iid,
+            title: raw.title,
+            state,
+            author: raw.author.into(),
+            created_at: raw.created_at,
+            updated_at: raw.updated_at,
+            closed_at: raw.closed_at,
+            html_url: raw.web_url,
+            body: raw.description.unwrap_or_default(),
+            milestone: raw.milestone.and_then(|m| m.title),
+            comments: raw.user_notes_count,
+            labels: gl_labels(raw.labels),
             assignees: raw.assignees.into_iter().map(UserInfo::from).collect(),
         }
     }

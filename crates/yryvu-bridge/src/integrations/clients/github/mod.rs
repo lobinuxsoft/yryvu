@@ -25,7 +25,7 @@ pub use detail::{
     PullRequestDetail,
 };
 pub use graphql::enrich_prs;
-pub use issues::list_issues;
+pub use issues::{get_issue_detail, list_issues};
 pub use merge::{delete_branch, merge_pr, pr_action, MergeMethod, MergeRequest, PrAction};
 pub use preflight::preflight_github;
 pub use prs::{list_prs, CiStatus, PullRequestState, PullRequestSummary, ReviewDecision};

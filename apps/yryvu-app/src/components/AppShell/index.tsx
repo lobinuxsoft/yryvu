@@ -10,6 +10,7 @@ import { CommitGraph } from "../CommitGraph";
 import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
 import { FileDiffTab } from "../FileDiffTab";
+import { IssueDetailPanel } from "../IssueDetail";
 import { PullRequestDetailPanel } from "../PullRequestDetail";
 import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
@@ -271,6 +272,9 @@ export function AppShell() {
               </Match>
               <Match when={mainView() === "prDetail"}>
                 <PullRequestDetailPanel />
+              </Match>
+              <Match when={mainView() === "issueDetail"}>
+                <IssueDetailPanel />
               </Match>
             </Switch>
           </Show>

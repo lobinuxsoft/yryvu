@@ -30,7 +30,10 @@ pub use github::{
     PullRequestSummary, ReviewDecision,
 };
 pub use gitlab::{
-    list_issues as list_gitlab_issues, list_mrs as list_gitlab_mrs, search_mrs as search_gitlab_mrs,
+    get_mr_detail as get_gitlab_mr_detail, list_issues as list_gitlab_issues,
+    list_mr_commits as list_gitlab_mr_commits, list_mr_files as list_gitlab_mr_files,
+    list_mr_pipelines as list_gitlab_mr_pipelines, list_mrs as list_gitlab_mrs,
+    mr_action as gitlab_mr_action, search_mrs as search_gitlab_mrs, MrAction,
 };
 pub use types::{IssueState, IssueSummary, Label, UserInfo};
 

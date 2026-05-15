@@ -1,22 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Tauri commands for the PR detail panel (#91): full-PR fetch,
-//! commits / files / checks tabs, and the action-button cluster
-//! (close / reopen / convert-draft / mark-ready).
+//! Tauri commands for the PR detail panel (#91 GitHub, #93 GitLab):
+//! full-PR fetch, commits / files / checks tabs, and the action-button
+//! cluster (close / reopen / convert-draft / mark-ready / merge).
 //!
-//! Currently GitHub-only at the dispatcher level; GitLab / Gitea
-//! detail surfaces follow in their own per-provider PRs. Each
-//! command routes by `integration_type` and returns
-//! [`BackendError::NotImplemented`] for non-GitHub providers so the
-//! frontend can degrade gracefully (show "Detail view is GitHub-only
-//! in v1" instead of crashing).
+//! Each command routes by `ProviderFamily`. Supported providers
+//! return the cross-provider shape; the rest bubble a typed error
+//! the frontend surfaces as a toast.
 
 use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
 
 use crate::integrations::{
-    self, CheckRun, MergeMethod, MergeRequest, PrAction, PrCommit, PrFile, PullRequestDetail,
+    self, CheckRun, MergeMethod, MergeRequest, MrAction, PrAction, PrCommit, PrFile,
+    PullRequestDetail,
 };
 
 use super::integration_routing::{is_self_hosted, ProviderFamily};
@@ -48,15 +46,22 @@ fn pick_hostname(integration_type: &str, auth: &integrations::AuthData) -> Optio
         .cloned()
 }
 
-/// PR detail surface is GitHub-only in v1. Returns the typed error
-/// other providers should bubble up to the frontend's toast.
-fn require_github(integration_type: &str) -> Result<(), String> {
-    match ProviderFamily::from_integration_type(integration_type) {
-        ProviderFamily::Github => Ok(()),
-        _ => Err(format!(
-            "PR detail view is GitHub-only in v1; '{integration_type}' lands in its own PR"
-        )),
+/// Verb the read-side panel emits. Same enum is used for both
+/// providers; the per-family dispatch picks the concrete variant.
+fn parse_action(action: &str) -> Result<(PrAction, MrAction), String> {
+    match action {
+        "close" => Ok((PrAction::Close, MrAction::Close)),
+        "reopen" => Ok((PrAction::Reopen, MrAction::Reopen)),
+        "convertToDraft" => Ok((PrAction::ConvertToDraft, MrAction::ConvertToDraft)),
+        "markReadyForReview" => Ok((PrAction::MarkReadyForReview, MrAction::MarkReadyForReview)),
+        other => Err(format!("unknown pr action: '{other}'")),
     }
+}
+
+fn unsupported_for_detail(integration_type: &str) -> String {
+    format!(
+        "PR detail view supports GitHub and GitLab in v1; '{integration_type}' lands in its own PR"
+    )
 }
 
 #[tauri::command]
@@ -67,12 +72,22 @@ pub async fn integration_get_pr_detail(
     repo: String,
     number: u64,
 ) -> Result<PullRequestDetail, String> {
-    require_github(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
-    integrations::get_github_pr_detail(&auth.token, hostname.as_deref(), &owner, &repo, number)
-        .await
-        .map_err(|e| e.to_string())
+    let host = hostname.as_deref();
+    match ProviderFamily::from_integration_type(&integration_type) {
+        ProviderFamily::Github => {
+            integrations::get_github_pr_detail(&auth.token, host, &owner, &repo, number)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        ProviderFamily::Gitlab => {
+            integrations::get_gitlab_mr_detail(&auth.token, host, &owner, &repo, number)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        _ => Err(unsupported_for_detail(&integration_type)),
+    }
 }
 
 #[tauri::command]
@@ -83,12 +98,22 @@ pub async fn integration_list_pr_commits(
     repo: String,
     number: u64,
 ) -> Result<Vec<PrCommit>, String> {
-    require_github(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
-    integrations::list_github_pr_commits(&auth.token, hostname.as_deref(), &owner, &repo, number)
-        .await
-        .map_err(|e| e.to_string())
+    let host = hostname.as_deref();
+    match ProviderFamily::from_integration_type(&integration_type) {
+        ProviderFamily::Github => {
+            integrations::list_github_pr_commits(&auth.token, host, &owner, &repo, number)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        ProviderFamily::Gitlab => {
+            integrations::list_gitlab_mr_commits(&auth.token, host, &owner, &repo, number)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        _ => Err(unsupported_for_detail(&integration_type)),
+    }
 }
 
 #[tauri::command]
@@ -99,14 +124,29 @@ pub async fn integration_list_pr_files(
     repo: String,
     number: u64,
 ) -> Result<Vec<PrFile>, String> {
-    require_github(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
-    integrations::list_github_pr_files(&auth.token, hostname.as_deref(), &owner, &repo, number)
-        .await
-        .map_err(|e| e.to_string())
+    let host = hostname.as_deref();
+    match ProviderFamily::from_integration_type(&integration_type) {
+        ProviderFamily::Github => {
+            integrations::list_github_pr_files(&auth.token, host, &owner, &repo, number)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        ProviderFamily::Gitlab => {
+            integrations::list_gitlab_mr_files(&auth.token, host, &owner, &repo, number)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        _ => Err(unsupported_for_detail(&integration_type)),
+    }
 }
 
+/// Checks tab. GitHub uses the head SHA (the frontend already has
+/// it); GitLab uses the MR iid for pipelines listing. The frontend
+/// passes the SHA as the last argument either way — for GitLab the
+/// SHA is unused. The parameter name stays `head_sha` to keep the
+/// IPC surface stable across providers.
 #[tauri::command]
 pub async fn integration_list_pr_checks(
     app: AppHandle,
@@ -114,13 +154,27 @@ pub async fn integration_list_pr_checks(
     owner: String,
     repo: String,
     head_sha: String,
+    number: Option<u64>,
 ) -> Result<Vec<CheckRun>, String> {
-    require_github(&integration_type)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
-    integrations::list_github_pr_checks(&auth.token, hostname.as_deref(), &owner, &repo, &head_sha)
-        .await
-        .map_err(|e| e.to_string())
+    let host = hostname.as_deref();
+    match ProviderFamily::from_integration_type(&integration_type) {
+        ProviderFamily::Github => {
+            integrations::list_github_pr_checks(&auth.token, host, &owner, &repo, &head_sha)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        ProviderFamily::Gitlab => {
+            let iid = number.ok_or_else(|| {
+                "GitLab checks require the MR iid; pass `number` from the panel".to_string()
+            })?;
+            integrations::list_gitlab_mr_pipelines(&auth.token, host, &owner, &repo, iid)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        _ => Err(unsupported_for_detail(&integration_type)),
+    }
 }
 
 /// `action` is `close | reopen | convertToDraft | markReadyForReview`
@@ -135,26 +189,23 @@ pub async fn integration_pr_action(
     number: u64,
     action: String,
 ) -> Result<PullRequestDetail, String> {
-    require_github(&integration_type)?;
+    let (gh_action, gl_action) = parse_action(&action)?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
-    let parsed = match action.as_str() {
-        "close" => PrAction::Close,
-        "reopen" => PrAction::Reopen,
-        "convertToDraft" => PrAction::ConvertToDraft,
-        "markReadyForReview" => PrAction::MarkReadyForReview,
-        other => return Err(format!("unknown pr action: '{other}'")),
-    };
-    integrations::github_pr_action(
-        &auth.token,
-        hostname.as_deref(),
-        &owner,
-        &repo,
-        number,
-        parsed,
-    )
-    .await
-    .map_err(|e| e.to_string())
+    let host = hostname.as_deref();
+    match ProviderFamily::from_integration_type(&integration_type) {
+        ProviderFamily::Github => {
+            integrations::github_pr_action(&auth.token, host, &owner, &repo, number, gh_action)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        ProviderFamily::Gitlab => {
+            integrations::gitlab_mr_action(&auth.token, host, &owner, &repo, number, gl_action)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        _ => Err(unsupported_for_detail(&integration_type)),
+    }
 }
 
 /// Merge a PR via `PUT /pulls/{number}/merge`. `method` is one of
@@ -180,7 +231,12 @@ pub async fn integration_merge_pr(
     commit_message: Option<String>,
     delete_source_branch: bool,
 ) -> Result<PullRequestDetail, String> {
-    require_github(&integration_type)?;
+    match ProviderFamily::from_integration_type(&integration_type) {
+        ProviderFamily::Github => Ok(()),
+        _ => Err(format!(
+            "PR merge form is GitHub-only in v1; '{integration_type}' lands in #94"
+        )),
+    }?;
     let auth = load_auth(&app, integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     let parsed_method = match method.as_str() {

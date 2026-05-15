@@ -132,16 +132,22 @@ export function integrationListPrFiles(
   });
 }
 
+/// Fetch the Checks tab. GitHub uses `headSha` to look up
+/// check-runs on the head commit; GitLab uses the MR `number` (iid)
+/// to list pipelines. Pass both — providers ignore the irrelevant
+/// argument, but each one is required by its own dispatch.
 export function integrationListPrChecks(
   integrationType: string,
   owner: string,
   repo: string,
   headSha: string,
+  number: number,
 ): Promise<CheckRun[]> {
   return invoke<CheckRun[]>("integration_list_pr_checks", {
     integrationType,
     owner,
     repo,
+    number,
     headSha,
   });
 }

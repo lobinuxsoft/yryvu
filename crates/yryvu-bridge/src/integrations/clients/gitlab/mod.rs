@@ -16,12 +16,17 @@
 //! that in a single round-trip, matching the cost profile of the
 //! GitHub side's REST + enrich pattern.
 
+mod detail;
+mod detail_raw;
 mod dsl;
 mod issues;
 mod preflight;
 mod prs;
 mod search;
 
+pub use detail::{
+    get_mr_detail, list_mr_commits, list_mr_files, list_mr_pipelines, mr_action, MrAction,
+};
 pub use issues::list_issues;
 pub use preflight::preflight_gitlab;
 pub use prs::list_mrs;

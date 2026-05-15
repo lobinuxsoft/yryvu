@@ -250,13 +250,13 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
 
         <p class="integrations-form__hint">
           {props.provider.cohort === "skip"
-            ? "Trello uses a custom app-key + token flow that chajá does not plan to implement."
+            ? "Trello uses a custom app-key + token flow that yryvu does not plan to implement."
             : props.provider.isSelfHosted && !hostname()
               ? `Enter your ${props.provider.label} instance URL to continue.`
               : props.provider.cohort === "v2"
                 ? "Self-hosted variant — ships in v2 with the custom-hostname plumbing."
                 : props.provider.authType === "OAUTH"
-                  ? `Click Connect to authorize chajá against ${props.provider.label}.`
+                  ? `Click Connect to authorize yryvu against ${props.provider.label}.`
                   : `Click Connect to enter a Personal Access Token for ${props.provider.label}.`}
         </p>
       </div>

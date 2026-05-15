@@ -201,9 +201,45 @@
    content; activates on hover/focus. */
 .sidebar__pr-toolbar {
   display: flex;
+  flex-direction: column;
   gap: 4px;
   padding: 4px 6px;
   border-bottom: 1px solid var(--bg-2);
+}
+.sidebar__pr-toolbar__row {
+  display: flex;
+  gap: 4px;
+}
+
+/* Segmented state filter — three-button toggle (Open / Closed /
+   All). Stays visually quiet until a non-default segment is active. */
+.sidebar__segmented {
+  display: flex;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.sidebar__segmented-btn {
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  color: var(--fg-2);
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  border-right: 1px solid var(--bg-3);
+}
+.sidebar__segmented-btn:last-child {
+  border-right: none;
+}
+.sidebar__segmented-btn:hover {
+  color: var(--fg-0);
+}
+.sidebar__segmented-btn[data-active="true"] {
+  background: var(--info);
+  color: var(--bg-0);
 }
 .sidebar__pr-toolbar__filter {
   flex: 1 1 auto;

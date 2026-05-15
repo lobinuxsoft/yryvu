@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createResource } from "solid-js";
+import { createResource, createSignal } from "solid-js";
 
 import {
   getRepoProviderInfo,
@@ -30,20 +30,49 @@ function integrationTypeFor(service: HostingService): string {
   return service;
 }
 
+/// Active integration metadata so the row click can open the issue
+/// detail panel without re-classifying the repo. Updated by
+/// `fetchIssues` on every successful classification — same pattern
+/// as `activePrContext` in `state/pull-requests.ts`.
+const [activeIssuesContext, setActiveIssuesContext] = createSignal<
+  { integrationType: string; owner: string; repo: string } | null
+>(null);
+
+export { activeIssuesContext };
+
+/// State filter applied to the Issues panel. Same semantics as the
+/// PR `PrStateFilter` so both panels can reuse the same segmented
+/// control component.
+export type IssueStateFilter = "all" | "open" | "closed";
+
+const [issueStateFilter, setIssueStateFilter] = createSignal<IssueStateFilter>("open");
+const [issueTextFilter, setIssueTextFilter] = createSignal<string>("");
+
+export {
+  issueStateFilter,
+  setIssueStateFilter,
+  issueTextFilter,
+  setIssueTextFilter,
+};
+
 async function fetchIssues(path: string): Promise<IssuesResult> {
   let info: RepoProviderInfo;
   try {
     info = await getRepoProviderInfo(path);
   } catch (err) {
+    setActiveIssuesContext(null);
     return { kind: "error", detail: String(err) };
   }
   if (!SUPPORTED_SERVICES.includes(info.service)) {
+    setActiveIssuesContext(null);
     return { kind: "unsupported-provider", service: info.service };
   }
   if (!info.owner || !info.repo) {
+    setActiveIssuesContext(null);
     return { kind: "bare-or-unparseable" };
   }
   const integrationType = integrationTypeFor(info.service);
+  setActiveIssuesContext({ integrationType, owner: info.owner, repo: info.repo });
   let configured: string[];
   try {
     configured = await listConfiguredIntegrations();

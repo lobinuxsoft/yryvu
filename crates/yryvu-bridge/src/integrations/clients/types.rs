@@ -78,3 +78,140 @@ pub struct IssueSummary {
     /// since issues often live or die by their discussion thread.
     pub comments: u64,
 }
+
+/// Cross-provider issue/PR comment payload. `kind` tells the client
+/// which API surface the comment came from so refetch / delete can
+/// route correctly later; the field is decorative for v1 (read-only).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Comment {
+    pub id: String,
+    pub author: UserInfo,
+    pub created_at: String,
+    pub updated_at: String,
+    pub body: String,
+    pub html_url: String,
+}
+
+/// Identifies which item a comment listing targets. Both `Issue` and
+/// `PullRequest` flow through the same issue-comments endpoint on
+/// GitHub + Gitea; GitLab splits them into `issues/notes` and
+/// `merge_requests/notes`.
+#[derive(Debug, Clone, Copy)]
+pub enum CommentTarget {
+    Issue,
+    PullRequest,
+}
+
+/// Inputs for posting a new comment.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateCommentInput {
+    pub body: String,
+}
+
+/// Provider-agnostic identifier carried in dropdown options. `id` is
+/// the opaque string the backend re-sends on create — for GitHub it's
+/// the login/name, for GitLab it's the numeric id stringified, for
+/// Gitea it's the numeric id (labels/milestones) or username (users).
+/// `displayName` is what the UI renders; `avatarUrl` is optional and
+/// only populated for user-shaped options.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Identifier {
+    pub id: String,
+    pub display_name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub avatar_url: String,
+    /// Optional color hex (label-shaped options use this; others
+    /// leave it empty).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub color: String,
+}
+
+/// Inputs for creating a new issue. Cross-provider — opaque
+/// `Identifier.id` strings flow through, interpreted by each provider
+/// adapter (login vs numeric id) before hitting the API.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateIssueInput {
+    pub title: String,
+    #[serde(default)]
+    pub body: String,
+    /// Label identifiers — provider semantics:
+    /// - GitHub: label names.
+    /// - GitLab: numeric label IDs stringified.
+    /// - Gitea: numeric label IDs stringified.
+    #[serde(default)]
+    pub labels: Vec<String>,
+    /// Assignee identifiers — GitHub/Gitea: usernames; GitLab:
+    /// numeric user IDs stringified.
+    #[serde(default)]
+    pub assignees: Vec<String>,
+    /// Milestone identifier — GitHub/GitLab/Gitea: numeric id
+    /// stringified. None means "no milestone".
+    #[serde(default)]
+    pub milestone: Option<String>,
+}
+
+/// Inputs for creating a new pull / merge request. Cross-provider
+/// minimal shape — every provider needs source + target branch, a
+/// title, and an optional markdown body. GitHub + GitLab support an
+/// initial-draft toggle (Gitea ignores it — its API has no draft
+/// concept at create time, drafts are inferred from a `[WIP]` /
+/// `Draft:` title prefix).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatePrInput {
+    pub title: String,
+    #[serde(default)]
+    pub body: String,
+    /// Source branch (the branch carrying the changes — `head` in
+    /// GitHub terms, `source_branch` in GitLab terms).
+    pub head_ref: String,
+    /// Target branch (where the changes land — `base` in GitHub
+    /// terms, `target_branch` in GitLab terms).
+    pub base_ref: String,
+    /// Open as draft. Honored by GitHub + GitLab; Gitea ignores it.
+    #[serde(default)]
+    pub draft: bool,
+    /// Label identifiers — same semantics as [`CreateIssueInput::labels`].
+    #[serde(default)]
+    pub labels: Vec<String>,
+    /// Assignee identifiers — same semantics as
+    /// [`CreateIssueInput::assignees`].
+    #[serde(default)]
+    pub assignees: Vec<String>,
+    /// Reviewer identifiers — same semantics as `assignees`. GitHub
+    /// resolves via a follow-up `POST /pulls/{n}/requested_reviewers`
+    /// because the create endpoint doesn't accept reviewers inline.
+    #[serde(default)]
+    pub reviewers: Vec<String>,
+    /// Milestone identifier — same semantics as
+    /// [`CreateIssueInput::milestone`].
+    #[serde(default)]
+    pub milestone: Option<String>,
+}
+
+/// Extended issue payload for the detail panel — superset of
+/// [`IssueSummary`] with body markdown + the closed timestamp.
+/// Mirrors GK's `IssueTracker-*` detail surface in fields exposed.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueDetail {
+    pub number: u64,
+    pub title: String,
+    pub state: IssueState,
+    pub author: UserInfo,
+    pub created_at: String,
+    pub updated_at: String,
+    pub closed_at: Option<String>,
+    pub html_url: String,
+    pub body: String,
+    pub milestone: Option<String>,
+    #[serde(default)]
+    pub labels: Vec<Label>,
+    #[serde(default)]
+    pub assignees: Vec<UserInfo>,
+    pub comments: u64,
+}

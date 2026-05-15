@@ -1,0 +1,106 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Comments thread + composer for Issue / PR detail panels. */
+
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comments__empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.comments__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comments__card {
+  border: 1px solid var(--bg-2);
+  border-radius: 3px;
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
+.comments__card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--bg-2);
+  font-size: 11px;
+}
+
+.comments__card-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-3);
+}
+
+.comments__card-author {
+  font-weight: 600;
+  color: var(--fg-0);
+}
+
+.comments__card-time {
+  color: var(--fg-3);
+}
+
+.comments__card-body {
+  padding: 8px 12px;
+}
+
+.comments__composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comments__composer-title {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-3);
+  font-weight: 600;
+}
+
+.comments__composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.comments__composer-error {
+  flex: 1 1 auto;
+  font-size: 11px;
+  color: var(--danger);
+}
+
+.comments__composer-submit {
+  background: var(--accent);
+  color: var(--accent-fg, #fff);
+  border: 1px solid var(--accent);
+  padding: 4px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.comments__composer-submit:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.comments__composer-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

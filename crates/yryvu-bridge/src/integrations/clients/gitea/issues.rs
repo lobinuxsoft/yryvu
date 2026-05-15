@@ -7,12 +7,14 @@
 //! returns both by default, similar to GitHub).
 
 use reqwest::Method;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::backend::BackendError;
 
 use super::super::http::{self, GITEA_QUIRKS};
-use super::super::types::{IssueState, IssueSummary, Label, UserInfo};
+use super::super::types::{
+    CreateIssueInput, IssueDetail, IssueState, IssueSummary, Label, UserInfo,
+};
 use super::api_base;
 
 pub async fn list_issues(
@@ -31,6 +33,83 @@ pub async fn list_issues(
         .await
         .map_err(|e| http::decode_error("decoding /issues response", e))?;
     Ok(raw.into_iter().map(IssueSummary::from).collect())
+}
+
+/// Create a new issue on `owner/repo`. `POST /repos/{o}/{r}/issues`
+/// returns the same payload shape as the single-issue GET. Gitea's
+/// API expects label numeric IDs (resolved via a separate
+/// `/labels` round-trip) — until that lookup is wired, label names
+/// from [`CreateIssueInput`] are ignored. Title + body are the only
+/// fields shipped in v1.
+pub async fn create_issue(
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    input: &CreateIssueInput,
+) -> Result<IssueDetail, BackendError> {
+    let base = api_base(hostname)?;
+    let url = format!("{base}/repos/{owner}/{repo}/issues");
+    let body = GiteaCreateIssueBody {
+        title: &input.title,
+        body: &input.body,
+        labels: parse_ids(&input.labels),
+        assignees: &input.assignees,
+        milestone: input
+            .milestone
+            .as_deref()
+            .and_then(|s| s.parse::<u64>().ok()),
+    };
+    let client = http::client()?;
+    let req = http::authed(&client, Method::POST, &url, token, "application/json").json(&body);
+    let resp = http::execute(req, GITEA_QUIRKS).await?;
+    let raw: GiteaIssueDetail = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding POST /issues response", e))?;
+    Ok(raw.into())
+}
+
+/// Map opaque identifier strings to numeric IDs, dropping non-numeric
+/// entries. Gitea labels and milestones are numeric IDs server-side;
+/// users come through as plain usernames so they skip this filter.
+pub(super) fn parse_ids(ids: &[String]) -> Vec<u64> {
+    ids.iter().filter_map(|s| s.parse::<u64>().ok()).collect()
+}
+
+#[derive(Debug, Serialize)]
+struct GiteaCreateIssueBody<'a> {
+    title: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    body: &'a str,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    labels: Vec<u64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    assignees: &'a Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    milestone: Option<u64>,
+}
+
+/// Fetch a single issue's full detail via REST v1. Gitea uses
+/// `index` rather than `iid` (Gitea's pet name for the per-repo
+/// number). Same status-code mapping as the list endpoint.
+pub async fn get_issue_detail(
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    index: u64,
+) -> Result<IssueDetail, BackendError> {
+    let base = api_base(hostname)?;
+    let url = format!("{base}/repos/{owner}/{repo}/issues/{index}");
+    let client = http::client()?;
+    let req = http::authed(&client, Method::GET, &url, token, "application/json");
+    let resp = http::execute(req, GITEA_QUIRKS).await?;
+    let raw: GiteaIssueDetail = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding /issues/{index} response", e))?;
+    Ok(raw.into())
 }
 
 #[derive(Debug, Deserialize)]
@@ -98,6 +177,56 @@ impl From<GiteaIssue> for IssueSummary {
             created_at: raw.created_at,
             updated_at: raw.updated_at,
             html_url: raw.html_url,
+            comments: raw.comments,
+            labels: raw.labels.into_iter().map(Label::from).collect(),
+            assignees: raw.assignees.into_iter().map(UserInfo::from).collect(),
+        }
+    }
+}
+
+/// Single-issue REST response — extends `GiteaIssue` with body +
+/// closed_at + milestone.
+#[derive(Debug, Deserialize)]
+struct GiteaIssueDetail {
+    number: u64,
+    title: String,
+    state: String,
+    user: GiteaUser,
+    created_at: String,
+    updated_at: String,
+    closed_at: Option<String>,
+    html_url: String,
+    comments: u64,
+    body: Option<String>,
+    milestone: Option<GiteaMilestoneMini>,
+    #[serde(default)]
+    labels: Vec<GiteaLabel>,
+    #[serde(default)]
+    assignees: Vec<GiteaUser>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GiteaMilestoneMini {
+    title: Option<String>,
+}
+
+impl From<GiteaIssueDetail> for IssueDetail {
+    fn from(raw: GiteaIssueDetail) -> Self {
+        let state = match raw.state.as_str() {
+            "closed" => IssueState::Closed,
+            _ => IssueState::Open,
+        };
+        Self {
+            number: raw.number,
+            title: raw.title,
+            state,
+            author: raw.user.into(),
+            created_at: raw.created_at,
+            updated_at: raw.updated_at,
+            closed_at: raw.closed_at,
+            html_url: raw.html_url,
+            body: raw.body.unwrap_or_default(),
+            milestone: raw.milestone.and_then(|m| m.title),
             comments: raw.comments,
             labels: raw.labels.into_iter().map(Label::from).collect(),
             assignees: raw.assignees.into_iter().map(UserInfo::from).collect(),

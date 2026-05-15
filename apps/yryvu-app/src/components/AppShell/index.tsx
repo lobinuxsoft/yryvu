@@ -9,7 +9,10 @@ import { About } from "../About";
 import { CommitGraph } from "../CommitGraph";
 import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
+import { CreateIssueDialog } from "../CreateIssueDialog";
+import { CreatePrDialog } from "../CreatePrDialog";
 import { FileDiffTab } from "../FileDiffTab";
+import { IssueDetailPanel } from "../IssueDetail";
 import { PullRequestDetailPanel } from "../PullRequestDetail";
 import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
@@ -272,6 +275,9 @@ export function AppShell() {
               <Match when={mainView() === "prDetail"}>
                 <PullRequestDetailPanel />
               </Match>
+              <Match when={mainView() === "issueDetail"}>
+                <IssueDetailPanel />
+              </Match>
             </Switch>
           </Show>
         </Show>
@@ -296,6 +302,8 @@ export function AppShell() {
       <DialogsHost ops={branchOps} />
       <InitDialog />
       <CloneDialog />
+      <CreateIssueDialog />
+      <CreatePrDialog />
       <PreferencesWindow />
       <About />
       <ToastContainer />

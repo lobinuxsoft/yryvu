@@ -16,20 +16,26 @@
 //! that in a single round-trip, matching the cost profile of the
 //! GitHub side's REST + enrich pattern.
 
+mod comments;
+mod create_pr;
 mod detail;
 mod detail_raw;
 mod dsl;
 mod issues;
 mod preflight;
 mod prs;
+mod repo_metadata;
 mod search;
 
+pub use comments::{create_comment, list_comments};
+pub use create_pr::create_pr;
 pub use detail::{
     get_mr_detail, list_mr_commits, list_mr_files, list_mr_pipelines, mr_action, MrAction,
 };
-pub use issues::list_issues;
+pub use issues::{create_issue, get_issue_detail, list_issues};
 pub use preflight::preflight_gitlab;
 pub use prs::list_mrs;
+pub use repo_metadata::{list_collaborators, list_labels, list_milestones};
 pub use search::search_mrs;
 
 use crate::backend::BackendError;

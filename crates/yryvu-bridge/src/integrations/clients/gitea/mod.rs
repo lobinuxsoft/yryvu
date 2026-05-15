@@ -17,15 +17,19 @@
 //! those badges as `null` rather than pay the round-trip tax;
 //! revisit when users push back.
 
+mod comments;
 mod dsl;
 mod issues;
 mod preflight;
 mod prs;
+mod repo_metadata;
 mod search;
 
-pub use issues::list_issues;
+pub use comments::{create_comment, list_comments};
+pub use issues::{create_issue, get_issue_detail, list_issues};
 pub use preflight::preflight_gitea;
 pub use prs::list_prs;
+pub use repo_metadata::{list_collaborators, list_labels, list_milestones};
 pub use search::search_prs;
 
 use crate::backend::BackendError;

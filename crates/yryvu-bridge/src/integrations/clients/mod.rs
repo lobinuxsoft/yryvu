@@ -17,17 +17,22 @@ mod gitlab;
 mod http;
 mod types;
 
-pub use gitea::{list_prs as list_gitea_prs, search_prs as search_gitea_prs};
+pub use gitea::{
+    list_issues as list_gitea_issues, list_prs as list_gitea_prs, search_prs as search_gitea_prs,
+};
 pub use github::{
     delete_branch as github_delete_branch, enrich_prs as enrich_github_prs,
-    get_pr_detail as get_github_pr_detail, list_pr_checks as list_github_pr_checks,
-    list_pr_commits as list_github_pr_commits, list_pr_files as list_github_pr_files,
-    merge_pr as github_merge_pr, pr_action as github_pr_action, search_prs as search_github_prs,
-    CheckRun, CiStatus, MergeMethod, MergeRequest, PrAction, PrCommit, PrFile, PullRequestDetail,
-    PullRequestState, PullRequestSummary, ReviewDecision,
+    get_pr_detail as get_github_pr_detail, list_issues as list_github_issues,
+    list_pr_checks as list_github_pr_checks, list_pr_commits as list_github_pr_commits,
+    list_pr_files as list_github_pr_files, merge_pr as github_merge_pr,
+    pr_action as github_pr_action, search_prs as search_github_prs, CheckRun, CiStatus,
+    MergeMethod, MergeRequest, PrAction, PrCommit, PrFile, PullRequestDetail, PullRequestState,
+    PullRequestSummary, ReviewDecision,
 };
-pub use gitlab::{list_mrs as list_gitlab_mrs, search_mrs as search_gitlab_mrs};
-pub use types::{Label, UserInfo};
+pub use gitlab::{
+    list_issues as list_gitlab_issues, list_mrs as list_gitlab_mrs, search_mrs as search_gitlab_mrs,
+};
+pub use types::{IssueState, IssueSummary, Label, UserInfo};
 
 use crate::backend::BackendError;
 
@@ -82,6 +87,33 @@ pub async fn list_prs(
             "bitbucket" | "bitbucketServer" => "Bitbucket PR list (lands in its own PR)",
             "azureDevops" => "Azure DevOps PR list (lands in its own PR)",
             "jiraCloud" | "jiraServer" => "Jira has no PR concept — issue tracker instead",
+            "trello" => "Trello not in yryvu v1 scope",
+            _ => "unknown integration type",
+        })),
+    }
+}
+
+/// Dispatcher: list issues for `owner/repo` via the matching
+/// provider's client. Mirrors [`list_prs`] dispatch shape — each
+/// supported provider returns the shared [`IssueSummary`].
+pub async fn list_issues(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+) -> Result<Vec<IssueSummary>, BackendError> {
+    match integration_type {
+        "github" => github::list_issues(token, None, owner, repo).await,
+        "githubEnterprise" => github::list_issues(token, hostname, owner, repo).await,
+        "gitlab" => gitlab::list_issues(token, None, owner, repo).await,
+        "gitlabSelfHosted" => gitlab::list_issues(token, hostname, owner, repo).await,
+        "gitea" => gitea::list_issues(token, None, owner, repo).await,
+        "giteaSelfHosted" => gitea::list_issues(token, hostname, owner, repo).await,
+        other => Err(BackendError::NotImplemented(match other {
+            "bitbucket" | "bitbucketServer" => "Bitbucket issues (lands in its own PR)",
+            "azureDevops" => "Azure DevOps issues (lands in its own PR)",
+            "jiraCloud" | "jiraServer" => "Jira issue tracker (lands in its own PR)",
             "trello" => "Trello not in yryvu v1 scope",
             _ => "unknown integration type",
         })),

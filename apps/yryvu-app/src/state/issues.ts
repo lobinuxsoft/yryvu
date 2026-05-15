@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { createResource } from "solid-js";
+
+import {
+  getRepoProviderInfo,
+  integrationListIssues,
+  listConfiguredIntegrations,
+  type HostingService,
+  type IssueSummary,
+  type RepoProviderInfo,
+} from "../ipc";
+import { repoPath } from "./repo-base";
+
+/// Discriminated union returned by the issues resource — same shape
+/// language as [`PullRequestsResult`] in `state/pull-requests.ts`,
+/// kept apart so the panels can render independently and refetch on
+/// different cadences.
+export type IssuesResult =
+  | { kind: "ready"; issues: IssueSummary[] }
+  | { kind: "no-repo" }
+  | { kind: "unsupported-provider"; service: HostingService }
+  | { kind: "bare-or-unparseable" }
+  | { kind: "not-connected" }
+  | { kind: "error"; detail: string };
+
+const SUPPORTED_SERVICES: ReadonlyArray<HostingService> = ["github", "gitlab", "gitea"];
+
+function integrationTypeFor(service: HostingService): string {
+  return service;
+}
+
+async function fetchIssues(path: string): Promise<IssuesResult> {
+  let info: RepoProviderInfo;
+  try {
+    info = await getRepoProviderInfo(path);
+  } catch (err) {
+    return { kind: "error", detail: String(err) };
+  }
+  if (!SUPPORTED_SERVICES.includes(info.service)) {
+    return { kind: "unsupported-provider", service: info.service };
+  }
+  if (!info.owner || !info.repo) {
+    return { kind: "bare-or-unparseable" };
+  }
+  const integrationType = integrationTypeFor(info.service);
+  let configured: string[];
+  try {
+    configured = await listConfiguredIntegrations();
+  } catch (err) {
+    return { kind: "error", detail: String(err) };
+  }
+  if (!configured.includes(integrationType)) {
+    return { kind: "not-connected" };
+  }
+  try {
+    const issues = await integrationListIssues(integrationType, info.owner, info.repo);
+    return { kind: "ready", issues };
+  } catch (err) {
+    const detail = String(err);
+    if (detail.includes("is not connected")) {
+      return { kind: "not-connected" };
+    }
+    return { kind: "error", detail };
+  }
+}
+
+/// Issues resource — keyed on `repoPath()`. Refetches when the user
+/// opens a different repo. No filter/sort signals in v1; replicate
+/// the PR-toolbar pattern when users push back.
+export const [issues, { refetch: refetchIssues }] = createResource<IssuesResult, string>(
+  () => repoPath(),
+  fetchIssues,
+);

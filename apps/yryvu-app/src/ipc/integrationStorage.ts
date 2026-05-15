@@ -225,6 +225,43 @@ export function integrationListPrs(
   });
 }
 
+/// Cross-provider issue state. None of the supported providers
+/// (GitHub / GitLab / Gitea) expose anything beyond open/closed on
+/// issues.
+export type IssueState = "open" | "closed";
+
+/// Cross-provider issue row payload. Deliberately leaner than
+/// `PullRequestSummary` — no merge state, no head/base refs, no
+/// review/CI badges.
+export interface IssueSummary {
+  number: number;
+  title: string;
+  state: IssueState;
+  author: UserInfo;
+  createdAt: string;
+  updatedAt: string;
+  htmlUrl: string;
+  labels: Label[];
+  assignees: UserInfo[];
+  comments: number;
+}
+
+/// List issues for `owner/repo` on the named provider. Same auth +
+/// error envelope as `integrationListPrs`. The frontend filters
+/// providers it can't render via the discriminated resource result;
+/// the backend bubbles up a typed `NotImplemented` for the rest.
+export function integrationListIssues(
+  integrationType: string,
+  owner: string,
+  repo: string,
+): Promise<IssueSummary[]> {
+  return invoke<IssueSummary[]>("integration_list_issues", {
+    integrationType,
+    owner,
+    repo,
+  });
+}
+
 /**
  * Result of `oauth_begin` — the URL to open in the user's browser plus
  * an opaque session id that `oauth_await` / `oauth_cancel` need.

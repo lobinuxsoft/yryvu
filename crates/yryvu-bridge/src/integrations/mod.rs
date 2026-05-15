@@ -22,11 +22,11 @@ mod types;
 
 pub use clients::{
     enrich_github_prs, get_github_pr_detail, github_delete_branch, github_merge_pr,
-    github_pr_action, list_gitea_prs, list_github_pr_checks, list_github_pr_commits,
-    list_github_pr_files, list_gitlab_mrs, list_prs, preflight, search_gitea_prs,
-    search_github_prs, search_gitlab_mrs, CheckRun, CiStatus, Label, MergeMethod, MergeRequest,
-    PrAction, PrCommit, PrFile, PullRequestDetail, PullRequestState, PullRequestSummary,
-    ReviewDecision, UserInfo,
+    github_pr_action, list_gitea_issues, list_gitea_prs, list_github_issues, list_github_pr_checks,
+    list_github_pr_commits, list_github_pr_files, list_gitlab_issues, list_gitlab_mrs, list_issues,
+    list_prs, preflight, search_gitea_prs, search_github_prs, search_gitlab_mrs, CheckRun,
+    CiStatus, IssueState, IssueSummary, Label, MergeMethod, MergeRequest, PrAction, PrCommit,
+    PrFile, PullRequestDetail, PullRequestState, PullRequestSummary, ReviewDecision, UserInfo,
 };
 pub use keyring::{get_token, remove_token, save_token};
 pub use sidecar::{read as read_sidecar, write as write_sidecar, IntegrationsConfig};

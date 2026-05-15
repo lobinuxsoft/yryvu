@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
-use crate::integrations::{self, oauth, AuthData, PullRequestSummary, UserInfo};
+use crate::integrations::{self, oauth, AuthData, IssueSummary, PullRequestSummary, UserInfo};
 
 use super::integration_routing::{is_self_hosted, ProviderFamily};
 
@@ -221,6 +221,34 @@ pub async fn integration_list_prs(
                 .map_err(|e| e.to_string())
         }
     }
+}
+
+/// List issues for `owner/repo` on the named provider. Same auth +
+/// hostname path as `integration_list_prs`; supported providers
+/// route via [`integrations::list_issues`], others bubble up the
+/// typed `NotImplemented` so the frontend can degrade gracefully.
+#[tauri::command]
+pub async fn integration_list_issues(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+) -> Result<Vec<IssueSummary>, String> {
+    let path = sidecar_path(&app)?;
+    let auth = tauri::async_runtime::spawn_blocking({
+        let integration_type = integration_type.clone();
+        move || integrations::get_integration(&path as &Path, &integration_type)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("integration '{integration_type}' is not connected"))?;
+    let hostname = is_self_hosted(&integration_type)
+        .then_some(auth.hostname.as_deref())
+        .flatten();
+    integrations::list_issues(&integration_type, &auth.token, hostname, &owner, &repo)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Returned by [`oauth_begin`]. The frontend opens `authorize_url` in

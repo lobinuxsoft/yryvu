@@ -17,10 +17,12 @@
 //! GitHub side's REST + enrich pattern.
 
 mod dsl;
+mod issues;
 mod preflight;
 mod prs;
 mod search;
 
+pub use issues::list_issues;
 pub use preflight::preflight_gitlab;
 pub use prs::list_mrs;
 pub use search::search_mrs;

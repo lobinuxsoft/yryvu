@@ -106,7 +106,13 @@ const [prDetailChecks, { refetch: refetchPrChecks }] = createResource<
     return { ref, headSha };
   },
   async ({ ref, headSha }) =>
-    integrationListPrChecks(ref.integrationType, ref.owner, ref.repo, headSha),
+    integrationListPrChecks(
+      ref.integrationType,
+      ref.owner,
+      ref.repo,
+      headSha,
+      ref.number,
+    ),
 );
 
 export {

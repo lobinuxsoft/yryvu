@@ -35,3 +35,46 @@ pub struct Label {
     pub name: String,
     pub color: String,
 }
+
+/// Resolved state of an issue. Cross-provider 2-way enum (open /
+/// closed) — none of the supported providers expose a "merged" or
+/// "draft" state on issues. Serialises lowercase to match the
+/// REST/GraphQL conventions every provider returns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IssueState {
+    Open,
+    Closed,
+}
+
+/// Flat per-issue row payload — the cross-provider shape backing the
+/// LeftSidebar `Issues` section. Deliberately leaner than
+/// `PullRequestSummary`: no merge state, no head/base refs, no
+/// review/CI badges — those concepts don't apply to issues.
+///
+/// camelCase serialization so the frontend store can drop the
+/// response straight into the resource.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueSummary {
+    pub number: u64,
+    pub title: String,
+    pub state: IssueState,
+    pub author: UserInfo,
+    /// ISO-8601. Frontend formats "Opened 3 days ago" etc.
+    pub created_at: String,
+    /// ISO-8601 — latest comment / label / assignee mutation.
+    pub updated_at: String,
+    /// Public-web URL. Used by the "View in browser" kebab action +
+    /// the row's default-click behaviour.
+    pub html_url: String,
+    /// Labels applied to the issue.
+    #[serde(default)]
+    pub labels: Vec<Label>,
+    /// Assignees. Avatar cluster, max 3 visible + overflow.
+    #[serde(default)]
+    pub assignees: Vec<UserInfo>,
+    /// Comment count — surfaced as a small numeric pill on the row
+    /// since issues often live or die by their discussion thread.
+    pub comments: u64,
+}

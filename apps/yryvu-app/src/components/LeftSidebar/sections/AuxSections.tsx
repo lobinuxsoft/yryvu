@@ -12,12 +12,15 @@ import {
   IconPullRequest,
 } from "../../Icons";
 import { SidebarSection } from "../SidebarSection";
+import { IssueRow } from "../issueRows";
 import { PullRequestRow } from "../pullRequestRows";
 import { PullRequestToolbar } from "../pullRequestToolbar";
 import { StashRow } from "../stashRows";
 import { SubmoduleRow } from "../submoduleRows";
 import { WorktreeRow } from "../worktreeRows";
 import type { SidebarData } from "../useSidebarData";
+import { issues } from "../../../state/issues";
+import type { IssueSummary } from "../../../ipc";
 
 interface Props {
   data: SidebarData;
@@ -192,15 +195,59 @@ export function AuxSections(props: Props) {
           </Switch>
         </SidebarSection>
       </Show>
+      {/* Provider-backed Issues section — wave-1 of #97. Reuses the
+          same provider classification + connected-state plumbing as
+          the PR panel, just keyed on a separate resource so the two
+          refetch independently. */}
       <Show when={!props.data.isFiltering() && !hiddenSections().has("ISSUES")}>
         <SidebarSection
           sectionKey="ISSUES"
           title="Issues"
           icon={<IconCircleDot />}
-          count={0}
+          count={
+            issues()?.kind === "ready"
+              ? (issues() as { kind: "ready"; issues: unknown[] }).issues.length
+              : 0
+          }
           onContextMenu={props.ops.openSectionContextMenu}
         >
-          <InlineConnectCta kind="issues" />
+          <Switch fallback={<InlineConnectCta kind="issues" />}>
+            <Match when={!repoPath()}>
+              <p class="sidebar__empty">Open a repo to list issues</p>
+            </Match>
+            <Match when={issues.loading}>
+              <p class="sidebar__empty">Loading…</p>
+            </Match>
+            <Match when={issues()?.kind === "unsupported-provider"}>
+              <p class="sidebar__empty">
+                Issues panel supports GitHub, GitLab and Gitea / Forgejo.
+              </p>
+            </Match>
+            <Match when={issues()?.kind === "bare-or-unparseable"}>
+              <p class="sidebar__empty">Repo has no recognisable origin remote.</p>
+            </Match>
+            <Match when={issues()?.kind === "not-connected"}>
+              <InlineConnectCta kind="issues" />
+            </Match>
+            <Match when={issues()?.kind === "error"}>
+              <p class="sidebar__empty">
+                {(issues() as { kind: "error"; detail: string }).detail}
+              </p>
+            </Match>
+            <Match when={issues()?.kind === "ready"}>
+              {(() => {
+                const rows = (issues() as { kind: "ready"; issues: IssueSummary[] }).issues;
+                return (
+                  <Show
+                    when={rows.length > 0}
+                    fallback={<p class="sidebar__empty">No issues</p>}
+                  >
+                    <For each={rows}>{(issue) => <IssueRow issue={issue} />}</For>
+                  </Show>
+                );
+              })()}
+            </Match>
+          </Switch>
         </SidebarSection>
       </Show>
 

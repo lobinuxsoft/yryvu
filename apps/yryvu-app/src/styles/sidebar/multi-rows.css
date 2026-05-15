@@ -187,6 +187,15 @@
   color: var(--bg-0);
 }
 
+/* Issue row reuses the PR row layout; the comments-count pill is
+   issue-specific (PR rows surface review/CI badges instead). */
+.sidebar__row-comments {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--fg-3);
+  font-family: "FiraCodeNF", monospace;
+}
+
 /* PR toolbar — freeform filter input + sort selector above the row
    list. Stays visually subdued so the list of PRs is the primary
    content; activates on hover/focus. */

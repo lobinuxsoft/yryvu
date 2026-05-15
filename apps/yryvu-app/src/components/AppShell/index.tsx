@@ -27,6 +27,8 @@ import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
 import { ToastContainer } from "../Notifications";
 import { hydrateIntegrationsOnAppStart } from "../PreferencesWindow/panels/Integrations/tokenStorage";
+import { Tooltip } from "../Tooltip";
+import { wireAnimationMode } from "./animationMode";
 import { IconOpenFolder, IconStar } from "../Icons";
 import { TabBar } from "../TabBar";
 import { BranchOpsProvider, createBranchOps } from "../../branchOps";
@@ -101,6 +103,10 @@ export function AppShell() {
     // the Preferences > Integrations panel see "connected" without
     // waiting for the user to open Preferences first.
     void hydrateIntegrationsOnAppStart();
+    // Animation mode wiring (#316). Sets `<html data-animations>`
+    // from `preferences().ui.animations`; subscribes to OS
+    // `prefers-reduced-motion` live for the `system` policy.
+    wireAnimationMode();
     if (tabs().length === 0) {
       const persistedRepo = repoPath();
       if (persistedRepo) {
@@ -217,22 +223,25 @@ export function AppShell() {
     >
       <div class="shell__tabs tabs">
         <div class="tabs__leading">
-          <button
-            class="tabs__leading-btn"
-            classList={{
-              "is-active": currentTabType() === "REPO_MANAGEMENT",
-            }}
-            type="button"
-            title="Repo Management"
-            aria-label="Repo Management"
-            aria-pressed={currentTabType() === "REPO_MANAGEMENT"}
-            onClick={() => void openRepoManagementTab()}
-          >
-            <IconOpenFolder />
-          </button>
-          <button class="tabs__leading-btn" type="button" title="Favorites" disabled>
-            <IconStar />
-          </button>
+          <Tooltip text="Repo Management">
+            <button
+              class="tabs__leading-btn"
+              classList={{
+                "is-active": currentTabType() === "REPO_MANAGEMENT",
+              }}
+              type="button"
+              aria-label="Repo Management"
+              aria-pressed={currentTabType() === "REPO_MANAGEMENT"}
+              onClick={() => void openRepoManagementTab()}
+            >
+              <IconOpenFolder />
+            </button>
+          </Tooltip>
+          <Tooltip text="Favorites">
+            <button class="tabs__leading-btn" type="button" disabled>
+              <IconStar />
+            </button>
+          </Tooltip>
         </div>
         <TabBar />
       </div>

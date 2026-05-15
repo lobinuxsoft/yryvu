@@ -5,6 +5,7 @@ import { For, Show } from "solid-js";
 import type { PrCommit } from "../../ipc";
 import { setSelectedCommit } from "../../state";
 import { closePrDetail } from "../../state/pr-detail";
+import { Tooltip } from "../Tooltip";
 
 interface CommitsProps {
   commits: PrCommit[];
@@ -44,10 +45,10 @@ export function Commits(props: CommitsProps) {
         <For each={props.commits}>
           {(c) => (
             <li class="pr-detail__commit-row">
+              <Tooltip text={`${c.sha}\n\n${c.message}`}>
               <button
                 type="button"
                 class="pr-detail__commit-button"
-                title={`${c.sha}\n\n${c.message}`}
                 onClick={() => {
                   setSelectedCommit(c.sha);
                   closePrDetail();
@@ -66,6 +67,7 @@ export function Commits(props: CommitsProps) {
                 <span class="pr-detail__commit-author">{c.author.login}</span>
                 <span class="pr-detail__commit-time">{relativeTime(c.date)}</span>
               </button>
+              </Tooltip>
             </li>
           )}
         </For>

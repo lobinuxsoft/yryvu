@@ -96,3 +96,18 @@
   background: var(--bg-3);
   border-color: var(--bg-4);
 }
+
+.ui-panel__checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--fg-0);
+  cursor: pointer;
+}
+
+.ui-panel__checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}

@@ -13,17 +13,31 @@ export interface GeneralPreferences {}
 /// at runtime via `prefers-color-scheme`).
 export type ThemeId = string;
 
+/// Animation policy mirror of `yryvu_bridge::preferences::AnimationMode`.
+/// `system` honors the OS-level `prefers-reduced-motion` query at
+/// runtime; `always` and `never` are explicit overrides. Wire format
+/// matches the backend's camelCase serde.
+export type AnimationMode = "always" | "system" | "never";
+
 /// Mirrors `yryvu_bridge::preferences::UiPreferences`. Theme lands here
 /// in #292 sub-PR A; zoom (#293), density (#294), tooltips/animations
-/// (#295) follow.
+/// (#315 backend, #316 view) follow.
 ///
 /// `zoom` is the global UI scale (`f32` on the wire). Ladder values
 /// `[0.8, 0.9, 1.0, 1.1, 1.2, 1.3]` from GK's `ZOOM_FACTORS`
 /// (`bundle:256353`); validation lives in the `<select>` UI, not the
 /// loader. Default `1.0`.
+///
+/// `tooltipsEnabled` toggles the `<Tooltip>` component visually
+/// (aria-label survives for screen readers); `tooltipDelayMs` is the
+/// hover delay in milliseconds before the bubble appears (range
+/// 0–2000ms in the panel, `u16` on the wire).
 export interface UiPreferences {
   theme: ThemeId;
   zoom: number;
+  tooltipsEnabled: boolean;
+  tooltipDelayMs: number;
+  animations: AnimationMode;
 }
 
 /// Mirrors `yryvu_bridge::preferences::Tab`. Discriminated by `type`.

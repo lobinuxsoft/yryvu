@@ -3,6 +3,7 @@
 import { For, Show } from "solid-js";
 
 import type { Label, UserInfo } from "../../ipc";
+import { Tooltip } from "../Tooltip";
 
 /// Heuristic luminance pick so the chip text stays legible against
 /// the label's background colour. WCAG would have us compute the
@@ -25,14 +26,15 @@ interface LabelChipProps {
 export function LabelChip(props: LabelChipProps) {
   const label = () => props.label;
   return (
-    <span
-      class="sidebar__pr-label-chip"
-      data-dark={isDarkBg(label().color) ? "true" : "false"}
-      style={{ "background-color": `#${label().color}` }}
-      title={label().name}
-    >
-      {label().name}
-    </span>
+    <Tooltip text={label().name}>
+      <span
+        class="sidebar__pr-label-chip"
+        data-dark={isDarkBg(label().color) ? "true" : "false"}
+        style={{ "background-color": `#${label().color}` }}
+      >
+        {label().name}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -71,10 +73,10 @@ export function UserAvatarCluster(props: UserAvatarClusterProps) {
   const overflow = () => Math.max(0, props.users.length - max());
   return (
     <Show when={props.users.length > 0}>
+      <Tooltip text={props.users.map((u) => u.login).join(", ")}>
       <span
         class="sidebar__pr-avatar-cluster"
         data-kind={props.kind}
-        title={props.users.map((u) => u.login).join(", ")}
       >
         <For each={visible()}>
           {(u) => (
@@ -90,6 +92,7 @@ export function UserAvatarCluster(props: UserAvatarClusterProps) {
           <span class="sidebar__pr-chip-overflow">+{overflow()}</span>
         </Show>
       </span>
+      </Tooltip>
     </Show>
   );
 }

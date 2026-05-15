@@ -5,6 +5,7 @@ import { Show } from "solid-js";
 import { type WorktreeInfo } from "../../ipc";
 import { setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
+import { Tooltip } from "../Tooltip";
 
 interface WorktreeRowProps {
   worktree: WorktreeInfo;
@@ -37,35 +38,36 @@ export function WorktreeRow(props: WorktreeRowProps) {
   };
 
   return (
-    <div
-      class="sidebar__branch-row sidebar__row--worktree"
-      role="button"
-      tabindex={0}
-      title={wt().workdir}
-      onClick={onClick}
-      onContextMenu={(e) => props.onContextMenu(e, wt())}
-    >
-      <span class="sidebar__branch-name">{branchLabel(wt().branch)}</span>
-      <span class="sidebar__row-meta">{workdirTail(wt().workdir)}</span>
-      <Show when={wt().is_main}>
-        <span class="sidebar__row-badge" title="Main worktree">main</span>
-      </Show>
-      <Show when={wt().locked}>
-        <span
-          class="sidebar__row-badge sidebar__row-badge--warn"
-          title={wt().locked ?? "locked"}
-        >
-          locked
-        </span>
-      </Show>
-      <Show when={wt().prunable}>
-        <span
-          class="sidebar__row-badge sidebar__row-badge--warn"
-          title={wt().prunable ?? "prunable"}
-        >
-          prunable
-        </span>
-      </Show>
-    </div>
+    <Tooltip text={wt().workdir}>
+      <div
+        class="sidebar__branch-row sidebar__row--worktree"
+        role="button"
+        tabindex={0}
+        onClick={onClick}
+        onContextMenu={(e) => props.onContextMenu(e, wt())}
+      >
+        <span class="sidebar__branch-name">{branchLabel(wt().branch)}</span>
+        <span class="sidebar__row-meta">{workdirTail(wt().workdir)}</span>
+        <Show when={wt().is_main}>
+          <Tooltip text="Main worktree">
+            <span class="sidebar__row-badge">main</span>
+          </Tooltip>
+        </Show>
+        <Show when={wt().locked}>
+          <Tooltip text={wt().locked ?? "locked"}>
+            <span class="sidebar__row-badge sidebar__row-badge--warn">
+              locked
+            </span>
+          </Tooltip>
+        </Show>
+        <Show when={wt().prunable}>
+          <Tooltip text={wt().prunable ?? "prunable"}>
+            <span class="sidebar__row-badge sidebar__row-badge--warn">
+              prunable
+            </span>
+          </Tooltip>
+        </Show>
+      </div>
+    </Tooltip>
   );
 }

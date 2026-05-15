@@ -14,6 +14,7 @@ import {
   refetchAllPrDetail,
 } from "../../state/pr-detail";
 import { Comments } from "../Comments";
+import { Tooltip } from "../Tooltip";
 import { Checks } from "./Checks";
 import { Commits } from "./Commits";
 import { Conversation } from "./Conversation";
@@ -64,14 +65,15 @@ export function PullRequestDetailPanel() {
             {(detail) => (
               <>
                 <header class="pr-detail__header">
-                  <button
-                    type="button"
-                    class="pr-detail__back"
-                    title="Close detail view (back to graph)"
-                    onClick={closePrDetail}
-                  >
-                    ← Back
-                  </button>
+                  <Tooltip text="Close detail view (back to graph)">
+                    <button
+                      type="button"
+                      class="pr-detail__back"
+                      onClick={closePrDetail}
+                    >
+                      ← Back
+                    </button>
+                  </Tooltip>
                   <div class="pr-detail__title-block">
                     <span class="pr-detail__number-line">#{detail().number}</span>
                     <h2 class="pr-detail__title">{detail().title}</h2>
@@ -90,16 +92,17 @@ export function PullRequestDetailPanel() {
                     </div>
                   </div>
                   <div class="pr-detail__header-actions">
-                    <button
-                      type="button"
-                      class="pr-detail__open-browser"
-                      onClick={() => {
-                        void openUrl(detail().htmlUrl);
-                      }}
-                      title="Open pull request in browser"
-                    >
-                      Open in browser ↗
-                    </button>
+                    <Tooltip text="Open pull request in browser">
+                      <button
+                        type="button"
+                        class="pr-detail__open-browser"
+                        onClick={() => {
+                          void openUrl(detail().htmlUrl);
+                        }}
+                      >
+                        Open in browser ↗
+                      </button>
+                    </Tooltip>
                   </div>
                 </header>
                 <div class="pr-detail__actions-bar">

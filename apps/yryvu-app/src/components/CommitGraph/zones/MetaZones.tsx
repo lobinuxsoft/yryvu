@@ -11,6 +11,7 @@ import { formatCommitDateTime } from "../columns";
 import { isRowMemberOfHoveredRef } from "../hoverDim";
 import { rowWrapperClass } from "../rowClass";
 import { AuthorBadge, ROW_HEIGHT } from "../RowRenderer";
+import { Tooltip } from "../../Tooltip";
 import type { ZoneDeps } from "./types";
 
 /**
@@ -94,23 +95,24 @@ function AuthorZone(props: { deps: ZoneDeps }) {
                       AUTHOR_ICON_WIDTH_THRESHOLD
                     }
                     fallback={
-                      <span
-                        class="commit-graph__author commit-graph__author--icon"
-                        title={r.author_name}
-                      >
-                        <AuthorBadge
-                          authorEmail={r.author_email}
-                          authorInitials={r.author_initials}
-                          gravatarHash={r.gravatar_hash}
-                          hostingService={deps.hostingService()}
-                          colorIdx={r.color_idx}
-                        />
-                      </span>
+                      <Tooltip text={r.author_name}>
+                        <span class="commit-graph__author commit-graph__author--icon">
+                          <AuthorBadge
+                            authorEmail={r.author_email}
+                            authorInitials={r.author_initials}
+                            gravatarHash={r.gravatar_hash}
+                            hostingService={deps.hostingService()}
+                            colorIdx={r.color_idx}
+                          />
+                        </span>
+                      </Tooltip>
                     }
                   >
-                    <span class="commit-graph__author" title={r.author_name}>
-                      {r.author_name}
-                    </span>
+                    <Tooltip text={r.author_name}>
+                      <span class="commit-graph__author">
+                        {r.author_name}
+                      </span>
+                    </Tooltip>
                   </Show>
                 </li>
               );

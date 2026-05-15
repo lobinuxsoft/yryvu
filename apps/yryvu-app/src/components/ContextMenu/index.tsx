@@ -10,6 +10,8 @@ import {
 } from "solid-js";
 import { Portal } from "solid-js/web";
 
+import { Tooltip } from "../Tooltip";
+
 export type ContextMenuItem =
   | {
       type?: "item";
@@ -140,23 +142,24 @@ export function ContextMenu(props: ContextMenuProps) {
               when={item.type !== "separator"}
               fallback={<div class="ctx-menu__separator" role="separator" />}
             >
-              <button
-                class="ctx-menu__item"
-                type="button"
-                role="menuitem"
-                data-active={activeIndex() === index() ? "true" : "false"}
-                data-danger={"danger" in item && item.danger ? "true" : "false"}
-                disabled={"disabled" in item ? item.disabled : false}
-                title={"title" in item ? item.title : undefined}
-                onMouseEnter={() => setActiveIndex(index())}
-                onClick={() => {
-                  if (item.type === "separator" || item.disabled) return;
-                  item.onSelect();
-                  props.onClose();
-                }}
-              >
-                {"label" in item ? item.label : ""}
-              </button>
+              <Tooltip text={"title" in item ? item.title : null}>
+                <button
+                  class="ctx-menu__item"
+                  type="button"
+                  role="menuitem"
+                  data-active={activeIndex() === index() ? "true" : "false"}
+                  data-danger={"danger" in item && item.danger ? "true" : "false"}
+                  disabled={"disabled" in item ? item.disabled : false}
+                  onMouseEnter={() => setActiveIndex(index())}
+                  onClick={() => {
+                    if (item.type === "separator" || item.disabled) return;
+                    item.onSelect();
+                    props.onClose();
+                  }}
+                >
+                  {"label" in item ? item.label : ""}
+                </button>
+              </Tooltip>
             </Show>
           )}
         </For>

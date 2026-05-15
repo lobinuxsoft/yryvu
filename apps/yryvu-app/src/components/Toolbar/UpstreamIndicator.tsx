@@ -2,6 +2,8 @@
 
 import { Show } from "solid-js";
 
+import { Tooltip } from "../Tooltip";
+
 /**
  * Display-only ahead/behind indicator for HEAD's upstream. Mounted next
  * to the branch selector in the toolbar; hidden when the active branch
@@ -39,10 +41,8 @@ export function UpstreamIndicator(props: UpstreamIndicatorProps) {
 
   return (
     <Show when={visible()}>
-      <div
-        class="upstream-indicator"
-        title={tooltipFor(props.ahead, props.behind, props.upstreamShort)}
-      >
+      <Tooltip text={tooltipFor(props.ahead, props.behind, props.upstreamShort)}>
+      <div class="upstream-indicator">
         <Show when={props.behind > 0}>
           <span class="upstream-indicator__pill upstream-indicator__pill--behind" data-testid="behind">
             <span class="upstream-indicator__count">{cap(props.behind)}</span>
@@ -82,6 +82,7 @@ export function UpstreamIndicator(props: UpstreamIndicatorProps) {
           </span>
         </Show>
       </div>
+      </Tooltip>
     </Show>
   );
 }

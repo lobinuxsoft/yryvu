@@ -26,6 +26,7 @@ import {
 } from "../../state";
 import { FileList, type RowAction } from "../FileList";
 import { FileListToolbar } from "../FileList/FileListToolbar";
+import { Tooltip } from "../Tooltip";
 import {
   collapseAllDirs,
   displayTree,
@@ -193,14 +194,15 @@ export function CommitPanel(props: CommitPanelProps) {
   return (
     <div class="commit-panel">
       <div class="commit-panel__header">
-        <button
-          class="commit-panel__back"
-          type="button"
-          title="Back to commit details"
-          onClick={() => props.onBack()}
-        >
-          ← Back
-        </button>
+        <Tooltip text="Back to commit details">
+          <button
+            class="commit-panel__back"
+            type="button"
+            onClick={() => props.onBack()}
+          >
+            ← Back
+          </button>
+        </Tooltip>
         <span class="commit-panel__heading">
           {totalChanges()} file change{totalChanges() === 1 ? "" : "s"} in
           working directory
@@ -225,33 +227,35 @@ export function CommitPanel(props: CommitPanelProps) {
 
       <section class="commit-panel__section" data-side="unstaged">
         <header class="commit-panel__section-header">
-          <button
-            class="commit-panel__section-toggle"
-            type="button"
-            aria-expanded={!unstagedFilesCollapsed()}
-            onClick={() => setUnstagedFilesCollapsed((v) => !v)}
-            title={unstagedFilesCollapsed() ? "Expand" : "Collapse"}
-          >
-            <span
-              class="commit-panel__section-chevron"
-              data-collapsed={unstagedFilesCollapsed() ? "true" : "false"}
-            >
-              ▸
-            </span>
-            <span class="commit-panel__section-title">Unstaged Files</span>
-            <span class="commit-panel__section-count">
-              {unstaged().length}
-            </span>
-          </button>
-          <Show when={unstaged().length > 0}>
+          <Tooltip text={unstagedFilesCollapsed() ? "Expand" : "Collapse"}>
             <button
-              class="commit-panel__bulk"
+              class="commit-panel__section-toggle"
               type="button"
-              title="Stage All Changes"
-              onClick={() => props.onStageAll()}
+              aria-expanded={!unstagedFilesCollapsed()}
+              onClick={() => setUnstagedFilesCollapsed((v) => !v)}
             >
-              Stage All Changes
+              <span
+                class="commit-panel__section-chevron"
+                data-collapsed={unstagedFilesCollapsed() ? "true" : "false"}
+              >
+                ▸
+              </span>
+              <span class="commit-panel__section-title">Unstaged Files</span>
+              <span class="commit-panel__section-count">
+                {unstaged().length}
+              </span>
             </button>
+          </Tooltip>
+          <Show when={unstaged().length > 0}>
+            <Tooltip text="Stage All Changes">
+              <button
+                class="commit-panel__bulk"
+                type="button"
+                onClick={() => props.onStageAll()}
+              >
+                Stage All Changes
+              </button>
+            </Tooltip>
           </Show>
         </header>
         <Show when={!unstagedFilesCollapsed() && unstaged().length > 0}>
@@ -270,31 +274,33 @@ export function CommitPanel(props: CommitPanelProps) {
 
       <section class="commit-panel__section" data-side="staged">
         <header class="commit-panel__section-header">
-          <button
-            class="commit-panel__section-toggle"
-            type="button"
-            aria-expanded={!stagedFilesCollapsed()}
-            onClick={() => setStagedFilesCollapsed((v) => !v)}
-            title={stagedFilesCollapsed() ? "Expand" : "Collapse"}
-          >
-            <span
-              class="commit-panel__section-chevron"
-              data-collapsed={stagedFilesCollapsed() ? "true" : "false"}
-            >
-              ▸
-            </span>
-            <span class="commit-panel__section-title">Staged Files</span>
-            <span class="commit-panel__section-count">{staged().length}</span>
-          </button>
-          <Show when={staged().length > 0}>
+          <Tooltip text={stagedFilesCollapsed() ? "Expand" : "Collapse"}>
             <button
-              class="commit-panel__bulk"
+              class="commit-panel__section-toggle"
               type="button"
-              title="Unstage All Changes"
-              onClick={() => props.onUnstageAll()}
+              aria-expanded={!stagedFilesCollapsed()}
+              onClick={() => setStagedFilesCollapsed((v) => !v)}
             >
-              Unstage All Changes
+              <span
+                class="commit-panel__section-chevron"
+                data-collapsed={stagedFilesCollapsed() ? "true" : "false"}
+              >
+                ▸
+              </span>
+              <span class="commit-panel__section-title">Staged Files</span>
+              <span class="commit-panel__section-count">{staged().length}</span>
             </button>
+          </Tooltip>
+          <Show when={staged().length > 0}>
+            <Tooltip text="Unstage All Changes">
+              <button
+                class="commit-panel__bulk"
+                type="button"
+                onClick={() => props.onUnstageAll()}
+              >
+                Unstage All Changes
+              </button>
+            </Tooltip>
           </Show>
         </header>
         <Show when={!stagedFilesCollapsed() && staged().length > 0}>
@@ -357,22 +363,18 @@ export function CommitPanel(props: CommitPanelProps) {
                   }
                 />
                 <span>Skip pre-commit hooks</span>
-                <span
-                  class="commit-panel__option-hint"
-                  title="libgit2 never runs hooks; this flag is plumbed for future gix migration"
-                >
-                  (no-op on current backend)
-                </span>
+                <Tooltip text="libgit2 never runs hooks; this flag is plumbed for future gix migration">
+                  <span class="commit-panel__option-hint">
+                    (no-op on current backend)
+                  </span>
+                </Tooltip>
               </label>
               <label class="commit-panel__option" data-disabled="true">
                 <input type="checkbox" disabled />
                 <span>Sign with GPG</span>
-                <span
-                  class="commit-panel__option-hint"
-                  title="GPG signing is not yet wired — tracked in a separate issue"
-                >
-                  (coming soon)
-                </span>
+                <Tooltip text="GPG signing is not yet wired — tracked in a separate issue">
+                  <span class="commit-panel__option-hint">(coming soon)</span>
+                </Tooltip>
               </label>
             </div>
           </Show>

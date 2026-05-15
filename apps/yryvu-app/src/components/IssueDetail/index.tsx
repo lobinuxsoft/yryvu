@@ -12,6 +12,7 @@ import {
 import { Comments } from "../Comments";
 import { LabelChips } from "../LeftSidebar/pullRequestChips";
 import { Markdown } from "../PullRequestDetail/markdownRender";
+import { Tooltip } from "../Tooltip";
 
 /// Relative-time formatter matching the PR panel's helper.
 function relativeTime(iso: string): string {
@@ -59,14 +60,15 @@ function IssueBody(props: IssueBodyProps) {
   return (
     <>
       <header class="issue-detail__header">
-        <button
-          type="button"
-          class="issue-detail__back"
-          title="Close detail view (back to graph)"
-          onClick={closeIssueDetail}
-        >
-          ← Back
-        </button>
+        <Tooltip text="Close detail view (back to graph)">
+          <button
+            type="button"
+            class="issue-detail__back"
+            onClick={closeIssueDetail}
+          >
+            ← Back
+          </button>
+        </Tooltip>
         <div class="issue-detail__title-block">
           <span class="issue-detail__number-line">#{detail().number}</span>
           <h2 class="issue-detail__title">{detail().title}</h2>
@@ -80,16 +82,17 @@ function IssueBody(props: IssueBodyProps) {
           </div>
         </div>
         <div class="issue-detail__header-actions">
-          <button
-            type="button"
-            class="issue-detail__open-browser"
-            onClick={() => {
-              void openUrl(detail().htmlUrl);
-            }}
-            title="Open issue in browser"
-          >
-            Open in browser ↗
-          </button>
+          <Tooltip text="Open issue in browser">
+            <button
+              type="button"
+              class="issue-detail__open-browser"
+              onClick={() => {
+                void openUrl(detail().htmlUrl);
+              }}
+            >
+              Open in browser ↗
+            </button>
+          </Tooltip>
         </div>
       </header>
       <div class="issue-detail__body">

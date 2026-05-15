@@ -15,6 +15,7 @@ import {
   workingTreeNonce,
 } from "../../state";
 import { DiffFileBlock } from "../DiffView";
+import { Tooltip } from "../Tooltip";
 
 async function loadDiff(
   repo: string,
@@ -68,15 +69,16 @@ export function FileDiffTab() {
       <header class="file-diff-tab__header">
         <span class="file-diff-tab__path">{targetPath()}</span>
         {subtitle()}
-        <button
-          class="file-diff-tab__close"
-          type="button"
-          aria-label="Close diff"
-          title="Close diff (return to graph)"
-          onClick={() => closeDiffTab()}
-        >
-          ×
-        </button>
+        <Tooltip text="Close diff (return to graph)">
+          <button
+            class="file-diff-tab__close"
+            type="button"
+            aria-label="Close diff"
+            onClick={() => closeDiffTab()}
+          >
+            ×
+          </button>
+        </Tooltip>
       </header>
 
       <div class="file-diff-tab__body">

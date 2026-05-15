@@ -18,6 +18,7 @@ import {
   setHoveredRef,
 } from "../../../state";
 import { refKey, useBranchOps } from "../../../branchOps";
+import { Tooltip } from "../../Tooltip";
 import { hoveredKindFor } from "./ordering";
 
 function pillKindClass(kind: RefTag["kind"]): string {
@@ -80,6 +81,7 @@ export function RefPill(props: RefPillProps) {
   const showCloud = () =>
     props.tag.kind === "Branch" && props.tag.upstream !== null;
   return (
+    <Tooltip text={props.tag.name}>
     <span
       class="ref-pill"
       classList={{
@@ -88,7 +90,6 @@ export function RefPill(props: RefPillProps) {
         "is-pinned": props.pinned && !props.active,
         "is-ghost": props.ghost,
       }}
-      title={props.tag.name}
       tabIndex={props.ghost ? -1 : 0}
       onMouseEnter={enter}
       onMouseLeave={leave}
@@ -118,31 +119,34 @@ export function RefPill(props: RefPillProps) {
           props.tag.upstream && (props.tag.ahead > 0 || props.tag.behind > 0)
         }
       >
-        <span
-          class="ref-pill__upstream"
-          title={`Tracks ${props.tag.upstream} (${props.tag.ahead} ahead, ${props.tag.behind} behind)`}
+        <Tooltip
+          text={`Tracks ${props.tag.upstream} (${props.tag.ahead} ahead, ${props.tag.behind} behind)`}
         >
-          <Show when={props.tag.ahead > 0}>
-            <span class="ref-pill__ahead">↑{props.tag.ahead}</span>
-          </Show>
-          <Show when={props.tag.behind > 0}>
-            <span class="ref-pill__behind">↓{props.tag.behind}</span>
-          </Show>
-        </span>
+          <span class="ref-pill__upstream">
+            <Show when={props.tag.ahead > 0}>
+              <span class="ref-pill__ahead">↑{props.tag.ahead}</span>
+            </Show>
+            <Show when={props.tag.behind > 0}>
+              <span class="ref-pill__behind">↓{props.tag.behind}</span>
+            </Show>
+          </span>
+        </Tooltip>
       </Show>
       <Show
         when={!props.ghost && !props.suppressHide && props.tag.kind !== "Head"}
       >
-        <button
-          type="button"
-          class="ref-pill__hide-btn"
-          title={`Hide '${props.tag.name}'`}
-          aria-label={`Hide ${props.tag.name}`}
-          onClick={hide}
-        >
-          <IconClose width={10} height={10} />
-        </button>
+        <Tooltip text={`Hide '${props.tag.name}'`}>
+          <button
+            type="button"
+            class="ref-pill__hide-btn"
+            aria-label={`Hide ${props.tag.name}`}
+            onClick={hide}
+          >
+            <IconClose width={10} height={10} />
+          </button>
+        </Tooltip>
       </Show>
     </span>
+    </Tooltip>
   );
 }

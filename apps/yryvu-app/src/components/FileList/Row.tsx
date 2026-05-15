@@ -3,6 +3,7 @@
 import { For, Show } from "solid-js";
 
 import { statusTone } from "../RightPanel/statusTone";
+import { Tooltip } from "../Tooltip";
 import type { RowAction } from "./index";
 import type { FlatRow } from "./treeBuild";
 
@@ -42,11 +43,11 @@ function FileLine(props: RowProps) {
 
   return (
     <>
+      <Tooltip text={props.row.path}>
       <button
         type="button"
         class="file-list__row"
         data-active={props.active ? "true" : "false"}
-        title={props.row.path}
         style={{ "padding-left": `${indent()}px`, height: `${ROW_HEIGHT}px` }}
         onClick={() => props.onClick()}
       >
@@ -68,22 +69,24 @@ function FileLine(props: RowProps) {
           </span>
         </Show>
       </button>
+      </Tooltip>
       <Show when={props.actions && props.actions.length > 0}>
         <div class="file-list__row-actions">
           <For each={props.actions}>
             {(a) => (
-              <button
-                type="button"
-                class="file-list__row-action"
-                data-variant={a.variant ?? "default"}
-                title={a.title ?? a.label}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  a.onClick(props.row.path);
-                }}
-              >
-                {a.label}
-              </button>
+              <Tooltip text={a.title ?? a.label}>
+                <button
+                  type="button"
+                  class="file-list__row-action"
+                  data-variant={a.variant ?? "default"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    a.onClick(props.row.path);
+                  }}
+                >
+                  {a.label}
+                </button>
+              </Tooltip>
             )}
           </For>
         </div>
@@ -99,11 +102,11 @@ function DirLine(props: RowProps) {
     FILE_NODE_CONTENTS_DIRECTORY_PADDING_LEFT;
 
   return (
+    <Tooltip text={props.row.path}>
     <button
       type="button"
       class="file-list__dir"
       aria-expanded={props.isExpanded}
-      title={props.row.path}
       style={{ "padding-left": `${indent()}px`, height: `${ROW_HEIGHT}px` }}
       onClick={() => props.onClick()}
     >
@@ -115,5 +118,6 @@ function DirLine(props: RowProps) {
       </span>
       <span class="file-list__dir-name">{name()}</span>
     </button>
+    </Tooltip>
   );
 }

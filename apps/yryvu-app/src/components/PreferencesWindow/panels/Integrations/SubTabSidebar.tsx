@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { For, type JSX } from "solid-js";
+
+import { Tooltip } from "../../../Tooltip";
 import { PROVIDERS, type IntegrationType } from "./providerTable";
 import { integrationState } from "./state";
 import { isIntegrationConfigured } from "./tokenStorage";
@@ -49,14 +51,15 @@ export function SubTabSidebar(props: {
                 {provider.initials}
               </span>
               <span class="integrations-subtab__label">{provider.label}</span>
-              <span
-                class="integrations-subtab__indicator"
-                classList={{
-                  "integrations-subtab__indicator--connected": isConnected(),
-                }}
-                aria-label={isConnected() ? "Connected" : "Not connected"}
-                title={isConnected() ? "Connected" : "Not connected"}
-              />
+              <Tooltip text={isConnected() ? "Connected" : "Not connected"}>
+                <span
+                  class="integrations-subtab__indicator"
+                  classList={{
+                    "integrations-subtab__indicator--connected": isConnected(),
+                  }}
+                  aria-label={isConnected() ? "Connected" : "Not connected"}
+                />
+              </Tooltip>
             </button>
           );
         }}

@@ -7,6 +7,7 @@ import type { IssueSummary } from "../../ipc";
 import { openIssueDetail } from "../../state/issue-detail";
 import { activeIssuesContext } from "../../state/issues";
 import { ContextMenu, type ContextMenuItem } from "../ContextMenu";
+import { Tooltip } from "../Tooltip";
 import { LabelChips, UserAvatarCluster } from "./pullRequestChips";
 
 interface IssueRowProps {
@@ -82,9 +83,11 @@ export function IssueRow(props: IssueRowProps) {
     setMenuAt({ x: rect.right, y: rect.bottom });
   };
   return (
+    <Tooltip
+      text={`${issue().title} (#${issue().number}) — opened ${relativeTime(issue().createdAt)} by ${issue().author.login}`}
+    >
     <div
       class="sidebar__branch-row sidebar__row--pull-request"
-      title={`${issue().title} (#${issue().number}) — opened ${relativeTime(issue().createdAt)} by ${issue().author.login}`}
       onContextMenu={openMenu}
       onClick={() => openDetail(issue())}
     >
@@ -106,24 +109,27 @@ export function IssueRow(props: IssueRowProps) {
           {issue().state}
         </span>
         <span class="sidebar__row-meta">{relativeTime(issue().updatedAt)}</span>
-        <button
-          type="button"
-          class="sidebar__pr-row__kebab"
-          title="Issue actions"
-          aria-label="Issue actions"
-          onClick={openMenuFromButton}
-        >
-          ⋮
-        </button>
+        <Tooltip text="Issue actions">
+          <button
+            type="button"
+            class="sidebar__pr-row__kebab"
+            aria-label="Issue actions"
+            onClick={openMenuFromButton}
+          >
+            ⋮
+          </button>
+        </Tooltip>
       </div>
       <Show when={hasSecondaryContent(issue())}>
         <div class="sidebar__pr-row__secondary">
           <LabelChips labels={issue().labels} />
           <UserAvatarCluster users={issue().assignees} kind="assignees" />
           <Show when={issue().comments > 0}>
-            <span class="sidebar__row-comments" title={`${issue().comments} comments`}>
-              💬 {issue().comments}
-            </span>
+            <Tooltip text={`${issue().comments} comments`}>
+              <span class="sidebar__row-comments">
+                💬 {issue().comments}
+              </span>
+            </Tooltip>
           </Show>
         </div>
       </Show>
@@ -138,5 +144,6 @@ export function IssueRow(props: IssueRowProps) {
         )}
       </Show>
     </div>
+    </Tooltip>
   );
 }

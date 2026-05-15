@@ -10,6 +10,7 @@ import {
   type PullRequestDetail,
 } from "../../ipc";
 import { activePrDetail, refetchAllPrDetail } from "../../state/pr-detail";
+import { Tooltip } from "../Tooltip";
 import {
   defaultMethod,
   mergeMethodHint,
@@ -149,17 +150,18 @@ export function MergeFormGitlab(props: MergeFormGitlabProps) {
             />
             <span>Skip CI on rebase</span>
           </label>
-          <button
-            type="button"
-            class="pr-detail__action-btn"
-            disabled={inFlight() !== null}
-            onClick={() => {
-              void onRebase();
-            }}
-            title="Rebase source branch onto target without merging"
-          >
-            {inFlight() === "rebase" ? "Rebasing…" : "Rebase"}
-          </button>
+          <Tooltip text="Rebase source branch onto target without merging">
+            <button
+              type="button"
+              class="pr-detail__action-btn"
+              disabled={inFlight() !== null}
+              onClick={() => {
+                void onRebase();
+              }}
+            >
+              {inFlight() === "rebase" ? "Rebasing…" : "Rebase"}
+            </button>
+          </Tooltip>
         </div>
       </div>
 

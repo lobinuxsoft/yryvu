@@ -3,6 +3,7 @@
 import { Show } from "solid-js";
 
 import { type StashInfo } from "../../ipc";
+import { Tooltip } from "../Tooltip";
 
 interface StashRowProps {
   stash: StashInfo;
@@ -40,9 +41,9 @@ export function StashRow(props: StashRowProps) {
   // Right-click → context menu (#224). Body click is still a no-op for
   // v1; the inspector lives in #173.
   return (
+    <Tooltip text={`stash@{${props.index}} — ${stash().message}`}>
     <div
       class="sidebar__branch-row sidebar__row--stash"
-      title={`stash@{${props.index}} — ${stash().message}`}
       onContextMenu={(e) => props.onContextMenu(e, stash(), props.index)}
     >
       <span class="sidebar__row-counter">{`@{${props.index}}`}</span>
@@ -54,5 +55,6 @@ export function StashRow(props: StashRowProps) {
       </Show>
       <span class="sidebar__row-meta">{relativeTime(stash().when)}</span>
     </div>
+    </Tooltip>
   );
 }

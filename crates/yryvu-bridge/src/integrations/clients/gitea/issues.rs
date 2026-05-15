@@ -7,12 +7,14 @@
 //! returns both by default, similar to GitHub).
 
 use reqwest::Method;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::backend::BackendError;
 
 use super::super::http::{self, GITEA_QUIRKS};
-use super::super::types::{IssueDetail, IssueState, IssueSummary, Label, UserInfo};
+use super::super::types::{
+    CreateIssueInput, IssueDetail, IssueState, IssueSummary, Label, UserInfo,
+};
 use super::api_base;
 
 pub async fn list_issues(
@@ -31,6 +33,61 @@ pub async fn list_issues(
         .await
         .map_err(|e| http::decode_error("decoding /issues response", e))?;
     Ok(raw.into_iter().map(IssueSummary::from).collect())
+}
+
+/// Create a new issue on `owner/repo`. `POST /repos/{o}/{r}/issues`
+/// returns the same payload shape as the single-issue GET. Gitea's
+/// API expects label numeric IDs (resolved via a separate
+/// `/labels` round-trip) — until that lookup is wired, label names
+/// from [`CreateIssueInput`] are ignored. Title + body are the only
+/// fields shipped in v1.
+pub async fn create_issue(
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    input: &CreateIssueInput,
+) -> Result<IssueDetail, BackendError> {
+    let base = api_base(hostname)?;
+    let url = format!("{base}/repos/{owner}/{repo}/issues");
+    let body = GiteaCreateIssueBody {
+        title: &input.title,
+        body: &input.body,
+        labels: parse_ids(&input.labels),
+        assignees: &input.assignees,
+        milestone: input
+            .milestone
+            .as_deref()
+            .and_then(|s| s.parse::<u64>().ok()),
+    };
+    let client = http::client()?;
+    let req = http::authed(&client, Method::POST, &url, token, "application/json").json(&body);
+    let resp = http::execute(req, GITEA_QUIRKS).await?;
+    let raw: GiteaIssueDetail = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding POST /issues response", e))?;
+    Ok(raw.into())
+}
+
+/// Map opaque identifier strings to numeric IDs, dropping non-numeric
+/// entries. Gitea labels and milestones are numeric IDs server-side;
+/// users come through as plain usernames so they skip this filter.
+pub(super) fn parse_ids(ids: &[String]) -> Vec<u64> {
+    ids.iter().filter_map(|s| s.parse::<u64>().ok()).collect()
+}
+
+#[derive(Debug, Serialize)]
+struct GiteaCreateIssueBody<'a> {
+    title: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    body: &'a str,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    labels: Vec<u64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    assignees: &'a Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    milestone: Option<u64>,
 }
 
 /// Fetch a single issue's full detail via REST v1. Gitea uses

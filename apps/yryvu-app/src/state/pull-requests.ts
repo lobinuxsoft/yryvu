@@ -57,10 +57,27 @@ export type PrSortKey =
   | "most_updated"
   | "most_commented";
 
+/// State filter applied to the PR panel — `"all"` keeps everything,
+/// `"open"` keeps state == open, `"closed"` keeps state == closed
+/// OR merged (closed/merged are both "no longer actionable" in the
+/// list panel).
+export type PrStateFilter = "all" | "open" | "closed";
+
 const [prFilterDsl, setPrFilterDsl] = createSignal<string>("");
 const [prSort, setPrSort] = createSignal<PrSortKey>("newest");
+const [prStateFilter, setPrStateFilter] = createSignal<PrStateFilter>("open");
+const [prTextFilter, setPrTextFilter] = createSignal<string>("");
 
-export { prFilterDsl, setPrFilterDsl, prSort, setPrSort };
+export {
+  prFilterDsl,
+  setPrFilterDsl,
+  prSort,
+  setPrSort,
+  prStateFilter,
+  setPrStateFilter,
+  prTextFilter,
+  setPrTextFilter,
+};
 
 /// Translate the toolbar sort selection into a GitHub search `sort:`
 /// token. `newest` returns `""` (no token); the REST default already
@@ -169,7 +186,7 @@ export const [pullRequests, { refetch: refetchPullRequests }] = createResource<
   () => {
     const path = repoPath();
     return path
-      ? { path, filter: prFilterDsl(), sort: prSort() }
+      ? { path, filter: "", sort: prSort() }
       : (undefined as unknown as PrSourceKey);
   },
   fetchPullRequests,

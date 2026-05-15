@@ -9,6 +9,8 @@ import { About } from "../About";
 import { CommitGraph } from "../CommitGraph";
 import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
+import { CreateIssueDialog } from "../CreateIssueDialog";
+import { CreatePrDialog } from "../CreatePrDialog";
 import { FileDiffTab } from "../FileDiffTab";
 import { IssueDetailPanel } from "../IssueDetail";
 import { PullRequestDetailPanel } from "../PullRequestDetail";
@@ -300,6 +302,8 @@ export function AppShell() {
       <DialogsHost ops={branchOps} />
       <InitDialog />
       <CloneDialog />
+      <CreateIssueDialog />
+      <CreatePrDialog />
       <PreferencesWindow />
       <About />
       <ToastContainer />

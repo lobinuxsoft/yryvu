@@ -9,12 +9,14 @@
 //! reserved.
 
 use reqwest::Method;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::backend::BackendError;
 
 use super::super::http::{self, GITLAB_QUIRKS};
-use super::super::types::{IssueDetail, IssueState, IssueSummary, Label, UserInfo};
+use super::super::types::{
+    CreateIssueInput, IssueDetail, IssueState, IssueSummary, Label, UserInfo,
+};
 
 /// Resolve the REST v4 base URL for issues. GraphQL handles MRs; the
 /// REST API is what the `/issues` endpoint speaks fluently.
@@ -52,6 +54,61 @@ pub async fn list_issues(
         .await
         .map_err(|e| http::decode_error("decoding /issues response", e))?;
     Ok(raw.into_iter().map(IssueSummary::from).collect())
+}
+
+/// Create a new issue on `owner/repo`. `POST /projects/{ns}/issues`
+/// — GitLab v4 takes `title` + `description` + a CSV `labels` string
+/// (legacy contract that pre-dates the array form). Response shape
+/// matches the single-issue GET, so we reuse [`GlIssueDetail`].
+pub async fn create_issue(
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    input: &CreateIssueInput,
+) -> Result<IssueDetail, BackendError> {
+    let base = rest_base(hostname)?;
+    let project = format!("{owner}%2F{repo}");
+    let url = format!("{base}/projects/{project}/issues");
+    let body = GlCreateIssueBody {
+        title: &input.title,
+        description: &input.body,
+        label_ids: parse_ids(&input.labels),
+        assignee_ids: parse_ids(&input.assignees),
+        milestone_id: input
+            .milestone
+            .as_deref()
+            .and_then(|s| s.parse::<u64>().ok()),
+    };
+    let client = http::client()?;
+    let req = http::authed(&client, Method::POST, &url, token, "application/json").json(&body);
+    let resp = http::execute(req, GITLAB_QUIRKS).await?;
+    let raw: GlIssueDetail = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding POST /issues response", e))?;
+    Ok(raw.into())
+}
+
+/// Map opaque identifier strings to numeric IDs, silently dropping
+/// non-numeric entries. Used for GitLab's label_ids / assignee_ids
+/// arrays — every Identifier produced by the metadata fetchers is
+/// numeric so the filter is a defensive guard, not a hot path.
+pub(super) fn parse_ids(ids: &[String]) -> Vec<u64> {
+    ids.iter().filter_map(|s| s.parse::<u64>().ok()).collect()
+}
+
+#[derive(Debug, Serialize)]
+struct GlCreateIssueBody<'a> {
+    title: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    description: &'a str,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    label_ids: Vec<u64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    assignee_ids: Vec<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    milestone_id: Option<u64>,
 }
 
 /// Fetch a single issue's full detail via REST v4. Returns the

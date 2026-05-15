@@ -40,6 +40,21 @@ const [activeIssuesContext, setActiveIssuesContext] = createSignal<
 
 export { activeIssuesContext };
 
+/// State filter applied to the Issues panel. Same semantics as the
+/// PR `PrStateFilter` so both panels can reuse the same segmented
+/// control component.
+export type IssueStateFilter = "all" | "open" | "closed";
+
+const [issueStateFilter, setIssueStateFilter] = createSignal<IssueStateFilter>("open");
+const [issueTextFilter, setIssueTextFilter] = createSignal<string>("");
+
+export {
+  issueStateFilter,
+  setIssueStateFilter,
+  issueTextFilter,
+  setIssueTextFilter,
+};
+
 async function fetchIssues(path: string): Promise<IssuesResult> {
   let info: RepoProviderInfo;
   try {

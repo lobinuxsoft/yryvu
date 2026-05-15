@@ -3,6 +3,8 @@
 import type { BranchInfo } from "../../ipc";
 import type { ContextMenuItem } from "../../components/ContextMenu";
 import { setInspectorMode, setSelection } from "../../state";
+import { activePrContext } from "../../state/pull-requests";
+import { openCreatePrDialog } from "../../components/CreatePrDialog/state";
 import { notify } from "../../components/Notifications";
 import type { MenuDeps } from "./types";
 
@@ -94,10 +96,12 @@ export function openBranchContextMenu(
       onSelect: () => deps.openSetUpstreamDialog(b.name, b.upstream),
     },
     {
-      label: "Push and start PR",
-      disabled: true,
-      title: "Requires OAuth (#46)",
-      onSelect: () => {},
+      label: "Create pull request from this branch…",
+      disabled: !activePrContext(),
+      title: !activePrContext()
+        ? "Connect the repo's hosting integration to enable"
+        : undefined,
+      onSelect: () => openCreatePrDialog({ prefillHead: b.name }),
     },
     { type: "separator" },
     {

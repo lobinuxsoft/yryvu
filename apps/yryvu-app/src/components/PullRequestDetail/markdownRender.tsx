@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { For, type JSX } from "solid-js";
+import { For, Show, type JSX } from "solid-js";
 
-import { parseBlocks, type Block, type InlineNode } from "../ReleaseNotes/markdown";
+import {
+  parseBlocks,
+  type Block,
+  type InlineNode,
+  type ListItem,
+} from "../ReleaseNotes/markdown";
 
 /// Render an inline-node array to JSX. Reuses the shared markdown
 /// parser to keep the rendering pipeline XSS-safe (no `innerHTML`).
@@ -27,6 +32,30 @@ function renderInline(nodes: InlineNode[]): JSX.Element[] {
   });
 }
 
+/// Render a single list item. Normal bullets get a plain `<li>`;
+/// GFM task items get a disabled checkbox prefix matching GitHub /
+/// GK's rendering (read-only — yryvu doesn't post toggle edits back).
+function renderListItem(item: ListItem): JSX.Element {
+  return (
+    <li
+      class={item.checked === null ? undefined : "pr-detail__task-item"}
+      data-checked={item.checked === true ? "true" : undefined}
+    >
+      <Show when={item.checked !== null}>
+        <input
+          type="checkbox"
+          class="pr-detail__task-checkbox"
+          checked={item.checked === true}
+          disabled
+          aria-readonly="true"
+          tabindex={-1}
+        />
+      </Show>
+      {renderInline(item.inline)}
+    </li>
+  );
+}
+
 /// Render one block. Native TS `switch` narrows the discriminated
 /// union without the `Extract<...>` casts that the Solid
 /// `Switch`/`Match` wrapper requires.
@@ -43,8 +72,20 @@ function renderBlock(b: Block): JSX.Element {
     case "ul":
       return (
         <ul>
-          <For each={b.items}>{(item) => <li>{renderInline(item)}</li>}</For>
+          <For each={b.items}>{renderListItem}</For>
         </ul>
+      );
+    case "ol":
+      return (
+        <ol>
+          <For each={b.items}>{renderListItem}</For>
+        </ol>
+      );
+    case "bq":
+      return (
+        <blockquote class="pr-detail__blockquote">
+          <For each={b.blocks}>{renderBlock}</For>
+        </blockquote>
       );
     case "pre":
       return (
@@ -62,9 +103,10 @@ interface MarkdownProps {
 }
 
 /// Render a markdown string to a block tree without `innerHTML`. The
-/// parser ignores anything outside its supported subset (CommonMark
-/// minus images / tables / blockquotes); unrenderable fragments
-/// collapse to plain paragraphs, which is fine for PR bodies.
+/// parser covers headings, paragraphs, bullet + ordered lists,
+/// blockquotes, fenced code, horizontal rules, plus inline bold /
+/// italic / code / links. Unsupported fragments collapse to plain
+/// paragraphs, which is fine for PR bodies.
 export function Markdown(props: MarkdownProps): JSX.Element {
   const blocks = (): Block[] => parseBlocks(props.source);
   return (

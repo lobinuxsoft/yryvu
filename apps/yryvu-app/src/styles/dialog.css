@@ -26,8 +26,19 @@
 }
 
 .dialog--wide {
-  max-width: 760px;
-  width: calc(100vw - 80px);
+  width: 760px;
+  height: 640px;
+  min-width: 480px;
+  min-height: 360px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 60px);
+  resize: both;
+  overflow: hidden;
+}
+
+.dialog--wide .dialog__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 .dialog .dialog__body--split {
@@ -203,8 +214,10 @@
   margin-bottom: 4px;
 }
 
-.dialog__body input[type="text"] {
+.dialog__body input[type="text"],
+.dialog__body textarea {
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   padding: 6px 8px;
   font-size: 13px;
@@ -215,7 +228,16 @@
   font-family: var(--font-ui);
 }
 
-.dialog__body input[type="text"]:focus {
+.dialog__body textarea {
+  font-family: var(--font-mono, "FiraCodeNF", monospace);
+  font-size: 12px;
+  resize: none;
+  min-height: 96px;
+  line-height: 1.45;
+}
+
+.dialog__body input[type="text"]:focus,
+.dialog__body textarea:focus {
   outline: 2px solid var(--info);
   outline-offset: -2px;
 }

@@ -9,12 +9,14 @@
 //! issue-only.
 
 use reqwest::Method;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::backend::BackendError;
 
 use super::super::http::{self, GITHUB_QUIRKS};
-use super::super::types::{IssueDetail, IssueState, IssueSummary, Label, UserInfo};
+use super::super::types::{
+    CreateIssueInput, IssueDetail, IssueState, IssueSummary, Label, UserInfo,
+};
 use super::api_base;
 
 /// List issues for `owner/repo`. PRs returned by the same endpoint
@@ -45,6 +47,62 @@ pub async fn list_issues(
         .filter(|row| row.pull_request.is_none())
         .map(IssueSummary::from)
         .collect())
+}
+
+/// Create a new issue on `owner/repo`. `POST /repos/{o}/{r}/issues`
+/// returns the same payload shape as the single-issue GET, so we
+/// reuse [`GhIssueDetail`] for the response. Labels arrive as plain
+/// names — GitHub resolves them against the repo's label set
+/// server-side and silently drops unknowns (same behaviour as the
+/// web UI).
+pub async fn create_issue(
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    input: &CreateIssueInput,
+) -> Result<IssueDetail, BackendError> {
+    let base = api_base(hostname)?;
+    let url = format!("{base}/repos/{owner}/{repo}/issues");
+    let milestone = input
+        .milestone
+        .as_deref()
+        .and_then(|s| s.parse::<u64>().ok());
+    let body = GhCreateIssueBody {
+        title: &input.title,
+        body: &input.body,
+        labels: &input.labels,
+        assignees: &input.assignees,
+        milestone,
+    };
+    let client = http::client()?;
+    let req = http::authed(
+        &client,
+        Method::POST,
+        &url,
+        token,
+        "application/vnd.github.v3+json",
+    )
+    .json(&body);
+    let resp = http::execute(req, GITHUB_QUIRKS).await?;
+    let raw: GhIssueDetail = resp
+        .json()
+        .await
+        .map_err(|e| http::decode_error("decoding POST /issues response", e))?;
+    Ok(raw.into())
+}
+
+#[derive(Debug, Serialize)]
+struct GhCreateIssueBody<'a> {
+    title: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    body: &'a str,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    labels: &'a Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    assignees: &'a Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    milestone: Option<u64>,
 }
 
 /// Fetch a single issue's full detail. Same status-code mapping as

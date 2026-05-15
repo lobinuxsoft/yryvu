@@ -26,11 +26,14 @@
 
 .pr-detail__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  padding: 8px 16px;
+  padding: 10px 16px 12px;
   border-bottom: 1px solid var(--bg-2);
   background: var(--bg-0);
+}
+.pr-detail__header > .pr-detail__back {
+  margin-top: 2px;
 }
 
 .pr-detail__back,
@@ -53,9 +56,35 @@
 .pr-detail__title-block {
   flex: 1 1 auto;
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pr-detail__number-line {
+  font-size: 11px;
+  color: var(--fg-3);
+  font-family: "FiraCodeNF", monospace;
+  letter-spacing: 0.04em;
+}
+.pr-detail__subtitle {
+  display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
+  font-size: 12px;
+  color: var(--fg-2);
+  flex-wrap: wrap;
+}
+.pr-detail__subtitle-text strong {
+  color: var(--fg-0);
+  font-weight: 600;
+}
+.pr-detail__subtitle code {
+  background: var(--bg-2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: "FiraCodeNF", monospace;
+  font-size: 11px;
+  color: var(--fg-0);
 }
 
 .pr-detail__state-badge {
@@ -84,18 +113,14 @@
 }
 
 .pr-detail__title {
-  flex: 1 1 auto;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--fg-0);
   margin: 0;
+  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.pr-detail__number {
-  color: var(--fg-3);
-  font-weight: 400;
 }
 
 .pr-detail__header-actions {
@@ -146,49 +171,96 @@
   color: var(--danger);
 }
 
-.pr-detail__subtabs {
-  display: flex;
-  border-bottom: 1px solid var(--bg-2);
-  background: var(--bg-0);
-}
-
-.pr-detail__subtab {
-  background: transparent;
-  border: none;
-  color: var(--fg-2);
-  padding: 8px 14px;
-  font-size: 12px;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
-.pr-detail__subtab:hover {
-  color: var(--fg-0);
-}
-.pr-detail__subtab[data-active="true"] {
-  color: var(--fg-0);
-  border-bottom-color: var(--info);
-}
-
 .pr-detail__body {
   flex: 1 1 auto;
   overflow: auto;
   padding: 12px 16px;
 }
 
-/* Conversation tab — markdown body + sidebar. */
-.pr-detail__conversation {
+/* GK-style 2-column body: stacked sections in the main column, pinned
+   metadata sidebar on the right. The sidebar stays visible while the
+   user scrolls through Description / Commits / Files / Checks. */
+.pr-detail__body--grid {
   display: grid;
-  grid-template-columns: 1fr 240px;
+  grid-template-columns: minmax(0, 1fr) 260px;
   gap: 16px;
+  align-items: start;
 }
-.pr-detail__conversation-main {
+
+.pr-detail__main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   min-width: 0;
 }
-.pr-detail__conversation-sidebar {
+
+/* Collapsible section — pinned header + collapsible body. The header
+   is a button so the whole row is clickable and keyboard-accessible. */
+.pr-detail__section {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--bg-2);
+  border-radius: 3px;
+  background: var(--bg-1);
+}
+
+.pr-detail__section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-0);
+  border: none;
+  color: var(--fg-1);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  border-radius: 3px;
+  text-align: left;
+}
+.pr-detail__section-header:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+.pr-detail__section-header[data-open="true"] {
+  border-bottom-color: var(--bg-2);
+  border-radius: 3px 3px 0 0;
+}
+
+.pr-detail__section-chevron {
+  width: 10px;
+  font-size: 10px;
+  color: var(--fg-3);
+}
+.pr-detail__section-title {
+  flex: 1 1 auto;
+}
+.pr-detail__section-count {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--bg-3);
+  color: var(--fg-2);
+  font-weight: 500;
+}
+
+.pr-detail__section-body {
+  padding: 10px 12px;
+}
+
+.pr-detail__sidebar {
   display: flex;
   flex-direction: column;
   gap: 12px;
   font-size: 11px;
+  border: 1px solid var(--bg-2);
+  border-radius: 3px;
+  background: var(--bg-1);
+  padding: 10px 12px;
+  position: sticky;
+  top: 0;
 }
 
 .pr-detail__sidebar-section {
@@ -281,11 +353,45 @@
 .pr-detail__markdown h2 { font-size: 16px; }
 .pr-detail__markdown h3 { font-size: 14px; }
 .pr-detail__markdown p { margin: 6px 0; }
-.pr-detail__markdown ul {
-  margin: 6px 0 6px 18px;
+.pr-detail__markdown ul,
+.pr-detail__markdown ol {
+  margin: 6px 0 6px 22px;
   padding: 0;
 }
 .pr-detail__markdown li { margin: 2px 0; }
+
+.pr-detail__markdown li.pr-detail__task-item {
+  list-style: none;
+  margin-left: -22px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.pr-detail__markdown li.pr-detail__task-item[data-checked="true"] {
+  color: var(--fg-2);
+}
+
+.pr-detail__task-checkbox {
+  appearance: auto;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--info);
+  flex-shrink: 0;
+  transform: translateY(1px);
+  cursor: default;
+}
+
+.pr-detail__blockquote {
+  margin: 6px 0;
+  padding: 4px 12px;
+  border-left: 3px solid var(--bg-3);
+  color: var(--fg-2);
+  background: var(--bg-0);
+  border-radius: 0 3px 3px 0;
+}
+.pr-detail__blockquote > *:first-child { margin-top: 0; }
+.pr-detail__blockquote > *:last-child { margin-bottom: 0; }
 .pr-detail__markdown pre {
   background: var(--bg-0);
   border: 1px solid var(--bg-3);

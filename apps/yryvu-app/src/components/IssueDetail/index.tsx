@@ -9,6 +9,7 @@ import {
   closeIssueDetail,
   issueDetail,
 } from "../../state/issue-detail";
+import { Comments } from "../Comments";
 import { LabelChips } from "../LeftSidebar/pullRequestChips";
 import { Markdown } from "../PullRequestDetail/markdownRender";
 
@@ -67,13 +68,16 @@ function IssueBody(props: IssueBodyProps) {
           ← Back
         </button>
         <div class="issue-detail__title-block">
-          <span class="issue-detail__state-badge" data-state={detail().state}>
-            {detail().state}
-          </span>
-          <h2 class="issue-detail__title">
-            {detail().title}{" "}
-            <span class="issue-detail__number">#{detail().number}</span>
-          </h2>
+          <span class="issue-detail__number-line">#{detail().number}</span>
+          <h2 class="issue-detail__title">{detail().title}</h2>
+          <div class="issue-detail__subtitle">
+            <span class="issue-detail__state-badge" data-state={detail().state}>
+              {detail().state}
+            </span>
+            <span class="issue-detail__subtitle-text">
+              <strong>{detail().author.login}</strong> opened {relativeTime(detail().createdAt)}
+            </span>
+          </div>
         </div>
         <div class="issue-detail__header-actions">
           <button
@@ -96,6 +100,22 @@ function IssueBody(props: IssueBodyProps) {
           >
             <Markdown source={detail().body} />
           </Show>
+          <section class="issue-detail__comments">
+            <h3 class="issue-detail__comments-heading">Comments</h3>
+            <Comments
+              contextAccessor={() => {
+                const ref = activeIssueDetail();
+                if (!ref) return null;
+                return {
+                  integrationType: ref.integrationType,
+                  owner: ref.owner,
+                  repo: ref.repo,
+                  target: "issue",
+                  number: ref.number,
+                };
+              }}
+            />
+          </section>
         </main>
         <aside class="issue-detail__sidebar">
           <SidebarBlock title="Author">

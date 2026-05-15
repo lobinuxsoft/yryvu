@@ -11,7 +11,9 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
 use crate::integrations::{
-    self, oauth, AuthData, IssueDetail, IssueSummary, PullRequestSummary, UserInfo,
+    self, oauth, AuthData, Comment, CommentTarget, CreateCommentInput, CreateIssueInput,
+    CreatePrInput, Identifier, IssueDetail, IssueSummary, PullRequestDetail, PullRequestSummary,
+    UserInfo,
 };
 
 use super::integration_routing::{is_self_hosted, ProviderFamily};
@@ -22,6 +24,27 @@ use super::integration_routing::{is_self_hosted, ProviderFamily};
 fn sidecar_path(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     Ok(dir.join("integrations.json"))
+}
+
+/// Load an integration's auth + resolve the effective hostname for
+/// dispatch. Centralises the boilerplate every integration command
+/// repeats (sidecar load → not-connected error → self-hosted hostname
+/// gate). Returns `(AuthData, Option<&'a str>)` where the hostname is
+/// `Some` only for self-hosted variants.
+async fn load_auth_and_host(app: &AppHandle, integration_type: &str) -> Result<AuthData, String> {
+    let path = sidecar_path(app)?;
+    let it = integration_type.to_string();
+    tauri::async_runtime::spawn_blocking(move || integrations::get_integration(&path as &Path, &it))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("integration '{integration_type}' is not connected"))
+}
+
+fn host_for<'a>(integration_type: &str, auth: &'a AuthData) -> Option<&'a str> {
+    is_self_hosted(integration_type)
+        .then_some(auth.hostname.as_deref())
+        .flatten()
 }
 
 #[tauri::command]
@@ -277,9 +300,204 @@ pub async fn integration_get_issue_detail(
     let hostname = is_self_hosted(&integration_type)
         .then_some(auth.hostname.as_deref())
         .flatten();
-    integrations::get_issue_detail(&integration_type, &auth.token, hostname, &owner, &repo, number)
+    integrations::get_issue_detail(
+        &integration_type,
+        &auth.token,
+        hostname,
+        &owner,
+        &repo,
+        number,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+fn target_from_str(target: &str) -> Result<CommentTarget, String> {
+    match target {
+        "issue" => Ok(CommentTarget::Issue),
+        "pullRequest" => Ok(CommentTarget::PullRequest),
+        other => Err(format!("unknown comment target '{other}'")),
+    }
+}
+
+/// List comments for an issue or pull/merge request. `target` is
+/// either `"issue"` or `"pullRequest"`. The number is the per-repo
+/// item identifier (issue.number / PR.number / MR.iid).
+#[tauri::command]
+pub async fn integration_list_comments(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+    target: String,
+    number: u64,
+) -> Result<Vec<Comment>, String> {
+    let target = target_from_str(&target)?;
+    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let hostname = host_for(&integration_type, &auth);
+    integrations::list_comments(
+        &integration_type,
+        &auth.token,
+        hostname,
+        &owner,
+        &repo,
+        target,
+        number,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// Post a new comment to an issue or pull/merge request. Returns the
+/// freshly created `Comment` so the UI can append it without a
+/// follow-up fetch.
+#[tauri::command]
+pub async fn integration_create_comment(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+    target: String,
+    number: u64,
+    input: CreateCommentInput,
+) -> Result<Comment, String> {
+    let target = target_from_str(&target)?;
+    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let hostname = host_for(&integration_type, &auth);
+    integrations::create_comment(
+        &integration_type,
+        &auth.token,
+        hostname,
+        &owner,
+        &repo,
+        target,
+        number,
+        &input,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// List repository labels. Populates the labels MultiSelect in the
+/// Create Issue / Create PR forms; cross-provider [`Identifier`]
+/// shape (GitHub `id == name`, GitLab/Gitea `id` is numeric string).
+#[tauri::command]
+pub async fn integration_list_labels(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+) -> Result<Vec<Identifier>, String> {
+    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let hostname = host_for(&integration_type, &auth);
+    integrations::list_labels(&integration_type, &auth.token, hostname, &owner, &repo)
         .await
         .map_err(|e| e.to_string())
+}
+
+/// List repository collaborators. Populates the assignees +
+/// reviewers MultiSelect; cross-provider [`Identifier`] shape (GitHub
+/// + Gitea `id == login/username`, GitLab `id` is numeric string).
+#[tauri::command]
+pub async fn integration_list_collaborators(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+) -> Result<Vec<Identifier>, String> {
+    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let hostname = host_for(&integration_type, &auth);
+    integrations::list_collaborators(&integration_type, &auth.token, hostname, &owner, &repo)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// List active/open repository milestones. Populates the milestone
+/// Select; cross-provider [`Identifier`] shape (numeric id string).
+#[tauri::command]
+pub async fn integration_list_milestones(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+) -> Result<Vec<Identifier>, String> {
+    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let hostname = host_for(&integration_type, &auth);
+    integrations::list_milestones(&integration_type, &auth.token, hostname, &owner, &repo)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Create a new pull / merge request on `owner/repo` via the named
+/// provider. Same auth + hostname routing as the other PR commands;
+/// returns the freshly created [`PullRequestDetail`] so the frontend
+/// can route into the detail panel without a follow-up GET.
+#[tauri::command]
+pub async fn integration_create_pr(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+    input: CreatePrInput,
+) -> Result<PullRequestDetail, String> {
+    let path = sidecar_path(&app)?;
+    let auth = tauri::async_runtime::spawn_blocking({
+        let integration_type = integration_type.clone();
+        move || integrations::get_integration(&path as &Path, &integration_type)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("integration '{integration_type}' is not connected"))?;
+    let hostname = is_self_hosted(&integration_type)
+        .then_some(auth.hostname.as_deref())
+        .flatten();
+    integrations::create_pr(
+        &integration_type,
+        &auth.token,
+        hostname,
+        &owner,
+        &repo,
+        &input,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// Create a new issue on `owner/repo` via the named provider. Same
+/// auth + hostname routing as the other issue commands; returns the
+/// freshly created [`IssueDetail`] so the frontend can route to the
+/// detail panel without a follow-up GET.
+#[tauri::command]
+pub async fn integration_create_issue(
+    app: AppHandle,
+    integration_type: String,
+    owner: String,
+    repo: String,
+    input: CreateIssueInput,
+) -> Result<IssueDetail, String> {
+    let path = sidecar_path(&app)?;
+    let auth = tauri::async_runtime::spawn_blocking({
+        let integration_type = integration_type.clone();
+        move || integrations::get_integration(&path as &Path, &integration_type)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("integration '{integration_type}' is not connected"))?;
+    let hostname = is_self_hosted(&integration_type)
+        .then_some(auth.hostname.as_deref())
+        .flatten();
+    integrations::create_issue(
+        &integration_type,
+        &auth.token,
+        hostname,
+        &owner,
+        &repo,
+        &input,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// Returned by [`oauth_begin`]. The frontend opens `authorize_url` in

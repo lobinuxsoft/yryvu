@@ -21,15 +21,20 @@ mod sidecar;
 mod types;
 
 pub use clients::{
-    enrich_github_prs, get_gitea_issue_detail, get_github_issue_detail, get_github_pr_detail,
-    get_gitlab_issue_detail, get_gitlab_mr_detail, get_issue_detail, github_delete_branch,
-    github_merge_pr, github_pr_action, gitlab_mr_action, list_gitea_issues, list_gitea_prs,
-    list_github_issues, list_github_pr_checks, list_github_pr_commits, list_github_pr_files,
-    list_gitlab_issues, list_gitlab_mr_commits, list_gitlab_mr_files, list_gitlab_mr_pipelines,
-    list_gitlab_mrs, list_issues, list_prs, preflight, search_gitea_prs, search_github_prs,
-    search_gitlab_mrs, CheckRun, CiStatus, IssueDetail, IssueState, IssueSummary, Label,
-    MergeMethod, MergeRequest, MrAction, PrAction, PrCommit, PrFile, PullRequestDetail,
-    PullRequestState, PullRequestSummary, ReviewDecision, UserInfo,
+    create_comment, create_gitea_issue, create_github_issue, create_github_pr, create_gitlab_issue,
+    create_gitlab_pr, create_issue, create_pr, enrich_github_prs, get_gitea_issue_detail,
+    get_github_issue_detail, get_github_pr_detail, get_gitlab_issue_detail, get_gitlab_mr_detail,
+    get_issue_detail, github_delete_branch, github_merge_pr, github_pr_action, gitlab_mr_action,
+    list_collaborators, list_comments, list_gitea_collaborators, list_gitea_issues,
+    list_gitea_labels, list_gitea_milestones, list_gitea_prs, list_github_collaborators,
+    list_github_issues, list_github_labels, list_github_milestones, list_github_pr_checks,
+    list_github_pr_commits, list_github_pr_files, list_gitlab_collaborators, list_gitlab_issues,
+    list_gitlab_labels, list_gitlab_milestones, list_gitlab_mr_commits, list_gitlab_mr_files,
+    list_gitlab_mr_pipelines, list_gitlab_mrs, list_issues, list_labels, list_milestones, list_prs,
+    preflight, search_gitea_prs, search_github_prs, search_gitlab_mrs, CheckRun, CiStatus, Comment,
+    CommentTarget, CreateCommentInput, CreateIssueInput, CreatePrInput, Identifier, IssueDetail,
+    IssueState, IssueSummary, Label, MergeMethod, MergeRequest, MrAction, PrAction, PrCommit,
+    PrFile, PullRequestDetail, PullRequestState, PullRequestSummary, ReviewDecision, UserInfo,
 };
 pub use keyring::{get_token, remove_token, save_token};
 pub use sidecar::{read as read_sidecar, write as write_sidecar, IntegrationsConfig};

@@ -4,7 +4,16 @@ import { For, Match, Show, Switch } from "solid-js";
 
 import type { BranchOps } from "../../../branchOps";
 import { hiddenSections, repoPath } from "../../../state";
-import { pullRequests } from "../../../state/pull-requests";
+import {
+  prStateFilter,
+  prTextFilter,
+  pullRequests,
+} from "../../../state/pull-requests";
+import {
+  issueStateFilter,
+  issueTextFilter,
+  issues,
+} from "../../../state/issues";
 import { InlineConnectCta } from "../../CallToActions/InlineConnectCta";
 import {
   IconBranch,
@@ -13,14 +22,39 @@ import {
 } from "../../Icons";
 import { SidebarSection } from "../SidebarSection";
 import { IssueRow } from "../issueRows";
+import { IssuesToolbar } from "../issuesToolbar";
 import { PullRequestRow } from "../pullRequestRows";
 import { PullRequestToolbar } from "../pullRequestToolbar";
 import { StashRow } from "../stashRows";
 import { SubmoduleRow } from "../submoduleRows";
 import { WorktreeRow } from "../worktreeRows";
 import type { SidebarData } from "../useSidebarData";
-import { issues } from "../../../state/issues";
-import type { IssueSummary } from "../../../ipc";
+import type { IssueSummary, PullRequestSummary } from "../../../ipc";
+import { openCreateIssueDialog } from "../../CreateIssueDialog/state";
+import { openCreatePrDialog } from "../../CreatePrDialog/state";
+
+/// Apply the toolbar's state + text filter to a row list. Shared
+/// helper used by both the PR and Issue panels.
+function applyRowFilter<T extends { state: string; title: string }>(
+  rows: T[],
+  state: "open" | "closed" | "all",
+  text: string,
+): T[] {
+  const lower = text.trim().toLowerCase();
+  return rows.filter((row) => {
+    if (state !== "all") {
+      const isOpen = row.state === "open";
+      if (state === "open" && !isOpen) return false;
+      // "closed" treats both `closed` and `merged` PR states as
+      // "no longer actionable" so they fall in this bucket.
+      if (state === "closed" && isOpen) return false;
+    }
+    if (lower.length > 0 && !row.title.toLowerCase().includes(lower)) {
+      return false;
+    }
+    return true;
+  });
+}
 
 interface Props {
   data: SidebarData;
@@ -144,6 +178,8 @@ export function AuxSections(props: Props) {
               ? (pullRequests() as { kind: "ready"; prs: unknown[] }).prs.length
               : 0
           }
+          addable={pullRequests()?.kind === "ready"}
+          onAdd={() => openCreatePrDialog()}
           onContextMenu={props.ops.openSectionContextMenu}
         >
           <Show when={repoPath() && pullRequests()?.kind === "ready"}>
@@ -180,14 +216,25 @@ export function AuxSections(props: Props) {
               {(() => {
                 const prs = (pullRequests() as {
                   kind: "ready";
-                  prs: import("../../../ipc").PullRequestSummary[];
+                  prs: PullRequestSummary[];
                 }).prs;
+                const visible = applyRowFilter(
+                  prs,
+                  prStateFilter(),
+                  prTextFilter(),
+                );
                 return (
                   <Show
-                    when={prs.length > 0}
-                    fallback={<p class="sidebar__empty">No pull requests</p>}
+                    when={visible.length > 0}
+                    fallback={
+                      <p class="sidebar__empty">
+                        {prs.length === 0
+                          ? "No pull requests"
+                          : "No matches for current filter"}
+                      </p>
+                    }
                   >
-                    <For each={prs}>{(pr) => <PullRequestRow pr={pr} />}</For>
+                    <For each={visible}>{(pr) => <PullRequestRow pr={pr} />}</For>
                   </Show>
                 );
               })()}
@@ -209,8 +256,13 @@ export function AuxSections(props: Props) {
               ? (issues() as { kind: "ready"; issues: unknown[] }).issues.length
               : 0
           }
+          addable={issues()?.kind === "ready"}
+          onAdd={() => openCreateIssueDialog()}
           onContextMenu={props.ops.openSectionContextMenu}
         >
+          <Show when={repoPath() && issues()?.kind === "ready"}>
+            <IssuesToolbar />
+          </Show>
           <Switch fallback={<InlineConnectCta kind="issues" />}>
             <Match when={!repoPath()}>
               <p class="sidebar__empty">Open a repo to list issues</p>
@@ -237,12 +289,23 @@ export function AuxSections(props: Props) {
             <Match when={issues()?.kind === "ready"}>
               {(() => {
                 const rows = (issues() as { kind: "ready"; issues: IssueSummary[] }).issues;
+                const visible = applyRowFilter(
+                  rows,
+                  issueStateFilter(),
+                  issueTextFilter(),
+                );
                 return (
                   <Show
-                    when={rows.length > 0}
-                    fallback={<p class="sidebar__empty">No issues</p>}
+                    when={visible.length > 0}
+                    fallback={
+                      <p class="sidebar__empty">
+                        {rows.length === 0
+                          ? "No issues"
+                          : "No matches for current filter"}
+                      </p>
+                    }
                   >
-                    <For each={rows}>{(issue) => <IssueRow issue={issue} />}</For>
+                    <For each={visible}>{(issue) => <IssueRow issue={issue} />}</For>
                   </Show>
                 );
               })()}

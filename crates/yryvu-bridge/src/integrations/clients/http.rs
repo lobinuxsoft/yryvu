@@ -120,44 +120,79 @@ pub(crate) fn authed(
 }
 
 /// Execute a request and map status codes to typed errors per
-/// `quirks`. 2xx returns the response unchanged.
+/// `quirks`. 2xx returns the response unchanged. For 4xx/5xx the
+/// response body is captured and folded into the typed error so
+/// providers' validation messages (GitHub `Validation Failed`,
+/// GitLab `message`, etc.) reach the UI instead of a bare HTTP code.
 pub(crate) async fn execute(req: RequestBuilder, quirks: Quirks) -> Result<Response, BackendError> {
     let resp = req.send().await.map_err(network_error)?;
     let status = resp.status();
     if status.is_success() {
         return Ok(resp);
     }
-    Err(map_status(&resp, status, quirks))
+    // Capture header-derived metadata before consuming the body.
+    let rate_reset = read_reset(&resp, quirks.rate_limit_reset_header);
+    let rate_remaining = quirks
+        .rate_limit_remaining_header
+        .and_then(|h| resp.headers().get(h).cloned())
+        .and_then(|v| v.to_str().ok().and_then(|s| s.parse::<u64>().ok()));
+    let body = resp.text().await.unwrap_or_default();
+    Err(map_status(
+        status,
+        &body,
+        rate_reset,
+        rate_remaining,
+        quirks,
+    ))
 }
 
-fn map_status(resp: &Response, status: StatusCode, quirks: Quirks) -> BackendError {
+fn map_status(
+    status: StatusCode,
+    body: &str,
+    rate_reset: u64,
+    rate_remaining: Option<u64>,
+    quirks: Quirks,
+) -> BackendError {
     match status {
         StatusCode::UNAUTHORIZED => BackendError::InvalidToken,
         StatusCode::TOO_MANY_REQUESTS => BackendError::RateLimited {
-            reset_at: read_reset(resp, quirks.rate_limit_reset_header),
+            reset_at: rate_reset,
         },
-        StatusCode::FORBIDDEN => map_forbidden(resp, quirks),
+        StatusCode::FORBIDDEN => map_forbidden(rate_remaining, rate_reset, quirks),
         StatusCode::NOT_FOUND => BackendError::NetworkError {
-            detail: format!("not found or token cannot see it (HTTP {status})"),
+            detail: format!(
+                "not found or token cannot see it (HTTP {status}){}",
+                fmt_body(body)
+            ),
         },
         other => BackendError::NetworkError {
-            detail: format!("unexpected HTTP {other}"),
+            detail: format!("unexpected HTTP {other}{}", fmt_body(body)),
         },
     }
 }
 
-fn map_forbidden(resp: &Response, quirks: Quirks) -> BackendError {
-    if let Some(header_name) = quirks.rate_limit_remaining_header {
-        let remaining = resp
-            .headers()
-            .get(header_name)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u64>().ok());
-        if remaining == Some(0) {
-            return BackendError::RateLimited {
-                reset_at: read_reset(resp, quirks.rate_limit_reset_header),
-            };
-        }
+/// Format a response body snippet for inclusion in a network error.
+/// Empty bodies are skipped; long ones are truncated so the toast /
+/// log line stays readable. The leading separator hugs the prefix so
+/// the empty-body case stays clean.
+fn fmt_body(body: &str) -> String {
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    let snippet: String = trimmed.chars().take(400).collect();
+    if trimmed.chars().count() > 400 {
+        format!(" — {snippet}…")
+    } else {
+        format!(" — {snippet}")
+    }
+}
+
+fn map_forbidden(rate_remaining: Option<u64>, rate_reset: u64, quirks: Quirks) -> BackendError {
+    if quirks.rate_limit_remaining_header.is_some() && rate_remaining == Some(0) {
+        return BackendError::RateLimited {
+            reset_at: rate_reset,
+        };
     }
     match quirks.forbidden_kind {
         ForbiddenKind::InvalidToken => BackendError::InvalidToken,

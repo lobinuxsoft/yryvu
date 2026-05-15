@@ -18,26 +18,36 @@ mod http;
 mod types;
 
 pub use gitea::{
-    get_issue_detail as get_gitea_issue_detail, list_issues as list_gitea_issues,
+    create_issue as create_gitea_issue, get_issue_detail as get_gitea_issue_detail,
+    list_collaborators as list_gitea_collaborators, list_issues as list_gitea_issues,
+    list_labels as list_gitea_labels, list_milestones as list_gitea_milestones,
     list_prs as list_gitea_prs, search_prs as search_gitea_prs,
 };
 pub use github::{
+    create_issue as create_github_issue, create_pr as create_github_pr,
     delete_branch as github_delete_branch, enrich_prs as enrich_github_prs,
     get_issue_detail as get_github_issue_detail, get_pr_detail as get_github_pr_detail,
-    list_issues as list_github_issues, list_pr_checks as list_github_pr_checks,
-    list_pr_commits as list_github_pr_commits, list_pr_files as list_github_pr_files,
-    merge_pr as github_merge_pr, pr_action as github_pr_action, search_prs as search_github_prs,
-    CheckRun, CiStatus, MergeMethod, MergeRequest, PrAction, PrCommit, PrFile, PullRequestDetail,
-    PullRequestState, PullRequestSummary, ReviewDecision,
+    list_collaborators as list_github_collaborators, list_issues as list_github_issues,
+    list_labels as list_github_labels, list_milestones as list_github_milestones,
+    list_pr_checks as list_github_pr_checks, list_pr_commits as list_github_pr_commits,
+    list_pr_files as list_github_pr_files, merge_pr as github_merge_pr,
+    pr_action as github_pr_action, search_prs as search_github_prs, CheckRun, CiStatus,
+    MergeMethod, MergeRequest, PrAction, PrCommit, PrFile, PullRequestDetail, PullRequestState,
+    PullRequestSummary, ReviewDecision,
 };
 pub use gitlab::{
+    create_issue as create_gitlab_issue, create_pr as create_gitlab_pr,
     get_issue_detail as get_gitlab_issue_detail, get_mr_detail as get_gitlab_mr_detail,
-    list_issues as list_gitlab_issues, list_mr_commits as list_gitlab_mr_commits,
-    list_mr_files as list_gitlab_mr_files, list_mr_pipelines as list_gitlab_mr_pipelines,
-    list_mrs as list_gitlab_mrs, mr_action as gitlab_mr_action, search_mrs as search_gitlab_mrs,
-    MrAction,
+    list_collaborators as list_gitlab_collaborators, list_issues as list_gitlab_issues,
+    list_labels as list_gitlab_labels, list_milestones as list_gitlab_milestones,
+    list_mr_commits as list_gitlab_mr_commits, list_mr_files as list_gitlab_mr_files,
+    list_mr_pipelines as list_gitlab_mr_pipelines, list_mrs as list_gitlab_mrs,
+    mr_action as gitlab_mr_action, search_mrs as search_gitlab_mrs, MrAction,
 };
-pub use types::{IssueDetail, IssueState, IssueSummary, Label, UserInfo};
+pub use types::{
+    Comment, CommentTarget, CreateCommentInput, CreateIssueInput, CreatePrInput, Identifier,
+    IssueDetail, IssueState, IssueSummary, Label, UserInfo,
+};
 
 use crate::backend::BackendError;
 
@@ -118,6 +128,189 @@ pub async fn get_issue_detail(
         "giteaSelfHosted" => gitea::get_issue_detail(token, hostname, owner, repo, number).await,
         _ => Err(BackendError::NotImplemented(
             "issue detail not implemented for this provider",
+        )),
+    }
+}
+
+/// Dispatcher: list comments for an issue or pull/merge request.
+pub async fn list_comments(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    target: types::CommentTarget,
+    number: u64,
+) -> Result<Vec<types::Comment>, BackendError> {
+    match integration_type {
+        "github" => github::list_comments(token, None, owner, repo, target, number).await,
+        "githubEnterprise" => {
+            github::list_comments(token, hostname, owner, repo, target, number).await
+        }
+        "gitlab" => gitlab::list_comments(token, None, owner, repo, target, number).await,
+        "gitlabSelfHosted" => {
+            gitlab::list_comments(token, hostname, owner, repo, target, number).await
+        }
+        "gitea" => gitea::list_comments(token, None, owner, repo, target, number).await,
+        "giteaSelfHosted" => {
+            gitea::list_comments(token, hostname, owner, repo, target, number).await
+        }
+        _ => Err(BackendError::NotImplemented(
+            "comments listing not implemented for this provider",
+        )),
+    }
+}
+
+/// Dispatcher: post a new comment to an issue or pull/merge request.
+/// Eight parameters — the dispatch contract just mirrors the per-
+/// provider call signature; collapsing into a struct adds plumbing
+/// without buying anything because every callsite passes exactly
+/// these fields straight through.
+#[allow(clippy::too_many_arguments)]
+pub async fn create_comment(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    target: types::CommentTarget,
+    number: u64,
+    input: &types::CreateCommentInput,
+) -> Result<types::Comment, BackendError> {
+    match integration_type {
+        "github" => github::create_comment(token, None, owner, repo, target, number, input).await,
+        "githubEnterprise" => {
+            github::create_comment(token, hostname, owner, repo, target, number, input).await
+        }
+        "gitlab" => gitlab::create_comment(token, None, owner, repo, target, number, input).await,
+        "gitlabSelfHosted" => {
+            gitlab::create_comment(token, hostname, owner, repo, target, number, input).await
+        }
+        "gitea" => gitea::create_comment(token, None, owner, repo, target, number, input).await,
+        "giteaSelfHosted" => {
+            gitea::create_comment(token, hostname, owner, repo, target, number, input).await
+        }
+        _ => Err(BackendError::NotImplemented(
+            "comment creation not implemented for this provider",
+        )),
+    }
+}
+
+/// Dispatcher: list repository labels — populates the labels
+/// dropdown in the Create Issue / Create PR forms.
+pub async fn list_labels(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+) -> Result<Vec<types::Identifier>, BackendError> {
+    match integration_type {
+        "github" => github::list_labels(token, None, owner, repo).await,
+        "githubEnterprise" => github::list_labels(token, hostname, owner, repo).await,
+        "gitlab" => gitlab::list_labels(token, None, owner, repo).await,
+        "gitlabSelfHosted" => gitlab::list_labels(token, hostname, owner, repo).await,
+        "gitea" => gitea::list_labels(token, None, owner, repo).await,
+        "giteaSelfHosted" => gitea::list_labels(token, hostname, owner, repo).await,
+        _ => Err(BackendError::NotImplemented(
+            "labels listing not implemented for this provider",
+        )),
+    }
+}
+
+/// Dispatcher: list repository collaborators — populates assignees
+/// and reviewers dropdowns.
+pub async fn list_collaborators(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+) -> Result<Vec<types::Identifier>, BackendError> {
+    match integration_type {
+        "github" => github::list_collaborators(token, None, owner, repo).await,
+        "githubEnterprise" => github::list_collaborators(token, hostname, owner, repo).await,
+        "gitlab" => gitlab::list_collaborators(token, None, owner, repo).await,
+        "gitlabSelfHosted" => gitlab::list_collaborators(token, hostname, owner, repo).await,
+        "gitea" => gitea::list_collaborators(token, None, owner, repo).await,
+        "giteaSelfHosted" => gitea::list_collaborators(token, hostname, owner, repo).await,
+        _ => Err(BackendError::NotImplemented(
+            "collaborators listing not implemented for this provider",
+        )),
+    }
+}
+
+/// Dispatcher: list open repository milestones — populates the
+/// milestone selector. Closed milestones are filtered upstream since
+/// the dropdown only offers valid choices for new items.
+pub async fn list_milestones(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+) -> Result<Vec<types::Identifier>, BackendError> {
+    match integration_type {
+        "github" => github::list_milestones(token, None, owner, repo).await,
+        "githubEnterprise" => github::list_milestones(token, hostname, owner, repo).await,
+        "gitlab" => gitlab::list_milestones(token, None, owner, repo).await,
+        "gitlabSelfHosted" => gitlab::list_milestones(token, hostname, owner, repo).await,
+        "gitea" => gitea::list_milestones(token, None, owner, repo).await,
+        "giteaSelfHosted" => gitea::list_milestones(token, hostname, owner, repo).await,
+        _ => Err(BackendError::NotImplemented(
+            "milestones listing not implemented for this provider",
+        )),
+    }
+}
+
+/// Dispatcher: create a new pull / merge request on `owner/repo` via
+/// the matching provider's client. Returns the freshly created
+/// [`PullRequestDetail`] so the UI can route into the detail panel
+/// without a follow-up GET. Gitea has no `get_pr_detail` yet so its
+/// creation surface lands together with that work — until then, the
+/// dispatcher bubbles `NotImplemented` for Gitea.
+pub async fn create_pr(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    input: &types::CreatePrInput,
+) -> Result<PullRequestDetail, BackendError> {
+    match integration_type {
+        "github" => github::create_pr(token, None, owner, repo, input).await,
+        "githubEnterprise" => github::create_pr(token, hostname, owner, repo, input).await,
+        "gitlab" => gitlab::create_pr(token, None, owner, repo, input).await,
+        "gitlabSelfHosted" => gitlab::create_pr(token, hostname, owner, repo, input).await,
+        "gitea" | "giteaSelfHosted" => Err(BackendError::NotImplemented(
+            "PR creation on Gitea waits on Gitea PR detail (lands together)",
+        )),
+        _ => Err(BackendError::NotImplemented(
+            "PR creation not implemented for this provider",
+        )),
+    }
+}
+
+/// Dispatcher: create a new issue on `owner/repo` via the matching
+/// provider's client. Returns the freshly created [`IssueDetail`] so
+/// the UI can route to the detail panel without a follow-up GET.
+pub async fn create_issue(
+    integration_type: &str,
+    token: &str,
+    hostname: Option<&str>,
+    owner: &str,
+    repo: &str,
+    input: &CreateIssueInput,
+) -> Result<IssueDetail, BackendError> {
+    match integration_type {
+        "github" => github::create_issue(token, None, owner, repo, input).await,
+        "githubEnterprise" => github::create_issue(token, hostname, owner, repo, input).await,
+        "gitlab" => gitlab::create_issue(token, None, owner, repo, input).await,
+        "gitlabSelfHosted" => gitlab::create_issue(token, hostname, owner, repo, input).await,
+        "gitea" => gitea::create_issue(token, None, owner, repo, input).await,
+        "giteaSelfHosted" => gitea::create_issue(token, hostname, owner, repo, input).await,
+        _ => Err(BackendError::NotImplemented(
+            "issue creation not implemented for this provider",
         )),
     }
 }

@@ -21,4 +21,7 @@
 @import "./repo-management.css";
 @import "./pr-detail.css";
 @import "./issue-detail.css";
+@import "./multi-select.css";
+@import "./md-editor.css";
+@import "./comments.css";
 @import "./about.css";

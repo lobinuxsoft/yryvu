@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createSignal, For, Match, Show, Switch } from "solid-js";
+import { createSignal, Match, Show, Switch } from "solid-js";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 import { integrationPrAction, type PrActionVerb } from "../../ipc";
@@ -13,25 +13,21 @@ import {
   prDetailFiles,
   refetchAllPrDetail,
 } from "../../state/pr-detail";
+import { Comments } from "../Comments";
 import { Checks } from "./Checks";
 import { Commits } from "./Commits";
 import { Conversation } from "./Conversation";
 import { Files } from "./Files";
 import { MergeForm } from "./MergeForm";
+import { MetadataSidebar } from "./MetadataSidebar";
+import { Section } from "./Section";
 
-type SubTab = "conversation" | "commits" | "files" | "checks";
-
-const SUB_TABS: Array<{ key: SubTab; label: string }> = [
-  { key: "conversation", label: "Conversation" },
-  { key: "commits", label: "Commits" },
-  { key: "files", label: "Files Changed" },
-  { key: "checks", label: "Checks" },
-];
-
-/// Top-level PR detail panel. Renders in the central pane (in place
-/// of CommitGraph) when `mainView() === "prDetail"`.
+/// Top-level PR detail panel. GK-style layout: header + actions bar
+/// on top, then a 2-column body — main column stacks Description /
+/// Commits / Files / Checks as collapsible sections (no tab strip),
+/// right column pins the metadata sidebar (Author / Branches / Labels
+/// / Reviewers / Diff / Mergeability / Timestamps).
 export function PullRequestDetailPanel() {
-  const [active, setActive] = createSignal<SubTab>("conversation");
   const [actionInFlight, setActionInFlight] = createSignal<PrActionVerb | null>(null);
   const [actionError, setActionError] = createSignal<string | null>(null);
   const [mergeFormOpen, setMergeFormOpen] = createSignal(false);
@@ -77,16 +73,21 @@ export function PullRequestDetailPanel() {
                     ← Back
                   </button>
                   <div class="pr-detail__title-block">
-                    <span
-                      class="pr-detail__state-badge"
-                      data-state={detail().draft ? "draft" : detail().state}
-                    >
-                      {detail().draft ? "draft" : detail().state}
-                    </span>
-                    <h2 class="pr-detail__title">
-                      {detail().title}{" "}
-                      <span class="pr-detail__number">#{detail().number}</span>
-                    </h2>
+                    <span class="pr-detail__number-line">#{detail().number}</span>
+                    <h2 class="pr-detail__title">{detail().title}</h2>
+                    <div class="pr-detail__subtitle">
+                      <span
+                        class="pr-detail__state-badge"
+                        data-state={detail().draft ? "draft" : detail().state}
+                      >
+                        {detail().draft ? "draft" : detail().state}
+                      </span>
+                      <span class="pr-detail__subtitle-text">
+                        <strong>{detail().author.login}</strong> wants to merge{" "}
+                        <code>{detail().headRef}</code> into{" "}
+                        <code>{detail().baseRef}</code>
+                      </span>
+                    </div>
                   </div>
                   <div class="pr-detail__header-actions">
                     <button
@@ -177,50 +178,63 @@ export function PullRequestDetailPanel() {
                     onClose={() => setMergeFormOpen(false)}
                   />
                 </Show>
-                <nav class="pr-detail__subtabs">
-                  <For each={SUB_TABS}>
-                    {(t) => (
-                      <button
-                        type="button"
-                        class="pr-detail__subtab"
-                        data-active={active() === t.key ? "true" : "false"}
-                        onClick={() => setActive(t.key)}
-                      >
-                        {t.label}
-                      </button>
-                    )}
-                  </For>
-                </nav>
-                <div class="pr-detail__body">
-                  <Switch>
-                    <Match when={active() === "conversation"}>
+                <div class="pr-detail__body pr-detail__body--grid">
+                  <div class="pr-detail__main">
+                    <Section title="Description">
                       <Conversation detail={detail()} />
-                    </Match>
-                    <Match when={active() === "commits"}>
+                    </Section>
+                    <Section
+                      title="Conversation"
+                      count={detail().comments}
+                    >
+                      <Comments
+                        contextAccessor={() => {
+                          const ref = activePrDetail();
+                          if (!ref) return null;
+                          return {
+                            integrationType: ref.integrationType,
+                            owner: ref.owner,
+                            repo: ref.repo,
+                            target: "pullRequest",
+                            number: ref.number,
+                          };
+                        }}
+                      />
+                    </Section>
+                    <Section
+                      title="Commits"
+                      count={prDetailCommits()?.length}
+                      defaultOpen={false}
+                    >
                       <Show
                         when={!prDetailCommits.loading}
                         fallback={<p class="pr-detail__empty">Loading commits…</p>}
                       >
                         <Commits commits={prDetailCommits() ?? []} />
                       </Show>
-                    </Match>
-                    <Match when={active() === "files"}>
+                    </Section>
+                    <Section
+                      title="Files changed"
+                      count={detail().changedFiles}
+                      defaultOpen={false}
+                    >
                       <Show
                         when={!prDetailFiles.loading}
                         fallback={<p class="pr-detail__empty">Loading files…</p>}
                       >
                         <Files files={prDetailFiles() ?? []} />
                       </Show>
-                    </Match>
-                    <Match when={active() === "checks"}>
+                    </Section>
+                    <Section title="Checks" defaultOpen={false}>
                       <Show
                         when={!prDetailChecks.loading}
                         fallback={<p class="pr-detail__empty">Loading checks…</p>}
                       >
                         <Checks checks={prDetailChecks() ?? []} />
                       </Show>
-                    </Match>
-                  </Switch>
+                    </Section>
+                  </div>
+                  <MetadataSidebar detail={detail()} />
                 </div>
               </>
             )}

@@ -54,6 +54,7 @@ pub fn run() {
             yryvu_bridge::commands::integration_list_labels,
             yryvu_bridge::commands::integration_list_collaborators,
             yryvu_bridge::commands::integration_list_milestones,
+            yryvu_bridge::commands::integration_list_clone_candidates,
             yryvu_bridge::commands::integration_list_comments,
             yryvu_bridge::commands::integration_create_comment,
             yryvu_bridge::commands::integration_get_pr_detail,

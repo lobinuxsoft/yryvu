@@ -13,7 +13,8 @@ import {
   saveIntegrationToken,
   type UserInfo,
 } from "../../../../ipc";
-import type { IntegrationType } from "./providerTable";
+import { PROVIDERS, type IntegrationType } from "./providerTable";
+import { hydrateHostname } from "./selfHostedHostnames";
 import { setIntegrationState } from "./state";
 
 /**
@@ -108,6 +109,34 @@ export async function saveToken(
       return next;
     });
     throw err;
+  }
+}
+
+/**
+ * Hydrate every integration's persisted state in one shot — runs at
+ * app start (AppShell mount) so any panel that reads
+ * `integrationState(type)` (Preferences, Clone dialog provider tabs,
+ * future deep-link surfaces) sees the correct connected/disconnected
+ * status without waiting for the user to open Preferences first.
+ *
+ * Idempotent: per-call signal writes overwrite themselves; safe to
+ * call again from the Preferences panel mount without double-fetching
+ * concerns beyond the redundant network round-trips.
+ */
+export async function hydrateIntegrationsOnAppStart(): Promise<void> {
+  await hydrateConfigured();
+  for (const p of PROVIDERS) {
+    if (p.isSelfHosted) {
+      void hydrateHostname(p.type);
+    }
+  }
+  try {
+    const list = await listConfiguredIntegrations();
+    for (const type of list) {
+      void hydrateConnectedState(type as IntegrationType);
+    }
+  } catch {
+    // Sidecar read failure already swallowed by hydrateConfigured.
   }
 }
 

@@ -18,6 +18,11 @@ export interface CloneRepositoryArgs {
   branch?: string;
   depth?: number;
   recurseSubmodules: boolean;
+  /// When set, the backend reads the integration's stored token from
+  /// the keyring and uses it for HTTPS auth. Powers the per-provider
+  /// Clone sub-tabs (#374) so users don't need a system git credential
+  /// helper configured to clone private repos via OAuth/PAT.
+  integrationType?: string;
   onProgress: (p: CloneProgress) => void;
 }
 
@@ -32,6 +37,7 @@ export async function cloneRepository(args: CloneRepositoryArgs): Promise<string
     branch: args.branch,
     depth: args.depth,
     recurseSubmodules: args.recurseSubmodules,
+    integrationType: args.integrationType ?? null,
     onProgress: channel,
   });
 }

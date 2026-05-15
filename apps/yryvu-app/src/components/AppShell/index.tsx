@@ -26,6 +26,7 @@ import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
 import { ToastContainer } from "../Notifications";
+import { hydrateIntegrationsOnAppStart } from "../PreferencesWindow/panels/Integrations/tokenStorage";
 import { IconOpenFolder, IconStar } from "../Icons";
 import { TabBar } from "../TabBar";
 import { BranchOpsProvider, createBranchOps } from "../../branchOps";
@@ -95,6 +96,11 @@ export function AppShell() {
     // fill a REPO tab so the user sees the strip in sync. If both
     // stores are empty, open a NEW tab so the strip isn't blank.
     await hydrateTabsFromPreferences();
+    // Hydrate integration connection states from the backend sidecar +
+    // keyring so the Clone dialog's per-provider sub-tabs (#374) and
+    // the Preferences > Integrations panel see "connected" without
+    // waiting for the user to open Preferences first.
+    void hydrateIntegrationsOnAppStart();
     if (tabs().length === 0) {
       const persistedRepo = repoPath();
       if (persistedRepo) {

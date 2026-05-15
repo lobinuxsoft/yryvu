@@ -152,30 +152,6 @@
   cursor: pointer;
 }
 
-.dialog__progress {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.dialog__progress-label {
-  font-size: 12px;
-  color: var(--fg-1);
-}
-.dialog__progress-counter {
-  color: var(--fg-2);
-}
-.dialog__progress-track {
-  height: 6px;
-  background: var(--bg-2);
-  border-radius: 999px;
-  overflow: hidden;
-}
-.dialog__progress-bar {
-  height: 100%;
-  background: var(--accent);
-  transition: width 100ms linear;
-}
-
 .dialog__header {
   display: flex;
   align-items: center;
@@ -318,4 +294,106 @@
 
 .dialog__path-list code {
   font-family: var(--font-mono);
+}
+
+/* ==========================================================================
+   Clone-from-provider — per-provider sub-tab body (#374). Single component,
+   3 render modes (backendPending / notConnected / connected). All states
+   live inside `.onboarding-dialog__panel` and share the surrounding chrome.
+   ========================================================================== */
+
+.clone-from-provider__cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  border: 1px solid var(--bg-2);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+}
+.clone-from-provider__cta-label {
+  font-size: 13px;
+  color: var(--fg-1);
+  margin: 0;
+}
+
+.clone-from-provider__pending {
+  padding: 24px 16px;
+  border: 1px dashed var(--bg-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+}
+.clone-from-provider__pending-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--fg-1);
+  font-weight: 600;
+}
+
+.clone-from-provider__combobox {
+  position: relative;
+}
+.clone-from-provider__list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+}
+.clone-from-provider__group-header {
+  padding: 6px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  font-weight: 600;
+  border-top: 1px solid var(--bg-2);
+}
+.clone-from-provider__group-header--personal {
+  border-top: none;
+}
+.clone-from-provider__group-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.clone-from-provider__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--fg-1);
+  cursor: pointer;
+}
+.clone-from-provider__row:hover,
+.clone-from-provider__row--selected {
+  background: var(--bg-2);
+}
+.clone-from-provider__lock {
+  width: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  opacity: 0.7;
+}
+.clone-from-provider__row-name {
+  flex: 1;
+}
+.clone-from-provider__empty {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--fg-3);
+  font-style: italic;
 }

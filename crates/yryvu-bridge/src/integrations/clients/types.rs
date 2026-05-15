@@ -246,6 +246,54 @@ pub enum ProjectSquashOption {
     DefaultOn,
 }
 
+/// Cross-provider repo candidate surfaced by the Clone dialog's
+/// per-provider sub-tabs (#374). Single shape, populated by each
+/// provider client from whatever native repo enumeration API the
+/// upstream offers (REST `/user/repos` for GitHub, GraphQL projects
+/// for GitLab, REST `/repos/search` for Gitea). The frontend groups
+/// the list by `owner` + `owner_kind` to render the GK-style
+/// org-headered dropdown and uses `clone_url_https` as the canonical
+/// URL passed into the existing `clone_repository` flow.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CloneRepoCandidate {
+    /// Owner login / namespace (GitHub `login`, GitLab group `path`,
+    /// Gitea owner `login`). Drives the dropdown grouping.
+    pub owner: String,
+    /// Whether the owner is a personal account or an organization /
+    /// group. Drives the personal-first ordering in the dropdown.
+    pub owner_kind: OwnerKind,
+    /// Repo name without the owner prefix (e.g. `yryvu`).
+    pub name: String,
+    /// `owner/name` for display + dedup. GitLab self-hosted may have
+    /// nested groups (`group/subgroup/repo`); we keep the full path.
+    pub full_name: String,
+    /// HTTPS clone URL — the one we always pass into the existing
+    /// `clone_repository` flow.
+    pub clone_url_https: String,
+    /// SSH clone URL when the provider exposes it (GitHub does, Gitea
+    /// does, GitLab does via GraphQL `sshUrlToRepo`). Surfaced for
+    /// future "Clone via SSH" toggle; v1 always uses HTTPS.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub clone_url_ssh: Option<String>,
+    pub is_private: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_branch: Option<String>,
+}
+
+/// Whether a [`CloneRepoCandidate`]'s owner is a personal account or
+/// an organization / group. Drives the dropdown's personal-first
+/// ordering and the section-header rendering ("YOUR REPOS" vs the
+/// org name in CAPS).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum OwnerKind {
+    User,
+    Organization,
+}
+
 /// Extended issue payload for the detail panel — superset of
 /// [`IssueSummary`] with body markdown + the closed timestamp.
 /// Mirrors GK's `IssueTracker-*` detail surface in fields exposed.

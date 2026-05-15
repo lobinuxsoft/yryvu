@@ -1,0 +1,62 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ==========================================================================
+   Reusable progress bar (#374). Drop-in for any operation that streams a
+   percent + optional current/total counter. Indeterminate variant runs
+   an animated barberpole when the underlying operation hasn't reported
+   progress yet.
+   ========================================================================== */
+
+.progress-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progress-bar__label {
+  font-size: 12px;
+  color: var(--fg-1);
+}
+
+.progress-bar__counter {
+  color: var(--fg-2);
+}
+
+.progress-bar__track {
+  position: relative;
+  height: 6px;
+  background: var(--bg-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 100ms linear;
+}
+
+/* Indeterminate barberpole — when the operation hasn't reported a
+   percent yet (start phase, blocking wait). The fill stays at 100%
+   width and we animate a striped overlay across it. */
+.progress-bar__track--indeterminate .progress-bar__fill {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--accent) 0,
+    var(--accent) 10px,
+    var(--bg-3) 10px,
+    var(--bg-3) 20px
+  );
+  background-size: 28px 28px;
+  animation: progress-bar-stripe 800ms linear infinite;
+}
+
+@keyframes progress-bar-stripe {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 28px 0;
+  }
+}

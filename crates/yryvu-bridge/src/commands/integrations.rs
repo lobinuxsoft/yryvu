@@ -11,9 +11,9 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
 use crate::integrations::{
-    self, oauth, AuthData, Comment, CommentTarget, CreateCommentInput, CreateIssueInput,
-    CreatePrInput, Identifier, IssueDetail, IssueSummary, PullRequestDetail, PullRequestSummary,
-    UserInfo,
+    self, oauth, AuthData, CloneRepoCandidate, Comment, CommentTarget, CreateCommentInput,
+    CreateIssueInput, CreatePrInput, Identifier, IssueDetail, IssueSummary, PullRequestDetail,
+    PullRequestSummary, UserInfo,
 };
 
 use super::integration_routing::{is_self_hosted, ProviderFamily};
@@ -408,6 +408,22 @@ pub async fn integration_list_collaborators(
     let auth = load_auth_and_host(&app, &integration_type).await?;
     let hostname = host_for(&integration_type, &auth);
     integrations::list_collaborators(&integration_type, &auth.token, hostname, &owner, &repo)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// List every repo the authenticated user can clone via
+/// `integration_type`. Powers the Clone dialog's per-provider sub-tab
+/// (#374). Returns a flat list — frontend groups by `owner` for the
+/// GK-style org-headered dropdown.
+#[tauri::command]
+pub async fn integration_list_clone_candidates(
+    app: AppHandle,
+    integration_type: String,
+) -> Result<Vec<CloneRepoCandidate>, String> {
+    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let hostname = host_for(&integration_type, &auth);
+    integrations::list_clone_candidates(&integration_type, &auth.token, hostname)
         .await
         .map_err(|e| e.to_string())
 }

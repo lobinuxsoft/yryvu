@@ -16,6 +16,7 @@
 //! that in a single round-trip, matching the cost profile of the
 //! GitHub side's REST + enrich pattern.
 
+mod clone_candidates;
 mod comments;
 mod create_pr;
 mod detail;
@@ -29,6 +30,7 @@ mod prs;
 mod repo_metadata;
 mod search;
 
+pub use clone_candidates::list_clone_candidates;
 pub use comments::{create_comment, list_comments};
 pub use create_pr::create_pr;
 pub use detail::{

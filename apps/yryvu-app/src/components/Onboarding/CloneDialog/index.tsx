@@ -5,7 +5,11 @@ import { open as openPicker } from "@tauri-apps/plugin-dialog";
 
 import { Dialog } from "../../Dialog";
 import { NfIcon } from "../../NfIcon";
-import { closeCloneDialog, cloneDialog } from "./state";
+import { ProgressBar } from "../../ProgressBar";
+import { findProvider } from "../../PreferencesWindow/panels/Integrations/providerTable";
+import { CloneFromProvider } from "./CloneFromProvider";
+import { phaseLabel } from "./phaseLabel";
+import { closeCloneDialog, cloneDialog, type CloneTabId } from "./state";
 import { cancelCloneDialog, submitCloneDialog } from "./submit";
 import {
   checkFolderName,
@@ -17,43 +21,27 @@ import {
 } from "./validation";
 
 interface SidebarEntry {
-  id: string;
+  id: CloneTabId;
   label: string;
   icon: string;
-  enabled: boolean;
-  tooltip?: string;
 }
 
-const PROVIDER_TOOLTIP =
-  "Available once provider integrations land per-repo listing (cluster D3+).";
-
+/// Sidebar order matches GK's Clone dialog. The `url` row is the
+/// canonical "Clone with URL" form; the rest dispatch into the shared
+/// [`CloneFromProvider`] component (#374) keyed on the matching
+/// `IntegrationType`. No provider-specific component required —
+/// integration state + provider cohort drive all rendering decisions.
 const SIDEBAR_ENTRIES: SidebarEntry[] = [
-  { id: "url", label: "Clone with URL", icon: "f0ac", enabled: true },
-  { id: "github", label: "GitHub.com", icon: "f09b", enabled: false, tooltip: PROVIDER_TOOLTIP },
-  {
-    id: "github-enterprise",
-    label: "GitHub Enterprise Server",
-    icon: "f09b",
-    enabled: false,
-    tooltip: PROVIDER_TOOLTIP,
-  },
-  { id: "gitlab", label: "GitLab.com", icon: "f296", enabled: false, tooltip: PROVIDER_TOOLTIP },
-  {
-    id: "gitlab-self",
-    label: "GitLab (Self-Managed)",
-    icon: "f296",
-    enabled: false,
-    tooltip: PROVIDER_TOOLTIP,
-  },
-  { id: "bitbucket", label: "Bitbucket.org", icon: "f171", enabled: false, tooltip: PROVIDER_TOOLTIP },
-  {
-    id: "bitbucket-dc",
-    label: "Bitbucket Data Center",
-    icon: "f171",
-    enabled: false,
-    tooltip: PROVIDER_TOOLTIP,
-  },
-  { id: "azure", label: "Azure DevOps", icon: "f3ca", enabled: false, tooltip: PROVIDER_TOOLTIP },
+  { id: "url", label: "Clone with URL", icon: "f0ac" },
+  { id: "github", label: "GitHub.com", icon: "f09b" },
+  { id: "githubEnterprise", label: "GitHub Enterprise Server", icon: "f09b" },
+  { id: "gitlab", label: "GitLab.com", icon: "f296" },
+  { id: "gitlabSelfHosted", label: "GitLab (Self-Managed)", icon: "f296" },
+  { id: "gitea", label: "Gitea", icon: "f1d3" },
+  { id: "giteaSelfHosted", label: "Gitea (Self-Hosted)", icon: "f1d3" },
+  { id: "bitbucket", label: "Bitbucket.org", icon: "f171" },
+  { id: "bitbucketServer", label: "Bitbucket Data Center", icon: "f171" },
+  { id: "azureDevops", label: "Azure DevOps", icon: "f3ca" },
 ];
 
 export function CloneDialog() {
@@ -108,9 +96,9 @@ export function CloneDialog() {
             <button
               type="button"
               class="onboarding-dialog__sidebar-row"
-              classList={{ "is-active": entry.id === "url" }}
-              disabled={!entry.enabled}
-              title={entry.tooltip}
+              classList={{ "is-active": entry.id === cloneDialog.activeTab() }}
+              disabled={cloneDialog.submitting()}
+              onClick={() => cloneDialog.setActiveTab(entry.id)}
             >
               <NfIcon code={entry.icon} />
               <span>{entry.label}</span>
@@ -119,6 +107,12 @@ export function CloneDialog() {
         </For>
       </nav>
 
+      <Show
+        when={cloneDialog.activeTab() === "url"}
+        fallback={
+          <CloneFromProvider provider={findProvider(cloneDialog.activeTab() as Exclude<CloneTabId, "url">)} />
+        }
+      >
       <div class="onboarding-dialog__panel">
         <h3 class="onboarding-dialog__panel-title">Clone a Repo</h3>
 
@@ -230,28 +224,13 @@ export function CloneDialog() {
         </div>
 
         <Show when={cloneDialog.submitting()}>
-          {(() => {
-            const p = cloneDialog.progress();
-            return (
-              <div class="dialog__progress">
-                <div class="dialog__progress-label">
-                  {phaseLabel(p?.phase)} — {p?.percent ?? 0}%
-                  <Show when={p && p.total > 0}>
-                    <span class="dialog__progress-counter">
-                      {" "}
-                      ({p?.current ?? 0} / {p?.total ?? 0})
-                    </span>
-                  </Show>
-                </div>
-                <div class="dialog__progress-track">
-                  <div
-                    class="dialog__progress-bar"
-                    style={{ width: `${p?.percent ?? 0}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })()}
+          <ProgressBar
+            label={phaseLabel(cloneDialog.progress()?.phase)}
+            percent={cloneDialog.progress()?.percent ?? 0}
+            current={cloneDialog.progress()?.current}
+            total={cloneDialog.progress()?.total}
+            indeterminate={!cloneDialog.progress()}
+          />
         </Show>
 
         <Show when={cloneDialog.error()}>
@@ -282,23 +261,8 @@ export function CloneDialog() {
           </Show>
         </div>
       </div>
+      </Show>
     </Dialog>
   );
 }
 
-function phaseLabel(phase: string | undefined): string {
-  switch (phase) {
-    case "counting":
-      return "Counting objects";
-    case "compressing":
-      return "Compressing";
-    case "receiving":
-      return "Receiving objects";
-    case "resolving":
-      return "Resolving deltas";
-    case "checkout":
-      return "Checking out files";
-    default:
-      return "Starting";
-  }
-}

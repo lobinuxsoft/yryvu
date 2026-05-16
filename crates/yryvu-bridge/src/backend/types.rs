@@ -246,6 +246,13 @@ pub struct CombinedDiff {
     /// selects rows in). Empty for `WipOnly`.
     pub shas: Vec<String>,
     pub files: Vec<FileDiff>,
+    /// `true` when the backend skipped `find_similar` rename/copy detection
+    /// because the diff exceeded `RENAME_DETECTION_DELTA_LIMIT`. Lets the
+    /// inspector surface "Rename detection skipped (large diff)" copy without
+    /// having to re-derive the decision. Defaults to `false` for normal-sized
+    /// diffs.
+    #[serde(default)]
+    pub rename_detection_skipped: bool,
 }
 
 /// Full commit metadata surfaced to the right-panel inspector.

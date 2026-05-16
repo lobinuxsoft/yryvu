@@ -90,11 +90,23 @@ describe("parseBlocks", () => {
       {
         kind: "ul",
         items: [
-          [{ kind: "text", value: "item one" }],
-          [{ kind: "text", value: "item two" }],
+          { checked: null, inline: [{ kind: "text", value: "item one" }] },
+          { checked: null, inline: [{ kind: "text", value: "item two" }] },
         ],
       },
     ]);
+  });
+
+  it("parses GFM task list items into ListItem.checked", () => {
+    const out = parseBlocks("- [ ] todo\n- [x] done\n- plain");
+    expect(out[0]).toEqual({
+      kind: "ul",
+      items: [
+        { checked: false, inline: [{ kind: "text", value: "todo" }] },
+        { checked: true, inline: [{ kind: "text", value: "done" }] },
+        { checked: null, inline: [{ kind: "text", value: "plain" }] },
+      ],
+    });
   });
 
   it("treats - the same as * for list items", () => {
@@ -159,8 +171,8 @@ describe("parseBlocks", () => {
     // Anchor ids work for the version heading
     expect((out[1] as { id: string }).id).toBe("0-4-2-2026-04-30");
     // Inline link inside a list item parses
-    const ul = out[3] as { kind: "ul"; items: unknown[][] };
-    const link = ul.items[1].find(
+    const ul = out[3] as { kind: "ul"; items: { inline: unknown[] }[] };
+    const link = ul.items[1].inline.find(
       (n) => (n as { kind: string }).kind === "link",
     );
     expect(link).toEqual({

@@ -127,11 +127,38 @@ function BlockView(props: { block: Block }) {
           <For each={b.items}>
             {(item) => (
               <li>
-                <InlineList nodes={item} />
+                <Show when={item.checked !== null}>
+                  <input
+                    type="checkbox"
+                    checked={item.checked === true}
+                    disabled
+                    aria-readonly="true"
+                    tabindex={-1}
+                  />{" "}
+                </Show>
+                <InlineList nodes={item.inline} />
               </li>
             )}
           </For>
         </ul>
+      );
+    case "ol":
+      return (
+        <ol>
+          <For each={b.items}>
+            {(item) => (
+              <li>
+                <InlineList nodes={item.inline} />
+              </li>
+            )}
+          </For>
+        </ol>
+      );
+    case "bq":
+      return (
+        <blockquote>
+          <For each={b.blocks}>{(inner) => <BlockView block={inner} />}</For>
+        </blockquote>
       );
     case "pre":
       return (

@@ -1,0 +1,62 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* ==========================================================================
+   Tooltip — reusable hover bubble (#316). Wrapper is `display: contents`
+   so it doesn't perturb the host element's layout; the bubble itself
+   is portalled to <body> and absolutely positioned via inline style
+   from the anchor's getBoundingClientRect.
+   ========================================================================== */
+
+.tooltip-anchor {
+  display: contents;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 10000;
+  max-width: 320px;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--fg-0);
+  background: var(--bg-0);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  white-space: pre-wrap;
+  animation: tooltip-fade 120ms ease-out;
+}
+
+/* Position-flavour translates the inline left/top into the visual
+   anchor. For top/bottom we center horizontally; for left/right we
+   center vertically. */
+.tooltip--bottom,
+.tooltip--top {
+  transform: translateX(-50%);
+}
+.tooltip--top {
+  transform: translate(-50%, -100%);
+}
+.tooltip--left {
+  transform: translate(-100%, -50%);
+}
+.tooltip--right {
+  transform: translateY(-50%);
+}
+
+@keyframes tooltip-fade {
+  from {
+    opacity: 0;
+    transform-origin: top center;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Honor the global animation override — when motion is suppressed,
+   skip the fade keyframe so the tooltip pops in instantly. */
+[data-animations="never"] .tooltip {
+  animation: none;
+}

@@ -1,0 +1,194 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Issue detail panel — GK-style main + right-sidebar layout. Theme
+   tokens are yryvu's; structure mirrors GK's IssueTracker detail. */
+
+.issue-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-1);
+}
+
+.issue-detail__loading,
+.issue-detail__error,
+.issue-detail__empty {
+  padding: 16px;
+  color: var(--fg-2);
+  font-size: 12px;
+}
+.issue-detail__error { color: var(--danger); }
+
+.issue-detail__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--bg-2);
+  background: var(--bg-0);
+}
+.issue-detail__header > .issue-detail__back {
+  margin-top: 2px;
+}
+
+.issue-detail__back,
+.issue-detail__open-browser {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--bg-3);
+  color: var(--fg-1);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.issue-detail__back:hover,
+.issue-detail__open-browser:hover {
+  border-color: var(--info);
+  color: var(--fg-0);
+}
+
+.issue-detail__title-block {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.issue-detail__number-line {
+  font-size: 11px;
+  color: var(--fg-3);
+  font-family: "FiraCodeNF", monospace;
+  letter-spacing: 0.04em;
+}
+.issue-detail__subtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--fg-2);
+  flex-wrap: wrap;
+}
+.issue-detail__subtitle-text strong {
+  color: var(--fg-0);
+  font-weight: 600;
+}
+
+.issue-detail__state-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.issue-detail__state-badge[data-state="open"] {
+  background: var(--success);
+  color: var(--bg-0);
+}
+.issue-detail__state-badge[data-state="closed"] {
+  background: var(--danger);
+  color: var(--bg-0);
+}
+
+.issue-detail__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg-0);
+  margin: 0;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Body = main + sidebar grid. Sidebar fixed width 260px; main fills
+   the rest. */
+.issue-detail__body {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.issue-detail__comments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bg-2);
+}
+.issue-detail__comments-heading {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  font-weight: 600;
+}
+
+.issue-detail__main {
+  overflow: auto;
+  padding: 16px 20px;
+  color: var(--fg-1);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.issue-detail__sidebar {
+  overflow: auto;
+  padding: 16px 16px 16px 0;
+  border-left: 1px solid var(--bg-2);
+  background: var(--bg-0);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 11px;
+  padding-left: 16px;
+}
+
+.issue-detail__sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.issue-detail__sidebar-title {
+  margin: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  font-weight: 600;
+}
+.issue-detail__sidebar-body { color: var(--fg-1); }
+
+.issue-detail__sidebar-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 6px;
+  background: var(--bg-3);
+}
+.issue-detail__sidebar-author,
+.issue-detail__sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+.issue-detail__sidebar-times {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--fg-2);
+}
+
+/* Reuse the PR markdown styles — keep the visual parity between
+   PR detail body and Issue detail body. */
+.issue-detail__main .pr-detail__markdown {
+  color: var(--fg-1);
+}

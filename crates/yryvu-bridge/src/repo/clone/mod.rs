@@ -16,17 +16,29 @@ use git2::{ErrorClass, ErrorCode, FetchOptions};
 
 use crate::backend::BackendError;
 use crate::repo::common::git2_err;
-use crate::repo::remote::credentials::build_credentials_callbacks;
+use crate::repo::remote::credentials::{
+    build_credentials_callbacks, build_credentials_callbacks_with_token,
+};
 
 pub mod registry;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CloneOptions {
     pub url: String,
     pub dest_path: PathBuf,
     pub branch: Option<String>,
     pub depth: Option<u32>,
     pub recurse_submodules: bool,
+    /// When set, the clone uses the integration's stored token via
+    /// HTTPS userpass auth (e.g. `oauth2:<gitlab_token>`). Powers the
+    /// Clone dialog's per-provider sub-tabs (#374) where the user has
+    /// already authenticated but the system git credential helper has
+    /// no record of the token.
+    pub integration_type: Option<String>,
+    /// Pre-resolved token for `integration_type` — read from the
+    /// keyring by the IPC layer so the credentials callback doesn't
+    /// hit the keyring synchronously inside libgit2.
+    pub integration_token: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -66,7 +78,10 @@ pub fn clone_repository(
         });
     }
 
-    let mut callbacks = build_credentials_callbacks();
+    let mut callbacks = match (&opts.integration_type, &opts.integration_token) {
+        (Some(t), Some(token)) => build_credentials_callbacks_with_token(t, token.clone()),
+        _ => build_credentials_callbacks(),
+    };
     let last_emit = Arc::new(Mutex::new(Instant::now() - THROTTLE));
     let xfer_cancel = cancel.clone();
     let xfer_emit = on_progress.clone();
@@ -252,6 +267,7 @@ mod tests {
             branch: None,
             depth: None,
             recurse_submodules: false,
+            ..Default::default()
         };
         let err = clone_repository(opts, cancel, emit).unwrap_err();
         assert!(
@@ -271,6 +287,7 @@ mod tests {
             branch: None,
             depth: None,
             recurse_submodules: false,
+            ..Default::default()
         };
         let err = clone_repository(opts, cancel, emit).unwrap_err();
         assert!(
@@ -307,6 +324,7 @@ mod tests {
             branch: None,
             depth: None,
             recurse_submodules: false,
+            ..Default::default()
         };
         let err = clone_repository(opts, cancel, emit).unwrap_err();
         assert!(
@@ -336,6 +354,7 @@ mod tests {
             branch: None,
             depth: None,
             recurse_submodules: false,
+            ..Default::default()
         };
         let result = clone_repository(opts, cancel, emit).unwrap();
         assert_eq!(result, dest_path);
@@ -367,6 +386,7 @@ mod tests {
             branch: None,
             depth: None,
             recurse_submodules: false,
+            ..Default::default()
         };
         let err = clone_repository(opts, cancel, emit).unwrap_err();
         assert!(matches!(err, BackendError::CloneCancelled), "got {err:?}");

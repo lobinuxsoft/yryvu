@@ -53,6 +53,24 @@ export function getHostingService(repoPath: string): Promise<HostingService> {
   return invoke<HostingService>("get_hosting_service", { repoPath });
 }
 
+/**
+ * Provider classification + `(owner, repo)` for the active repo's
+ * `origin` remote. Used by the integration panels (PR list / Issues)
+ * to know whether they can fetch live data and on which provider.
+ *
+ * `owner` / `repo` are `null` for bare repos, zero-remote repos, or
+ * URLs whose path doesn't split cleanly into two segments.
+ */
+export interface RepoProviderInfo {
+  service: HostingService;
+  owner: string | null;
+  repo: string | null;
+}
+
+export function getRepoProviderInfo(repoPath: string): Promise<RepoProviderInfo> {
+  return invoke<RepoProviderInfo>("get_repo_provider_info", { repoPath });
+}
+
 export interface RefTag {
   name: string;
   kind: "Branch" | "RemoteBranch" | "Tag" | "Head";

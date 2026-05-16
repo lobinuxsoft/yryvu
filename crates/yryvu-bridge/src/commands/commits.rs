@@ -8,7 +8,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::backend::{CombinedDiff, CommitDetail, CommitDiff, GitBackend, ResetMode};
 use crate::repo::commits::{commit_details as commit_details_impl, pick_pinned_head_for_path};
-use crate::repo::hosting::detect_hosting_service;
+use crate::repo::hosting::{detect_hosting_service, parse_repo_identifiers};
 use crate::repo::GixBackend;
 
 /// Streamed batch payload for `graph:batch` events.
@@ -201,6 +201,43 @@ pub async fn get_hosting_service(repo_path: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let path = PathBuf::from(&repo_path);
         Ok::<_, String>(detect_hosting_service(&path).as_str().to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Provider classification + `(owner, repo)` for the active repo's
+/// `origin` remote. Lets the frontend decide whether the PR /
+/// Issues panels can fetch live data and on which provider.
+///
+/// `service` is always one of `"github" | "gitlab" | "bitbucket" |
+/// "gitea" | "unknown"`. `owner` / `repo` are `None` for bare repos,
+/// zero-remote repos, or URLs that don't split cleanly into two path
+/// segments.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepoProviderInfo {
+    pub service: String,
+    pub owner: Option<String>,
+    pub repo: Option<String>,
+}
+
+#[tauri::command]
+pub async fn get_repo_provider_info(repo_path: String) -> Result<RepoProviderInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = PathBuf::from(&repo_path);
+        let service = detect_hosting_service(&path).as_str().to_string();
+        let (owner, repo) = gix::open(&path)
+            .ok()
+            .and_then(|r| crate::repo::hosting::remote_url(&r, "origin"))
+            .and_then(|url| parse_repo_identifiers(&url))
+            .map(|(o, r)| (Some(o), Some(r)))
+            .unwrap_or((None, None));
+        Ok::<_, String>(RepoProviderInfo {
+            service,
+            owner,
+            repo,
+        })
     })
     .await
     .map_err(|e| e.to_string())?

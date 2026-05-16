@@ -48,6 +48,13 @@ export async function submitCloneDialog() {
   cloneDialog.setProgress(null);
   cloneDialog.setSessionId(sessionId);
 
+  // When the active tab is a provider sub-tab (#374), forward the
+  // integration type so the backend can resolve the matching token
+  // from the keyring and inject it into the HTTPS clone — otherwise
+  // private repos fail with no system git credential helper.
+  const tab = cloneDialog.activeTab();
+  const integrationType = tab === "url" ? undefined : tab;
+
   try {
     const finalPath = await cloneRepository({
       sessionId,
@@ -56,6 +63,7 @@ export async function submitCloneDialog() {
       branch,
       depth: Number.isFinite(depth) ? depth : undefined,
       recurseSubmodules: cloneDialog.recurseSubmodules(),
+      integrationType,
       onProgress: (p) => cloneDialog.setProgress(p),
     });
 

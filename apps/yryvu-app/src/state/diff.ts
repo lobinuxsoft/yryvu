@@ -2,7 +2,7 @@
 
 import { createSignal } from "solid-js";
 
-export type MainView = "graph" | "diff";
+export type MainView = "graph" | "diff" | "prDetail" | "issueDetail";
 export const [mainView, setMainView] = createSignal<MainView>("graph");
 
 export type SelectedDiffFile =

@@ -8,6 +8,7 @@ import { isRowMemberOfHoveredRef } from "../hoverDim";
 import { rowWrapperClass } from "../rowClass";
 import { RefPillGroup } from "../RefPills";
 import { ROW_HEIGHT } from "../RowRenderer";
+import { Tooltip } from "../../Tooltip";
 import type { ZoneDeps } from "./types";
 
 /**
@@ -28,25 +29,26 @@ export function BranchZone(props: { deps: ZoneDeps }) {
           style={{ height: `${deps.layout.totalHeight()}px` }}
         >
           <Show when={dirtyFileCount() > 0}>
-            <li
-              class="commit-graph__wip-cell commit-graph__wip-cell--branch"
-              data-active={
-                workdirSelected() || inspectorMode() === "staging"
-                  ? "true"
-                  : "false"
-              }
-              style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
-              onClick={(e) => deps.selection.handleWipClick(e)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  deps.selection.openStaging();
+            <Tooltip text="View working-directory changes">
+              <li
+                class="commit-graph__wip-cell commit-graph__wip-cell--branch"
+                data-active={
+                  workdirSelected() || inspectorMode() === "staging"
+                    ? "true"
+                    : "false"
                 }
-              }}
-              title="View working-directory changes"
-            />
+                style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
+                onClick={(e) => deps.selection.handleWipClick(e)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    deps.selection.openStaging();
+                  }
+                }}
+              />
+            </Tooltip>
           </Show>
           <For each={deps.virtualizer.getVirtualItems()}>
             {(item) => {

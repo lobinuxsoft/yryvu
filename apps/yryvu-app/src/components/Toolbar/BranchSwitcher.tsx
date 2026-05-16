@@ -3,6 +3,7 @@
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
 import { IconChevronDown } from "../Icons";
+import { Tooltip } from "../Tooltip";
 import { type BranchInfo } from "../../ipc";
 import { useBranchOps } from "../../branchOps";
 
@@ -117,6 +118,7 @@ export function BranchSwitcher(props: BranchSwitcherProps) {
               <For each={filtered()}>
                 {(branch) => (
                   <li>
+                    <Tooltip text={branch.full_name}>
                     <button
                       type="button"
                       class="toolbar-switcher__item toolbar-switcher__item--branch"
@@ -125,7 +127,6 @@ export function BranchSwitcher(props: BranchSwitcherProps) {
                       }}
                       role="menuitem"
                       onClick={() => pick(branch)}
-                      title={branch.full_name}
                     >
                       <span class="toolbar-switcher__item-name">{branch.name}</span>
                       <Show when={branch.upstream}>
@@ -139,6 +140,7 @@ export function BranchSwitcher(props: BranchSwitcherProps) {
                         </span>
                       </Show>
                     </button>
+                    </Tooltip>
                   </li>
                 )}
               </For>

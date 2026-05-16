@@ -21,6 +21,7 @@ import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 
 import { IconCheck, IconGear } from "../Icons";
+import { Tooltip } from "../Tooltip";
 import {
   activeColumnSettings,
   commitZoneMode,
@@ -182,16 +183,17 @@ export function ColumnSettingsButton(props: {
   };
 
   return (
-    <button
-      type="button"
-      class="graph-col-settings__btn"
-      ref={(el) => (triggerEl = el)}
-      title="Column settings"
-      aria-label="Column settings"
-      onClick={handleClick}
-    >
-      <IconGear width={14} height={14} />
-    </button>
+    <Tooltip text="Column settings">
+      <button
+        type="button"
+        class="graph-col-settings__btn"
+        ref={(el) => (triggerEl = el)}
+        aria-label="Column settings"
+        onClick={handleClick}
+      >
+        <IconGear width={14} height={14} />
+      </button>
+    </Tooltip>
   );
 }
 

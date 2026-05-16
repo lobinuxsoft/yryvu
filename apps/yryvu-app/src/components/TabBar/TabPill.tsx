@@ -19,6 +19,7 @@
 import { Show } from "solid-js";
 
 import { NfIcon } from "../NfIcon";
+import { Tooltip } from "../Tooltip";
 import { type Tab } from "../../tabs/types";
 import { titleOf } from "./tabTitle";
 
@@ -99,6 +100,7 @@ export function TabPill(props: Props) {
   };
 
   return (
+    <Tooltip text={title()}>
     <div
       class="tab"
       data-transient="true"
@@ -108,7 +110,6 @@ export function TabPill(props: Props) {
       }}
       role="tab"
       aria-selected={props.isActive}
-      title={title()}
       style={{
         transform:
           props.translateX !== 0
@@ -121,16 +122,18 @@ export function TabPill(props: Props) {
       {observeDrag()}
       <span class="tab__title">{title()}</span>
       <Show when={props.tab.type !== "NEW" || props.isActive}>
-        <button
-          class="tab__close"
-          type="button"
-          aria-label={`Close ${title()}`}
-          title="Close tab"
-          onClick={onClickClose}
-        >
-          <NfIcon code="f00d" />
-        </button>
+        <Tooltip text="Close tab">
+          <button
+            class="tab__close"
+            type="button"
+            aria-label={`Close ${title()}`}
+            onClick={onClickClose}
+          >
+            <NfIcon code="f00d" />
+          </button>
+        </Tooltip>
       </Show>
     </div>
+    </Tooltip>
   );
 }

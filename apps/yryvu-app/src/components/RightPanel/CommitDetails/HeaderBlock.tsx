@@ -2,6 +2,8 @@
 
 import { createSignal, For, Show } from "solid-js";
 
+import { Tooltip } from "../../Tooltip";
+
 /**
  * First block of the commit inspector: 6-char SHA + copy button + parent
  * list. 1:1 port of GitKraken's `commit-header` block per
@@ -36,16 +38,17 @@ export function HeaderBlock(props: {
     <div class="commit-detail__header">
       <div class="commit-detail__header-row">
         <span class="commit-detail__header-label">commit</span>
-        <button
-          type="button"
-          class="commit-detail__sha"
-          classList={{ "is-copied": copied() }}
-          onClick={copySha}
-          onBlur={() => setCopied(false)}
-          title={copied() ? "Copied!" : "Copy"}
-        >
-          <code>{props.shortSha}</code>
-        </button>
+        <Tooltip text={copied() ? "Copied!" : "Copy"}>
+          <button
+            type="button"
+            class="commit-detail__sha"
+            classList={{ "is-copied": copied() }}
+            onClick={copySha}
+            onBlur={() => setCopied(false)}
+          >
+            <code>{props.shortSha}</code>
+          </button>
+        </Tooltip>
       </div>
       <Show when={props.parentShas.length > 0}>
         <div class="commit-detail__header-row">
@@ -59,14 +62,15 @@ export function HeaderBlock(props: {
                   <Show when={idx() > 0}>
                     <span class="commit-detail__parents-sep">,</span>
                   </Show>
-                  <button
-                    type="button"
-                    class="commit-detail__parent"
-                    onClick={() => props.onSelectParent(parentSha)}
-                    title="Jump to commit in graph"
-                  >
-                    <code>{parentSha.slice(0, 6)}</code>
-                  </button>
+                  <Tooltip text="Jump to commit in graph">
+                    <button
+                      type="button"
+                      class="commit-detail__parent"
+                      onClick={() => props.onSelectParent(parentSha)}
+                    >
+                      <code>{parentSha.slice(0, 6)}</code>
+                    </button>
+                  </Tooltip>
                 </>
               )}
             </For>

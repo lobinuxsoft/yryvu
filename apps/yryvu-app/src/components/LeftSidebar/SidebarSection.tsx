@@ -8,6 +8,7 @@ import {
   type SectionKey,
 } from "../../state";
 import { IconRefresh } from "../Icons";
+import { Tooltip } from "../Tooltip";
 
 export interface SidebarSectionProps {
   /// Stable identity for this section. Drives shared expand state +
@@ -32,10 +33,10 @@ export function SidebarSection(props: SidebarSectionProps) {
   const expanded = () => expandedSections().has(props.sectionKey);
   return (
     <div class="sidebar__section" data-expanded={expanded() ? "true" : "false"}>
+      <Tooltip text={props.title}>
       <button
         class="sidebar__section-header"
         type="button"
-        title={props.title}
         onClick={() => toggleSectionExpanded(props.sectionKey)}
         onContextMenu={(e) => {
           if (!props.onContextMenu) return;
@@ -49,20 +50,21 @@ export function SidebarSection(props: SidebarSectionProps) {
           <span class="sidebar__section-count">{props.count}</span>
         </Show>
         <Show when={props.onRefresh}>
-          <span
-            class="sidebar__section-refresh"
-            data-spinning={props.refreshing ? "true" : "false"}
-            role="button"
-            tabindex={0}
-            aria-label={`Refresh ${props.title}`}
-            title={`Refresh ${props.title}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!props.refreshing) props.onRefresh?.();
-            }}
-          >
-            <IconRefresh />
-          </span>
+          <Tooltip text={`Refresh ${props.title}`}>
+            <span
+              class="sidebar__section-refresh"
+              data-spinning={props.refreshing ? "true" : "false"}
+              role="button"
+              tabindex={0}
+              aria-label={`Refresh ${props.title}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!props.refreshing) props.onRefresh?.();
+              }}
+            >
+              <IconRefresh />
+            </span>
+          </Tooltip>
         </Show>
         <Show when={props.addable}>
           <span
@@ -79,6 +81,7 @@ export function SidebarSection(props: SidebarSectionProps) {
           </span>
         </Show>
       </button>
+      </Tooltip>
       <div class="sidebar__section-body">{props.children}</div>
     </div>
   );

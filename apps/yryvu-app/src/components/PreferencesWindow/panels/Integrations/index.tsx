@@ -4,9 +4,20 @@ import { createSignal, onMount, type JSX } from "solid-js";
 import { ConnectionForm } from "./ConnectionForm";
 import { SubTabSidebar } from "./SubTabSidebar";
 import { findProvider, PROVIDERS, type IntegrationType } from "./providerTable";
-import { hydrateHostname } from "./selfHostedHostnames";
-import { hydrateConfigured, hydrateConnectedState } from "./tokenStorage";
-import { listConfiguredIntegrations } from "../../../../ipc";
+import { hydrateIntegrationsOnAppStart } from "./tokenStorage";
+
+/// Module-scoped active sub-tab signal so external callers (Clone
+/// dialog's "Connect to <Provider>" CTA, deep-links) can pre-select
+/// a provider before the panel mounts.
+const [activeProvider, setActiveProvider] = createSignal<IntegrationType>(
+  PROVIDERS[0].type,
+);
+
+/// Pre-select the Integrations sub-tab. Pair with `openPreferences("integrations")`
+/// to land on a specific provider's connection form.
+export function setActiveIntegrationProvider(type: IntegrationType): void {
+  setActiveProvider(type);
+}
 
 /**
  * Preferences > Integrations panel root. Composes the provider
@@ -28,32 +39,19 @@ import { listConfiguredIntegrations } from "../../../../ipc";
  * stay in the OS keyring; this panel never holds them.
  */
 export function IntegrationsPanel(): JSX.Element {
-  const [active, setActive] = createSignal<IntegrationType>(PROVIDERS[0].type);
-  const provider = () => findProvider(active());
+  const provider = () => findProvider(activeProvider());
 
+  // App start already hydrated integration states in `AppShell.onMount`
+  // via `hydrateIntegrationsOnAppStart`. Re-run here as a refresh hook
+  // for users who connect/disconnect during a long-lived session and
+  // want the panel reflecting the latest sidecar + keyring state.
   onMount(() => {
-    void (async () => {
-      // Sequential: hydrateConfigured first so the indicator dots
-      // light up immediately; per-provider preflight runs after and
-      // populates the real UserInfo lazily.
-      await hydrateConfigured();
-      for (const p of PROVIDERS) {
-        if (p.isSelfHosted) {
-          void hydrateHostname(p.type);
-        }
-      }
-      const configured = await listConfiguredIntegrations().catch(
-        () => [] as string[],
-      );
-      for (const type of configured) {
-        void hydrateConnectedState(type as IntegrationType);
-      }
-    })();
+    void hydrateIntegrationsOnAppStart();
   });
 
   return (
     <div class="integrations">
-      <SubTabSidebar active={active()} onSelect={setActive} />
+      <SubTabSidebar active={activeProvider()} onSelect={setActiveProvider} />
       <section
         class="integrations__pane"
         role="tabpanel"

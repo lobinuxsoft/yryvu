@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, Match, onCleanup, onMount, Show, Switch } from "solid-js";
 import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -9,7 +9,11 @@ import { About } from "../About";
 import { CommitGraph } from "../CommitGraph";
 import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
+import { CreateIssueDialog } from "../CreateIssueDialog";
+import { CreatePrDialog } from "../CreatePrDialog";
 import { FileDiffTab } from "../FileDiffTab";
+import { IssueDetailPanel } from "../IssueDetail";
+import { PullRequestDetailPanel } from "../PullRequestDetail";
 import { Toolbar } from "../Toolbar";
 import { LeftSidebar } from "../LeftSidebar";
 import { DialogsHost } from "../LeftSidebar/DialogsHost";
@@ -22,6 +26,9 @@ import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
 import { ToastContainer } from "../Notifications";
+import { hydrateIntegrationsOnAppStart } from "../PreferencesWindow/panels/Integrations/tokenStorage";
+import { Tooltip } from "../Tooltip";
+import { wireAnimationMode } from "./animationMode";
 import { IconOpenFolder, IconStar } from "../Icons";
 import { TabBar } from "../TabBar";
 import { BranchOpsProvider, createBranchOps } from "../../branchOps";
@@ -91,6 +98,15 @@ export function AppShell() {
     // fill a REPO tab so the user sees the strip in sync. If both
     // stores are empty, open a NEW tab so the strip isn't blank.
     await hydrateTabsFromPreferences();
+    // Hydrate integration connection states from the backend sidecar +
+    // keyring so the Clone dialog's per-provider sub-tabs (#374) and
+    // the Preferences > Integrations panel see "connected" without
+    // waiting for the user to open Preferences first.
+    void hydrateIntegrationsOnAppStart();
+    // Animation mode wiring (#316). Sets `<html data-animations>`
+    // from `preferences().ui.animations`; subscribes to OS
+    // `prefers-reduced-motion` live for the `system` policy.
+    wireAnimationMode();
     if (tabs().length === 0) {
       const persistedRepo = repoPath();
       if (persistedRepo) {
@@ -207,22 +223,25 @@ export function AppShell() {
     >
       <div class="shell__tabs tabs">
         <div class="tabs__leading">
-          <button
-            class="tabs__leading-btn"
-            classList={{
-              "is-active": currentTabType() === "REPO_MANAGEMENT",
-            }}
-            type="button"
-            title="Repo Management"
-            aria-label="Repo Management"
-            aria-pressed={currentTabType() === "REPO_MANAGEMENT"}
-            onClick={() => void openRepoManagementTab()}
-          >
-            <IconOpenFolder />
-          </button>
-          <button class="tabs__leading-btn" type="button" title="Favorites" disabled>
-            <IconStar />
-          </button>
+          <Tooltip text="Repo Management">
+            <button
+              class="tabs__leading-btn"
+              classList={{
+                "is-active": currentTabType() === "REPO_MANAGEMENT",
+              }}
+              type="button"
+              aria-label="Repo Management"
+              aria-pressed={currentTabType() === "REPO_MANAGEMENT"}
+              onClick={() => void openRepoManagementTab()}
+            >
+              <IconOpenFolder />
+            </button>
+          </Tooltip>
+          <Tooltip text="Favorites">
+            <button class="tabs__leading-btn" type="button" disabled>
+              <IconStar />
+            </button>
+          </Tooltip>
         </div>
         <TabBar />
       </div>
@@ -255,14 +274,26 @@ export function AppShell() {
           }
         >
           <Show when={repoPath()} fallback={<ColdStart />}>
-            <Show when={mainView() === "graph"} fallback={<FileDiffTab />}>
-              <div class="main">
-                <GraphColumnHeaders />
-                <div class="main__graph-host">
-                  <CommitGraph repoPath={repoPath()!} />
+            <Switch
+              fallback={
+                <div class="main">
+                  <GraphColumnHeaders />
+                  <div class="main__graph-host">
+                    <CommitGraph repoPath={repoPath()!} />
+                  </div>
                 </div>
-              </div>
-            </Show>
+              }
+            >
+              <Match when={mainView() === "diff"}>
+                <FileDiffTab />
+              </Match>
+              <Match when={mainView() === "prDetail"}>
+                <PullRequestDetailPanel />
+              </Match>
+              <Match when={mainView() === "issueDetail"}>
+                <IssueDetailPanel />
+              </Match>
+            </Switch>
           </Show>
         </Show>
       </div>
@@ -286,6 +317,8 @@ export function AppShell() {
       <DialogsHost ops={branchOps} />
       <InitDialog />
       <CloneDialog />
+      <CreateIssueDialog />
+      <CreatePrDialog />
       <PreferencesWindow />
       <About />
       <ToastContainer />

@@ -2,6 +2,7 @@
 
 import { createSignal, Show, type JSX } from "solid-js";
 import { notify } from "../../../Notifications";
+import { Tooltip } from "../../../Tooltip";
 import { ConnectButton } from "./ConnectButton";
 import { DisconnectButton } from "./DisconnectButton";
 import { PatEntryDialog } from "./PatEntryDialog";
@@ -233,30 +234,29 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
         </div>
 
         <Show when={acceptsPat() && state().tag === "disconnected"}>
-          <button
-            class="integrations-form__pat-link"
-            type="button"
-            disabled={patBlocked()}
-            title={
-              patBlocked()
-                ? "Configure the instance URL first"
-                : undefined
-            }
-            onClick={handleUsePat}
+          <Tooltip
+            text={patBlocked() ? "Configure the instance URL first" : null}
           >
-            Use {props.provider.tokenIsAppPassword ? "an" : "a"} {tokenLabel()} instead
-          </button>
+            <button
+              class="integrations-form__pat-link"
+              type="button"
+              disabled={patBlocked()}
+              onClick={handleUsePat}
+            >
+              Use {props.provider.tokenIsAppPassword ? "an" : "a"} {tokenLabel()} instead
+            </button>
+          </Tooltip>
         </Show>
 
         <p class="integrations-form__hint">
           {props.provider.cohort === "skip"
-            ? "Trello uses a custom app-key + token flow that chajá does not plan to implement."
+            ? "Trello uses a custom app-key + token flow that yryvu does not plan to implement."
             : props.provider.isSelfHosted && !hostname()
               ? `Enter your ${props.provider.label} instance URL to continue.`
               : props.provider.cohort === "v2"
                 ? "Self-hosted variant — ships in v2 with the custom-hostname plumbing."
                 : props.provider.authType === "OAUTH"
-                  ? `Click Connect to authorize chajá against ${props.provider.label}.`
+                  ? `Click Connect to authorize yryvu against ${props.provider.label}.`
                   : `Click Connect to enter a Personal Access Token for ${props.provider.label}.`}
         </p>
       </div>

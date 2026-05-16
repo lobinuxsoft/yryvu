@@ -24,14 +24,24 @@ export type InlineNode =
   | { kind: "code"; value: string }
   | { kind: "link"; text: string; href: string };
 
+/// Single list item. `checked` is `null` when the item is a normal
+/// bullet, `false` for an unchecked GFM task list item (`- [ ] foo`)
+/// and `true` for a checked one (`- [x] foo` / `- [X] foo`).
+export interface ListItem {
+  checked: boolean | null;
+  inline: InlineNode[];
+}
+
 export type Block =
   | { kind: "h1"; id: string; inline: InlineNode[] }
   | { kind: "h2"; id: string; inline: InlineNode[] }
   | { kind: "h3"; id: string; inline: InlineNode[] }
   | { kind: "p"; inline: InlineNode[] }
-  | { kind: "ul"; items: InlineNode[][] }
+  | { kind: "ul"; items: ListItem[] }
+  | { kind: "ol"; items: ListItem[] }
   | { kind: "pre"; lang: string; code: string }
-  | { kind: "hr" };
+  | { kind: "hr" }
+  | { kind: "bq"; blocks: Block[] };
 
 /// Convert a heading's plain text to an anchor id slug. Periods and
 /// whitespace runs collapse to a single dash, so version numbers like
@@ -98,14 +108,43 @@ export function parseBlocks(markdown: string): Block[] {
       continue;
     }
 
-    // Bullet list — collect consecutive `* ` / `- ` lines.
+    // Bullet list — collect consecutive `* ` / `- ` lines. Items
+    // starting with `[ ]` / `[x]` / `[X]` become GFM task items.
     if (/^[*-]\s+/.test(line)) {
-      const items: InlineNode[][] = [];
+      const items: ListItem[] = [];
       while (i < lines.length && /^[*-]\s+/.test(lines[i])) {
-        items.push(parseInline(lines[i].replace(/^[*-]\s+/, "")));
+        items.push(parseListItem(lines[i].replace(/^[*-]\s+/, "")));
         i += 1;
       }
       blocks.push({ kind: "ul", items });
+      continue;
+    }
+
+    // Ordered list — `1. foo`, `2. bar`. CommonMark requires the
+    // dot-space separator; we don't accept `1 - foo` (renderers like
+    // GitHub treat that as plain text and we mirror that behaviour).
+    if (/^\d+\.\s+/.test(line)) {
+      const items: ListItem[] = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+        items.push(parseListItem(lines[i].replace(/^\d+\.\s+/, "")));
+        i += 1;
+      }
+      blocks.push({ kind: "ol", items });
+      continue;
+    }
+
+    // Blockquote — collect consecutive `>` lines, strip the prefix,
+    // and recursively parse the inner content as its own block tree.
+    // Lazy continuation (a non-`>` line inside a blockquote run)
+    // isn't supported; users wanting multi-paragraph quotes prefix
+    // every line with `>`.
+    if (/^>\s?/.test(line)) {
+      const inner: string[] = [];
+      while (i < lines.length && /^>\s?/.test(lines[i])) {
+        inner.push(lines[i].replace(/^>\s?/, ""));
+        i += 1;
+      }
+      blocks.push({ kind: "bq", blocks: parseBlocks(inner.join("\n")) });
       continue;
     }
 
@@ -115,7 +154,7 @@ export function parseBlocks(markdown: string): Block[] {
     while (
       i < lines.length &&
       lines[i].trim() !== "" &&
-      !/^(#{1,3}\s|[*-]\s|---|```)/.test(lines[i])
+      !/^(#{1,3}\s|[*-]\s|\d+\.\s|>\s?|---|```)/.test(lines[i])
     ) {
       para.push(lines[i]);
       i += 1;
@@ -124,6 +163,19 @@ export function parseBlocks(markdown: string): Block[] {
   }
 
   return blocks;
+}
+
+/// Map a list-item body (already stripped of its bullet/number
+/// marker) to a [`ListItem`]. GFM task lists prefix the body with
+/// `[ ] ` (unchecked), `[x] ` or `[X] ` (checked); everything else is
+/// a normal bullet (`checked: null`).
+function parseListItem(text: string): ListItem {
+  const taskMatch = text.match(/^\[([ xX])\]\s+(.*)$/);
+  if (taskMatch) {
+    const checked = taskMatch[1].toLowerCase() === "x";
+    return { checked, inline: parseInline(taskMatch[2]) };
+  }
+  return { checked: null, inline: parseInline(text) };
 }
 
 /// Inline-level parser. Greedy left-to-right scan, recognizing the

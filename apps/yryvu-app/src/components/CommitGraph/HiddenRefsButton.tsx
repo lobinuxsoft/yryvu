@@ -17,6 +17,7 @@ import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 
 import { IconBranch, IconCloud, IconEye, IconTag } from "../Icons";
+import { Tooltip } from "../Tooltip";
 import type { RefTag } from "../../ipc/commits";
 import { hiddenRefs, setHiddenRef } from "../../state";
 
@@ -121,16 +122,18 @@ export function HiddenRefsButton() {
 
   return (
     <span class="hidden-refs" ref={(el) => (rootEl = el)}>
+      <Tooltip
+        text={
+          disabled()
+            ? "No hidden refs"
+            : `${count()} hidden ref${count() === 1 ? "" : "s"}`
+        }
+      >
       <button
         type="button"
         class="hidden-refs__btn"
         ref={(el) => (triggerEl = el)}
         disabled={disabled()}
-        title={
-          disabled()
-            ? "No hidden refs"
-            : `${count()} hidden ref${count() === 1 ? "" : "s"}`
-        }
         aria-label="Hidden refs"
         onClick={(e) => {
           e.stopPropagation();
@@ -144,6 +147,7 @@ export function HiddenRefsButton() {
           <span class="hidden-refs__count">{count()}</span>
         </Show>
       </button>
+      </Tooltip>
       <Show when={open() && pos() !== null}>
         <Portal>
           <div
@@ -162,17 +166,18 @@ export function HiddenRefsButton() {
                     <span class="hidden-refs__icon">
                       <HiddenRefIcon kind={entry.kind} />
                     </span>
-                    <span class="hidden-refs__name" title={entry.name}>
-                      {entry.name}
-                    </span>
-                    <button
-                      type="button"
-                      class="hidden-refs__restore"
-                      title={`Show '${entry.name}'`}
-                      onClick={() => setHiddenRef(entry.key, false)}
-                    >
-                      Show
-                    </button>
+                    <Tooltip text={entry.name}>
+                      <span class="hidden-refs__name">{entry.name}</span>
+                    </Tooltip>
+                    <Tooltip text={`Show '${entry.name}'`}>
+                      <button
+                        type="button"
+                        class="hidden-refs__restore"
+                        onClick={() => setHiddenRef(entry.key, false)}
+                      >
+                        Show
+                      </button>
+                    </Tooltip>
                   </li>
                 )}
               </For>

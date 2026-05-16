@@ -5,9 +5,11 @@ import { For, Show, createEffect, createMemo, type JSX } from "solid-js";
 import {
   createThemeFromTemplate,
   openThemesFolder,
+  type AnimationMode,
   type ThemeEntry,
 } from "../../../ipc";
 import { preferences, updatePreferences } from "../../../state/preferences";
+import { Tooltip } from "../../Tooltip";
 import {
   colorScheme,
   refetchThemes,
@@ -86,6 +88,33 @@ export function UiPanel(): JSX.Element {
     void openThemesFolder();
   };
 
+  // Tooltip + animation rows (#316). Read straight from `preferences()`
+  // and persist via `updatePreferences` patches — same pattern as theme.
+  const tooltipsEnabled = createMemo<boolean>(
+    () => preferences()?.ui.tooltipsEnabled ?? true,
+  );
+  const tooltipDelayMs = createMemo<number>(
+    () => preferences()?.ui.tooltipDelayMs ?? 500,
+  );
+  const animations = createMemo<AnimationMode>(
+    () => preferences()?.ui.animations ?? "system",
+  );
+
+  const onTooltipsEnabledChange = (e: Event & { currentTarget: HTMLInputElement }) => {
+    void updatePreferences({ ui: { tooltipsEnabled: e.currentTarget.checked } });
+  };
+  const onTooltipDelayChange = (e: Event & { currentTarget: HTMLInputElement }) => {
+    const raw = Number(e.currentTarget.value);
+    if (!Number.isFinite(raw)) return;
+    const clamped = Math.max(0, Math.min(2000, Math.round(raw)));
+    void updatePreferences({ ui: { tooltipDelayMs: clamped } });
+  };
+  const onAnimationsChange = (e: Event & { currentTarget: HTMLSelectElement }) => {
+    void updatePreferences({
+      ui: { animations: e.currentTarget.value as AnimationMode },
+    });
+  };
+
   return (
     <div class="preferences__section-body">
       <h3 class="preferences__section-title">Appearance</h3>
@@ -118,21 +147,24 @@ export function UiPanel(): JSX.Element {
       </div>
 
       <div class="ui-panel__actions">
-        <button
-          type="button"
-          class="ui-panel__btn"
-          onClick={onDuplicateActive}
-          disabled={!activeEntry() || !activeEntry()?.builtIn}
-          title={
+        <Tooltip
+          text={
             activeEntry()?.builtIn === false
               ? "Custom themes can't be used as a template — switch to a built-in first."
-              : undefined
+              : null
           }
         >
-          {activeEntry()
-            ? `Duplicate "${activeEntry()!.name}" as new theme`
-            : "Duplicate active theme"}
-        </button>
+          <button
+            type="button"
+            class="ui-panel__btn"
+            onClick={onDuplicateActive}
+            disabled={!activeEntry() || !activeEntry()?.builtIn}
+          >
+            {activeEntry()
+              ? `Duplicate "${activeEntry()!.name}" as new theme`
+              : "Duplicate active theme"}
+          </button>
+        </Tooltip>
         <button
           type="button"
           class="ui-panel__btn ui-panel__btn--secondary"
@@ -148,6 +180,64 @@ export function UiPanel(): JSX.Element {
         for animations / button shapes / decorative effects. Live reload
         repaints within ~200 ms.
       </p>
+
+      <h3 class="preferences__section-title">Tooltips &amp; motion</h3>
+
+      <div class="ui-panel__field">
+        <label class="ui-panel__checkbox">
+          <input
+            type="checkbox"
+            checked={tooltipsEnabled()}
+            disabled={preferences() === undefined}
+            onChange={onTooltipsEnabledChange}
+          />
+          Show tooltips on hover
+        </label>
+        <p class="ui-panel__helper">
+          When off, hover hints stay invisible; screen readers still
+          read the underlying <code>aria-label</code>.
+        </p>
+      </div>
+
+      <div class="ui-panel__field">
+        <label class="ui-panel__label" for="ui-panel-tooltip-delay">
+          Tooltip delay (ms)
+        </label>
+        <input
+          id="ui-panel-tooltip-delay"
+          type="number"
+          class="ui-panel__select"
+          min="0"
+          max="2000"
+          step="100"
+          value={tooltipDelayMs()}
+          disabled={!tooltipsEnabled() || preferences() === undefined}
+          onChange={onTooltipDelayChange}
+        />
+        <p class="ui-panel__helper">
+          How long to wait before the bubble appears. 0 = instant.
+        </p>
+      </div>
+
+      <div class="ui-panel__field">
+        <label class="ui-panel__label" for="ui-panel-animations">Animations</label>
+        <select
+          id="ui-panel-animations"
+          class="ui-panel__select"
+          value={animations()}
+          disabled={preferences() === undefined}
+          onChange={onAnimationsChange}
+        >
+          <option value="always">Always</option>
+          <option value="system">System (follow OS reduced-motion)</option>
+          <option value="never">Never</option>
+        </select>
+        <p class="ui-panel__helper">
+          <strong>System</strong> honors <code>prefers-reduced-motion</code>
+          live; <strong>Never</strong> kills every transition + animation
+          except loading spinners.
+        </p>
+      </div>
     </div>
   );
 }

@@ -8,6 +8,33 @@ use crate::backend::{BackendError, CombinedDiff, CombinedDiffKind, CommitDiff};
 
 use super::super::common::{diff_to_file_diffs, git2_err, open_git2};
 
+/// Skip `find_similar` rename/copy detection on diffs exceeding this many
+/// deltas. libgit2's similarity scan is O(N²) on file pairs, so on repos like
+/// `eggscape` (~15K dirty files) a WIP diff stalls for several seconds.
+/// GitKraken's saga (`getDiffForOneCommit`) differentiates by mode (EXACT_MATCH
+/// for committed, ALL for WIP); we don't have that luxury on planet-scale
+/// working trees, so we gate by raw delta count instead. 5000 is a starting
+/// heuristic — see issue #177.
+const RENAME_DETECTION_DELTA_LIMIT: usize = 5000;
+
+/// Pure threshold check, factored out so the gate can be exercised without
+/// fabricating a 5000-delta libgit2 fixture.
+fn should_skip_rename_detection(delta_count: usize) -> bool {
+    delta_count > RENAME_DETECTION_DELTA_LIMIT
+}
+
+/// Apply rename/copy similarity detection unless the diff is too large.
+/// Returns `true` when detection was skipped so callers can surface it.
+fn apply_rename_detection(diff: &mut git2::Diff<'_>) -> Result<bool, BackendError> {
+    if should_skip_rename_detection(diff.deltas().len()) {
+        return Ok(true);
+    }
+    let mut find_opts = git2::DiffFindOptions::new();
+    find_opts.renames(true).copies(true);
+    diff.find_similar(Some(&mut find_opts)).map_err(git2_err)?;
+    Ok(false)
+}
+
 pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError> {
     let repo = open_git2(repo_path)?;
     let oid = git2::Oid::from_str(sha).map_err(git2_err)?;
@@ -33,9 +60,7 @@ pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendErr
         .diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), Some(&mut diff_opts))
         .map_err(git2_err)?;
 
-    let mut find_opts = git2::DiffFindOptions::new();
-    find_opts.renames(true).copies(true);
-    diff.find_similar(Some(&mut find_opts)).map_err(git2_err)?;
+    apply_rename_detection(&mut diff)?;
 
     let files = diff_to_file_diffs(&diff)?;
 
@@ -145,9 +170,7 @@ pub fn combined_commit_diff(
     // Renames are only meaningful for tree-to-tree comparisons; running
     // `find_similar` on a workdir diff is also valid (libgit2 supports it) and
     // matches the Single-commit branch's behaviour.
-    let mut find_opts = git2::DiffFindOptions::new();
-    find_opts.renames(true).copies(true);
-    diff.find_similar(Some(&mut find_opts)).map_err(git2_err)?;
+    let rename_detection_skipped = apply_rename_detection(&mut diff)?;
 
     let files = diff_to_file_diffs(&diff)?;
 
@@ -167,5 +190,80 @@ pub fn combined_commit_diff(
         include_workdir,
         shas: shas.to_vec(),
         files,
+        rename_detection_skipped,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::backend::FileStatus;
+    use git2::{Repository, Signature};
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn threshold_boundary_keeps_detection_at_or_below_limit() {
+        assert!(!should_skip_rename_detection(0));
+        assert!(!should_skip_rename_detection(1));
+        assert!(!should_skip_rename_detection(
+            RENAME_DETECTION_DELTA_LIMIT - 1
+        ));
+        assert!(!should_skip_rename_detection(RENAME_DETECTION_DELTA_LIMIT));
+    }
+
+    #[test]
+    fn threshold_boundary_skips_detection_above_limit() {
+        assert!(should_skip_rename_detection(
+            RENAME_DETECTION_DELTA_LIMIT + 1
+        ));
+        assert!(should_skip_rename_detection(usize::MAX));
+    }
+
+    fn commit_all(repo: &Repository, msg: &str, parent: Option<git2::Oid>) -> git2::Oid {
+        let sig = Signature::now("t", "t@e").unwrap();
+        let mut index = repo.index().unwrap();
+        index
+            .add_all(["*"], git2::IndexAddOption::DEFAULT, None)
+            .unwrap();
+        index.write().unwrap();
+        let tree_oid = index.write_tree().unwrap();
+        let tree = repo.find_tree(tree_oid).unwrap();
+        let parents: Vec<git2::Commit<'_>> = parent
+            .into_iter()
+            .map(|oid| repo.find_commit(oid).unwrap())
+            .collect();
+        let parent_refs: Vec<&git2::Commit<'_>> = parents.iter().collect();
+        repo.commit(Some("HEAD"), &sig, &sig, msg, &tree, &parent_refs)
+            .unwrap()
+    }
+
+    #[test]
+    fn small_diff_keeps_renames_and_does_not_flag_skip() {
+        let dir = TempDir::new().unwrap();
+        let repo = Repository::init(dir.path()).unwrap();
+
+        let body = "alpha\nbeta\ngamma\ndelta\n".repeat(8);
+        fs::write(dir.path().join("a.txt"), &body).unwrap();
+        let first = commit_all(&repo, "add a", None);
+
+        fs::remove_file(dir.path().join("a.txt")).unwrap();
+        fs::write(dir.path().join("b.txt"), &body).unwrap();
+        let second = commit_all(&repo, "rename a -> b", Some(first));
+
+        let diff = commit_diff(dir.path(), &second.to_string()).unwrap();
+        assert_eq!(diff.files.len(), 1, "rename should collapse to one entry");
+        assert!(matches!(
+            diff.files[0].status,
+            FileStatus::Renamed | FileStatus::Copied
+        ));
+
+        let combined = combined_commit_diff(dir.path(), &[second.to_string()], false).unwrap();
+        assert!(!combined.rename_detection_skipped);
+        assert_eq!(combined.files.len(), 1);
+        assert!(matches!(
+            combined.files[0].status,
+            FileStatus::Renamed | FileStatus::Copied
+        ));
+    }
 }

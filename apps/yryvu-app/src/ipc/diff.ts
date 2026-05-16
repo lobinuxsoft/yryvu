@@ -70,6 +70,11 @@ export interface CombinedDiff {
   include_workdir: boolean;
   shas: string[];
   files: FileDiff[];
+  /// `true` when the backend skipped rename/copy detection because the diff
+  /// exceeded its delta threshold (~5000). Header copy can surface a "Rename
+  /// detection skipped (large diff)" hint; absent or `false` means renames
+  /// were detected normally. Defaults to `false` for back-compat.
+  rename_detection_skipped?: boolean;
 }
 
 export function getCombinedCommitDiff(

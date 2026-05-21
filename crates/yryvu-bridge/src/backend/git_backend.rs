@@ -12,6 +12,7 @@ use super::types::{
 use crate::repo::commits::AuthorInfo;
 use crate::repo::conflicts::{ConflictDiff3, ConflictListing, ConflictSide, ConflictSource};
 use crate::repo::rebase::interactive::{CommitSummary, RebasePlan, RebaseState};
+use crate::repo::search::{IndexCounts, SearchHit, SearchMode};
 use crate::repo::staging::{
     CommitOptions, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, LineRange, SignConfig, SignFormat,
     WorkingTreeStatus,
@@ -275,6 +276,23 @@ pub trait GitBackend: Send + Sync {
     /// rebase + the yryvu interactive rebase are no-ops here — the
     /// caller advances those flows themselves.
     fn finish_in_progress_op(&self, repo_path: &Path) -> Result<ConflictSource, BackendError>;
+
+    /// Build (or rebuild) the fuzzy-finder index for a repo. Returns
+    /// the per-mode counts so the palette tabs can show "(N)".
+    fn build_search_index(&self, repo_path: &Path) -> Result<IndexCounts, BackendError>;
+
+    /// Drop the cached index — call when refs / worktree / stash list
+    /// change so the next `search_repo` rebuilds lazily.
+    fn invalidate_search_index(&self, repo_path: &Path);
+
+    /// Run a fuzzy query against the cached index.
+    fn search_repo(
+        &self,
+        repo_path: &Path,
+        mode: SearchMode,
+        query: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<SearchHit>, BackendError>;
 
     /// Set or clear the upstream tracking config for `branch_name`.
     /// `Some("origin/main")` tracks a specific remote ref; `None`

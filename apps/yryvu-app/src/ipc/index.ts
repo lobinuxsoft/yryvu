@@ -17,6 +17,7 @@ export * from "./init";
 export * from "./issue_tracker";
 export * from "./merge";
 export * from "./preferences";
+export * from "./rebase";
 export * from "./release_notes";
 export * from "./remote";
 export * from "./repo_management";

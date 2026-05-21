@@ -99,12 +99,12 @@ export function GpgPanel(): JSX.Element {
       await navigator.clipboard.writeText(text);
       notify.success("Public key copied to clipboard", {
         message: "Paste into GitHub → Settings → SSH and GPG keys",
-        category: "preferences",
+        category: "commit",
       });
     } catch (e) {
       notify.error("Could not export public key", {
         message: String(e),
-        category: "preferences",
+        category: "commit",
       });
     }
   }

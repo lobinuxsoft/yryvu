@@ -20,6 +20,7 @@ export * from "./merge";
 export * from "./preferences";
 export * from "./rebase";
 export * from "./release_notes";
+export * from "./search";
 export * from "./remote";
 export * from "./repo_management";
 export * from "./smart_branches";

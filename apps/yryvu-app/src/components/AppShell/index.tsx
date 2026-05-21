@@ -11,6 +11,7 @@ import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
 import { CreateIssueDialog } from "../CreateIssueDialog";
 import { CreatePrDialog } from "../CreatePrDialog";
+import { RebaseInteractiveDialog } from "../RebaseInteractiveDialog";
 import { FileDiffTab } from "../FileDiffTab";
 import { IssueDetailPanel } from "../IssueDetail";
 import { PullRequestDetailPanel } from "../PullRequestDetail";
@@ -319,6 +320,7 @@ export function AppShell() {
       <CloneDialog />
       <CreateIssueDialog />
       <CreatePrDialog />
+      <RebaseInteractiveDialog />
       <PreferencesWindow />
       <About />
       <ToastContainer />

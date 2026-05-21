@@ -5,6 +5,7 @@ import { getRemoteUrl } from "../../ipc";
 import type { ContextMenuItem } from "../../components/ContextMenu";
 import { parseRemoteBranchName } from "../../components/LeftSidebar/helpers";
 import { repoPath, setInspectorMode, setSelection } from "../../state";
+import { openRebaseInteractiveDialog } from "../../components/RebaseInteractiveDialog/state";
 import { notify } from "../../components/Notifications";
 import type { MenuDeps } from "./types";
 
@@ -57,6 +58,18 @@ export function openRemoteContextMenu(
     {
       label: `Rebase current onto '${b.name}'`,
       onSelect: () => void deps.doRebaseCurrentOnto(b.name),
+    },
+    {
+      label: `Interactive rebase onto '${b.name}'…`,
+      onSelect: () => {
+        const path = repoPath();
+        if (!path) return;
+        openRebaseInteractiveDialog({
+          repoPath: path,
+          ontoOid: b.tip_sha,
+          ontoLabel: b.name,
+        });
+      },
     },
     { type: "separator" },
     {

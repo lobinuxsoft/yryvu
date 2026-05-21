@@ -26,7 +26,7 @@ pub(crate) mod hosting;
 pub(crate) mod init;
 mod merge;
 mod patches;
-mod rebase;
+pub(crate) mod rebase;
 pub(crate) mod reflog;
 mod remote;
 pub(crate) mod smart_branches;

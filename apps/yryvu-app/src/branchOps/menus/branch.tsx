@@ -5,7 +5,9 @@ import type { ContextMenuItem } from "../../components/ContextMenu";
 import { setInspectorMode, setSelection } from "../../state";
 import { activePrContext } from "../../state/pull-requests";
 import { openCreatePrDialog } from "../../components/CreatePrDialog/state";
+import { openRebaseInteractiveDialog } from "../../components/RebaseInteractiveDialog/state";
 import { notify } from "../../components/Notifications";
+import { repoPath } from "../../state";
 import type { MenuDeps } from "./types";
 
 /**
@@ -71,6 +73,19 @@ export function openBranchContextMenu(
       label: `Rebase current onto '${b.name}'`,
       disabled: isHead,
       onSelect: () => void deps.doRebaseCurrentOnto(b.name),
+    },
+    {
+      label: `Interactive rebase onto '${b.name}'…`,
+      disabled: isHead,
+      onSelect: () => {
+        const path = repoPath();
+        if (!path) return;
+        openRebaseInteractiveDialog({
+          repoPath: path,
+          ontoOid: b.tip_sha,
+          ontoLabel: b.name,
+        });
+      },
     },
     { type: "separator" },
     {

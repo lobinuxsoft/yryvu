@@ -10,6 +10,7 @@ use super::types::{
     RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
 };
 use crate::repo::commits::AuthorInfo;
+use crate::repo::rebase::interactive::{CommitSummary, RebasePlan, RebaseState};
 use crate::repo::staging::{
     CommitOptions, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, LineRange, SignConfig, SignFormat,
     WorkingTreeStatus,
@@ -198,6 +199,39 @@ pub trait GitBackend: Send + Sync {
         repo_path: &Path,
         target_branch: &str,
     ) -> Result<(), BackendError>;
+
+    /// List commits between HEAD and `upstream` (HEAD-first), as the
+    /// candidate set the interactive-rebase picker shows.
+    fn list_commits_for_rebase(
+        &self,
+        repo_path: &Path,
+        upstream: &str,
+    ) -> Result<Vec<CommitSummary>, BackendError>;
+
+    /// Apply an interactive-rebase plan. Returns the live state (which
+    /// may carry a pause_reason if a step requires user intervention).
+    fn begin_interactive_rebase(
+        &self,
+        repo_path: &Path,
+        plan: RebasePlan,
+    ) -> Result<RebaseState, BackendError>;
+
+    /// Resume a paused interactive rebase (Edit or Conflict).
+    fn continue_interactive_rebase(&self, repo_path: &Path) -> Result<RebaseState, BackendError>;
+
+    /// Drop the current step and continue. Used to bail out of a
+    /// conflict the user can't resolve.
+    fn skip_interactive_rebase_step(&self, repo_path: &Path) -> Result<RebaseState, BackendError>;
+
+    /// Abort an interactive rebase, restoring HEAD to the pre-rebase commit.
+    fn abort_interactive_rebase(&self, repo_path: &Path) -> Result<(), BackendError>;
+
+    /// Read the persisted interactive-rebase state. `None` when no
+    /// rebase is in progress.
+    fn get_interactive_rebase_state(
+        &self,
+        repo_path: &Path,
+    ) -> Result<Option<RebaseState>, BackendError>;
 
     /// Set or clear the upstream tracking config for `branch_name`.
     /// `Some("origin/main")` tracks a specific remote ref; `None`

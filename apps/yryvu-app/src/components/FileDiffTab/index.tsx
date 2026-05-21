@@ -8,7 +8,9 @@ import {
   getStagedDiff,
   getUnstagedDiff,
   stageHunks,
+  stageLines,
   unstageHunks,
+  unstageLines,
   type FileDiff,
 } from "../../ipc";
 import {
@@ -19,7 +21,11 @@ import {
   workingTreeNonce,
 } from "../../state";
 import { Dialog } from "../Dialog";
-import { DiffFileBlock, type HunkStagingActions } from "../DiffView";
+import {
+  DiffFileBlock,
+  type HunkStagingActions,
+  type LineStagingApi,
+} from "../DiffView";
 import { notify } from "../Notifications";
 import { Tooltip } from "../Tooltip";
 
@@ -93,6 +99,44 @@ export function FileDiffTab() {
     };
   }
 
+  async function handleLineOp(
+    op: (
+      p: string,
+      path: string,
+      ranges: { hunkIndex: number; lineIndices: number[] }[],
+    ) => Promise<void>,
+    failTitle: string,
+    hunkIndex: number,
+    lineIndex: number,
+  ) {
+    const p = repoPath();
+    const sel = selection();
+    if (!p || !sel || sel.kind !== "staging") return;
+    try {
+      await op(p, sel.path, [{ hunkIndex, lineIndices: [lineIndex] }]);
+    } catch (err) {
+      notify.error(failTitle, {
+        message: String(err),
+        category: "commit",
+      });
+    }
+    refreshWorkingTree();
+  }
+
+  function lineStagingApi(): LineStagingApi | undefined {
+    const sel = selection();
+    if (!sel || sel.kind !== "staging") return undefined;
+    return {
+      side: sel.side,
+      onApplyLine: (hunkIndex, lineIndex) => {
+        const verb = sel.side === "unstaged" ? stageLines : unstageLines;
+        const title =
+          sel.side === "unstaged" ? "Stage line failed" : "Unstage line failed";
+        void handleLineOp(verb, title, hunkIndex, lineIndex);
+      },
+    };
+  }
+
   async function confirmDiscardHunk() {
     const idx = pendingDiscardHunk();
     setPendingDiscardHunk(null);
@@ -163,6 +207,7 @@ export function FileDiffTab() {
               alwaysExpanded
               viewMode="split"
               stagingActions={stagingActions()}
+              lineStagingApi={lineStagingApi()}
             />
           </Show>
         </Show>

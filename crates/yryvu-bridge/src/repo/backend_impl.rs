@@ -180,6 +180,27 @@ impl GitBackend for GixBackend {
         crate::repo::conflicts::finish_in_progress(repo_path)
     }
 
+    fn build_search_index(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::search::IndexCounts, BackendError> {
+        crate::repo::search::build_index(repo_path)
+    }
+
+    fn invalidate_search_index(&self, repo_path: &Path) {
+        crate::repo::search::invalidate_index(repo_path);
+    }
+
+    fn search_repo(
+        &self,
+        repo_path: &Path,
+        mode: crate::repo::search::SearchMode,
+        query: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<crate::repo::search::SearchHit>, BackendError> {
+        crate::repo::search::search(repo_path, mode, query, limit)
+    }
+
     fn set_upstream(
         &self,
         repo_path: &Path,

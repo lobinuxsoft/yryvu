@@ -281,6 +281,55 @@ fn skip_step_advances_past_conflict() {
 }
 
 #[test]
+fn list_commits_filters_merge_commits() {
+    let (_d, path) = init_repo();
+    let base = commit_file(&path, "base.txt", "base\n", "base");
+    // Create side branch with one commit.
+    let repo = git2::Repository::open(&path).unwrap();
+    repo.branch("side", &repo.find_commit(base).unwrap(), false)
+        .unwrap();
+    repo.set_head("refs/heads/side").unwrap();
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force();
+    repo.checkout_head(Some(&mut checkout)).unwrap();
+    let side_commit = commit_file(&path, "side.txt", "side\n", "side commit");
+    // Back to default branch, add another commit.
+    repo.set_head("refs/heads/master")
+        .or_else(|_| repo.set_head("refs/heads/main"))
+        .unwrap();
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force();
+    repo.checkout_head(Some(&mut checkout)).unwrap();
+    let main_commit = commit_file(&path, "main.txt", "main\n", "main commit");
+    // Create a merge commit on the default branch.
+    let main = repo.find_commit(main_commit).unwrap();
+    let side = repo.find_commit(side_commit).unwrap();
+    let mut idx = repo.merge_commits(&main, &side, None).unwrap();
+    let tree_oid = idx.write_tree_to(&repo).unwrap();
+    let tree = repo.find_tree(tree_oid).unwrap();
+    let sig = git2::Signature::now("Test", "test@example.com").unwrap();
+    let merge_oid = repo
+        .commit(
+            Some("HEAD"),
+            &sig,
+            &sig,
+            "merge side",
+            &tree,
+            &[&main, &side],
+        )
+        .unwrap();
+
+    let listed = list_commits_for_rebase(&path, &base.to_string()).unwrap();
+    let ids: Vec<String> = listed.iter().map(|c| c.oid.clone()).collect();
+    assert!(
+        !ids.contains(&merge_oid.to_string()),
+        "merge commit should be filtered out"
+    );
+    assert!(ids.contains(&main_commit.to_string()));
+    assert!(ids.contains(&side_commit.to_string()));
+}
+
+#[test]
 fn validate_rejects_leading_squash() {
     let (_d, path, base, [a, _b, _c]) = three_commit_topic();
     let plan = RebasePlan {

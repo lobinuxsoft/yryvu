@@ -28,6 +28,12 @@ pub use plan::{CommitSummary, PauseReason, RebaseAction, RebasePlan, RebaseState
 /// commits that are NOT reachable from `upstream`. Order is HEAD-first
 /// (`revwalk` default — parent-after-child) which matches what the
 /// picker UI shows (newest at the top).
+///
+/// Merge commits (parent_count > 1) are filtered out — `git rebase`
+/// drops them by default (only `--rebase-merges` preserves them) and
+/// `libgit2`'s cherry-pick refuses to apply them without an explicit
+/// mainline parent. Re-creating the merge on a different base is a
+/// rewrite, not a rebase, so dropping is the correct default.
 pub fn list_commits_for_rebase(
     repo_path: &Path,
     upstream: &str,
@@ -47,6 +53,9 @@ pub fn list_commits_for_rebase(
     for oid in revwalk {
         let oid = oid.map_err(git2_err)?;
         let commit = repo.find_commit(oid).map_err(git2_err)?;
+        if commit.parent_count() > 1 {
+            continue;
+        }
         let oid_str = oid.to_string();
         let short_oid = oid_str.chars().take(7).collect();
         out.push(CommitSummary {

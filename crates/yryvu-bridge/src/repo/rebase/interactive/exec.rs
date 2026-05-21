@@ -65,7 +65,13 @@ fn validate_plan(repo: &Repository, plan: &RebasePlan) -> Result<Oid, BackendErr
     repo.find_commit(onto_oid).map_err(git2_err)?;
     for step in &plan.steps {
         let oid = Oid::from_str(&step.oid).map_err(git2_err)?;
-        repo.find_commit(oid).map_err(git2_err)?;
+        let commit = repo.find_commit(oid).map_err(git2_err)?;
+        if commit.parent_count() > 1 && step.action != RebaseAction::Drop {
+            return Err(BackendError::Git(anyhow!(
+                "step {} is a merge commit; mark it Drop or exclude it",
+                &step.oid[..7.min(step.oid.len())]
+            )));
+        }
         if step.action == RebaseAction::Reword && step.new_message.is_none() {
             return Err(BackendError::Git(anyhow!(
                 "reword step {} missing new_message",

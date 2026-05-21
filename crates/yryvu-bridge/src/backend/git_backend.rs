@@ -10,6 +10,7 @@ use super::types::{
     RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
 };
 use crate::repo::commits::AuthorInfo;
+use crate::repo::conflicts::{ConflictDiff3, ConflictListing, ConflictSide, ConflictSource};
 use crate::repo::rebase::interactive::{CommitSummary, RebasePlan, RebaseState};
 use crate::repo::staging::{
     CommitOptions, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, LineRange, SignConfig, SignFormat,
@@ -232,6 +233,48 @@ pub trait GitBackend: Send + Sync {
         &self,
         repo_path: &Path,
     ) -> Result<Option<RebaseState>, BackendError>;
+
+    /// Enumerate the conflicted paths in the index, plus the source
+    /// of the in-progress op (merge / cherry-pick / rebase / …).
+    fn list_conflicts(&self, repo_path: &Path) -> Result<ConflictListing, BackendError>;
+
+    /// Read the three merge stages plus the worktree content of a
+    /// conflicted file. Missing stages stay `None`.
+    fn read_conflict_diff3(
+        &self,
+        repo_path: &Path,
+        path: &str,
+    ) -> Result<ConflictDiff3, BackendError>;
+
+    /// Resolve a conflict by accepting one of the original sides
+    /// (ours / theirs / base).
+    fn accept_conflict_side(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        side: ConflictSide,
+    ) -> Result<(), BackendError>;
+
+    /// Resolve a conflict by writing arbitrary content (the user's
+    /// manual edit) to the worktree + index stage 0.
+    fn resolve_conflict_with_content(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        content: &str,
+    ) -> Result<(), BackendError>;
+
+    /// Read the worktree file and stage it as resolved. Refuses if
+    /// conflict markers (`<<<<<<<` / `=======` / `>>>>>>>` / `|||||||`)
+    /// are still present in the content.
+    fn mark_conflict_resolved(&self, repo_path: &Path, path: &str) -> Result<(), BackendError>;
+
+    /// Once every path is resolved, finalise the in-progress op:
+    /// commit the merge / cherry-pick / revert and clean
+    /// `MERGE_HEAD` / `CHERRY_PICK_HEAD` / `REVERT_HEAD`. Native
+    /// rebase + the yryvu interactive rebase are no-ops here — the
+    /// caller advances those flows themselves.
+    fn finish_in_progress_op(&self, repo_path: &Path) -> Result<ConflictSource, BackendError>;
 
     /// Set or clear the upstream tracking config for `branch_name`.
     /// `Some("origin/main")` tracks a specific remote ref; `None`

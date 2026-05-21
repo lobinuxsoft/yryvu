@@ -3,6 +3,8 @@
 import { For, Show } from "solid-js";
 
 import type { RepoStateInfo } from "../../ipc";
+import { openConflictDialog } from "../ConflictResolverDialog/state";
+import { repoPath } from "../../state";
 import { stateBannerTitle } from "./helpers";
 
 export interface StateBannerProps {
@@ -26,6 +28,18 @@ export function StateBanner(props: StateBannerProps) {
         </ul>
       </Show>
       <div class="sidebar__state-banner__actions">
+        <Show when={props.state.conflict_paths.length > 0}>
+          <button
+            class="dialog__btn"
+            type="button"
+            onClick={() => {
+              const path = repoPath();
+              if (path) openConflictDialog({ repoPath: path });
+            }}
+          >
+            Resolve conflicts
+          </button>
+        </Show>
         <Show when={props.state.kind === "merge"}>
           <button
             class="dialog__btn dialog__btn--danger"
@@ -35,7 +49,7 @@ export function StateBanner(props: StateBannerProps) {
             Abort merge
           </button>
         </Show>
-        <Show when={props.state.kind !== "merge"}>
+        <Show when={props.state.kind !== "merge" && props.state.conflict_paths.length === 0}>
           <span class="sidebar__state-banner__hint">
             Abort support for this state is not implemented yet — resolve
             manually or via CLI.

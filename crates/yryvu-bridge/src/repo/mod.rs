@@ -20,6 +20,7 @@ pub(crate) mod clone;
 pub(crate) mod commits;
 pub(crate) mod common;
 pub(crate) mod config_custom;
+pub(crate) mod conflicts;
 pub(crate) mod gitflow;
 pub(crate) mod hooks;
 pub(crate) mod hosting;

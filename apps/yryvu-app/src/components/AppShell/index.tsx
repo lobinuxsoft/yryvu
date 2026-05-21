@@ -11,6 +11,7 @@ import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
 import { CreateIssueDialog } from "../CreateIssueDialog";
 import { CreatePrDialog } from "../CreatePrDialog";
+import { ConflictResolverDialog } from "../ConflictResolverDialog";
 import { RebaseInteractiveDialog } from "../RebaseInteractiveDialog";
 import { FileDiffTab } from "../FileDiffTab";
 import { IssueDetailPanel } from "../IssueDetail";
@@ -321,6 +322,7 @@ export function AppShell() {
       <CreateIssueDialog />
       <CreatePrDialog />
       <RebaseInteractiveDialog />
+      <ConflictResolverDialog />
       <PreferencesWindow />
       <About />
       <ToastContainer />

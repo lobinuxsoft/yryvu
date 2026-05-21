@@ -3,6 +3,7 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { Dialog } from "../Dialog";
+import { openConflictDialog } from "../ConflictResolverDialog/state";
 import {
   closeRebaseInteractiveDialog,
   rebaseInteractiveDialog,
@@ -187,6 +188,18 @@ function ProgressView() {
           Paused on a <strong>conflict</strong>. Resolve and stage the changes, then continue.
         </Show>
       </p>
+      <Show when={stateRow()?.pause_reason === "conflict"}>
+        <button
+          type="button"
+          class="dialog-btn dialog-btn--secondary"
+          onClick={() => {
+            const repo = rebaseInteractiveDialog.repoPath();
+            if (repo) openConflictDialog({ repoPath: repo });
+          }}
+        >
+          Open Conflict Resolver
+        </button>
+      </Show>
       <ol class="rebase-step-list">
         <For each={stateRow()?.steps ?? []}>
           {(step, idx) => (

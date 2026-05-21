@@ -136,6 +136,50 @@ impl GitBackend for GixBackend {
         rebase::interactive::get_state(repo_path)
     }
 
+    fn list_conflicts(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::conflicts::ConflictListing, BackendError> {
+        crate::repo::conflicts::list_conflicts(repo_path)
+    }
+
+    fn read_conflict_diff3(
+        &self,
+        repo_path: &Path,
+        path: &str,
+    ) -> Result<crate::repo::conflicts::ConflictDiff3, BackendError> {
+        crate::repo::conflicts::read_diff3(repo_path, path)
+    }
+
+    fn accept_conflict_side(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        side: crate::repo::conflicts::ConflictSide,
+    ) -> Result<(), BackendError> {
+        crate::repo::conflicts::accept_side(repo_path, path, side)
+    }
+
+    fn resolve_conflict_with_content(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        content: &str,
+    ) -> Result<(), BackendError> {
+        crate::repo::conflicts::resolve_with_content(repo_path, path, content)
+    }
+
+    fn mark_conflict_resolved(&self, repo_path: &Path, path: &str) -> Result<(), BackendError> {
+        crate::repo::conflicts::mark_resolved(repo_path, path)
+    }
+
+    fn finish_in_progress_op(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::conflicts::ConflictSource, BackendError> {
+        crate::repo::conflicts::finish_in_progress(repo_path)
+    }
+
     fn set_upstream(
         &self,
         repo_path: &Path,

@@ -9,6 +9,7 @@ use super::types::{
     BranchInfo, CombinedDiff, CommitDiff, FileDiff, MergeResult, MergeStrategy, PushOptions,
     RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
 };
+use crate::repo::commits::AuthorInfo;
 use crate::repo::staging::{
     CommitOptions, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, LineRange, SignConfig, SignFormat,
     WorkingTreeStatus,
@@ -341,6 +342,15 @@ pub trait GitBackend: Send + Sync {
     /// drives the GPG preferences panel's "pick a key" surface. Returns
     /// an empty Vec when gpg is missing or the keyring is empty.
     fn list_gpg_keys(&self) -> Result<Vec<GpgKeyInfo>, BackendError>;
+
+    /// Walk up to `limit` recent commits and return unique authors
+    /// ordered by frequency. Drives the commit panel's "Add Co-Authors"
+    /// picker. Returns an empty Vec on an unborn / empty repo.
+    fn recent_authors(
+        &self,
+        repo_path: &Path,
+        limit: usize,
+    ) -> Result<Vec<AuthorInfo>, BackendError>;
 
     /// Generate a fresh OpenPGP signing key via `gpg --batch --gen-key`.
     /// Mirrors GitKraken's `GPGPreferences-GpgGenerateKey` action: RSA

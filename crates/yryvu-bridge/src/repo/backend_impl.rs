@@ -10,7 +10,7 @@ use std::path::Path;
 use graph_core::Commit;
 
 use crate::backend::{
-    BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff,
+    AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff,
     GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange, MergeResult,
     MergeStrategy, PushOptions, RepoStateInfo, ResetMode, SignConfig, SignFormat, StashInfo,
     SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
@@ -404,6 +404,14 @@ impl GitBackend for GixBackend {
 
     fn list_gpg_keys(&self) -> Result<Vec<GpgKeyInfo>, BackendError> {
         staging::list_gpg_keys()
+    }
+
+    fn recent_authors(
+        &self,
+        repo_path: &Path,
+        limit: usize,
+    ) -> Result<Vec<AuthorInfo>, BackendError> {
+        commits::recent_authors(repo_path, limit)
     }
 
     fn generate_gpg_key(&self, req: &GenerateKeyRequest) -> Result<GeneratedKey, BackendError> {

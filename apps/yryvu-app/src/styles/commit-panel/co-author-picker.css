@@ -1,0 +1,100 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Co-author picker — sits between the commit message form and the
+   Commit Options block. Toggle button reveals a list of recent authors;
+   click on a row appends a `Co-authored-by` trailer to the commit
+   description. */
+
+.co-author-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.co-author-picker__toggle {
+  align-self: flex-start;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--fg-2);
+  background: transparent;
+  border: 1px solid var(--bg-3);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 100ms ease, border-color 100ms ease,
+    color 100ms ease;
+}
+
+.co-author-picker__toggle:hover:not(:disabled) {
+  background: var(--bg-2);
+  border-color: var(--accent);
+  color: var(--fg-1);
+}
+
+.co-author-picker__toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.co-author-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg-1);
+}
+
+.co-author-picker__item {
+  margin: 0;
+}
+
+.co-author-picker__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.co-author-picker__row:hover {
+  background: var(--bg-2);
+}
+
+.co-author-picker__name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.co-author-picker__email {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+.co-author-picker__count {
+  font-size: 10px;
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.co-author-picker__empty {
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--fg-3);
+  text-align: center;
+}

@@ -121,6 +121,7 @@ pub fn run() {
             yryvu_bridge::commands::set_signing_key,
             yryvu_bridge::commands::export_gpg_public_key,
             yryvu_bridge::commands::list_gpg_keys,
+            yryvu_bridge::commands::recent_authors,
             yryvu_bridge::commands::get_hosting_service,
             yryvu_bridge::commands::get_repo_provider_info,
             yryvu_bridge::commands::smart_visible_refs,

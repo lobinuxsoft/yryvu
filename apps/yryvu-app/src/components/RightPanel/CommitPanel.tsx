@@ -47,6 +47,7 @@ import {
   buildTreeFromPaths,
   collectDirPaths,
 } from "../FileList/treeBuild";
+import { CoAuthorPicker } from "./CoAuthorPicker";
 import { CommitButton } from "./CommitButton";
 import { CommitMessage } from "./CommitMessage";
 import { CommitOptionsBlock } from "./CommitOptionsBlock";
@@ -373,6 +374,12 @@ export function CommitPanel(props: CommitPanelProps) {
           description={commitDescription()}
           onSummaryChange={setCommitMessage}
           onDescriptionChange={setCommitDescription}
+        />
+
+        <CoAuthorPicker
+          repoPath={repoPath() ?? ""}
+          description={commitDescription()}
+          onChange={setCommitDescription}
         />
 
         <CommitOptionsBlock

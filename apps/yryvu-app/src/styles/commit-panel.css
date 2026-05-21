@@ -4,5 +4,6 @@
    chrome (panel + sections), then form, then options, then submit. */
 @import "./commit-panel/shell.css";
 @import "./commit-panel/form.css";
+@import "./commit-panel/co-author-picker.css";
 @import "./commit-panel/options.css";
 @import "./commit-panel/submit.css";

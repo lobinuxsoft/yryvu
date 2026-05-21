@@ -69,3 +69,20 @@
   color: var(--fg-3);
   font-family: var(--font-mono);
 }
+
+.commit-panel__option-action {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--info);
+  background: transparent;
+  border: 1px solid var(--info);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.commit-panel__option-action:hover {
+  background: color-mix(in srgb, var(--info) 18%, transparent);
+}

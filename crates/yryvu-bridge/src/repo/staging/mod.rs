@@ -35,6 +35,7 @@
 mod commit;
 mod diff;
 mod partial;
+mod sign;
 mod stage;
 mod status;
 mod types;
@@ -45,6 +46,10 @@ pub use commit::{
 pub use diff::{diff_staged, diff_unstaged};
 pub use partial::{
     discard_hunks, discard_lines, stage_hunks, stage_lines, unstage_hunks, unstage_lines, LineRange,
+};
+pub use sign::{
+    export_gpg_public_key, generate_gpg_key, inspect_config as inspect_sign_config, list_gpg_keys,
+    set_signing_key, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, SignConfig, SignFormat,
 };
 pub use stage::{discard_paths, stage_all, stage_files, unstage_all, unstage_files};
 pub use status::{dirty_summary, working_tree_status};

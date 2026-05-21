@@ -14,9 +14,10 @@ use crate::backend::FileStatus;
 ///   never runs pre-commit / commit-msg hooks. The field is accepted for
 ///   API parity with GK but is a no-op — commits always behave as if the
 ///   flag were set.
-/// * `gpg_sign = true` returns `BackendError::NotImplemented` for now:
-///   signing requires shelling out to `gpg` or a GPG-agent bridge, which
-///   is tracked in a separate preferences-gated issue.
+/// * `gpg_sign = true` routes through [`super::sign`], which shells out
+///   to `gpg` or `ssh-keygen -Y sign` per `gpg.format`. Requires
+///   `user.signingkey` set in git config (returns a descriptive error
+///   otherwise).
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitOptions {
@@ -34,8 +35,9 @@ pub struct CommitOptions {
     /// never invoked.
     #[serde(default)]
     pub skip_hooks: bool,
-    /// GPG-sign the commit. Currently unimplemented; passing `true`
-    /// returns `BackendError::NotImplemented`.
+    /// Sign the commit via the repo's configured signer (OpenPGP via
+    /// `gpg` or SSH via `ssh-keygen -Y sign`, picked by `gpg.format`).
+    /// Requires `user.signingkey` set in git config.
     #[serde(default)]
     pub gpg_sign: bool,
 }

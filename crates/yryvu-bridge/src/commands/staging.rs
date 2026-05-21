@@ -2,7 +2,10 @@
 
 use std::path::PathBuf;
 
-use crate::backend::{CommitOptions, FileDiff, GitBackend, LineRange, WorkingTreeStatus};
+use crate::backend::{
+    CommitOptions, FileDiff, GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange,
+    SignConfig, SignFormat, WorkingTreeStatus,
+};
 use crate::repo::GixBackend;
 
 #[tauri::command]
@@ -232,6 +235,59 @@ pub async fn discard_lines(
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .discard_lines(&PathBuf::from(&repo_path), &path, &ranges)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn commit_sign_config(repo_path: String) -> Result<SignConfig, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .commit_sign_config(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn generate_gpg_key(req: GenerateKeyRequest) -> Result<GeneratedKey, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend.generate_gpg_key(&req).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn export_gpg_public_key(selector: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .export_gpg_public_key(&selector)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn list_gpg_keys() -> Result<Vec<GpgKeyInfo>, String> {
+    tauri::async_runtime::spawn_blocking(|| GixBackend.list_gpg_keys().map_err(|e| e.to_string()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn set_signing_key(
+    repo_path: String,
+    key: String,
+    format: SignFormat,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .set_signing_key(&PathBuf::from(&repo_path), &key, format)
             .map_err(|e| e.to_string())
     })
     .await

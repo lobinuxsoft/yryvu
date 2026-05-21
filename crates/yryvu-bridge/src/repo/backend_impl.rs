@@ -10,8 +10,9 @@ use std::path::Path;
 use graph_core::Commit;
 
 use crate::backend::{
-    BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff, GitBackend,
-    LineRange, MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, StashInfo,
+    AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff,
+    GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange, MergeResult,
+    MergeStrategy, PushOptions, RepoStateInfo, ResetMode, SignConfig, SignFormat, StashInfo,
     SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
 };
 
@@ -391,6 +392,39 @@ impl GitBackend for GixBackend {
         ranges: &[LineRange],
     ) -> Result<(), BackendError> {
         staging::discard_lines(repo_path, path, ranges)
+    }
+
+    fn commit_sign_config(&self, repo_path: &Path) -> Result<SignConfig, BackendError> {
+        staging::inspect_sign_config(repo_path)
+    }
+
+    fn export_gpg_public_key(&self, selector: &str) -> Result<String, BackendError> {
+        staging::export_gpg_public_key(selector)
+    }
+
+    fn list_gpg_keys(&self) -> Result<Vec<GpgKeyInfo>, BackendError> {
+        staging::list_gpg_keys()
+    }
+
+    fn recent_authors(
+        &self,
+        repo_path: &Path,
+        limit: usize,
+    ) -> Result<Vec<AuthorInfo>, BackendError> {
+        commits::recent_authors(repo_path, limit)
+    }
+
+    fn generate_gpg_key(&self, req: &GenerateKeyRequest) -> Result<GeneratedKey, BackendError> {
+        staging::generate_gpg_key(req)
+    }
+
+    fn set_signing_key(
+        &self,
+        repo_path: &Path,
+        key: &str,
+        format: SignFormat,
+    ) -> Result<(), BackendError> {
+        staging::set_signing_key(repo_path, key, format)
     }
 
     fn create_commit(

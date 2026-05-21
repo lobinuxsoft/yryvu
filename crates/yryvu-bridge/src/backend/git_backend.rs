@@ -9,7 +9,7 @@ use super::types::{
     BranchInfo, CombinedDiff, CommitDiff, FileDiff, MergeResult, MergeStrategy, PushOptions,
     RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
 };
-use crate::repo::staging::{CommitOptions, WorkingTreeStatus};
+use crate::repo::staging::{CommitOptions, LineRange, WorkingTreeStatus};
 
 /// Shared surface every Git backend must implement.
 ///
@@ -271,6 +271,57 @@ pub trait GitBackend: Send + Sync {
     /// snap back to HEAD, untracked files are removed. The index is not
     /// touched.
     fn discard_paths(&self, repo_path: &Path, paths: &[String]) -> Result<(), BackendError>;
+
+    /// Stage only the selected hunks of `path`. Forward-applies a synthetic
+    /// patch to the index; the workdir is unchanged.
+    fn stage_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError>;
+
+    /// Unstage only the selected hunks of `path`, rolling those changes
+    /// back to HEAD in the index.
+    fn unstage_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError>;
+
+    /// Discard only the selected hunks of `path` from the workdir. The
+    /// caller MUST confirm — there is no undo.
+    fn discard_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError>;
+
+    /// Stage only the selected lines (per-hunk indices) of `path`.
+    fn stage_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError>;
+
+    /// Unstage only the selected lines of `path`.
+    fn unstage_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError>;
+
+    /// Discard only the selected lines of `path` from the workdir.
+    fn discard_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError>;
 
     /// Write a commit (or amend HEAD) from the bundled options. Returns the
     /// new commit SHA.

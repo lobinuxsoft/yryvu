@@ -11,8 +11,8 @@ use graph_core::Commit;
 
 use crate::backend::{
     BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff, GitBackend,
-    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo,
-    TagInfo, WorkingTreeStatus, WorktreeInfo,
+    LineRange, MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, StashInfo,
+    SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
 };
 
 use super::{
@@ -337,6 +337,60 @@ impl GitBackend for GixBackend {
 
     fn discard_paths(&self, repo_path: &Path, paths: &[String]) -> Result<(), BackendError> {
         staging::discard_paths(repo_path, paths)
+    }
+
+    fn stage_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError> {
+        staging::stage_hunks(repo_path, path, hunk_indices)
+    }
+
+    fn unstage_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError> {
+        staging::unstage_hunks(repo_path, path, hunk_indices)
+    }
+
+    fn discard_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError> {
+        staging::discard_hunks(repo_path, path, hunk_indices)
+    }
+
+    fn stage_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError> {
+        staging::stage_lines(repo_path, path, ranges)
+    }
+
+    fn unstage_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError> {
+        staging::unstage_lines(repo_path, path, ranges)
+    }
+
+    fn discard_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError> {
+        staging::discard_lines(repo_path, path, ranges)
     }
 
     fn create_commit(

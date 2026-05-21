@@ -18,6 +18,11 @@ import yaml from "highlight.js/lib/languages/yaml";
 import { createSignal, For, type JSX, Show } from "solid-js";
 
 import type { CommitDiff, DiffLine, FileDiff, FileStatus } from "../../ipc";
+import { HunkActions, type HunkStagingActions } from "./HunkActions";
+import { LineActions, type LineStagingApi } from "./LineActions";
+import { pairLines, SplitLineRow } from "./SplitView";
+
+export type { HunkStagingActions, LineStagingApi };
 
 hljs.registerLanguage("bash", bash);
 hljs.registerLanguage("css", css);
@@ -129,6 +134,14 @@ export interface DiffFileBlockProps {
    * (old on the left, new on the right); better for wide surfaces.
    */
   viewMode?: DiffViewMode;
+  /// When present, renders Stage/Unstage/Discard buttons in each hunk
+  /// header. Absent (commit diffs, historical views) means read-only.
+  stagingActions?: HunkStagingActions;
+  /// When present, renders inline `+`/`−` glyphs on each changed line
+  /// to stage/unstage that single line. Independent from
+  /// `stagingActions`: a tab usually passes both, but commit diffs pass
+  /// neither.
+  lineStagingApi?: LineStagingApi;
 }
 
 export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
@@ -192,20 +205,41 @@ export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
             data-view-mode={props.viewMode ?? "unified"}
           >
             <For each={props.file.hunks}>
-              {(hunk) => (
+              {(hunk, hunkIdx) => (
                 <div class="diff-hunk">
-                  <div class="diff-hunk__header">{hunk.header}</div>
+                  <div class="diff-hunk__header">
+                    <span class="diff-hunk__range">{hunk.header}</span>
+                    <Show when={props.stagingActions}>
+                      <HunkActions
+                        index={hunkIdx()}
+                        actions={props.stagingActions!}
+                      />
+                    </Show>
+                  </div>
                   <Show
                     when={props.viewMode === "split"}
                     fallback={
                       <For each={hunk.lines}>
-                        {(line) => <DiffLineRow line={line} language={lang()} />}
+                        {(line, lineIdx) => (
+                          <DiffLineRow
+                            line={line}
+                            language={lang()}
+                            hunkIndex={hunkIdx()}
+                            lineIndex={lineIdx()}
+                            lineStagingApi={props.lineStagingApi}
+                          />
+                        )}
                       </For>
                     }
                   >
                     <For each={pairLines(hunk.lines)}>
                       {(pair) => (
-                        <SplitLineRow pair={pair} language={lang()} />
+                        <SplitLineRow
+                          pair={pair}
+                          hunkIndex={hunkIdx()}
+                          highlight={(c) => highlightLine(c, lang())}
+                          lineStagingApi={props.lineStagingApi}
+                        />
                       )}
                     </For>
                   </Show>
@@ -230,10 +264,26 @@ export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
   );
 }
 
-function DiffLineRow(props: { line: DiffLine; language?: string }): JSX.Element {
+function DiffLineRow(props: {
+  line: DiffLine;
+  language?: string;
+  hunkIndex: number;
+  lineIndex: number;
+  lineStagingApi?: LineStagingApi;
+}): JSX.Element {
   const html = () => highlightLine(props.line.content, props.language);
   return (
     <div class="diff-line" data-kind={props.line.kind}>
+      <span class="diff-line__gutter">
+        <Show when={props.lineStagingApi}>
+          <LineActions
+            line={props.line}
+            hunkIndex={props.hunkIndex}
+            lineIndex={props.lineIndex}
+            api={props.lineStagingApi!}
+          />
+        </Show>
+      </span>
       <span class="diff-line__no diff-line__no--old">
         {props.line.old_line_no ?? ""}
       </span>
@@ -248,71 +298,6 @@ function DiffLineRow(props: { line: DiffLine; language?: string }): JSX.Element 
   );
 }
 
-interface SplitPair {
-  left: DiffLine | null;
-  right: DiffLine | null;
-}
-
-/**
- * Walk unified-diff lines and pair them into split-view rows.
- * Context lines go to both columns. A block of N removed followed by M added
- * is zipped: rows 1..min(N,M) pair them, rows beyond one side get `null` on
- * the other. This matches the GitKraken side-by-side behaviour.
- */
-function pairLines(lines: DiffLine[]): SplitPair[] {
-  const rows: SplitPair[] = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    if (line.kind === "context") {
-      rows.push({ left: line, right: line });
-      i++;
-      continue;
-    }
-    const removed: DiffLine[] = [];
-    const added: DiffLine[] = [];
-    while (i < lines.length && lines[i].kind === "removed") {
-      removed.push(lines[i]);
-      i++;
-    }
-    while (i < lines.length && lines[i].kind === "added") {
-      added.push(lines[i]);
-      i++;
-    }
-    const pairs = Math.max(removed.length, added.length);
-    for (let j = 0; j < pairs; j++) {
-      rows.push({
-        left: removed[j] ?? null,
-        right: added[j] ?? null,
-      });
-    }
-  }
-  return rows;
-}
-
-function SplitLineRow(props: {
-  pair: SplitPair;
-  language?: string;
-}): JSX.Element {
-  const leftHtml = () =>
-    props.pair.left ? highlightLine(props.pair.left.content, props.language) : "";
-  const rightHtml = () =>
-    props.pair.right ? highlightLine(props.pair.right.content, props.language) : "";
-  const leftKind = () => props.pair.left?.kind ?? "empty";
-  const rightKind = () => props.pair.right?.kind ?? "empty";
-  return (
-    <div class="diff-split-row">
-      <div class="diff-split-cell" data-kind={leftKind()}>
-        <span class="diff-line__no">{props.pair.left?.old_line_no ?? ""}</span>
-        <span class="diff-line__content" innerHTML={leftHtml()} />
-      </div>
-      <div class="diff-split-cell" data-kind={rightKind()}>
-        <span class="diff-line__no">{props.pair.right?.new_line_no ?? ""}</span>
-        <span class="diff-line__content" innerHTML={rightHtml()} />
-      </div>
-    </div>
-  );
-}
 
 interface DiffViewProps {
   diff?: CommitDiff;

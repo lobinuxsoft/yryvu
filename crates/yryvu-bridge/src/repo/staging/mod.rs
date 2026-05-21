@@ -35,6 +35,7 @@
 mod commit;
 mod diff;
 mod partial;
+mod sign;
 mod stage;
 mod status;
 mod types;

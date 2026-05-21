@@ -5,6 +5,7 @@ use std::path::Path;
 use crate::backend::BackendError;
 
 use super::super::common::{git2_err, open_git2};
+use super::sign;
 use super::types::CommitOptions;
 
 /// Compose the final commit message from `summary` + optional `description`
@@ -36,10 +37,6 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
     let message = compose_message(&opts.summary, &opts.description)
         .ok_or_else(|| BackendError::Git(anyhow::anyhow!("commit message cannot be empty")))?;
 
-    if opts.gpg_sign {
-        return Err(BackendError::NotImplemented("gpg commit signing"));
-    }
-
     let repo = open_git2(repo_path)?;
     let signature = repo.signature().map_err(git2_err)?;
 
@@ -54,16 +51,27 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
         let head_commit = head.peel_to_commit().map_err(git2_err)?;
         let old_sha = head_commit.id().to_string();
 
-        let new_oid = head_commit
-            .amend(
-                Some("HEAD"),
-                None,
-                Some(&signature),
-                None,
-                Some(&message),
-                Some(&tree),
-            )
-            .map_err(git2_err)?;
+        let new_oid = if opts.gpg_sign {
+            let parents: Vec<git2::Commit> = (0..head_commit.parent_count())
+                .filter_map(|i| head_commit.parent(i).ok())
+                .collect();
+            let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
+            write_signed_commit(&repo, &signature, &message, &tree, &parent_refs)?
+        } else {
+            head_commit
+                .amend(
+                    Some("HEAD"),
+                    None,
+                    Some(&signature),
+                    None,
+                    Some(&message),
+                    Some(&tree),
+                )
+                .map_err(git2_err)?
+        };
+        if opts.gpg_sign {
+            move_head_to(&repo, new_oid, "yryvu: amend (signed)")?;
+        }
         let new_sha = new_oid.to_string();
         crate::undo_log::record_op_best_effort(
             repo_path,
@@ -85,8 +93,12 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
     let parent_sha = parents.first().map(|c| c.id().to_string());
     let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
 
-    let new_oid = repo
-        .commit(
+    let new_oid = if opts.gpg_sign {
+        let oid = write_signed_commit(&repo, &signature, &message, &tree, &parent_refs)?;
+        move_head_to(&repo, oid, "yryvu: commit (signed)")?;
+        oid
+    } else {
+        repo.commit(
             Some("HEAD"),
             &signature,
             &signature,
@@ -94,7 +106,8 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
             &tree,
             &parent_refs,
         )
-        .map_err(git2_err)?;
+        .map_err(git2_err)?
+    };
     let new_sha = new_oid.to_string();
 
     crate::undo_log::record_op_best_effort(
@@ -106,6 +119,52 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
     );
 
     Ok(new_sha)
+}
+
+/// Build the commit content via `commit_create_buffer`, shell out to
+/// gpg / ssh-keygen for the signature, then materialise the new commit
+/// with `commit_signed`. The caller updates HEAD afterwards (libgit2's
+/// signed-commit path does not advance any ref).
+fn write_signed_commit(
+    repo: &git2::Repository,
+    signature: &git2::Signature<'_>,
+    message: &str,
+    tree: &git2::Tree<'_>,
+    parents: &[&git2::Commit<'_>],
+) -> Result<git2::Oid, BackendError> {
+    let buf = repo
+        .commit_create_buffer(signature, signature, message, tree, parents)
+        .map_err(git2_err)?;
+    let content = std::str::from_utf8(&buf)
+        .map_err(|e| BackendError::Git(anyhow::anyhow!("commit buffer not valid utf-8: {e}")))?;
+    let sig = sign::sign_bytes(repo, content.as_bytes())?;
+    repo.commit_signed(content, &sig, Some("gpgsig"))
+        .map_err(git2_err)
+}
+
+/// Force HEAD (and its currently-checked-out branch ref, if any) to
+/// point at `oid`. Used after `commit_signed`, which writes the commit
+/// object but does not advance any ref.
+fn move_head_to(
+    repo: &git2::Repository,
+    oid: git2::Oid,
+    reflog_msg: &str,
+) -> Result<(), BackendError> {
+    let head_ref = repo.head().ok();
+    match head_ref {
+        Some(r) if r.is_branch() => {
+            let mut branch_ref = repo
+                .find_reference(r.name().unwrap_or("HEAD"))
+                .map_err(git2_err)?;
+            branch_ref.set_target(oid, reflog_msg).map_err(git2_err)?;
+        }
+        _ => {
+            // Detached HEAD or unborn branch — point HEAD directly.
+            repo.reference("HEAD", oid, true, reflog_msg)
+                .map_err(git2_err)?;
+        }
+    }
+    Ok(())
 }
 
 pub fn commit_staged(repo_path: &Path, message: &str) -> Result<String, BackendError> {

@@ -13,7 +13,7 @@ use anyhow::anyhow;
 use crate::backend::BackendError;
 use crate::undo_log::clear_log_best_effort;
 
-use super::common::{git2_err, open_git2};
+use super::super::common::{git2_err, open_git2};
 
 /// Rebase the current branch onto `target_branch`. Equivalent to
 /// `git rebase <target_branch>` from HEAD.

@@ -95,6 +95,47 @@ impl GitBackend for GixBackend {
         rebase::rebase_current_onto(repo_path, target_branch)
     }
 
+    fn list_commits_for_rebase(
+        &self,
+        repo_path: &Path,
+        upstream: &str,
+    ) -> Result<Vec<crate::repo::rebase::interactive::CommitSummary>, BackendError> {
+        rebase::interactive::list_commits_for_rebase(repo_path, upstream)
+    }
+
+    fn begin_interactive_rebase(
+        &self,
+        repo_path: &Path,
+        plan: crate::repo::rebase::interactive::RebasePlan,
+    ) -> Result<crate::repo::rebase::interactive::RebaseState, BackendError> {
+        rebase::interactive::begin_rebase(repo_path, plan)
+    }
+
+    fn continue_interactive_rebase(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::rebase::interactive::RebaseState, BackendError> {
+        rebase::interactive::continue_rebase(repo_path)
+    }
+
+    fn skip_interactive_rebase_step(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::rebase::interactive::RebaseState, BackendError> {
+        rebase::interactive::skip_step(repo_path)
+    }
+
+    fn abort_interactive_rebase(&self, repo_path: &Path) -> Result<(), BackendError> {
+        rebase::interactive::abort_rebase(repo_path)
+    }
+
+    fn get_interactive_rebase_state(
+        &self,
+        repo_path: &Path,
+    ) -> Result<Option<crate::repo::rebase::interactive::RebaseState>, BackendError> {
+        rebase::interactive::get_state(repo_path)
+    }
+
     fn set_upstream(
         &self,
         repo_path: &Path,

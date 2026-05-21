@@ -8,6 +8,7 @@ export * from "./branches";
 export * from "./cliImport";
 export * from "./clone";
 export * from "./commits";
+export * from "./conflicts";
 export * from "./integrationStorage";
 export * from "./pr_detail";
 export * from "./diff";

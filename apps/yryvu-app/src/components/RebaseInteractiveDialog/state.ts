@@ -220,6 +220,7 @@ async function abortRun() {
 
 export const rebaseInteractiveDialog = {
   open,
+  repoPath,
   ontoLabel,
   rows,
   submitting,

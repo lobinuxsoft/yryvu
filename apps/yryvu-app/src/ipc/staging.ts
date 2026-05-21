@@ -103,3 +103,64 @@ export function commitAndPush(
 ): Promise<string> {
   return invoke<string>("commit_and_push", { repoPath, options });
 }
+
+/// One slice of changed lines within a hunk for partial line-level
+/// staging. `lineIndices` references positions into `DiffHunk.lines`
+/// (0-based); only `added` / `removed` entries are honored backend-side
+/// — `context` indices are silently ignored.
+export interface LineRange {
+  hunkIndex: number;
+  lineIndices: number[];
+}
+
+export function stageHunks(
+  repoPath: string,
+  path: string,
+  hunkIndices: number[]
+): Promise<void> {
+  return invoke<void>("stage_hunks", { repoPath, path, hunkIndices });
+}
+
+export function unstageHunks(
+  repoPath: string,
+  path: string,
+  hunkIndices: number[]
+): Promise<void> {
+  return invoke<void>("unstage_hunks", { repoPath, path, hunkIndices });
+}
+
+/// Destructive — discards the selected hunks from the workdir. Caller
+/// MUST confirm with the user beforehand (there is no undo).
+export function discardHunks(
+  repoPath: string,
+  path: string,
+  hunkIndices: number[]
+): Promise<void> {
+  return invoke<void>("discard_hunks", { repoPath, path, hunkIndices });
+}
+
+export function stageLines(
+  repoPath: string,
+  path: string,
+  ranges: LineRange[]
+): Promise<void> {
+  return invoke<void>("stage_lines", { repoPath, path, ranges });
+}
+
+export function unstageLines(
+  repoPath: string,
+  path: string,
+  ranges: LineRange[]
+): Promise<void> {
+  return invoke<void>("unstage_lines", { repoPath, path, ranges });
+}
+
+/// Destructive — discards the selected lines from the workdir. Caller
+/// MUST confirm with the user beforehand.
+export function discardLines(
+  repoPath: string,
+  path: string,
+  ranges: LineRange[]
+): Promise<void> {
+  return invoke<void>("discard_lines", { repoPath, path, ranges });
+}

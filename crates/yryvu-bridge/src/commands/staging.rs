@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::backend::{CommitOptions, FileDiff, GitBackend, WorkingTreeStatus};
+use crate::backend::{CommitOptions, FileDiff, GitBackend, LineRange, WorkingTreeStatus};
 use crate::repo::GixBackend;
 
 #[tauri::command]
@@ -142,6 +142,96 @@ pub async fn commit_and_push(repo_path: String, options: CommitOptions) -> Resul
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .commit_and_push(&PathBuf::from(&repo_path), &options)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn stage_hunks(
+    repo_path: String,
+    path: String,
+    hunk_indices: Vec<usize>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stage_hunks(&PathBuf::from(&repo_path), &path, &hunk_indices)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn unstage_hunks(
+    repo_path: String,
+    path: String,
+    hunk_indices: Vec<usize>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .unstage_hunks(&PathBuf::from(&repo_path), &path, &hunk_indices)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn discard_hunks(
+    repo_path: String,
+    path: String,
+    hunk_indices: Vec<usize>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .discard_hunks(&PathBuf::from(&repo_path), &path, &hunk_indices)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn stage_lines(
+    repo_path: String,
+    path: String,
+    ranges: Vec<LineRange>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .stage_lines(&PathBuf::from(&repo_path), &path, &ranges)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn unstage_lines(
+    repo_path: String,
+    path: String,
+    ranges: Vec<LineRange>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .unstage_lines(&PathBuf::from(&repo_path), &path, &ranges)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn discard_lines(
+    repo_path: String,
+    path: String,
+    ranges: Vec<LineRange>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .discard_lines(&PathBuf::from(&repo_path), &path, &ranges)
             .map_err(|e| e.to_string())
     })
     .await

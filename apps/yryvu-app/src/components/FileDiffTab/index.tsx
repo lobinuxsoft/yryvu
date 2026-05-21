@@ -1,20 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createResource, Show } from "solid-js";
+import { createSignal, createResource, Show } from "solid-js";
 
 import {
+  discardHunks,
   getCommitDiff,
   getStagedDiff,
   getUnstagedDiff,
+  stageHunks,
+  unstageHunks,
   type FileDiff,
 } from "../../ipc";
 import {
   closeDiffTab,
+  refreshWorkingTree,
   repoPath,
   selectedDiffFile,
   workingTreeNonce,
 } from "../../state";
-import { DiffFileBlock } from "../DiffView";
+import { Dialog } from "../Dialog";
+import { DiffFileBlock, type HunkStagingActions } from "../DiffView";
+import { notify } from "../Notifications";
 import { Tooltip } from "../Tooltip";
 
 async function loadDiff(
@@ -44,8 +50,62 @@ export function FileDiffTab() {
     async ([p, sel]) => await loadDiff(p, sel)
   );
 
+  // Hunk index queued for destructive discard. `null` = dialog closed.
+  const [pendingDiscardHunk, setPendingDiscardHunk] = createSignal<
+    number | null
+  >(null);
+
   const selection = () => selectedDiffFile();
   const targetPath = () => selection()?.path;
+
+  async function handleHunkOp(
+    op: (
+      p: string,
+      path: string,
+      hunkIndices: number[],
+    ) => Promise<void>,
+    failTitle: string,
+    hunkIndex: number,
+  ) {
+    const p = repoPath();
+    const sel = selection();
+    if (!p || !sel || sel.kind !== "staging") return;
+    try {
+      await op(p, sel.path, [hunkIndex]);
+    } catch (err) {
+      notify.error(failTitle, {
+        message: String(err),
+        category: "commit",
+      });
+    }
+    refreshWorkingTree();
+  }
+
+  function stagingActions(): HunkStagingActions | undefined {
+    const sel = selection();
+    if (!sel || sel.kind !== "staging") return undefined;
+    return {
+      side: sel.side,
+      onStageHunk: (i) => handleHunkOp(stageHunks, "Stage hunk failed", i),
+      onUnstageHunk: (i) =>
+        handleHunkOp(unstageHunks, "Unstage hunk failed", i),
+      onDiscardHunk: (i) => setPendingDiscardHunk(i),
+    };
+  }
+
+  async function confirmDiscardHunk() {
+    const idx = pendingDiscardHunk();
+    setPendingDiscardHunk(null);
+    if (idx === null) return;
+    await handleHunkOp(discardHunks, "Discard hunk failed", idx);
+  }
+
+  const discardHunkHeader = () => {
+    const idx = pendingDiscardHunk();
+    if (idx === null) return "";
+    const hunk = file()?.hunks[idx];
+    return hunk?.header ?? "";
+  };
 
   const subtitle = () => {
     const sel = selection();
@@ -102,10 +162,47 @@ export function FileDiffTab() {
               headless
               alwaysExpanded
               viewMode="split"
+              stagingActions={stagingActions()}
             />
           </Show>
         </Show>
       </div>
+
+      <Dialog
+        open={pendingDiscardHunk() !== null}
+        title="Discard hunk changes?"
+        onClose={() => setPendingDiscardHunk(null)}
+        footer={
+          <>
+            <button
+              class="dialog__btn"
+              type="button"
+              data-dismiss
+              onClick={() => setPendingDiscardHunk(null)}
+            >
+              Cancel
+            </button>
+            <button
+              class="dialog__btn dialog__btn--danger"
+              type="button"
+              onClick={() => void confirmDiscardHunk()}
+            >
+              Discard
+            </button>
+          </>
+        }
+      >
+        <p>
+          This will permanently discard unstaged changes to{" "}
+          <code>{targetPath()}</code>
+          <Show when={discardHunkHeader()}>
+            {" "}
+            in hunk <code>{discardHunkHeader()}</code>
+          </Show>
+          . Are you sure you want to continue?
+        </p>
+        <p class="dialog__warning">This action cannot be undone.</p>
+      </Dialog>
     </div>
   );
 }

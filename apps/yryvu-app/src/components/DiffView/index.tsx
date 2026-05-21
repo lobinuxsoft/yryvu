@@ -18,6 +18,9 @@ import yaml from "highlight.js/lib/languages/yaml";
 import { createSignal, For, type JSX, Show } from "solid-js";
 
 import type { CommitDiff, DiffLine, FileDiff, FileStatus } from "../../ipc";
+import { HunkActions, type HunkStagingActions } from "./HunkActions";
+
+export type { HunkStagingActions };
 
 hljs.registerLanguage("bash", bash);
 hljs.registerLanguage("css", css);
@@ -129,6 +132,9 @@ export interface DiffFileBlockProps {
    * (old on the left, new on the right); better for wide surfaces.
    */
   viewMode?: DiffViewMode;
+  /// When present, renders Stage/Unstage/Discard buttons in each hunk
+  /// header. Absent (commit diffs, historical views) means read-only.
+  stagingActions?: HunkStagingActions;
 }
 
 export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
@@ -192,9 +198,17 @@ export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
             data-view-mode={props.viewMode ?? "unified"}
           >
             <For each={props.file.hunks}>
-              {(hunk) => (
+              {(hunk, hunkIdx) => (
                 <div class="diff-hunk">
-                  <div class="diff-hunk__header">{hunk.header}</div>
+                  <div class="diff-hunk__header">
+                    <span class="diff-hunk__range">{hunk.header}</span>
+                    <Show when={props.stagingActions}>
+                      <HunkActions
+                        index={hunkIdx()}
+                        actions={props.stagingActions!}
+                      />
+                    </Show>
+                  </div>
                   <Show
                     when={props.viewMode === "split"}
                     fallback={

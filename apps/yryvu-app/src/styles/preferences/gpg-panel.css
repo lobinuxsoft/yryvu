@@ -7,3 +7,52 @@
 .gpg-panel__sub-heading {
   margin-top: 24px;
 }
+
+.gpg-panel__actions {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.gpg-panel__keyring {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+
+.gpg-panel__keyring-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 80ms ease, background 80ms ease;
+}
+
+.gpg-panel__keyring-row:hover {
+  border-color: var(--accent);
+}
+
+.gpg-panel__keyring-row[data-selected="true"] {
+  border-color: var(--info);
+  background: color-mix(in srgb, var(--info) 12%, var(--bg-2));
+}
+
+.gpg-panel__keyring-uid {
+  font-size: 12px;
+}
+
+.gpg-panel__keyring-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-3);
+}

@@ -7,3 +7,8 @@ import { createSignal } from "solid-js";
 export const [commitMessage, setCommitMessage] = createSignal("");
 export const [commitDescription, setCommitDescription] = createSignal("");
 export const [amendEnabled, setAmendEnabled] = createSignal(false);
+
+/// User intent to sign the next commit. Defaults pulled from
+/// `preferences().gpg.signCommitsByDefault` on repo open; respects
+/// the user's manual toggle thereafter. Cleared on successful commit.
+export const [signCommitEnabled, setSignCommitEnabled] = createSignal(false);

@@ -9,7 +9,10 @@ use super::types::{
     BranchInfo, CombinedDiff, CommitDiff, FileDiff, MergeResult, MergeStrategy, PushOptions,
     RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
 };
-use crate::repo::staging::{CommitOptions, LineRange, WorkingTreeStatus};
+use crate::repo::staging::{
+    CommitOptions, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, LineRange, SignConfig, SignFormat,
+    WorkingTreeStatus,
+};
 
 /// Shared surface every Git backend must implement.
 ///
@@ -321,6 +324,40 @@ pub trait GitBackend: Send + Sync {
         repo_path: &Path,
         path: &str,
         ranges: &[LineRange],
+    ) -> Result<(), BackendError>;
+
+    /// Snapshot the repo's signing config (format + key presence +
+    /// resolved signer binary). Drives the commit panel's Sign toggle
+    /// preflight: when `key` is `None`, the toggle is rendered disabled
+    /// with a hint pointing the user to `user.signingkey`.
+    fn commit_sign_config(&self, repo_path: &Path) -> Result<SignConfig, BackendError>;
+
+    /// Export an OpenPGP public key as armored text — any selector
+    /// `gpg --export` understands (fingerprint, key id, email). Used
+    /// by the GPG preferences panel's "Copy public key" button.
+    fn export_gpg_public_key(&self, selector: &str) -> Result<String, BackendError>;
+
+    /// Enumerate the OpenPGP secret keys in the user's gpg keyring —
+    /// drives the GPG preferences panel's "pick a key" surface. Returns
+    /// an empty Vec when gpg is missing or the keyring is empty.
+    fn list_gpg_keys(&self) -> Result<Vec<GpgKeyInfo>, BackendError>;
+
+    /// Generate a fresh OpenPGP signing key via `gpg --batch --gen-key`.
+    /// Mirrors GitKraken's `GPGPreferences-GpgGenerateKey` action: RSA
+    /// 4096, 2-year expiry, name + email from the request. Returns the
+    /// fingerprint, short key id, and armored public key (for pasting
+    /// into GitHub / GitLab). Does not modify any repo config — call
+    /// [`set_signing_key`] separately to wire the new key into a repo.
+    fn generate_gpg_key(&self, req: &GenerateKeyRequest) -> Result<GeneratedKey, BackendError>;
+
+    /// Write `user.signingkey` + `gpg.format` into the repo's local git
+    /// config. Used right after [`generate_gpg_key`] so the very next
+    /// commit picks the new key up.
+    fn set_signing_key(
+        &self,
+        repo_path: &Path,
+        key: &str,
+        format: SignFormat,
     ) -> Result<(), BackendError>;
 
     /// Write a commit (or amend HEAD) from the bundled options. Returns the

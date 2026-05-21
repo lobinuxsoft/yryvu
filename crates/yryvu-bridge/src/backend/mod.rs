@@ -17,5 +17,8 @@ pub use errors::BackendError;
 pub use git_backend::GitBackend;
 pub use types::*;
 
-pub use crate::repo::staging::{CommitOptions, LineRange, WorkingTreeChange, WorkingTreeStatus};
+pub use crate::repo::staging::{
+    CommitOptions, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, LineRange, SignConfig, SignFormat,
+    WorkingTreeChange, WorkingTreeStatus,
+};
 pub use crate::repo::GixBackend;

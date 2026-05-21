@@ -1,8 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, createMemo, on, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  on,
+  Show,
+} from "solid-js";
 
-import { getHeadCommitMessage, type WorkingTreeStatus } from "../../ipc";
+import {
+  getCommitSignConfig,
+  getHeadCommitMessage,
+  type SignConfig,
+  type WorkingTreeStatus,
+} from "../../ipc";
 import type { FileDiff } from "../../ipc/diff";
 import type { WorkingTreeChange } from "../../ipc/staging";
 import {
@@ -10,17 +22,15 @@ import {
   commitDescription,
   commitMessage,
   openStagingDiffTab,
-  pendingCommitOptionsExpanded,
+  preferences,
   repoPath,
   selectedDiffFile,
   setAmendEnabled,
   setCommitDescription,
   setCommitMessage,
-  setPendingCommitOptionsExpanded,
-  setSkipHooksEnabled,
+  setSignCommitEnabled,
   setStagedFilesCollapsed,
   setUnstagedFilesCollapsed,
-  skipHooksEnabled,
   stagedFilesCollapsed,
   unstagedFilesCollapsed,
 } from "../../state";
@@ -39,6 +49,7 @@ import {
 } from "../FileList/treeBuild";
 import { CommitButton } from "./CommitButton";
 import { CommitMessage } from "./CommitMessage";
+import { CommitOptionsBlock } from "./CommitOptionsBlock";
 
 export interface CommitPanelProps {
   status: WorkingTreeStatus | undefined;
@@ -78,6 +89,33 @@ function toFileDiff(change: WorkingTreeChange): FileDiff {
 export function CommitPanel(props: CommitPanelProps) {
   const unstaged = () => props.status?.unstaged ?? [];
   const staged = () => props.status?.staged ?? [];
+
+  // Signing-config preflight. Re-runs on repo change AND on
+  // `signConfigNonce` bumps (triggered after in-app key generation so
+  // the toggle flips from disabled → enabled without a reload).
+  const [signConfigNonce, setSignConfigNonce] = createSignal(0);
+  const [signConfig] = createResource<SignConfig | undefined, [string, number]>(
+    () => [repoPath() ?? "", signConfigNonce()] as [string, number],
+    async ([p]) => {
+      if (!p) return undefined;
+      try {
+        return await getCommitSignConfig(p);
+      } catch (e) {
+        console.error("commit_sign_config failed", e);
+        return undefined;
+      }
+    },
+  );
+
+  // Default the sign toggle from preferences once both the user pref
+  // and the repo signing config are available. Honors the per-session
+  // override after that (the user clicking the checkbox wins).
+  createEffect(() => {
+    const cfg = signConfig();
+    const pref = preferences()?.gpg.signCommitsByDefault ?? false;
+    if (cfg && cfg.key && pref) setSignCommitEnabled(true);
+  });
+
   const stagedCount = () => staged().length;
   const canCommit = () =>
     (stagedCount() > 0 || amendEnabled()) &&
@@ -337,48 +375,13 @@ export function CommitPanel(props: CommitPanelProps) {
           onDescriptionChange={setCommitDescription}
         />
 
-        <div class="commit-panel__options">
-          <button
-            class="commit-panel__options-toggle"
-            type="button"
-            aria-expanded={pendingCommitOptionsExpanded()}
-            onClick={() => setPendingCommitOptionsExpanded((v) => !v)}
-          >
-            <span
-              class="commit-panel__options-chevron"
-              data-collapsed={pendingCommitOptionsExpanded() ? "false" : "true"}
-            >
-              ▸
-            </span>
-            Commit Options
-          </button>
-          <Show when={pendingCommitOptionsExpanded()}>
-            <div class="commit-panel__options-body">
-              <label class="commit-panel__option">
-                <input
-                  type="checkbox"
-                  checked={skipHooksEnabled()}
-                  onInput={(e) =>
-                    setSkipHooksEnabled(e.currentTarget.checked)
-                  }
-                />
-                <span>Skip pre-commit hooks</span>
-                <Tooltip text="libgit2 never runs hooks; this flag is plumbed for future gix migration">
-                  <span class="commit-panel__option-hint">
-                    (no-op on current backend)
-                  </span>
-                </Tooltip>
-              </label>
-              <label class="commit-panel__option" data-disabled="true">
-                <input type="checkbox" disabled />
-                <span>Sign with GPG</span>
-                <Tooltip text="GPG signing is not yet wired — tracked in a separate issue">
-                  <span class="commit-panel__option-hint">(coming soon)</span>
-                </Tooltip>
-              </label>
-            </div>
-          </Show>
-        </div>
+        <CommitOptionsBlock
+          signConfig={signConfig()}
+          repoPath={repoPath() ?? null}
+          defaultName={signConfig()?.userName ?? ""}
+          defaultEmail={signConfig()?.userEmail ?? ""}
+          onKeyGenerated={() => setSignConfigNonce((n) => n + 1)}
+        />
 
         <CommitButton
           label={submitLabel()}

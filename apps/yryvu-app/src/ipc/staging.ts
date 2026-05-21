@@ -164,3 +164,78 @@ export function discardLines(
 ): Promise<void> {
   return invoke<void>("discard_lines", { repoPath, path, ranges });
 }
+
+export type SignFormat = "open-pgp" | "ssh";
+
+/// Snapshot of the repo's signing config — mirrors
+/// `yryvu_bridge::backend::SignConfig`. `key === null` means
+/// `user.signingkey` is not set; the commit panel renders the Sign
+/// toggle disabled with a hint pointing the user to git config.
+export interface SignConfig {
+  format: SignFormat;
+  key: string | null;
+  program: string;
+  userName: string | null;
+  userEmail: string | null;
+}
+
+export function getCommitSignConfig(repoPath: string): Promise<SignConfig> {
+  return invoke<SignConfig>("commit_sign_config", { repoPath });
+}
+
+/// Request payload for `generate_gpg_key`. Empty `passphrase` skips
+/// protection (`%no-protection` in the gpg batch recipe); non-empty
+/// loops through gpg's loopback pinentry.
+export interface GenerateKeyRequest {
+  name: string;
+  email: string;
+  passphrase: string;
+}
+
+export interface GeneratedKey {
+  keyId: string;
+  fingerprint: string;
+  publicKeyArmored: string;
+}
+
+/// Spawn `gpg --batch --gen-key` with RSA 4096 / 2y expiry — mirrors
+/// GitKraken's `GPGPreferences-GpgGenerateKey` action. Returns the new
+/// fingerprint, short key id, and armored public key (ready to paste
+/// into GitHub's "Add new GPG key" form).
+export function generateGpgKey(
+  req: GenerateKeyRequest
+): Promise<GeneratedKey> {
+  return invoke<GeneratedKey>("generate_gpg_key", { req });
+}
+
+/// Export an existing public key as armored text. Accepts any selector
+/// `gpg --export` understands — fingerprint, long key id, short key id,
+/// or email. Used by the GPG preferences panel's "Copy public key"
+/// button so users can grab a previously-generated key on demand.
+export function exportGpgPublicKey(selector: string): Promise<string> {
+  return invoke<string>("export_gpg_public_key", { selector });
+}
+
+export interface GpgKeyInfo {
+  keyId: string;
+  fingerprint: string;
+  uid: string;
+}
+
+/// List OpenPGP secret keys present in the user's gpg keyring. Empty
+/// list means either gpg is missing or no keys are configured —
+/// preferences UI offers the "Generate new GPG Key" path in that case.
+export function listGpgKeys(): Promise<GpgKeyInfo[]> {
+  return invoke<GpgKeyInfo[]>("list_gpg_keys");
+}
+
+/// Write `user.signingkey` + `gpg.format` into the repo's local git
+/// config. Called automatically after a successful generate so the
+/// next commit picks the new key up.
+export function setSigningKey(
+  repoPath: string,
+  key: string,
+  format: SignFormat
+): Promise<void> {
+  return invoke<void>("set_signing_key", { repoPath, key, format });
+}

@@ -5,6 +5,57 @@ format is maintained by [release-please](https://github.com/googleapis/release-p
 each merged `feat:` or `fix:` commit on `main` produces a release PR
 that updates this file.
 
+## [0.1.3](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.1.2...yryvu-v0.1.3) (2026-05-16)
+
+
+### Features
+
+* **clone:** provider sub-tabs + reusable ProgressBar ([#374](https://github.com/lobinuxsoft/yryvu/issues/374)) ([326c73d](https://github.com/lobinuxsoft/yryvu/commit/326c73d89331417b2f134bb3eb315166e3fc9749))
+* **clone:** provider sub-tabs with grouped repo dropdown + reusable ProgressBar ([#374](https://github.com/lobinuxsoft/yryvu/issues/374)) ([86f6125](https://github.com/lobinuxsoft/yryvu/commit/86f612577e76756855541543018b1bc5de33ccbf))
+* **gitea:** PR detail + merge form via REST v1 ([#95](https://github.com/lobinuxsoft/yryvu/issues/95) [#96](https://github.com/lobinuxsoft/yryvu/issues/96)) ([09f7c11](https://github.com/lobinuxsoft/yryvu/commit/09f7c11c4a0be099e47ab107505dfdae44144ab7))
+* **gitea:** PR detail + merge form via REST v1 ([#95](https://github.com/lobinuxsoft/yryvu/issues/95) [#96](https://github.com/lobinuxsoft/yryvu/issues/96)) ([14dec22](https://github.com/lobinuxsoft/yryvu/commit/14dec22680c17eeeb26ae21c7a93841027989e6b))
+* **gitea:** PR list panel — Gitea / Forgejo via REST v1 ([#17](https://github.com/lobinuxsoft/yryvu/issues/17)) ([f6fdeb5](https://github.com/lobinuxsoft/yryvu/commit/f6fdeb5c7fa1f0a2ea87da1ad58eef4f24ad758f))
+* **gitea:** PR list panel — replicates GitHub/GitLab pattern over Gitea REST v1 ([#17](https://github.com/lobinuxsoft/yryvu/issues/17)) ([802a223](https://github.com/lobinuxsoft/yryvu/commit/802a223382dd547bb3146011308a9922f5647f68))
+* **github:** chip + badge components for PR row ([#360](https://github.com/lobinuxsoft/yryvu/issues/360)) ([87a031d](https://github.com/lobinuxsoft/yryvu/commit/87a031de84db205580d1cd8ca350700f2fadcde5))
+* **github:** extend PullRequestSummary with labels/assignees/reviewers ([227a695](https://github.com/lobinuxsoft/yryvu/commit/227a695bb33672c753ba0a8a27bc4fcea9cde524))
+* **github:** filter DSL parser + search endpoint + command dispatch ([#360](https://github.com/lobinuxsoft/yryvu/issues/360)) ([4243d1b](https://github.com/lobinuxsoft/yryvu/commit/4243d1b70e9ff6ee488d699dd73d2aec28a1f881))
+* **github:** GraphQL enrichment for review + CI status ([#360](https://github.com/lobinuxsoft/yryvu/issues/360)) ([1f6aaf7](https://github.com/lobinuxsoft/yryvu/commit/1f6aaf78cb1c8ee5c8ab1e79f0523fd000b9d737))
+* **github:** PR detail backend — detail/commits/files/checks/action ([#91](https://github.com/lobinuxsoft/yryvu/issues/91)) ([f9855f9](https://github.com/lobinuxsoft/yryvu/commit/f9855f901b9d8775473a0f536e6b96e3518adc97))
+* **github:** PR detail view — 4-tab panel ([#91](https://github.com/lobinuxsoft/yryvu/issues/91)) ([d76c8a0](https://github.com/lobinuxsoft/yryvu/commit/d76c8a03f3d4ebda55cccd03f0617629a09cd1e3))
+* **github:** PR detail view — 4-tab panel (description / commits / files / checks) ([#91](https://github.com/lobinuxsoft/yryvu/issues/91)) ([252eea8](https://github.com/lobinuxsoft/yryvu/commit/252eea83cd3ff4a1510cbf8e58668c6836b34d61))
+* **github:** PR filter toolbar + sort selector + state wire ([#360](https://github.com/lobinuxsoft/yryvu/issues/360)) ([0dfb733](https://github.com/lobinuxsoft/yryvu/commit/0dfb733ccae425ce19375298bf3a5a9466ce4d04))
+* **github:** PR list panel walking skeleton ([#15](https://github.com/lobinuxsoft/yryvu/issues/15)) ([27dcb7e](https://github.com/lobinuxsoft/yryvu/commit/27dcb7e708372527bca9579071257c63b97b38a9))
+* **github:** PR list panel walking skeleton ([#15](https://github.com/lobinuxsoft/yryvu/issues/15)) ([d4cdf81](https://github.com/lobinuxsoft/yryvu/commit/d4cdf8168f8d7ad15d08d22b4fea9c544c16f9fb))
+* **github:** PR list panel wave 2 — chips / review-CI / filters / sort / kebab ([#360](https://github.com/lobinuxsoft/yryvu/issues/360)) ([7d77c65](https://github.com/lobinuxsoft/yryvu/commit/7d77c652151b5068ba0bb5e1645909a1cba5c71e))
+* **github:** PR merge form — method/title/message/delete-branch ([#92](https://github.com/lobinuxsoft/yryvu/issues/92)) ([76515f4](https://github.com/lobinuxsoft/yryvu/commit/76515f45352243039768988505bb1f76fdb64b36))
+* **github:** PR merge form — method/title/message/delete-branch ([#92](https://github.com/lobinuxsoft/yryvu/issues/92)) ([c1a453f](https://github.com/lobinuxsoft/yryvu/commit/c1a453f83d4c5ea50960e4a6b9e02c54f7d98535))
+* **github:** PR row kebab context menu ([#360](https://github.com/lobinuxsoft/yryvu/issues/360)) ([da79323](https://github.com/lobinuxsoft/yryvu/commit/da79323e610a5530b43d76f9567c0a60ce63213e))
+* **gitlab:** MR detail view via GraphQL + REST ([#93](https://github.com/lobinuxsoft/yryvu/issues/93)) ([2a9bd93](https://github.com/lobinuxsoft/yryvu/commit/2a9bd9362aca8a0f8ce3693d3abad149dce83cb6))
+* **gitlab:** MR detail view via GraphQL + REST ([#93](https://github.com/lobinuxsoft/yryvu/issues/93)) ([b2727f1](https://github.com/lobinuxsoft/yryvu/commit/b2727f142ac3a49533f7285ee022f9d71d0e6850))
+* **gitlab:** MR list backend client (preflight + list + search + DSL) ([#16](https://github.com/lobinuxsoft/yryvu/issues/16)) ([07433f4](https://github.com/lobinuxsoft/yryvu/commit/07433f4dda43814397d01940cae934046e818add))
+* **gitlab:** MR list panel — replicates GitHub pattern over GitLab GraphQL ([#16](https://github.com/lobinuxsoft/yryvu/issues/16)) ([4d2e61f](https://github.com/lobinuxsoft/yryvu/commit/4d2e61f0179b282a8a0fcfc861edd39c8f1a13a6))
+* **gitlab:** MR merge form (merge / squash / rebase / skip CI) ([2f1b498](https://github.com/lobinuxsoft/yryvu/commit/2f1b4980c8501ae854de0b5680743bd921e42c0c))
+* **gitlab:** MR merge form with method gating + squash + rebase + skip-CI ([#94](https://github.com/lobinuxsoft/yryvu/issues/94)) ([ca6ee76](https://github.com/lobinuxsoft/yryvu/commit/ca6ee7653ce9f7ab7705adb162f2db9b5db4c99a))
+* **gitlab:** wire GitLab into frontend resource + rustfmt cleanup ([#16](https://github.com/lobinuxsoft/yryvu/issues/16)) ([fc44106](https://github.com/lobinuxsoft/yryvu/commit/fc441068defcdffbc4ed491c2f3150634f3862a7))
+* **issues:** cross-provider Issues panel — GitHub / GitLab / Gitea ([#97](https://github.com/lobinuxsoft/yryvu/issues/97)) ([c04c80f](https://github.com/lobinuxsoft/yryvu/commit/c04c80fa7ca8303bad54f277cc274a8d23148085))
+* **issues:** cross-provider Issues panel (GitHub/GitLab/Gitea) ([#97](https://github.com/lobinuxsoft/yryvu/issues/97)) ([d2bf6c6](https://github.com/lobinuxsoft/yryvu/commit/d2bf6c66786dc6d90f7171dd4ee2b5341f2ad1b2))
+* **issues:** Issue detail panel — main+sidebar GK structure ([#370](https://github.com/lobinuxsoft/yryvu/issues/370) R1) ([3cbf3c0](https://github.com/lobinuxsoft/yryvu/commit/3cbf3c06a84858d6ef3b9cd9eef2fe2f406abd1f))
+* **panels:** GK-fidelity PR/Issue panels — create flows, dropdowns, markdown, comments, filters ([b61917c](https://github.com/lobinuxsoft/yryvu/commit/b61917cc5610e29b64c666c6901c5efe7f4f848a))
+* **panels:** GK-fidelity PR/Issue panels — create flows, dropdowns, markdown, comments, filters ([f95e75f](https://github.com/lobinuxsoft/yryvu/commit/f95e75f8be7363a992f303c463d65419615543c3))
+* **ui:** Tooltip component + animations + title= migration ([#316](https://github.com/lobinuxsoft/yryvu/issues/316) [#317](https://github.com/lobinuxsoft/yryvu/issues/317) — closes [#295](https://github.com/lobinuxsoft/yryvu/issues/295) [#103](https://github.com/lobinuxsoft/yryvu/issues/103)) ([11b8ad3](https://github.com/lobinuxsoft/yryvu/commit/11b8ad36e2c17f7c6d48f1def167b836964ec13a))
+* **ui:** Tooltip component + animations override + tooltip migration ([#316](https://github.com/lobinuxsoft/yryvu/issues/316) [#317](https://github.com/lobinuxsoft/yryvu/issues/317)) ([9278bf5](https://github.com/lobinuxsoft/yryvu/commit/9278bf5e98191e5c80f543bd36da28da79bbd036)), closes [#295](https://github.com/lobinuxsoft/yryvu/issues/295) [#103](https://github.com/lobinuxsoft/yryvu/issues/103)
+
+
+### Bug Fixes
+
+* **integrations:** StatusPill reactivity + drop chajá leftovers ([c7c312c](https://github.com/lobinuxsoft/yryvu/commit/c7c312ce7088891ee51b090d645becd7a5e2eb91))
+
+
+### Performance
+
+* **git-core:** gate find_similar rename detection by delta count ([#177](https://github.com/lobinuxsoft/yryvu/issues/177)) ([d0accc6](https://github.com/lobinuxsoft/yryvu/commit/d0accc6052395a761fdbf7586ffda6028cdbbb42))
+* **git-core:** gate find_similar rename detection by delta count ([#177](https://github.com/lobinuxsoft/yryvu/issues/177)) ([ff73405](https://github.com/lobinuxsoft/yryvu/commit/ff734056519dff490bb4bd90635e882c3544ea59))
+
 ## [0.1.2](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.1.1...yryvu-v0.1.2) (2026-05-14)
 
 

@@ -5,6 +5,34 @@ format is maintained by [release-please](https://github.com/googleapis/release-p
 each merged `feat:` or `fix:` commit on `main` produces a release PR
 that updates this file.
 
+## [0.1.4](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.1.3...yryvu-v0.1.4) (2026-05-24)
+
+
+### Features
+
+* **commit:** co-author picker from recent commit history ([fdddd99](https://github.com/lobinuxsoft/yryvu/commit/fdddd99e2d66b0ff58e5831f7cb1b89fe10995d1))
+* **commit:** commit UI with amend, sign (GPG+SSH), templates, co-author ([9ab40c5](https://github.com/lobinuxsoft/yryvu/commit/9ab40c50889e25113a46dcfd7ed61e62d6be2ec5))
+* **commit:** GPG and SSH commit signing via shell-out ([3d0f133](https://github.com/lobinuxsoft/yryvu/commit/3d0f13377e681d5c3f53f7b5ecf8ef0037b1dff5))
+* **commit:** sign UI toggle + in-app GPG key generation + keyring picker ([90beed7](https://github.com/lobinuxsoft/yryvu/commit/90beed726c9e6c5b2c620a39093f23363f1ea6b1))
+* **conflicts:** 3-pane merge conflict resolver ([9de1850](https://github.com/lobinuxsoft/yryvu/commit/9de1850bc6234f3eabaa97beae9421929e5bae68))
+* **conflicts:** 3-pane resolver dialog + rebase hook ([2982d18](https://github.com/lobinuxsoft/yryvu/commit/2982d189e7690e82193514d90767c36e086c2447))
+* **conflicts:** backend resolver primitives + IPC ([32a373e](https://github.com/lobinuxsoft/yryvu/commit/32a373ebe1912ab18a92373ef730964702fc6431))
+* **diff:** line-level stage/unstage via inline gutter +/- glyph ([55096da](https://github.com/lobinuxsoft/yryvu/commit/55096da688d184165024f0c1499572d1628bf555))
+* **rebase:** interactive rebase dialog with reorder + actions ([e01bab1](https://github.com/lobinuxsoft/yryvu/commit/e01bab1c726ed2e87912e58d519903e7c1e4e77c))
+* **rebase:** interactive rebase orchestrator + IPC ([cf90535](https://github.com/lobinuxsoft/yryvu/commit/cf905359bc9f59139c2e13510c74b14032348df0))
+* **rebase:** interactive rebase UI with drag-reorder + GK action set ([f812127](https://github.com/lobinuxsoft/yryvu/commit/f81212723859944193168a01f865d576b9723364))
+* **search:** command palette UI with multi-mode tabs ([dc54f6b](https://github.com/lobinuxsoft/yryvu/commit/dc54f6b375850982093aef3c42bae8287bdc3389))
+* **search:** fuzzy finder backend with nucleo-matcher ([566714d](https://github.com/lobinuxsoft/yryvu/commit/566714de196c71a303cfa538ed3df84f89922b5e))
+* **search:** fuzzy finder palette with multi-mode tabs ([#14](https://github.com/lobinuxsoft/yryvu/issues/14)) ([8386061](https://github.com/lobinuxsoft/yryvu/commit/8386061ce8697e36998a0d626789c7b709fe2228))
+* **staging:** hunk + line stage/unstage/discard ([b66bebc](https://github.com/lobinuxsoft/yryvu/commit/b66bebcfa5ce2c5cea92a4ac64e925dabc9558f5))
+* **staging:** hunk-level stage/unstage/discard via partial git apply ([f5fa09e](https://github.com/lobinuxsoft/yryvu/commit/f5fa09eecad34c1362b0399d58bf359026e35149))
+
+
+### Bug Fixes
+
+* **prefs:** use existing notification category for GPG panel toasts ([0d637ab](https://github.com/lobinuxsoft/yryvu/commit/0d637ab10040e048d8705753112ef8c80d420177))
+* **rebase:** skip merge commits in the interactive picker ([863f023](https://github.com/lobinuxsoft/yryvu/commit/863f02372789f0f062de88e8a787c1dba62cfcf5))
+
 ## [0.1.3](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.1.2...yryvu-v0.1.3) (2026-05-16)
 
 

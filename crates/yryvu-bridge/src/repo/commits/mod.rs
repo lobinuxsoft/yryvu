@@ -8,12 +8,14 @@
 //! - [`trunk`] picks the auto-pinned branch the lane allocator favours.
 //! - [`ref_scan`] (private) walks branches/tags/HEAD to seed the revwalk.
 
+mod authors;
 mod details;
 mod diff;
 mod ref_scan;
 mod trunk;
 mod walk;
 
+pub use authors::{recent_authors, AuthorInfo, DEFAULT_LIMIT as RECENT_AUTHORS_DEFAULT_LIMIT};
 pub use details::commit_details;
 pub use diff::{combined_commit_diff, commit_diff};
 pub use trunk::pick_pinned_head_for_path;

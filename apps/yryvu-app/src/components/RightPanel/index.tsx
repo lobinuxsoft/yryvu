@@ -28,6 +28,8 @@ import {
   setCommitMessage,
   setInspectorMode,
   setSelectedCommit,
+  setSignCommitEnabled,
+  signCommitEnabled,
   skipHooksEnabled,
   workingTreeStatus,
 } from "../../state";
@@ -177,6 +179,7 @@ export function RightPanel() {
       description: commitDescription(),
       amend: amendEnabled(),
       skipHooks: skipHooksEnabled(),
+      gpgSign: signCommitEnabled(),
     };
   }
 
@@ -184,6 +187,7 @@ export function RightPanel() {
     setCommitMessage("");
     setCommitDescription("");
     setAmendEnabled(false);
+    setSignCommitEnabled(false);
   }
 
   async function handleCommit() {

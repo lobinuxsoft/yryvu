@@ -101,13 +101,103 @@
 }
 
 .diff-hunk__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 4px 10px;
   color: var(--fg-3);
   background: color-mix(in srgb, var(--info) 10%, var(--bg-1));
   border-top: 1px solid var(--bg-3);
   border-bottom: 1px solid var(--bg-3);
+}
+
+.diff-hunk__range {
   white-space: pre;
   overflow-x: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.diff-hunk__actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.diff-hunk__action {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--bg-3);
+  background: var(--bg-2);
+  color: var(--fg-2);
+  cursor: pointer;
+  transition: background 100ms ease, border-color 100ms ease;
+}
+
+.diff-hunk__action:hover {
+  background: var(--bg-3);
+  border-color: var(--accent);
+  color: var(--fg-1);
+}
+
+.diff-hunk__action--danger:hover {
+  background: color-mix(in srgb, var(--danger) 20%, var(--bg-2));
+  border-color: var(--danger);
+}
+
+.diff-line__gutter {
+  flex-shrink: 0;
+  width: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diff-line__action {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--bg-3);
+  background: var(--bg-2);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 80ms ease, background 80ms ease, border-color 80ms ease,
+    transform 80ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diff-line__action[data-side="unstaged"] {
+  color: var(--success);
+}
+
+.diff-line__action[data-side="staged"] {
+  color: var(--danger);
+}
+
+.diff-line:hover .diff-line__action,
+.diff-split-cell:hover .diff-line__action {
+  opacity: 1;
+}
+
+.diff-line__action:hover {
+  border-color: currentColor;
+  transform: scale(1.15);
+}
+
+.diff-line__action:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .diff-line {

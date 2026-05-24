@@ -10,9 +10,10 @@ use std::path::Path;
 use graph_core::Commit;
 
 use crate::backend::{
-    BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff, GitBackend,
-    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo,
-    TagInfo, WorkingTreeStatus, WorktreeInfo,
+    AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff,
+    GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange, MergeResult,
+    MergeStrategy, PushOptions, RepoStateInfo, ResetMode, SignConfig, SignFormat, StashInfo,
+    SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
 };
 
 use super::{
@@ -92,6 +93,112 @@ impl GitBackend for GixBackend {
         target_branch: &str,
     ) -> Result<(), BackendError> {
         rebase::rebase_current_onto(repo_path, target_branch)
+    }
+
+    fn list_commits_for_rebase(
+        &self,
+        repo_path: &Path,
+        upstream: &str,
+    ) -> Result<Vec<crate::repo::rebase::interactive::CommitSummary>, BackendError> {
+        rebase::interactive::list_commits_for_rebase(repo_path, upstream)
+    }
+
+    fn begin_interactive_rebase(
+        &self,
+        repo_path: &Path,
+        plan: crate::repo::rebase::interactive::RebasePlan,
+    ) -> Result<crate::repo::rebase::interactive::RebaseState, BackendError> {
+        rebase::interactive::begin_rebase(repo_path, plan)
+    }
+
+    fn continue_interactive_rebase(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::rebase::interactive::RebaseState, BackendError> {
+        rebase::interactive::continue_rebase(repo_path)
+    }
+
+    fn skip_interactive_rebase_step(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::rebase::interactive::RebaseState, BackendError> {
+        rebase::interactive::skip_step(repo_path)
+    }
+
+    fn abort_interactive_rebase(&self, repo_path: &Path) -> Result<(), BackendError> {
+        rebase::interactive::abort_rebase(repo_path)
+    }
+
+    fn get_interactive_rebase_state(
+        &self,
+        repo_path: &Path,
+    ) -> Result<Option<crate::repo::rebase::interactive::RebaseState>, BackendError> {
+        rebase::interactive::get_state(repo_path)
+    }
+
+    fn list_conflicts(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::conflicts::ConflictListing, BackendError> {
+        crate::repo::conflicts::list_conflicts(repo_path)
+    }
+
+    fn read_conflict_diff3(
+        &self,
+        repo_path: &Path,
+        path: &str,
+    ) -> Result<crate::repo::conflicts::ConflictDiff3, BackendError> {
+        crate::repo::conflicts::read_diff3(repo_path, path)
+    }
+
+    fn accept_conflict_side(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        side: crate::repo::conflicts::ConflictSide,
+    ) -> Result<(), BackendError> {
+        crate::repo::conflicts::accept_side(repo_path, path, side)
+    }
+
+    fn resolve_conflict_with_content(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        content: &str,
+    ) -> Result<(), BackendError> {
+        crate::repo::conflicts::resolve_with_content(repo_path, path, content)
+    }
+
+    fn mark_conflict_resolved(&self, repo_path: &Path, path: &str) -> Result<(), BackendError> {
+        crate::repo::conflicts::mark_resolved(repo_path, path)
+    }
+
+    fn finish_in_progress_op(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::conflicts::ConflictSource, BackendError> {
+        crate::repo::conflicts::finish_in_progress(repo_path)
+    }
+
+    fn build_search_index(
+        &self,
+        repo_path: &Path,
+    ) -> Result<crate::repo::search::IndexCounts, BackendError> {
+        crate::repo::search::build_index(repo_path)
+    }
+
+    fn invalidate_search_index(&self, repo_path: &Path) {
+        crate::repo::search::invalidate_index(repo_path);
+    }
+
+    fn search_repo(
+        &self,
+        repo_path: &Path,
+        mode: crate::repo::search::SearchMode,
+        query: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<crate::repo::search::SearchHit>, BackendError> {
+        crate::repo::search::search(repo_path, mode, query, limit)
     }
 
     fn set_upstream(
@@ -337,6 +444,93 @@ impl GitBackend for GixBackend {
 
     fn discard_paths(&self, repo_path: &Path, paths: &[String]) -> Result<(), BackendError> {
         staging::discard_paths(repo_path, paths)
+    }
+
+    fn stage_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError> {
+        staging::stage_hunks(repo_path, path, hunk_indices)
+    }
+
+    fn unstage_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError> {
+        staging::unstage_hunks(repo_path, path, hunk_indices)
+    }
+
+    fn discard_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError> {
+        staging::discard_hunks(repo_path, path, hunk_indices)
+    }
+
+    fn stage_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError> {
+        staging::stage_lines(repo_path, path, ranges)
+    }
+
+    fn unstage_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError> {
+        staging::unstage_lines(repo_path, path, ranges)
+    }
+
+    fn discard_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError> {
+        staging::discard_lines(repo_path, path, ranges)
+    }
+
+    fn commit_sign_config(&self, repo_path: &Path) -> Result<SignConfig, BackendError> {
+        staging::inspect_sign_config(repo_path)
+    }
+
+    fn export_gpg_public_key(&self, selector: &str) -> Result<String, BackendError> {
+        staging::export_gpg_public_key(selector)
+    }
+
+    fn list_gpg_keys(&self) -> Result<Vec<GpgKeyInfo>, BackendError> {
+        staging::list_gpg_keys()
+    }
+
+    fn recent_authors(
+        &self,
+        repo_path: &Path,
+        limit: usize,
+    ) -> Result<Vec<AuthorInfo>, BackendError> {
+        commits::recent_authors(repo_path, limit)
+    }
+
+    fn generate_gpg_key(&self, req: &GenerateKeyRequest) -> Result<GeneratedKey, BackendError> {
+        staging::generate_gpg_key(req)
+    }
+
+    fn set_signing_key(
+        &self,
+        repo_path: &Path,
+        key: &str,
+        format: SignFormat,
+    ) -> Result<(), BackendError> {
+        staging::set_signing_key(repo_path, key, format)
     }
 
     fn create_commit(

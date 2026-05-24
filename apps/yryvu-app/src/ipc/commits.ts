@@ -272,3 +272,21 @@ export function streamGraph(
     promise,
   };
 }
+
+/// Mirrors `yryvu_bridge::backend::AuthorInfo`. One entry per unique
+/// author (deduped by lowercased email) found in the last N commits.
+export interface AuthorInfo {
+  name: string;
+  email: string;
+  count: number;
+}
+
+/// Walks recent commits and returns unique authors ordered by
+/// frequency. Drives the commit panel's "Add Co-Author" picker. Pass
+/// `undefined` for `limit` to use the backend default (200 commits).
+export function recentAuthors(
+  repoPath: string,
+  limit?: number
+): Promise<AuthorInfo[]> {
+  return invoke<AuthorInfo[]>("recent_authors", { repoPath, limit });
+}

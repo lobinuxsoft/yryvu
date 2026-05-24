@@ -9,7 +9,14 @@ use super::types::{
     BranchInfo, CombinedDiff, CommitDiff, FileDiff, MergeResult, MergeStrategy, PushOptions,
     RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
 };
-use crate::repo::staging::{CommitOptions, WorkingTreeStatus};
+use crate::repo::commits::AuthorInfo;
+use crate::repo::conflicts::{ConflictDiff3, ConflictListing, ConflictSide, ConflictSource};
+use crate::repo::rebase::interactive::{CommitSummary, RebasePlan, RebaseState};
+use crate::repo::search::{IndexCounts, SearchHit, SearchMode};
+use crate::repo::staging::{
+    CommitOptions, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, LineRange, SignConfig, SignFormat,
+    WorkingTreeStatus,
+};
 
 /// Shared surface every Git backend must implement.
 ///
@@ -195,6 +202,98 @@ pub trait GitBackend: Send + Sync {
         target_branch: &str,
     ) -> Result<(), BackendError>;
 
+    /// List commits between HEAD and `upstream` (HEAD-first), as the
+    /// candidate set the interactive-rebase picker shows.
+    fn list_commits_for_rebase(
+        &self,
+        repo_path: &Path,
+        upstream: &str,
+    ) -> Result<Vec<CommitSummary>, BackendError>;
+
+    /// Apply an interactive-rebase plan. Returns the live state (which
+    /// may carry a pause_reason if a step requires user intervention).
+    fn begin_interactive_rebase(
+        &self,
+        repo_path: &Path,
+        plan: RebasePlan,
+    ) -> Result<RebaseState, BackendError>;
+
+    /// Resume a paused interactive rebase (Edit or Conflict).
+    fn continue_interactive_rebase(&self, repo_path: &Path) -> Result<RebaseState, BackendError>;
+
+    /// Drop the current step and continue. Used to bail out of a
+    /// conflict the user can't resolve.
+    fn skip_interactive_rebase_step(&self, repo_path: &Path) -> Result<RebaseState, BackendError>;
+
+    /// Abort an interactive rebase, restoring HEAD to the pre-rebase commit.
+    fn abort_interactive_rebase(&self, repo_path: &Path) -> Result<(), BackendError>;
+
+    /// Read the persisted interactive-rebase state. `None` when no
+    /// rebase is in progress.
+    fn get_interactive_rebase_state(
+        &self,
+        repo_path: &Path,
+    ) -> Result<Option<RebaseState>, BackendError>;
+
+    /// Enumerate the conflicted paths in the index, plus the source
+    /// of the in-progress op (merge / cherry-pick / rebase / …).
+    fn list_conflicts(&self, repo_path: &Path) -> Result<ConflictListing, BackendError>;
+
+    /// Read the three merge stages plus the worktree content of a
+    /// conflicted file. Missing stages stay `None`.
+    fn read_conflict_diff3(
+        &self,
+        repo_path: &Path,
+        path: &str,
+    ) -> Result<ConflictDiff3, BackendError>;
+
+    /// Resolve a conflict by accepting one of the original sides
+    /// (ours / theirs / base).
+    fn accept_conflict_side(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        side: ConflictSide,
+    ) -> Result<(), BackendError>;
+
+    /// Resolve a conflict by writing arbitrary content (the user's
+    /// manual edit) to the worktree + index stage 0.
+    fn resolve_conflict_with_content(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        content: &str,
+    ) -> Result<(), BackendError>;
+
+    /// Read the worktree file and stage it as resolved. Refuses if
+    /// conflict markers (`<<<<<<<` / `=======` / `>>>>>>>` / `|||||||`)
+    /// are still present in the content.
+    fn mark_conflict_resolved(&self, repo_path: &Path, path: &str) -> Result<(), BackendError>;
+
+    /// Once every path is resolved, finalise the in-progress op:
+    /// commit the merge / cherry-pick / revert and clean
+    /// `MERGE_HEAD` / `CHERRY_PICK_HEAD` / `REVERT_HEAD`. Native
+    /// rebase + the yryvu interactive rebase are no-ops here — the
+    /// caller advances those flows themselves.
+    fn finish_in_progress_op(&self, repo_path: &Path) -> Result<ConflictSource, BackendError>;
+
+    /// Build (or rebuild) the fuzzy-finder index for a repo. Returns
+    /// the per-mode counts so the palette tabs can show "(N)".
+    fn build_search_index(&self, repo_path: &Path) -> Result<IndexCounts, BackendError>;
+
+    /// Drop the cached index — call when refs / worktree / stash list
+    /// change so the next `search_repo` rebuilds lazily.
+    fn invalidate_search_index(&self, repo_path: &Path);
+
+    /// Run a fuzzy query against the cached index.
+    fn search_repo(
+        &self,
+        repo_path: &Path,
+        mode: SearchMode,
+        query: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<SearchHit>, BackendError>;
+
     /// Set or clear the upstream tracking config for `branch_name`.
     /// `Some("origin/main")` tracks a specific remote ref; `None`
     /// clears the tracking config.
@@ -271,6 +370,100 @@ pub trait GitBackend: Send + Sync {
     /// snap back to HEAD, untracked files are removed. The index is not
     /// touched.
     fn discard_paths(&self, repo_path: &Path, paths: &[String]) -> Result<(), BackendError>;
+
+    /// Stage only the selected hunks of `path`. Forward-applies a synthetic
+    /// patch to the index; the workdir is unchanged.
+    fn stage_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError>;
+
+    /// Unstage only the selected hunks of `path`, rolling those changes
+    /// back to HEAD in the index.
+    fn unstage_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError>;
+
+    /// Discard only the selected hunks of `path` from the workdir. The
+    /// caller MUST confirm — there is no undo.
+    fn discard_hunks(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        hunk_indices: &[usize],
+    ) -> Result<(), BackendError>;
+
+    /// Stage only the selected lines (per-hunk indices) of `path`.
+    fn stage_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError>;
+
+    /// Unstage only the selected lines of `path`.
+    fn unstage_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError>;
+
+    /// Discard only the selected lines of `path` from the workdir.
+    fn discard_lines(
+        &self,
+        repo_path: &Path,
+        path: &str,
+        ranges: &[LineRange],
+    ) -> Result<(), BackendError>;
+
+    /// Snapshot the repo's signing config (format + key presence +
+    /// resolved signer binary). Drives the commit panel's Sign toggle
+    /// preflight: when `key` is `None`, the toggle is rendered disabled
+    /// with a hint pointing the user to `user.signingkey`.
+    fn commit_sign_config(&self, repo_path: &Path) -> Result<SignConfig, BackendError>;
+
+    /// Export an OpenPGP public key as armored text — any selector
+    /// `gpg --export` understands (fingerprint, key id, email). Used
+    /// by the GPG preferences panel's "Copy public key" button.
+    fn export_gpg_public_key(&self, selector: &str) -> Result<String, BackendError>;
+
+    /// Enumerate the OpenPGP secret keys in the user's gpg keyring —
+    /// drives the GPG preferences panel's "pick a key" surface. Returns
+    /// an empty Vec when gpg is missing or the keyring is empty.
+    fn list_gpg_keys(&self) -> Result<Vec<GpgKeyInfo>, BackendError>;
+
+    /// Walk up to `limit` recent commits and return unique authors
+    /// ordered by frequency. Drives the commit panel's "Add Co-Authors"
+    /// picker. Returns an empty Vec on an unborn / empty repo.
+    fn recent_authors(
+        &self,
+        repo_path: &Path,
+        limit: usize,
+    ) -> Result<Vec<AuthorInfo>, BackendError>;
+
+    /// Generate a fresh OpenPGP signing key via `gpg --batch --gen-key`.
+    /// Mirrors GitKraken's `GPGPreferences-GpgGenerateKey` action: RSA
+    /// 4096, 2-year expiry, name + email from the request. Returns the
+    /// fingerprint, short key id, and armored public key (for pasting
+    /// into GitHub / GitLab). Does not modify any repo config — call
+    /// [`set_signing_key`] separately to wire the new key into a repo.
+    fn generate_gpg_key(&self, req: &GenerateKeyRequest) -> Result<GeneratedKey, BackendError>;
+
+    /// Write `user.signingkey` + `gpg.format` into the repo's local git
+    /// config. Used right after [`generate_gpg_key`] so the very next
+    /// commit picks the new key up.
+    fn set_signing_key(
+        &self,
+        repo_path: &Path,
+        key: &str,
+        format: SignFormat,
+    ) -> Result<(), BackendError>;
 
     /// Write a commit (or amend HEAD) from the bundled options. Returns the
     /// new commit SHA.

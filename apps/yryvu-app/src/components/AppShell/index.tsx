@@ -11,6 +11,10 @@ import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
 import { ColdStart } from "../ColdStart";
 import { CreateIssueDialog } from "../CreateIssueDialog";
 import { CreatePrDialog } from "../CreatePrDialog";
+import { CommandPalette } from "../CommandPalette";
+import { openCommandPalette } from "../CommandPalette/state";
+import { ConflictResolverDialog } from "../ConflictResolverDialog";
+import { RebaseInteractiveDialog } from "../RebaseInteractiveDialog";
 import { FileDiffTab } from "../FileDiffTab";
 import { IssueDetailPanel } from "../IssueDetail";
 import { PullRequestDetailPanel } from "../PullRequestDetail";
@@ -153,6 +157,13 @@ export function AppShell() {
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
       const key = e.key.toLowerCase();
+
+      // Command palette (issue #14): Ctrl/Cmd+K or Ctrl/Cmd+P.
+      if (key === "k" || key === "p") {
+        e.preventDefault();
+        openCommandPalette();
+        return;
+      }
 
       // Undo / Redo (issue #187, #130 cluster).
       if (key === "z" && !e.shiftKey) {
@@ -319,6 +330,9 @@ export function AppShell() {
       <CloneDialog />
       <CreateIssueDialog />
       <CreatePrDialog />
+      <RebaseInteractiveDialog />
+      <ConflictResolverDialog />
+      <CommandPalette />
       <PreferencesWindow />
       <About />
       <ToastContainer />

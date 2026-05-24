@@ -70,6 +70,8 @@ export {
   setCommitDescription,
   amendEnabled,
   setAmendEnabled,
+  signCommitEnabled,
+  setSignCommitEnabled,
 } from "./commit-draft";
 export {
   workingTreeNonce,

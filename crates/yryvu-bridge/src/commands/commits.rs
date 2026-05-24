@@ -6,7 +6,10 @@ use graph_core::{build_pinned_set, layout_commits, Commit, GraphRow};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-use crate::backend::{CombinedDiff, CommitDetail, CommitDiff, GitBackend, ResetMode};
+use crate::backend::{
+    AuthorInfo, CombinedDiff, CommitDetail, CommitDiff, GitBackend, ResetMode,
+    RECENT_AUTHORS_DEFAULT_LIMIT,
+};
 use crate::repo::commits::{commit_details as commit_details_impl, pick_pinned_head_for_path};
 use crate::repo::hosting::{detect_hosting_service, parse_repo_identifiers};
 use crate::repo::GixBackend;
@@ -238,6 +241,23 @@ pub async fn get_repo_provider_info(repo_path: String) -> Result<RepoProviderInf
             owner,
             repo,
         })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn recent_authors(
+    repo_path: String,
+    limit: Option<usize>,
+) -> Result<Vec<AuthorInfo>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .recent_authors(
+                &PathBuf::from(&repo_path),
+                limit.unwrap_or(RECENT_AUTHORS_DEFAULT_LIMIT),
+            )
+            .map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?

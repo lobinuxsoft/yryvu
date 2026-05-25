@@ -8,7 +8,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { About } from "../About";
 import { CommitGraph } from "../CommitGraph";
 import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
-import { ColdStart } from "../ColdStart";
+import { NewTabBody } from "../NewTabBody";
 import { CreateIssueDialog } from "../CreateIssueDialog";
 import { CreatePrDialog } from "../CreatePrDialog";
 import { CommandPalette } from "../CommandPalette";
@@ -284,7 +284,7 @@ export function AppShell() {
             currentTabType() !== "REPO_MANAGEMENT"
           }
         >
-          <Show when={repoPath()} fallback={<ColdStart />}>
+          <Show when={repoPath()} fallback={<NewTabBody />}>
             <Switch
               fallback={
                 <div class="main">

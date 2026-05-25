@@ -15,8 +15,6 @@ export { setRepoPath } from "./repo";
 export {
   showLeftPanel,
   setShowLeftPanel,
-  showRightPanel,
-  setShowRightPanel,
   showTerminalPanel,
   setShowTerminalPanel,
   unstagedFilesCollapsed,
@@ -109,6 +107,7 @@ export {
   activeOrderedZones,
   setGraphZoneWidth,
   setGraphZoneWidthInteractive,
+  setGraphZonePairInteractive,
   commitGraphColumnLayout,
   setGraphZoneVisible,
   setCommitZoneMode,

@@ -3,14 +3,47 @@
 /* Right panel (inspector) — shell, banner, body container, and the
    empty-state copy. */
 
+/* Width comes from inline `style="width:<px>"` on `.shell__inspector`,
+   driven by the `detailPanelWidth()` signal (#134 PR1). Height takes
+   the full grid row until PR1.5 introduces the bottom-anchor layout. */
 .inspector {
-  width: var(--panel-width-right);
+  width: 100%;
   height: 100%;
   background: var(--bg-1);
   border-left: 1px solid var(--bg-3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Resizable wrapper — fills the inspector and hosts the left-edge
+   drag handle. `position: relative` so the absolutely-positioned
+   handle anchors inside it. */
+.inspector-resizable {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Left-edge drag handle. 6px wide hit area, near-transparent until
+   hover so it doesn't compete visually with the panel border. */
+.inspector-resizable__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 1;
+  transition: background 120ms;
+}
+
+.inspector-resizable__handle:hover,
+.inspector-resizable__handle:active {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .inspector__banner {

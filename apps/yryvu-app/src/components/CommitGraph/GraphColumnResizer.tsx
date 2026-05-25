@@ -2,32 +2,36 @@
 
 /**
  * Drag-handle stripe rendered between two adjacent graph columns.
- *
- * 1:1 with GitKraken's `resize-handle` (bundle confirms `enableResizer`
- * + `resize-handle` class). The resizer drives the column on its LEFT
- * — dragging right grows the left column and shrinks whatever lives on
- * the right side of the layout. Width is clamped to the zone's
- * `[min, max]` from `ZONE_SPECS`.
+ * Visually sits on the LEFT edge of the right column (and the RIGHT
+ * edge of the left column — same boundary). Drag behaves like a window
+ * border between two adjacent panes: cursor moves right, left column
+ * grows, right column shrinks, handle follows the cursor. Only the
+ * two adjacent zones change; the rest of the row stays put.
  *
  * Implementation: capture pointer on `pointerdown`, switch the cursor
- * + body class for the duration of the drag, write the new width on
- * every `pointermove`. `setPointerCapture` keeps events flowing even
- * if the cursor strays outside the handle (matches the expected
- * resize-handle UX from GTK / VS Code).
+ * + body class for the duration of the drag, write the new widths on
+ * every `pointermove` through `setGraphZonePairInteractive`.
+ * `setPointerCapture` keeps events flowing even when the cursor strays
+ * outside the handle (matches the expected resize-handle UX from
+ * GTK / VS Code).
  */
 
 import {
   activeColumnSettings,
   commitGraphColumnLayout,
-  setGraphZoneWidthInteractive,
+  setGraphZonePairInteractive,
 } from "../../state";
 import type { GraphZoneId } from "./columns";
 
 const DRAG_BODY_CLASS = "is-resizing-column";
 
-export function GraphColumnResizer(props: { leftZone: GraphZoneId }) {
+export function GraphColumnResizer(props: {
+  leftZone: GraphZoneId;
+  rightZone: GraphZoneId;
+}) {
   let startX = 0;
-  let startWidth = 0;
+  let startLeftWidth = 0;
+  let startRightWidth = 0;
   let dirty = false;
 
   const onPointerDown = (e: PointerEvent) => {
@@ -35,7 +39,8 @@ export function GraphColumnResizer(props: { leftZone: GraphZoneId }) {
     e.preventDefault();
     e.stopPropagation();
     startX = e.clientX;
-    startWidth = activeColumnSettings(props.leftZone).width;
+    startLeftWidth = activeColumnSettings(props.leftZone).width;
+    startRightWidth = activeColumnSettings(props.rightZone).width;
     dirty = false;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     document.body.classList.add(DRAG_BODY_CLASS);
@@ -45,10 +50,16 @@ export function GraphColumnResizer(props: { leftZone: GraphZoneId }) {
     const target = e.currentTarget as HTMLElement;
     if (!target.hasPointerCapture(e.pointerId)) return;
     const dx = e.clientX - startX;
-    // Ephemeral update only — running the cascade math + signal write per
-    // frame is fine (Solid handles it), but localStorage I/O is not.
-    // Persistence happens once on pointerup below.
-    setGraphZoneWidthInteractive(props.leftZone, startWidth + dx);
+    // Window-border semantics: cursor right → left zone grows, right
+    // zone shrinks by the same amount. The pair function clamps both
+    // sides to their min widths and conserves the total so the handle
+    // stops at the floor instead of overshooting.
+    setGraphZonePairInteractive(
+      props.leftZone,
+      startLeftWidth + dx,
+      props.rightZone,
+      startRightWidth - dx,
+    );
     dirty = true;
   };
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, Match, onCleanup, onMount, Show, Switch } from "solid-js";
+import { createEffect, createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js";
 import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -37,17 +37,27 @@ import { IconOpenFolder, IconStar } from "../Icons";
 import { TabBar } from "../TabBar";
 import { BranchOpsProvider, createBranchOps } from "../../branchOps";
 import {
+  dirtyFileCount,
+  inspectorMode,
   mainView,
   pushRecentRepo,
   refreshBranches,
   repoPath,
+  selectedCommit,
   setRepoPath,
   setShowLeftPanel,
-  setShowRightPanel,
   setShowTerminalPanel,
   showLeftPanel,
-  showRightPanel,
 } from "../../state";
+import {
+  detailPanelOpen,
+  detailPanelWidth,
+  hydrateDetailPanelLayout,
+  setDetailPanelOpen,
+  toggleDetailPanelOpen,
+} from "../../state/detail-panel-layout";
+import { STORAGE_PREFIX } from "../../state/storage";
+import { ResizableInspector } from "../RightPanel/Resizable";
 import { matchTabKeybind, runTabKeybind } from "../../tabs/keybinds";
 import {
   handleCloseTabShortcut,
@@ -102,6 +112,21 @@ export function AppShell() {
     // fill a REPO tab so the user sees the strip in sync. If both
     // stores are empty, open a NEW tab so the strip isn't blank.
     await hydrateTabsFromPreferences();
+    // Hydrate inspector panel width / height / open from preferences.json.
+    // Must follow tab hydration so the cached Preferences envelope is
+    // populated when this also goes for it (both use getPreferences()
+    // — first call wins the network round-trip, others reuse the
+    // backend's in-memory copy).
+    await hydrateDetailPanelLayout();
+    // One-shot migration: the previous boolean lived in localStorage
+    // under `yryvu.showRightPanel`. Promote it into the freshly
+    // hydrated `layout.detailPanel.open` field and remove the legacy
+    // key so the localStorage namespace doesn't keep the stale entry.
+    const legacyOpen = localStorage.getItem(`${STORAGE_PREFIX}showRightPanel`);
+    if (legacyOpen !== null) {
+      setDetailPanelOpen(legacyOpen !== "0");
+      localStorage.removeItem(`${STORAGE_PREFIX}showRightPanel`);
+    }
     // Hydrate integration connection states from the backend sidecar +
     // keyring so the Clone dialog's per-provider sub-tabs (#374) and
     // the Preferences > Integrations panel see "connected" without
@@ -122,7 +147,7 @@ export function AppShell() {
 
     unlisteners.push(await listen("menu:open-repo", () => void openRepoPicker()));
     unlisteners.push(await listen("menu:toggle-left-panel", () => setShowLeftPanel((v) => !v)));
-    unlisteners.push(await listen("menu:toggle-right-panel", () => setShowRightPanel((v) => !v)));
+    unlisteners.push(await listen("menu:toggle-right-panel", () => toggleDetailPanelOpen()));
     unlisteners.push(await listen("menu:toggle-terminal", () => setShowTerminalPanel((v) => !v)));
     // Tab keybinds that GTK/WebKit2GTK reserves at the WebView level
     // (Cmd/Ctrl+T, Cmd/Ctrl+W) come through the native Tauri menu —
@@ -158,10 +183,18 @@ export function AppShell() {
       if (!mod) return;
       const key = e.key.toLowerCase();
 
-      // Command palette (issue #14): Ctrl/Cmd+K or Ctrl/Cmd+P.
-      if (key === "k" || key === "p") {
+      // Command palette (issue #14): Ctrl/Cmd+P. Cmd+K used to also
+      // open the palette, but GK binds it to the inspector toggle
+      // (audit doc 01-panel-chrome.md → `RightPanel.toggleDetailPanel`)
+      // and that's the user-visible expectation when porting from GK.
+      if (key === "p") {
         e.preventDefault();
         openCommandPalette();
+        return;
+      }
+      if (key === "k") {
+        e.preventDefault();
+        toggleDetailPanelOpen();
         return;
       }
 
@@ -225,12 +258,27 @@ export function AppShell() {
   // graph still surfaces the same dialogs the sidebar uses.
   const branchOps = createBranchOps({ refresh: refreshBranches });
 
+  /// Inspector visibility (audit doc `01-panel-chrome.md`):
+  ///   visible = userPrefersOpen && (hasSelectedCommit || inStagingMode)
+  /// "No selection → hide panel entirely, not show empty placeholder" —
+  /// `data-show-right="false"` collapses the grid cell via shell/grid.css.
+  /// The legacy "View Changes" banner (rendered inside RightPanel when
+  /// dirty + viewing details) becomes redundant since dirty-tree now
+  /// surfaces the panel automatically by appearing in this predicate.
+  const inspectorVisible = createMemo(
+    () =>
+      detailPanelOpen() &&
+      (selectedCommit() !== undefined ||
+        dirtyFileCount() > 0 ||
+        inspectorMode() === "staging"),
+  );
+
   return (
     <BranchOpsProvider ops={branchOps}>
     <div
       class="shell"
       data-show-left={showLeftPanel() ? "true" : "false"}
-      data-show-right={showRightPanel() ? "true" : "false"}
+      data-show-right={inspectorVisible() ? "true" : "false"}
     >
       <div class="shell__tabs tabs">
         <div class="tabs__leading">
@@ -309,8 +357,13 @@ export function AppShell() {
         </Show>
       </div>
 
-      <div class="shell__inspector">
-        <RightPanel />
+      <div
+        class="shell__inspector"
+        style={{ width: `${detailPanelWidth()}px` }}
+      >
+        <ResizableInspector>
+          <RightPanel />
+        </ResizableInspector>
       </div>
 
       <div class="shell__statusbar">

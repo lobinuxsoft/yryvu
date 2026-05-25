@@ -156,6 +156,22 @@ export interface NotificationsPreferences {
   undoRedoNotifications: boolean;
 }
 
+/// Mirrors `yryvu_bridge::preferences::DetailPanelLayout`. Width/height
+/// in CSS pixels. GK defaults verbatim: 400×386, open=true (audit doc
+/// `01-panel-chrome.md`).
+export interface DetailPanelLayout {
+  width: number;
+  height: number;
+  open: boolean;
+}
+
+/// Mirrors `yryvu_bridge::preferences::LayoutPreferences`. Envelope for
+/// resizable-panel state — today only the right-side inspector lives
+/// here; left sidebar (#36) will join when it ships.
+export interface LayoutPreferences {
+  detailPanel: DetailPanelLayout;
+}
+
 /// Mirrors `yryvu_bridge::preferences::Preferences`. The `version`
 /// field is owned by the backend; never mutate it from the frontend.
 export interface Preferences {
@@ -169,6 +185,7 @@ export interface Preferences {
   notifications: NotificationsPreferences;
   issueTracker: IssueTrackerPreferences;
   gpg: GpgPreferences;
+  layout: LayoutPreferences;
 }
 
 export function getPreferences(): Promise<Preferences> {

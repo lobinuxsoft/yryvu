@@ -2,16 +2,14 @@
 
 /**
  * RepoManagementBody — main viewport for the REPO_MANAGEMENT permanent
- * tab. Lists every repo known to chajá (from the recent-opened cache)
+ * tab. Lists every repo known to Yryvu (from the recent-opened cache)
  * decorated with current branch + dirty count, with substring filter
- * + multi-select + bulk "Open in tabs" action.
+ * + multi-select + bulk "Open in tabs" action. Open / Clone / Init
+ * wire to the dialogs shipped by #100; the picker for "Open" is the
+ * Tauri directory dialog.
  *
  * Out of scope (audit doc 09): workspaces (proprietary), repo grouping,
- * color tagging. Clone / Init buttons depend on #100 — render disabled
- * with a tooltip until that lands. "Open" works today: it calls the
- * Tauri directory picker (the same one the legacy folder button used
- * to call from the tab leading area before #209 reassigned it to
- * openRepoManagementTab).
+ * color tagging.
  */
 
 import { createMemo, createSignal, For, Show } from "solid-js";

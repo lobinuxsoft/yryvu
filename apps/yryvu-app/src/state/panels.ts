@@ -3,7 +3,12 @@
 import { persistedBool } from "./storage";
 
 export const [showLeftPanel, setShowLeftPanel] = persistedBool("showLeftPanel", true);
-export const [showRightPanel, setShowRightPanel] = persistedBool("showRightPanel", true);
+/// Right-panel open state migrated to `preferences.json` under
+/// `layout.detailPanel.open` (issue #134, PR1). Use
+/// `detailPanelOpen()` / `toggleDetailPanelOpen()` from
+/// `state/detail-panel-layout.ts` instead. The legacy
+/// `yryvu.showRightPanel` localStorage key is consumed once during
+/// `AppShell` boot for migration, then removed.
 export const [showTerminalPanel, setShowTerminalPanel] = persistedBool(
   "showTerminalPanel",
   false,

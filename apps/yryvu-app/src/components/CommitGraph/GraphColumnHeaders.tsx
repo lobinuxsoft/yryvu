@@ -74,7 +74,7 @@ export function GraphColumnHeaders() {
   return (
     <div class="main__graph-column-headers" ref={containerEl}>
       <For each={visible()}>
-        {(id) => (
+        {(id, idx) => (
           <span
             class="main__graph-column-header"
             data-zone={id}
@@ -82,7 +82,14 @@ export function GraphColumnHeaders() {
             onContextMenu={openFromContext}
           >
             <HeaderLabel id={id} />
-            <GraphColumnResizer leftZone={id} />
+            {/* No resizer at the left edge of the first column —
+                there's no left neighbour to redistribute width with. */}
+            <Show when={idx() > 0}>
+              <GraphColumnResizer
+                leftZone={visible()[idx() - 1]}
+                rightZone={id}
+              />
+            </Show>
           </span>
         )}
       </For>

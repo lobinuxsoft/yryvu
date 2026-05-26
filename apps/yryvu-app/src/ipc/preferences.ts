@@ -156,6 +156,33 @@ export interface NotificationsPreferences {
   undoRedoNotifications: boolean;
 }
 
+/// Mirrors `yryvu_bridge::preferences::DetailPanelLayout`. Width/height
+/// in CSS pixels. GK defaults verbatim: 400×386, open=true (audit doc
+/// `01-panel-chrome.md`).
+export interface DetailPanelLayout {
+  width: number;
+  height: number;
+  open: boolean;
+}
+
+/// Mirrors `yryvu_bridge::preferences::LeftSidebarLayout`. Width in
+/// CSS pixels. Default 215 per audit doc
+/// `gitkraken-left-panel/00-overview.md`. GK persists this under the
+/// legacy `RefPanel` key; Yryvu uses the descriptive `leftSidebar`
+/// name on the wire.
+export interface LeftSidebarLayout {
+  width: number;
+  open: boolean;
+}
+
+/// Mirrors `yryvu_bridge::preferences::LayoutPreferences`. Envelope for
+/// resizable-panel state — currently the right-side inspector and the
+/// left sidebar.
+export interface LayoutPreferences {
+  detailPanel: DetailPanelLayout;
+  leftSidebar: LeftSidebarLayout;
+}
+
 /// Mirrors `yryvu_bridge::preferences::Preferences`. The `version`
 /// field is owned by the backend; never mutate it from the frontend.
 export interface Preferences {
@@ -169,6 +196,7 @@ export interface Preferences {
   notifications: NotificationsPreferences;
   issueTracker: IssueTrackerPreferences;
   gpg: GpgPreferences;
+  layout: LayoutPreferences;
 }
 
 export function getPreferences(): Promise<Preferences> {

@@ -1,0 +1,30 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Reusable resize handle for shell panels (right inspector + left
+   sidebar). 6px wide hit area, near-transparent until hover so it
+   doesn't compete visually with the panel border. Lives at the
+   panel's specified edge via the `--left` / `--right` variants. */
+
+.resizable-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 1;
+  transition: background 120ms;
+}
+
+.resizable-edge--left {
+  left: 0;
+}
+
+.resizable-edge--right {
+  right: 0;
+}
+
+.resizable-edge:hover,
+.resizable-edge:active {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}

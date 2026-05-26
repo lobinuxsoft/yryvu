@@ -174,6 +174,16 @@ See [§7](#7-interaction-patterns).
 
 ![Sidebar collapsed to icon rail](assets/gk/16-sidebar-collapsed.png)
 
+**Resizability.** The sidebar's right edge is a drag handle (`col-resize`
+cursor on hover). Width is clamped between **44 px** (collapsed-rail floor)
+and the viewport ceiling minus the inspector width and a 480 px main-area
+reservation, so the sidebar can never push the graph off-screen. The chosen
+width persists per-profile in `preferences.json` under
+`layout.leftSidebar.width`, alongside the open/closed flag at
+`layout.leftSidebar.open`. Default width on first run is **215 px**
+(verbatim from GK's `RefPanel: { width: 215, … }` profile literal — audit
+doc `docs/research/gitkraken-left-panel/00-overview.md`).
+
 ### 2.5 Main area
 
 Three-column tabular list of commits with lane rendering in the middle column:
@@ -216,6 +226,21 @@ Sections, top to bottom:
    options, action button). We omit the "Compose commits with AI" button.
 
 ![Commit details with WIP banner](assets/gk/21-commit-details-single-file-with-wip-banner.png)
+
+**Resizability.** The panel's left edge is a drag handle (`col-resize`
+cursor on hover). Width is clamped between **353 px** (GK's verbatim
+`BOTTOM_DETAIL_PANEL_MIN_HEIGHT` floor, applied here as the min-width
+constant) and the viewport ceiling minus the left sidebar width and a
+480 px main-area reservation. The chosen width persists per-profile in
+`preferences.json` under `layout.detailPanel.width`. The panel's
+open/closed flag (`layout.detailPanel.open`) is bound to **`Cmd/Ctrl+K`**.
+The panel hides entirely (the grid cell collapses, no empty placeholder)
+when no commit is selected and the working tree is clean — see audit doc
+`docs/research/gitkraken-right-panel/01-panel-chrome.md`.
+
+Default width on first run is **400 px**, height **386 px** (drag handle
+for height deferred — current shell grid spans the row vertically; a
+top-edge handle requires a bottom-anchor refactor tracked separately).
 
 ### 2.7 Status bar
 

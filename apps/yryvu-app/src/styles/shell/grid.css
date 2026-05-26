@@ -18,9 +18,9 @@
 
 .shell__tabs       { grid-area: tabs; }
 .shell__toolbar    { grid-area: toolbar; }
-.shell__sidebar    { grid-area: sidebar; min-height: 0; overflow: hidden; }
+.shell__sidebar    { grid-area: sidebar; min-height: 0; min-width: 44px; overflow: hidden; position: relative; }
 .shell__main       { grid-area: main; overflow: hidden; position: relative; }
-.shell__inspector  { grid-area: inspector; min-height: 0; overflow: hidden; }
+.shell__inspector  { grid-area: inspector; min-height: 0; min-width: 353px; overflow: hidden; position: relative; }
 .shell__statusbar  { grid-area: statusbar; }
 
 /* Hide panels by toggling data attributes on the shell */

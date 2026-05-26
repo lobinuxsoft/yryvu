@@ -313,6 +313,59 @@ export function setGraphZoneWidthInteractive(
   applyLayoutEphemeral(layout);
 }
 
+/// Splitter pair resize: redistribute width between two ADJACENT visible
+/// zones without rippling into the rest of the row. Used by
+/// `GraphColumnResizer` — drag the handle between col A and col B,
+/// only A and B change (the handle follows the cursor like a window
+/// border between two adjacent panes).
+///
+/// Width is conserved (`final_left + final_right === start_left + start_right`)
+/// modulo the per-zone min clamps. If a request would push either side
+/// below its `minimumWidth`, the deficit is absorbed by the other side so
+/// the pair total stays constant — the handle stops moving at that limit
+/// rather than dragging the wrong side past zero.
+///
+/// Ephemeral only: caller commits once on `pointerup` via
+/// `commitGraphColumnLayout()` — same contract as
+/// `setGraphZoneWidthInteractive`.
+export function setGraphZonePairInteractive(
+  leftZone: GraphZoneId,
+  leftWidth: number,
+  rightZone: GraphZoneId,
+  rightWidth: number,
+): void {
+  const cur = graphColumnsInternal();
+  const totalAvailable = cur[leftZone].width + cur[rightZone].width;
+  const minLeft = ZONE_SPECS[leftZone].minimumWidth;
+  const minRight = ZONE_SPECS[rightZone].minimumWidth;
+
+  let finalLeft = Math.round(leftWidth);
+  let finalRight = totalAvailable - finalLeft;
+
+  if (finalLeft < minLeft) {
+    finalLeft = minLeft;
+    finalRight = totalAvailable - finalLeft;
+  }
+  if (finalRight < minRight) {
+    finalRight = minRight;
+    finalLeft = totalAvailable - finalRight;
+  }
+  // If the pair can't even fit both minimums, leave things alone rather
+  // than degrade into negative widths — the container is too narrow.
+  if (finalLeft < minLeft || finalRight < minRight) return;
+
+  // `rightWidth` is a hint from the caller; the conservation rule above
+  // already pinned `finalRight`. Acknowledge it to keep callers from
+  // wondering why their second arg was ignored when the constraints
+  // didn't bind.
+  void rightWidth;
+
+  const next = cloneLayout(cur);
+  next[leftZone] = { ...next[leftZone], width: finalLeft };
+  next[rightZone] = { ...next[rightZone], width: finalRight };
+  applyLayoutEphemeral(next);
+}
+
 /// ResizeObserver entry point. GK's `ensureZoneWidthsMatchGraphWidth`:
 /// when the container resizes, re-balance so the visible columns keep
 /// `sum === containerWidth`. Idempotent — if widths already match, this

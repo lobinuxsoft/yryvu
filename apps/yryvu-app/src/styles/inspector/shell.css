@@ -3,8 +3,11 @@
 /* Right panel (inspector) — shell, banner, body container, and the
    empty-state copy. */
 
+/* Width comes from inline `style="width:<px>"` on `.shell__inspector`,
+   driven by the `detailPanelWidth()` signal (#134 PR1). Height takes
+   the full grid row until PR1.5 introduces the bottom-anchor layout. */
 .inspector {
-  width: var(--panel-width-right);
+  width: 100%;
   height: 100%;
   background: var(--bg-1);
   border-left: 1px solid var(--bg-3);
@@ -12,6 +15,12 @@
   flex-direction: column;
   overflow: hidden;
 }
+
+/* Resize handles for inspector + sidebar moved to
+   styles/shell/resizable-edge.css so both panels share the same
+   `.resizable-edge` selector. The wrapper inside the inspector is
+   gone (the `<ResizableEdge>` lives as a sibling of `<RightPanel>`
+   inside `.shell__inspector` itself). */
 
 .inspector__banner {
   display: flex;

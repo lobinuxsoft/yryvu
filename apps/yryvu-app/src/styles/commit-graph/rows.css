@@ -88,6 +88,33 @@
   transition: opacity 80ms ease-out;
 }
 
+/* =============================================================================
+   Node overlay animations (issue #53 — doc 16, Layer 9)
+   ============================================================================= */
+
+/* commitCreated — scale pulse on newly authored commits. 400ms,
+   1.0→1.25→1.0. Merge commits + WIP rows skip this (gated upstream
+   in NodeOverlays.AnimationWrapper). */
+.graph-node-anim--created {
+  animation: commitCreated 400ms ease-in-out 1;
+}
+@keyframes commitCreated {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+/* commitHighlight — lane-color opacity flash on navigation. 600ms,
+   1.0→0.3→1.0 on the overlay circle painted by AnimationWrapper. */
+.graph-node-highlight-flash {
+  animation: commitHighlight 600ms ease-in-out 1;
+}
+@keyframes commitHighlight {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
 .commit-graph__summary {
   flex: 1;
   overflow: hidden;

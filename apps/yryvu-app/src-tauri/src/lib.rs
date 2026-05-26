@@ -117,6 +117,7 @@ pub fn run() {
             yryvu_bridge::commands::unstage_files,
             yryvu_bridge::commands::diff_unstaged,
             yryvu_bridge::commands::diff_staged,
+            yryvu_bridge::commands::read_file_content,
             yryvu_bridge::commands::commit_staged,
             yryvu_bridge::commands::amend_commit,
             yryvu_bridge::commands::head_commit_message,

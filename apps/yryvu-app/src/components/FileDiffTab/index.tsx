@@ -1,23 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createSignal, createResource, Show } from "solid-js";
+import { createEffect, createSignal, createResource, onCleanup, Show } from "solid-js";
 
 import {
   discardHunks,
   getCommitDiff,
   getStagedDiff,
   getUnstagedDiff,
+  readFileContent,
   stageHunks,
   stageLines,
   unstageHunks,
   unstageLines,
+  type FileContent,
+  type FileContentSource,
   type FileDiff,
 } from "../../ipc";
 import {
+  clearDiffNavigator,
   closeDiffTab,
+  fileViewMode,
   refreshWorkingTree,
   repoPath,
   selectedDiffFile,
+  setDiffNavigator,
   workingTreeNonce,
 } from "../../state";
 import { Dialog } from "../Dialog";
@@ -26,6 +32,7 @@ import {
   type HunkStagingActions,
   type LineStagingApi,
 } from "../DiffView";
+import { DiffToolbar } from "../DiffToolbar";
 import { notify } from "../Notifications";
 import { Tooltip } from "../Tooltip";
 
@@ -43,6 +50,20 @@ async function loadDiff(
   return await getStagedDiff(repo, selection.path);
 }
 
+/// Pick the "after" side of the diff for full-file fetches (INLINE +
+/// CONTENT modes). Working tree for unstaged edits, index for staged
+/// entries, the commit blob itself for commit selections.
+function selectionContentSource(
+  selection: NonNullable<ReturnType<typeof selectedDiffFile>>
+): FileContentSource {
+  if (selection.kind === "commit") {
+    return { kind: "commit", sha: selection.sha };
+  }
+  return selection.side === "unstaged"
+    ? { kind: "working-tree" }
+    : { kind: "index" };
+}
+
 type DiffSource = [string, NonNullable<ReturnType<typeof selectedDiffFile>>, number];
 
 export function FileDiffTab() {
@@ -55,6 +76,64 @@ export function FileDiffTab() {
     },
     async ([p, sel]) => await loadDiff(p, sel)
   );
+
+  /// Full-file content for INLINE / CONTENT modes. Refetched on
+  /// selection change + on each working-tree refresh so edits made
+  /// outside yryvu are reflected. Skipped entirely for HUNK / SPLIT
+  /// (those work off the hunk-only diff data).
+  const [fullContent] = createResource<FileContent | null, DiffSource>(
+    (): DiffSource | undefined => {
+      const p = repoPath();
+      const sel = selectedDiffFile();
+      const mode = fileViewMode();
+      if (!p || !sel) return undefined;
+      if (mode !== "inline" && mode !== "content") return undefined;
+      return [p, sel, workingTreeNonce()];
+    },
+    async ([p, sel]) =>
+      await readFileContent(p, sel.path, selectionContentSource(sel)),
+  );
+
+  let bodyRef: HTMLDivElement | undefined;
+  const [activeHunk, setActiveHunk] = createSignal(0);
+
+  function scrollToHunk(idx: number) {
+    const root = bodyRef;
+    if (!root) return;
+    const hunks = root.querySelectorAll<HTMLDivElement>(".diff-hunk");
+    const target = hunks[idx];
+    if (!target) return;
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    target.classList.add("diff-hunk--flash");
+    window.setTimeout(() => target.classList.remove("diff-hunk--flash"), 600);
+  }
+
+  /// Wire/refresh the prev/next callbacks on the global signal channel
+  /// each time the loaded file changes — mirrors GK's
+  /// `GoToNextAndPreviousDiffChangeCbsUpdated` dispatch.
+  createEffect(() => {
+    const f = file();
+    const mode = fileViewMode();
+    if (!f || f.hunks.length === 0 || mode === "content") {
+      clearDiffNavigator();
+      return;
+    }
+    const count = f.hunks.length;
+    setDiffNavigator({
+      next: () => {
+        const idx = Math.min(activeHunk() + 1, count - 1);
+        setActiveHunk(idx);
+        scrollToHunk(idx);
+      },
+      prev: () => {
+        const idx = Math.max(activeHunk() - 1, 0);
+        setActiveHunk(idx);
+        scrollToHunk(idx);
+      },
+    });
+  });
+
+  onCleanup(() => clearDiffNavigator());
 
   // Hunk index queued for destructive discard. `null` = dialog closed.
   const [pendingDiscardHunk, setPendingDiscardHunk] = createSignal<
@@ -185,7 +264,9 @@ export function FileDiffTab() {
         </Tooltip>
       </header>
 
-      <div class="file-diff-tab__body">
+      <DiffToolbar />
+
+      <div class="file-diff-tab__body" ref={bodyRef}>
         <Show when={file.loading}>
           <div class="file-diff-tab__status">Loading diff…</div>
         </Show>
@@ -205,7 +286,8 @@ export function FileDiffTab() {
               file={file()!}
               headless
               alwaysExpanded
-              viewMode="split"
+              viewMode={fileViewMode()}
+              fullContent={fullContent()?.content}
               stagingActions={stagingActions()}
               lineStagingApi={lineStagingApi()}
             />

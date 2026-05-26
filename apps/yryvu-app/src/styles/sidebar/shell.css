@@ -3,8 +3,11 @@
 /* Left sidebar shell — frame, header strip, filter input + clear, and
    the no-matches placeholder. */
 
+/* Width comes from inline `style="width:<px>"` on `.shell__sidebar`,
+   driven by the `leftSidebarWidth()` signal (#36). The collapsed
+   data-attr override stays for the icon-rail mode. */
 .sidebar {
-  width: var(--panel-width-left);
+  width: 100%;
   height: 100%;
   background: var(--bg-1);
   border-right: 1px solid var(--bg-3);

@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Layout preferences (issue #134, PR1 panel chrome). Stores the
-//! per-profile size + visibility of resizable panels so the user's
-//! sizing choices survive app restart.
+//! Layout preferences (issues #134 PR1 + #36). Stores the per-profile
+//! size + visibility of resizable shell panels so the user's sizing
+//! choices survive app restart.
 //!
-//! Mirrors GK's `layout.DetailPanel = { width, height, open }` profile
-//! setting (audit doc `01-panel-chrome.md`). Today only the right-side
-//! inspector lives here; other resizable panels (left sidebar #36)
-//! will join this struct as they land.
+//! Mirrors GK's `layout.{DetailPanel, RefPanel}` profile settings:
+//! - [`DetailPanelLayout`] — right-side inspector (audit doc
+//!   `gitkraken-right-panel/01-panel-chrome.md`).
+//! - [`LeftSidebarLayout`] — left sidebar (audit doc
+//!   `gitkraken-left-panel/00-overview.md`). GK persists this under
+//!   the legacy `RefPanel` key; Yryvu uses the descriptive
+//!   `leftSidebar` name on the wire.
 //!
 //! Lives in its own module so the top-level [`super::Preferences`]
 //! envelope doesn't grow past the per-file budget.
@@ -19,9 +22,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailPanelLayout {
-    #[serde(default = "default_width")]
+    #[serde(default = "detail_panel_default_width")]
     pub width: u32,
-    #[serde(default = "default_height")]
+    #[serde(default = "detail_panel_default_height")]
     pub height: u32,
     #[serde(default = "default_open")]
     pub open: bool,
@@ -30,8 +33,29 @@ pub struct DetailPanelLayout {
 impl Default for DetailPanelLayout {
     fn default() -> Self {
         Self {
-            width: default_width(),
-            height: default_height(),
+            width: detail_panel_default_width(),
+            height: detail_panel_default_height(),
+            open: default_open(),
+        }
+    }
+}
+
+/// Left sidebar sizing + visibility. Width in CSS pixels. Default 215px
+/// per audit doc `gitkraken-left-panel/00-overview.md` (line 216,
+/// `RefPanel: { height:300, open:!0, width:215 }`).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LeftSidebarLayout {
+    #[serde(default = "left_sidebar_default_width")]
+    pub width: u32,
+    #[serde(default = "default_open")]
+    pub open: bool,
+}
+
+impl Default for LeftSidebarLayout {
+    fn default() -> Self {
+        Self {
+            width: left_sidebar_default_width(),
             open: default_open(),
         }
     }
@@ -44,14 +68,20 @@ impl Default for DetailPanelLayout {
 pub struct LayoutPreferences {
     #[serde(default)]
     pub detail_panel: DetailPanelLayout,
+    #[serde(default)]
+    pub left_sidebar: LeftSidebarLayout,
 }
 
-fn default_width() -> u32 {
+fn detail_panel_default_width() -> u32 {
     400
 }
 
-fn default_height() -> u32 {
+fn detail_panel_default_height() -> u32 {
     386
+}
+
+fn left_sidebar_default_width() -> u32 {
+    215
 }
 
 fn default_open() -> bool {
@@ -63,7 +93,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn defaults_match_gk() {
+    fn detail_panel_defaults_match_gk() {
         let layout = DetailPanelLayout::default();
         assert_eq!(layout.width, 400);
         assert_eq!(layout.height, 386);
@@ -71,7 +101,14 @@ mod tests {
     }
 
     #[test]
-    fn serde_roundtrip_preserves_fields() {
+    fn left_sidebar_defaults_match_gk() {
+        let layout = LeftSidebarLayout::default();
+        assert_eq!(layout.width, 215);
+        assert!(layout.open);
+    }
+
+    #[test]
+    fn detail_panel_serde_roundtrip_preserves_fields() {
         let layout = DetailPanelLayout {
             width: 512,
             height: 720,
@@ -83,22 +120,38 @@ mod tests {
     }
 
     #[test]
-    fn serde_camel_case_on_wire() {
-        let json = serde_json::to_string(&DetailPanelLayout::default()).unwrap();
+    fn left_sidebar_serde_roundtrip_preserves_fields() {
+        let layout = LeftSidebarLayout {
+            width: 320,
+            open: false,
+        };
+        let json = serde_json::to_string(&layout).unwrap();
+        let parsed: LeftSidebarLayout = serde_json::from_str(&json).unwrap();
+        assert_eq!(layout, parsed);
+    }
+
+    #[test]
+    fn envelope_serde_camel_case_on_wire() {
+        let json = serde_json::to_string(&LayoutPreferences::default()).unwrap();
         // No snake_case escapes onto the wire — keeps the IPC contract
         // aligned with the rest of the preferences sections.
         assert!(!json.contains("detail_panel"));
+        assert!(!json.contains("left_sidebar"));
     }
 
     #[test]
     fn partial_json_uses_defaults() {
         let parsed: DetailPanelLayout = serde_json::from_str("{}").unwrap();
         assert_eq!(parsed, DetailPanelLayout::default());
+
+        let parsed: LeftSidebarLayout = serde_json::from_str("{}").unwrap();
+        assert_eq!(parsed, LeftSidebarLayout::default());
     }
 
     #[test]
-    fn envelope_default_nests_detail_panel_default() {
+    fn envelope_default_nests_per_panel_defaults() {
         let prefs = LayoutPreferences::default();
         assert_eq!(prefs.detail_panel, DetailPanelLayout::default());
+        assert_eq!(prefs.left_sidebar, LeftSidebarLayout::default());
     }
 }

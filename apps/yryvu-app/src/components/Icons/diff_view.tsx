@@ -66,3 +66,27 @@ export const IconColumns = (p?: IconProps) =>
     </>,
     p,
   );
+
+/// Blame outer-toggle — person + lines glyph.
+export const IconBlame = (p?: IconProps) =>
+  base(
+    <>
+      <circle cx="4.5" cy="5.5" r="1.5" />
+      <path d="M2 11c0-1.4 1.1-2.5 2.5-2.5S7 9.6 7 11" />
+      <path d="M9 5h5" />
+      <path d="M9 8h5" />
+      <path d="M9 11h5" />
+    </>,
+    p,
+  );
+
+/// History — clock face with hour hand.
+export const IconHistory = (p?: IconProps) =>
+  base(
+    <>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M8 4.5v3.5l2.5 1.5" />
+      <path d="M2 5l1.5 -2" />
+    </>,
+    p,
+  );

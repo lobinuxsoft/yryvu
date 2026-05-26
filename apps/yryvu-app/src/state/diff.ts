@@ -2,7 +2,12 @@
 
 import { createSignal } from "solid-js";
 
-export type MainView = "graph" | "diff" | "prDetail" | "issueDetail";
+export type MainView =
+  | "graph"
+  | "diff"
+  | "prDetail"
+  | "issueDetail"
+  | "fileHistory";
 export const [mainView, setMainView] = createSignal<MainView>("graph");
 
 export type SelectedDiffFile =
@@ -28,5 +33,25 @@ export function openStagingDiffTab(
 
 export function closeDiffTab() {
   setSelectedDiffFile(undefined);
+  setMainView("graph");
+}
+
+/// =============================================================================
+/// File history panel (issue #7) — separate `mainView` slot so the
+/// graph + diff tabs stay intact when the user toggles back from
+/// history.
+/// =============================================================================
+
+export const [selectedHistoryFile, setSelectedHistoryFile] = createSignal<
+  string | undefined
+>(undefined);
+
+export function openFileHistory(path: string): void {
+  setSelectedHistoryFile(path);
+  setMainView("fileHistory");
+}
+
+export function closeFileHistory(): void {
+  setSelectedHistoryFile(undefined);
   setMainView("graph");
 }

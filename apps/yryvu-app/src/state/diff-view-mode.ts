@@ -14,11 +14,23 @@ import { createSignal, type Accessor } from "solid-js";
 
 import { persistedEnum } from "./storage";
 
-export const FILE_VIEW_MODES = ["content", "hunk", "inline", "split"] as const;
+export const FILE_VIEW_MODES = [
+  "content",
+  "hunk",
+  "inline",
+  "split",
+  "blame",
+] as const;
 export type FileViewMode = (typeof FILE_VIEW_MODES)[number];
 
 export const DIFF_VIEW_MODES = ["hunk", "inline", "split"] as const;
 export type DiffViewMode = (typeof DIFF_VIEW_MODES)[number];
+
+/// Outer-toggle slots. GK's 2-way File/Diff is extended with a Blame
+/// slot — issue #8 ships blame as a peer of the diff view rather than a
+/// markdown-style sub-mode of File, so users can flip into it from any
+/// other mode with one click.
+export type OuterView = "file" | "diff" | "blame";
 
 /// Persisted current mode. Default `hunk` — same as GK's init state.
 export const [fileViewMode, setFileViewMode] = persistedEnum<FileViewMode>(
@@ -28,8 +40,7 @@ export const [fileViewMode, setFileViewMode] = persistedEnum<FileViewMode>(
 );
 
 /// Last diff-mode (Hunk / Inline / Split) chosen — restored when the
-/// outer toggle flips back from File to Diff. Independent persistence
-/// so toggling File→Diff returns the user to their last diff variant.
+/// outer toggle flips back to Diff from File or Blame.
 const [lastDiffMode, setLastDiffMode] = persistedEnum<DiffViewMode>(
   "lastDiffViewMode",
   "hunk",
@@ -39,23 +50,33 @@ const [lastDiffMode, setLastDiffMode] = persistedEnum<DiffViewMode>(
 export { lastDiffMode };
 
 /// Switch into one of the three diff modes. Records the choice as the
-/// last-used diff mode so the File↔Diff outer toggle can restore it.
+/// last-used diff mode so the outer toggle can restore it.
 export function setDiffViewMode(mode: DiffViewMode): void {
   setLastDiffMode(mode);
   setFileViewMode(mode);
 }
 
-/// Outer-toggle switcher. Going to "diff" restores the last diff mode.
-export function setOuterView(view: "file" | "diff"): void {
+/// Switch the outer slot. Going to "diff" restores the last diff mode.
+export function setOuterView(view: OuterView): void {
   if (view === "file") {
     setFileViewMode("content");
-    return;
+  } else if (view === "blame") {
+    setFileViewMode("blame");
+  } else {
+    setFileViewMode(lastDiffMode());
   }
-  setFileViewMode(lastDiffMode());
 }
 
-/// Convenience: is the diff toolbar (inner toggle) visible?
-export const isDiffMode: Accessor<boolean> = () => fileViewMode() !== "content";
+/// Which outer-toggle slot the current mode lives in.
+export function outerView(): OuterView {
+  const m = fileViewMode();
+  if (m === "content") return "file";
+  if (m === "blame") return "blame";
+  return "diff";
+}
+
+/// Convenience: is the diff toolbar (Hunk/Inline/Split inner) visible?
+export const isDiffMode: Accessor<boolean> = () => outerView() === "diff";
 
 /// =============================================================================
 /// Prev/next change navigation — Redux-equivalent signal channel.

@@ -46,6 +46,10 @@ export {
   openDiffTab,
   openStagingDiffTab,
   closeDiffTab,
+  selectedHistoryFile,
+  setSelectedHistoryFile,
+  openFileHistory,
+  closeFileHistory,
   type MainView,
   type SelectedDiffFile,
 } from "./diff";
@@ -156,12 +160,14 @@ export {
   setDiffViewMode,
   setOuterView,
   isDiffMode,
+  outerView,
   diffNavigator,
   setDiffNavigator,
   clearDiffNavigator,
   type FileViewMode,
   type DiffViewMode,
   type DiffNavigator,
+  type OuterView,
 } from "./diff-view-mode";
 // `issue-tracker` is intentionally NOT re-exported here. It imports
 // `./preferences` whose `createResource` fetcher fires `invoke()` at

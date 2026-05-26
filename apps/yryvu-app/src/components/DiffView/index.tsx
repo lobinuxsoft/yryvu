@@ -2,7 +2,8 @@
 
 import { createSignal, For, type JSX, Show } from "solid-js";
 
-import type { CommitDiff, DiffLine, FileDiff, FileStatus } from "../../ipc";
+import type { BlameLine, CommitDiff, DiffLine, FileDiff, FileStatus } from "../../ipc";
+import { BlameView } from "./BlameView";
 import {
   FileContentView,
   FullFileMissing,
@@ -40,16 +41,18 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/// GitKraken parity (issue #59). `fileDisplayModes` in the bundle:
+/// GitKraken parity (issue #59 + #8). `fileDisplayModes` in the bundle
+/// plus the Blame mode added as a 3rd outer-toggle slot in yryvu:
 ///
 /// - `content` — File View: current file content, no diff markers.
 /// - `hunk` — Hunk View (default): only changed hunks, stacked.
 /// - `inline` — full file, unified `+`/`-` markers on changed lines.
 /// - `split` — side-by-side, original left / modified right.
+/// - `blame` — per-line authorship annotations over file content.
 ///
 /// Monaco's `renderSideBySide` is `mode === "split"`. The HUNK/INLINE
 /// distinction is which model is rendered (hunks-only vs full file).
-export type FileViewMode = "content" | "hunk" | "inline" | "split";
+export type FileViewMode = "content" | "hunk" | "inline" | "split" | "blame";
 
 /// Subset usable as diff (toolbar's inner toggle).
 export const DIFF_VIEW_MODES = ["hunk", "inline", "split"] as const;
@@ -84,6 +87,17 @@ export interface DiffFileBlockProps {
    * upgrades; currently ignored.
    */
   originalContent?: string;
+  /**
+   * Per-line blame entries used when `viewMode === "blame"`. The blame
+   * fetch lives in the parent — the renderer just consumes the array.
+   */
+  blameLines?: BlameLine[];
+  /**
+   * Click-through callback when the user activates a blame annotation.
+   * The parent (FileDiffTab) opens that commit in the graph + diff
+   * view.
+   */
+  onJumpToBlameCommit?: (sha: string) => void;
   /// When present, renders Stage/Unstage/Discard buttons in each hunk
   /// header. Absent (commit diffs, historical views) means read-only.
   stagingActions?: HunkStagingActions;
@@ -157,6 +171,18 @@ function renderBody(
   mode: FileViewMode,
   lang: string | undefined,
 ): JSX.Element {
+  if (mode === "blame") {
+    if (props.blameLines === undefined) {
+      return <FullFileMissing reason="loading" />;
+    }
+    return (
+      <BlameView
+        lines={props.blameLines}
+        language={lang}
+        onJumpToCommit={props.onJumpToBlameCommit}
+      />
+    );
+  }
   if (mode === "content") {
     if (props.fullContent === undefined) {
       return <FullFileMissing reason="loading" />;

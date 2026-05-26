@@ -151,7 +151,7 @@ pub enum MergeResult {
 /// Current state of the repository, reported to the UI so non-clean states
 /// (merge / rebase / cherry-pick / …) can surface a persistent banner with
 /// an abort affordance.
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum FileStatus {
     Added,

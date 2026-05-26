@@ -22,13 +22,16 @@ import {
   diffNavigator,
   fileViewMode,
   isDiffMode,
+  outerView,
   setDiffViewMode,
   setOuterView,
   type DiffViewMode,
+  type OuterView,
 } from "../../state";
 import {
   IconArrowDown,
   IconArrowUp,
+  IconBlame,
   IconColumns,
   IconDiff,
   IconFile,
@@ -65,6 +68,29 @@ const DIFF_MODE_BUTTONS: DiffModeButton[] = [
   },
 ];
 
+interface OuterButtonProps {
+  view: OuterView;
+  label: string;
+  icon: () => JSX.Element;
+}
+
+function OuterButton(props: OuterButtonProps): JSX.Element {
+  const active = () => outerView() === props.view;
+  return (
+    <button
+      class="diff-toolbar__btn diff-toolbar__btn--toggle"
+      type="button"
+      role="radio"
+      aria-checked={active()}
+      data-active={active()}
+      onClick={() => setOuterView(props.view)}
+    >
+      {props.icon()}
+      <span class="diff-toolbar__label">{props.label}</span>
+    </button>
+  );
+}
+
 export function DiffToolbar(): JSX.Element {
   return (
     <div class="diff-toolbar" data-testid="diff-options">
@@ -100,28 +126,9 @@ export function DiffToolbar(): JSX.Element {
         role="radiogroup"
         aria-label="View mode"
       >
-        <button
-          class="diff-toolbar__btn diff-toolbar__btn--toggle"
-          type="button"
-          role="radio"
-          aria-checked={!isDiffMode()}
-          data-active={!isDiffMode()}
-          onClick={() => setOuterView("file")}
-        >
-          <IconFile />
-          <span class="diff-toolbar__label">File View</span>
-        </button>
-        <button
-          class="diff-toolbar__btn diff-toolbar__btn--toggle"
-          type="button"
-          role="radio"
-          aria-checked={isDiffMode()}
-          data-active={isDiffMode()}
-          onClick={() => setOuterView("diff")}
-        >
-          <IconDiff />
-          <span class="diff-toolbar__label">Diff View</span>
-        </button>
+        <OuterButton view="file" label="File View" icon={() => <IconFile />} />
+        <OuterButton view="diff" label="Diff View" icon={() => <IconDiff />} />
+        <OuterButton view="blame" label="Blame" icon={() => <IconBlame />} />
       </div>
 
       <Show when={isDiffMode()}>

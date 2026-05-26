@@ -54,4 +54,16 @@ describe("diff-view-mode state", () => {
     clearDiffNavigator();
     expect(diffNavigator()).toBeNull();
   });
+
+  it("blame mode is an outer-toggle peer of file/diff", async () => {
+    const { setOuterView, outerView } = await import("../diff-view-mode");
+    setOuterView("blame");
+    expect(fileViewMode()).toBe("blame");
+    expect(outerView()).toBe("blame");
+    expect(isDiffMode()).toBe(false);
+
+    setOuterView("diff");
+    expect(outerView()).toBe("diff");
+    expect(isDiffMode()).toBe(true);
+  });
 });

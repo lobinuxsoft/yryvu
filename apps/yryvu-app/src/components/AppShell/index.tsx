@@ -15,6 +15,7 @@ import { CommandPalette } from "../CommandPalette";
 import { openCommandPalette } from "../CommandPalette/state";
 import { ConflictResolverDialog } from "../ConflictResolverDialog";
 import { RebaseInteractiveDialog } from "../RebaseInteractiveDialog";
+import { CommitFilterBar } from "../CommitFilterBar";
 import { FileDiffTab } from "../FileDiffTab";
 import { FileHistoryPanel } from "../FileHistoryPanel";
 import { IssueDetailPanel } from "../IssueDetail";
@@ -368,6 +369,7 @@ export function AppShell() {
             <Switch
               fallback={
                 <div class="main">
+                  <CommitFilterBar />
                   <GraphColumnHeaders />
                   <div class="main__graph-host">
                     <CommitGraph repoPath={repoPath()!} />

@@ -6,12 +6,14 @@ import {
   activeColumnSettings,
   commitMessage,
   dirtyFileCount,
+  commitFilter,
   hoveredRef,
+  pathShaSet,
   inspectorMode,
   setCommitMessage,
   workdirSelected,
 } from "../../../state";
-import { isRowMemberOfHoveredRef } from "../hoverDim";
+import { isRowVisible } from "../hoverDim";
 import { rowWrapperClass } from "../rowClass";
 import { ROW_HEIGHT } from "../RowRenderer";
 import { Tooltip } from "../../Tooltip";
@@ -69,13 +71,11 @@ export function MessageZone(props: { deps: ZoneDeps }) {
               if (!r) return null;
               return (
                 <li
-                  class={rowWrapperClass(
-                    r.is_merge ? "merge" : "commit",
-                    deps.hoveredCommit() === r.sha,
-                    deps.selection.selectedShasSet().has(r.sha),
-                  )}
+                  class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
                   classList={{
-                    "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                    "is-hovering": deps.hoveredCommit() === r.sha,
+                    "is-selected": deps.selection.selectedShasSet().has(r.sha),
+                    "is-dimmed": !isRowVisible(r, hoveredRef(), commitFilter(), pathShaSet()),
                   }}
                   data-selected={
                     deps.selection.selectedShasSet().has(r.sha)

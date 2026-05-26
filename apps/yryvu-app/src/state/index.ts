@@ -169,6 +169,19 @@ export {
   type DiffNavigator,
   type OuterView,
 } from "./diff-view-mode";
+export {
+  commitFilter,
+  setCommitFilter,
+  clearCommitFilter,
+  reloadCommitFilterForRepo,
+  isCommitFilterActive,
+  isFilterEmpty,
+  matchesCommitFilter,
+  matchesCommitFilterWithPath,
+  pathShaSet,
+  EMPTY_FILTER,
+  type CommitFilter,
+} from "./commit-filter";
 // `issue-tracker` is intentionally NOT re-exported here. It imports
 // `./preferences` whose `createResource` fetcher fires `invoke()` at
 // module-eval time; pulling that into the barrel would force every

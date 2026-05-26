@@ -160,7 +160,13 @@ pub trait GitBackend: Send + Sync {
         out_dir: &Path,
     ) -> Result<String, BackendError>;
 
-    fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError>;
+    fn stash_push(
+        &self,
+        repo_path: &Path,
+        message: Option<&str>,
+        include_untracked: bool,
+        include_ignored: bool,
+    ) -> Result<(), BackendError>;
 
     fn stash_pop(&self, repo_path: &Path) -> Result<(), BackendError>;
 

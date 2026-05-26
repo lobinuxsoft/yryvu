@@ -335,8 +335,14 @@ impl GitBackend for GixBackend {
         patches::format_patch(repo_path, sha, out_dir)
     }
 
-    fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError> {
-        worktree::stash_push(repo_path, message)
+    fn stash_push(
+        &self,
+        repo_path: &Path,
+        message: Option<&str>,
+        include_untracked: bool,
+        include_ignored: bool,
+    ) -> Result<(), BackendError> {
+        worktree::stash_push(repo_path, message, include_untracked, include_ignored)
     }
 
     fn stash_pop(&self, repo_path: &Path) -> Result<(), BackendError> {

@@ -17,6 +17,7 @@ import { ConflictResolverDialog } from "../ConflictResolverDialog";
 import { RebaseInteractiveDialog } from "../RebaseInteractiveDialog";
 import { CommitFilterBar } from "../CommitFilterBar";
 import { DropActionMenu } from "../DropActionMenu";
+import { StashCreateDialog } from "../StashCreateDialog";
 import { FileDiffTab } from "../FileDiffTab";
 import { FileHistoryPanel } from "../FileHistoryPanel";
 import { IssueDetailPanel } from "../IssueDetail";
@@ -437,6 +438,7 @@ export function AppShell() {
       <CommandPalette />
       <PreferencesWindow />
       <DropActionMenu />
+      <StashCreateDialog />
       <About />
       <ToastContainer />
     </div>

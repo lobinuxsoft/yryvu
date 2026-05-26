@@ -178,6 +178,11 @@ export {
 export { repoState, hasConflicts } from "./repo-state";
 export { prsByHeadSha } from "./prs-by-head-sha";
 export {
+  stashDialogOpen,
+  openStashDialog,
+  closeStashDialog,
+} from "./stash-dialog";
+export {
   dragPayload,
   dragTarget,
   dropPopover,

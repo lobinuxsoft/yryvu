@@ -6,10 +6,21 @@ use crate::backend::BackendError;
 use crate::repo::common::{git2_err, open_git2};
 use crate::undo_log::{record_op_best_effort, OpKind};
 
-pub fn stash_push(repo_path: &Path, message: Option<&str>) -> Result<(), BackendError> {
+pub fn stash_push(
+    repo_path: &Path,
+    message: Option<&str>,
+    include_untracked: bool,
+    include_ignored: bool,
+) -> Result<(), BackendError> {
     let mut repo = open_git2(repo_path)?;
     let signature = repo.signature().map_err(git2_err)?;
-    let flags = git2::StashFlags::DEFAULT | git2::StashFlags::INCLUDE_UNTRACKED;
+    let mut flags = git2::StashFlags::DEFAULT;
+    if include_untracked {
+        flags |= git2::StashFlags::INCLUDE_UNTRACKED;
+    }
+    if include_ignored {
+        flags |= git2::StashFlags::INCLUDE_IGNORED;
+    }
     let stash_oid = repo
         .stash_save2(&signature, message, Some(flags))
         .map_err(git2_err)?;

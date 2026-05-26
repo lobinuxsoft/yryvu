@@ -5,6 +5,7 @@ import { createEffect, createSignal, createResource, onCleanup, Show } from "sol
 import {
   discardHunks,
   getCommitDiff,
+  getFileBlame,
   getStagedDiff,
   getUnstagedDiff,
   readFileContent,
@@ -12,6 +13,7 @@ import {
   stageLines,
   unstageHunks,
   unstageLines,
+  type FileBlame,
   type FileContent,
   type FileContentSource,
   type FileDiff,
@@ -24,6 +26,7 @@ import {
   repoPath,
   selectedDiffFile,
   setDiffNavigator,
+  setSelectedCommit,
   workingTreeNonce,
 } from "../../state";
 import { Dialog } from "../Dialog";
@@ -92,6 +95,24 @@ export function FileDiffTab() {
     },
     async ([p, sel]) =>
       await readFileContent(p, sel.path, selectionContentSource(sel)),
+  );
+
+  /// Blame data for BLAME mode. Tied to the selection — for a commit
+  /// selection, blame is computed at that commit; for staging
+  /// selections, at HEAD (working-tree edits aren't part of any commit
+  /// history yet so blame falls back to the last committed state).
+  const [blame] = createResource<FileBlame | null, DiffSource>(
+    (): DiffSource | undefined => {
+      const p = repoPath();
+      const sel = selectedDiffFile();
+      if (!p || !sel) return undefined;
+      if (fileViewMode() !== "blame") return undefined;
+      return [p, sel, workingTreeNonce()];
+    },
+    async ([p, sel]) => {
+      const sha = sel.kind === "commit" ? sel.sha : undefined;
+      return await getFileBlame(p, sel.path, sha);
+    },
   );
 
   let bodyRef: HTMLDivElement | undefined;
@@ -288,6 +309,13 @@ export function FileDiffTab() {
               alwaysExpanded
               viewMode={fileViewMode()}
               fullContent={fullContent()?.content}
+              blameLines={blame()?.lines}
+              onJumpToBlameCommit={(sha) => {
+                // Selecting the commit also closes the diff tab so the
+                // graph + inspector show that commit's full context.
+                setSelectedCommit(sha);
+                closeDiffTab();
+              }}
               stagingActions={stagingActions()}
               lineStagingApi={lineStagingApi()}
             />

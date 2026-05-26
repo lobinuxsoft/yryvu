@@ -17,8 +17,10 @@ pub use errors::BackendError;
 pub use git_backend::GitBackend;
 pub use types::*;
 
+pub use crate::repo::blame::{BlameLine, FileBlame};
 pub use crate::repo::commits::{AuthorInfo, RECENT_AUTHORS_DEFAULT_LIMIT};
 pub use crate::repo::file_content::{FileContent, FileContentSource};
+pub use crate::repo::file_history::FileHistoryEntry;
 pub use crate::repo::staging::{
     CommitOptions, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, LineRange, SignConfig, SignFormat,
     WorkingTreeChange, WorkingTreeStatus,

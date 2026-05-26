@@ -1,8 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, createMemo, For, on, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, on, Show } from "solid-js";
 
 import type { FileDiff } from "../../ipc/diff";
+import {
+  openDiffTab,
+  openFileHistory,
+  openStagingDiffTab,
+  setFileViewMode,
+} from "../../state";
+import { ContextMenu, type ContextMenuItem } from "../ContextMenu";
 import { FileListToolbar } from "./FileListToolbar";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { Row } from "./Row";
@@ -137,6 +144,42 @@ export function FileList(props: FileListProps) {
     }
   };
 
+  /// Right-click menu state — file-row only. Two entries: "Show
+  /// history" opens the FileHistoryPanel (#7), "Show blame" opens the
+  /// file's diff in blame mode (#8). Working-tree files route blame
+  /// through the unstaged-diff selector; committed lists go through
+  /// the commit-diff selector — staging/commit context is inferred
+  /// from `props.listType`.
+  const [menu, setMenu] = createSignal<
+    { x: number; y: number; items: ContextMenuItem[] } | null
+  >(null);
+
+  function openMenuForFile(e: MouseEvent, path: string) {
+    e.preventDefault();
+    const items: ContextMenuItem[] = [
+      { label: "Show history", onSelect: () => openFileHistory(path) },
+      {
+        label: "Show blame",
+        onSelect: () => {
+          // Open the appropriate diff source so FileDiffTab has data
+          // to hand to BlameView, then flip the view mode.
+          if (props.listType === "committed") {
+            // committed lists carry a SHA via `revKey` — this is the
+            // commit being viewed in the inspector.
+            openDiffTab(props.revKey, path);
+          } else {
+            openStagingDiffTab(
+              props.listType === "staged" ? "staged" : "unstaged",
+              path,
+            );
+          }
+          setFileViewMode("blame");
+        },
+      },
+    ];
+    setMenu({ x: e.clientX, y: e.clientY, items });
+  }
+
   return (
     <div class="file-list">
       <Show when={!props.hideToolbar}>
@@ -169,11 +212,20 @@ export function FileList(props: FileListProps) {
                   }
                   onClick={() => onClick(row)}
                   actions={props.rowActions}
+                  onContextMenu={openMenuForFile}
                 />
               </li>
             )}
           </For>
         </ul>
+      </Show>
+      <Show when={menu()}>
+        <ContextMenu
+          x={menu()!.x}
+          y={menu()!.y}
+          items={menu()!.items}
+          onClose={() => setMenu(null)}
+        />
       </Show>
     </div>
   );

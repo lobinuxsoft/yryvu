@@ -52,7 +52,7 @@ pub use editor::{EditorPreferences, EolCharacter};
 pub use general::GeneralPreferences;
 pub use gpg::GpgPreferences;
 pub use issue_tracker::IssueTrackerPreferences;
-pub use layout::{DetailPanelLayout, LayoutPreferences};
+pub use layout::{DetailPanelLayout, LayoutPreferences, LeftSidebarLayout};
 pub use notifications::NotificationsPreferences;
 pub use tabs::{PermanentTabState, PermanentTabs, Tab, TabsPreferences};
 pub use tools::{

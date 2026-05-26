@@ -50,14 +50,24 @@ import {
   showLeftPanel,
 } from "../../state";
 import {
+  clampWidth as clampDetailPanelWidth,
+  commitDetailPanelLayout,
   detailPanelOpen,
   detailPanelWidth,
   hydrateDetailPanelLayout,
   setDetailPanelOpen,
+  setDetailPanelWidth,
   toggleDetailPanelOpen,
 } from "../../state/detail-panel-layout";
+import {
+  clampWidth as clampLeftSidebarWidth,
+  commitLeftSidebarLayout,
+  hydrateLeftSidebarLayout,
+  leftSidebarWidth,
+  setLeftSidebarWidth,
+} from "../../state/left-sidebar-layout";
 import { STORAGE_PREFIX } from "../../state/storage";
-import { ResizableInspector } from "../RightPanel/Resizable";
+import { ResizableEdge } from "../ResizableEdge";
 import { matchTabKeybind, runTabKeybind } from "../../tabs/keybinds";
 import {
   handleCloseTabShortcut,
@@ -118,6 +128,7 @@ export function AppShell() {
     // — first call wins the network round-trip, others reuse the
     // backend's in-memory copy).
     await hydrateDetailPanelLayout();
+    await hydrateLeftSidebarLayout();
     // One-shot migration: the previous boolean lived in localStorage
     // under `yryvu.showRightPanel`. Promote it into the freshly
     // hydrated `layout.detailPanel.open` field and remove the legacy
@@ -309,8 +320,28 @@ export function AppShell() {
         <Toolbar onOpenRepo={openRepoPicker} />
       </div>
 
-      <div class="shell__sidebar">
+      <div
+        class="shell__sidebar"
+        style={{ width: `${leftSidebarWidth()}px` }}
+      >
         <LeftSidebar />
+        <ResizableEdge
+          edge="right"
+          width={leftSidebarWidth}
+          setWidth={setLeftSidebarWidth}
+          clamp={clampLeftSidebarWidth}
+          viewportMaxWidth={() => {
+            // Reserve enough viewport for the main area + the right
+            // inspector (when shown) so the sidebar can't push them
+            // off-screen. 480px main floor matches the right-edge
+            // reservation used by the inspector drag.
+            const inner =
+              typeof window !== "undefined" ? window.innerWidth : 1280;
+            return Math.max(0, inner - detailPanelWidth() - 480);
+          }}
+          commit={commitLeftSidebarLayout}
+          ariaLabel="Resize left sidebar"
+        />
       </div>
 
       <div class="shell__main">
@@ -361,9 +392,20 @@ export function AppShell() {
         class="shell__inspector"
         style={{ width: `${detailPanelWidth()}px` }}
       >
-        <ResizableInspector>
-          <RightPanel />
-        </ResizableInspector>
+        <ResizableEdge
+          edge="left"
+          width={detailPanelWidth}
+          setWidth={setDetailPanelWidth}
+          clamp={clampDetailPanelWidth}
+          viewportMaxWidth={() => {
+            const inner =
+              typeof window !== "undefined" ? window.innerWidth : 1280;
+            return Math.max(0, inner - leftSidebarWidth() - 480);
+          }}
+          commit={commitDetailPanelLayout}
+          ariaLabel="Resize inspector panel"
+        />
+        <RightPanel />
       </div>
 
       <div class="shell__statusbar">

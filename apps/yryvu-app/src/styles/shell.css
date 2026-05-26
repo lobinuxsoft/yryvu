@@ -7,5 +7,6 @@
 @import "./shell/main.css";
 @import "./shell/graph-headers.css";
 @import "./shell/resize.css";
+@import "./shell/resizable-edge.css";
 @import "./shell/column-settings.css";
 @import "./shell/hidden-refs.css";

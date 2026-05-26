@@ -16,35 +16,11 @@
   overflow: hidden;
 }
 
-/* Resizable wrapper — fills the inspector and hosts the left-edge
-   drag handle. `position: relative` so the absolutely-positioned
-   handle anchors inside it. */
-.inspector-resizable {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Left-edge drag handle. 6px wide hit area, near-transparent until
-   hover so it doesn't compete visually with the panel border. */
-.inspector-resizable__handle {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 6px;
-  cursor: ew-resize;
-  background: transparent;
-  z-index: 1;
-  transition: background 120ms;
-}
-
-.inspector-resizable__handle:hover,
-.inspector-resizable__handle:active {
-  background: color-mix(in srgb, var(--accent) 35%, transparent);
-}
+/* Resize handles for inspector + sidebar moved to
+   styles/shell/resizable-edge.css so both panels share the same
+   `.resizable-edge` selector. The wrapper inside the inspector is
+   gone (the `<ResizableEdge>` lives as a sibling of `<RightPanel>`
+   inside `.shell__inspector` itself). */
 
 .inspector__banner {
   display: flex;

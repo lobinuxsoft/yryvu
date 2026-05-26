@@ -15,4 +15,5 @@ export * from "./git";
 export * from "./status";
 export * from "./actions";
 export * from "./chrome";
+export * from "./diff_view";
 export * from "./preferences";

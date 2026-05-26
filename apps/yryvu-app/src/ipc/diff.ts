@@ -77,6 +77,31 @@ export interface CombinedDiff {
   rename_detection_skipped?: boolean;
 }
 
+/// Raw file content at one of three sources — backs the INLINE / CONTENT
+/// diff view modes (issue #59). HUNK / SPLIT still read from
+/// `getUnstagedDiff` / `getStagedDiff` / `getCommitDiff`.
+export type FileContentSource =
+  | { kind: "working-tree" }
+  | { kind: "index" }
+  | { kind: "head" }
+  | { kind: "commit"; sha: string };
+
+export interface FileContent {
+  content: string;
+  isBinary: boolean;
+  size: number;
+  missing: boolean;
+  truncated: boolean;
+}
+
+export function readFileContent(
+  repoPath: string,
+  path: string,
+  source: FileContentSource
+): Promise<FileContent> {
+  return invoke<FileContent>("read_file_content", { repoPath, path, source });
+}
+
 export function getCombinedCommitDiff(
   repoPath: string,
   shas: string[],

@@ -361,3 +361,77 @@
 }
 .file-diff-tab__error { color: var(--danger); }
 
+/* =============================================================================
+   Diff toolbar (issue #59 — `data-testid="diff-options"`)
+   ============================================================================= */
+
+.diff-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.diff-toolbar__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.diff-toolbar__btn {
+  background: transparent;
+  border: 0;
+  color: var(--fg-2);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1;
+  min-height: 24px;
+}
+.diff-toolbar__btn:hover:not(:disabled) {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+.diff-toolbar__btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.diff-toolbar__btn[data-active="true"] {
+  background: var(--accent-2, var(--bg-3));
+  color: var(--fg-0);
+}
+
+.diff-toolbar__label { font-weight: 500; }
+
+/* =============================================================================
+   INLINE + CONTENT view bodies (issue #59)
+   ============================================================================= */
+
+.diff-file__inline-full,
+.diff-file__content-view {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Brief highlight when the toolbar's next/prev jumps to a hunk. */
+.diff-hunk--flash {
+  animation: diff-hunk-flash 0.6s ease-out;
+}
+@keyframes diff-hunk-flash {
+  0% { background: var(--accent-2, var(--bg-3)); }
+  100% { background: transparent; }
+}
+

@@ -148,6 +148,21 @@ export {
   resetPreferences,
   type PreferenceSectionId,
 } from "./preferences";
+export {
+  FILE_VIEW_MODES,
+  DIFF_VIEW_MODES,
+  fileViewMode,
+  setFileViewMode,
+  setDiffViewMode,
+  setOuterView,
+  isDiffMode,
+  diffNavigator,
+  setDiffNavigator,
+  clearDiffNavigator,
+  type FileViewMode,
+  type DiffViewMode,
+  type DiffNavigator,
+} from "./diff-view-mode";
 // `issue-tracker` is intentionally NOT re-exported here. It imports
 // `./preferences` whose `createResource` fetcher fires `invoke()` at
 // module-eval time; pulling that into the barrel would force every

@@ -54,22 +54,32 @@ export function openStashContextMenu(
       },
     },
     {
-      label: "Drop",
+      label: "Drop…",
       danger: true,
-      onSelect: async () => {
-        try {
-          await stashDrop(path, index);
-          refreshWorkingTree();
-          // Note: stash drop is NOT undoable via the yryvu undo log
-          // (crates/yryvu-bridge/src/repo/undo.rs:22 — re-stashing
-          // needs a heavier snapshot than libgit2 exposes). The sha
-          // does live in the objects DB until git GC (~90 days), so
-          // a determined user can `git stash apply <sha>` from a
-          // terminal — but from yryvu's UI it's gone for good.
-          notify.info("Stash dropped", { message: label, category: "stash" });
-        } catch (err) {
-          notify.error("Drop failed", { message: String(err), category: "stash" });
-        }
+      onSelect: () => {
+        // Drop is destructive — gate behind a confirm dialog (issue
+        // #12 acceptance: "Drop requires confirmation; apply does
+        // not"). The dialog is generic enough that we route through
+        // `window.confirm` here rather than mount a per-row Dialog;
+        // the destructive copy is verbose so the user can't fat-
+        // finger their way past it.
+        const ok = window.confirm(
+          `Drop ${label}?\n\n` +
+            `This removes the stash from the queue. The stash sha stays in ` +
+            `the git objects database until garbage collection (~90 days), ` +
+            `so you can recover it from a terminal — but it's gone from ` +
+            `yryvu's UI.`,
+        );
+        if (!ok) return;
+        void (async () => {
+          try {
+            await stashDrop(path, index);
+            refreshWorkingTree();
+            notify.info("Stash dropped", { message: label, category: "stash" });
+          } catch (err) {
+            notify.error("Drop failed", { message: String(err), category: "stash" });
+          }
+        })();
       },
     },
     { type: "separator" },

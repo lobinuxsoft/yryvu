@@ -8,9 +8,9 @@ import {
   pull,
   push,
   stashPop,
-  stashPush,
 } from "../../ipc";
 import {
+  openStashDialog,
   pullType,
   refreshBranches,
   refreshGraph,
@@ -187,17 +187,14 @@ export function useToolbarHandlers(opts: HandlersOptions) {
     if (id === "force_push_lease") return setConfirm("force-push");
   }
 
-  async function onStash() {
-    await withOp(
-      "Stash",
-      "Stashed working tree",
-      async () => {
-        await stashPush(repoPath()!);
-        refreshWorkingTree();
-        refreshAfterRemoteOp();
-      },
-      "stash",
-    );
+  /// Open the StashCreateDialog instead of one-clicking a stash.
+  /// Dialog handles the actual stashPush call (with message + flag
+  /// options) so the toolbar handler is just a trigger. The legacy
+  /// one-click path through `auto-stash before checkout` (in
+  /// `branchOps/handlers/checkout.ts`) keeps using `stashPush`
+  /// directly with sensible defaults.
+  function onStash() {
+    openStashDialog();
   }
 
   async function onPop() {

@@ -178,6 +178,22 @@ export {
 export { repoState, hasConflicts } from "./repo-state";
 export { prsByHeadSha } from "./prs-by-head-sha";
 export {
+  dragPayload,
+  dragTarget,
+  dropPopover,
+  beginDrag,
+  setDropTarget,
+  endDrag,
+  openDropPopover,
+  closeDropPopover,
+  resolveDropActions,
+  type DragPayload,
+  type DragTarget,
+  type DropAction,
+  type DropActionId,
+  type DropPopover,
+} from "./dnd";
+export {
   commitFilter,
   setCommitFilter,
   clearCommitFilter,

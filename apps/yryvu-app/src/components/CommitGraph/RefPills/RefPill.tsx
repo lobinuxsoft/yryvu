@@ -13,7 +13,14 @@ import {
 } from "../../Icons";
 import type { RefTag } from "../../../ipc/commits";
 import {
+  beginDrag,
   clearHoveredRef,
+  dragPayload,
+  dragTarget,
+  endDrag,
+  openDropPopover,
+  resolveDropActions,
+  setDropTarget,
   setHiddenRef,
   setHoveredRef,
 } from "../../../state";
@@ -73,6 +80,109 @@ export function RefPill(props: RefPillProps) {
     e.stopPropagation();
     setHiddenRef(refKey(props.tag), true);
   };
+
+  // ---------------------------------------------------------------
+  // Drag & drop wiring (issue #9). Ghost pills are non-interactive
+  // overflow chips, so they opt out of every DnD event.
+  // ---------------------------------------------------------------
+  const onDragStart = (e: DragEvent) => {
+    if (props.ghost) return;
+    beginDrag({ kind: "ref", tag: props.tag, sha: props.sha });
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+      // The pill itself is the drag image — clean since it's already
+      // a styled `<span>` with the right look.
+      e.dataTransfer.setData("text/plain", props.tag.name);
+    }
+  };
+  const onDragOver = (e: DragEvent) => {
+    if (props.ghost) return;
+    const src = dragPayload();
+    if (!src) return;
+    // Self-target → no drop.
+    if (
+      src.kind === "ref" &&
+      src.tag.name === props.tag.name &&
+      src.tag.kind === props.tag.kind
+    )
+      return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    setDropTarget({ kind: "ref", tag: props.tag, sha: props.sha });
+  };
+  const onDragLeave = () => {
+    if (props.ghost) return;
+    const t = dragTarget();
+    if (t && t.kind === "ref" && t.tag.name === props.tag.name) {
+      setDropTarget(undefined);
+    }
+  };
+  const onDrop = (e: DragEvent) => {
+    if (props.ghost) return;
+    const src = dragPayload();
+    if (!src) return;
+    e.preventDefault();
+    const target = { kind: "ref" as const, tag: props.tag, sha: props.sha };
+    const actions = resolveDropActions(src, target);
+    if (actions.length > 0) {
+      openDropPopover({
+        x: e.clientX,
+        y: e.clientY,
+        source: src,
+        target,
+        actions,
+      });
+    }
+    endDrag();
+  };
+  const onDragEnd = () => {
+    if (props.ghost) return;
+    endDrag();
+  };
+
+  /// Keyboard equivalent of the DnD gesture (issue #9 a11y acceptance):
+  /// Space picks up the focused pill as the drag source; the user
+  /// moves focus with Tab to another pill; Enter on that pill opens
+  /// the drop popover anchored at the focused element. Esc cancels.
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (props.ghost) return;
+    if (e.key === " " && !dragPayload()) {
+      e.preventDefault();
+      beginDrag({ kind: "ref", tag: props.tag, sha: props.sha });
+      return;
+    }
+    if (e.key === "Escape") {
+      if (dragPayload()) {
+        e.preventDefault();
+        endDrag();
+      }
+      return;
+    }
+    if (e.key === "Enter" && dragPayload()) {
+      const src = dragPayload()!;
+      if (
+        src.kind === "ref" &&
+        src.tag.name === props.tag.name &&
+        src.tag.kind === props.tag.kind
+      ) {
+        return;
+      }
+      e.preventDefault();
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const target = { kind: "ref" as const, tag: props.tag, sha: props.sha };
+      const actions = resolveDropActions(src, target);
+      if (actions.length > 0) {
+        openDropPopover({
+          x: rect.right,
+          y: rect.bottom,
+          source: src,
+          target,
+          actions,
+        });
+      }
+      endDrag();
+    }
+  };
   // Compact mode does NOT change pill anatomy — verified against GK's
   // bundle (`mode: Compact` is telemetry metadata, not a rendering
   // switch). Pills always render full text + icons; the only effect
@@ -89,8 +199,25 @@ export function RefPill(props: RefPillProps) {
         "is-active": props.active,
         "is-pinned": props.pinned && !props.active,
         "is-ghost": props.ghost,
+        "is-drop-target":
+          !props.ghost &&
+          (() => {
+            const t = dragTarget();
+            return (
+              t?.kind === "ref" &&
+              t.tag.name === props.tag.name &&
+              t.tag.kind === props.tag.kind
+            );
+          })(),
       }}
       tabIndex={props.ghost ? -1 : 0}
+      draggable={!props.ghost}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      onKeyDown={onKeyDown}
       onMouseEnter={enter}
       onMouseLeave={leave}
       onFocus={enter}

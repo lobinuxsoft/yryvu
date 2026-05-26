@@ -16,6 +16,7 @@ import { openCommandPalette } from "../CommandPalette/state";
 import { ConflictResolverDialog } from "../ConflictResolverDialog";
 import { RebaseInteractiveDialog } from "../RebaseInteractiveDialog";
 import { CommitFilterBar } from "../CommitFilterBar";
+import { DropActionMenu } from "../DropActionMenu";
 import { FileDiffTab } from "../FileDiffTab";
 import { FileHistoryPanel } from "../FileHistoryPanel";
 import { IssueDetailPanel } from "../IssueDetail";
@@ -435,6 +436,7 @@ export function AppShell() {
       <ConflictResolverDialog />
       <CommandPalette />
       <PreferencesWindow />
+      <DropActionMenu />
       <About />
       <ToastContainer />
     </div>

@@ -5,6 +5,28 @@ format is maintained by [release-please](https://github.com/googleapis/release-p
 each merged `feat:` or `fix:` commit on `main` produces a release PR
 that updates this file.
 
+## [0.2.0](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.1.4...yryvu-v0.2.0) (2026-05-26)
+
+
+### Features
+
+* **inspector:** panel chrome — width persist, Cmd+K toggle, hide on no selection ([a66db08](https://github.com/lobinuxsoft/yryvu/commit/a66db08c78c95a2d48e4a3ef6bbb753014c53732))
+* **inspector:** panel chrome — width persist, Cmd+K toggle, hide on no selection ([#134](https://github.com/lobinuxsoft/yryvu/issues/134) PR1) ([f3b7c65](https://github.com/lobinuxsoft/yryvu/commit/f3b7c651ad1e6a006b38d44e2dd062b1fedb4c5c))
+* **shell:** left sidebar resize + reusable ResizableEdge ([9d4d67b](https://github.com/lobinuxsoft/yryvu/commit/9d4d67baaa1bb90c3279bf8c09716b41c6e642a6))
+* **shell:** left sidebar resize + reusable ResizableEdge (closes [#36](https://github.com/lobinuxsoft/yryvu/issues/36)) ([ebe55f4](https://github.com/lobinuxsoft/yryvu/commit/ebe55f4866065e59eb5d544ba7ed1843cc5d35b2))
+* **tabs:** NewTabBody welcome screen + quick actions + recents grid ([#135](https://github.com/lobinuxsoft/yryvu/issues/135) sub-PR 3) ([8aae4f3](https://github.com/lobinuxsoft/yryvu/commit/8aae4f35742c3676b671434e18d97d46674d895c))
+* **tabs:** NewTabBody welcome screen with quick actions + recents grid ([19dfea7](https://github.com/lobinuxsoft/yryvu/commit/19dfea7d817b61d7eac4f78c2973814a3676d9bd))
+
+
+### Bug Fixes
+
+* **graph:** splitter semantics for column resizer + skip first column ([e94e86f](https://github.com/lobinuxsoft/yryvu/commit/e94e86fd25b7793232682d5769749cc518a9162e))
+
+
+### Misc
+
+* prepare v0.2.0 release ([3958f22](https://github.com/lobinuxsoft/yryvu/commit/3958f22505dbb6508e44139038f3477b8558592f))
+
 ## [0.1.4](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.1.3...yryvu-v0.1.4) (2026-05-24)
 
 

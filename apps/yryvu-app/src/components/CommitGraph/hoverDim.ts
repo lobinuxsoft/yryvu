@@ -61,3 +61,28 @@ export function isRowMemberOfHoveredRef(
         : row.child_refs.tags;
   return bucket.includes(hovered.name);
 }
+
+import {
+  matchesCommitFilterWithPath,
+  type CommitFilter,
+} from "../../state/commit-filter";
+
+/// Combined dim test (issue #111). A row is dimmed when:
+///
+/// - A ref is hovered AND the row is NOT a member of that ref's
+///   descendant set; OR
+/// - Any commit-filter chip is active AND the row doesn't satisfy
+///   every chip (AND semantics).
+///
+/// The two predicates compose with OR — failing either one dims the
+/// row. Returns `true` when the row should render at full opacity.
+export function isRowVisible(
+  row: GraphRow,
+  hovered: HoveredRef | undefined,
+  filter: CommitFilter,
+  pathSet: Set<string> | null | undefined,
+): boolean {
+  if (!isRowMemberOfHoveredRef(row, hovered)) return false;
+  if (!matchesCommitFilterWithPath(row, filter, pathSet)) return false;
+  return true;
+}

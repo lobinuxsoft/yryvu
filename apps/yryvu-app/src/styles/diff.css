@@ -670,3 +670,101 @@
   font-family: var(--font-mono);
 }
 
+/* =============================================================================
+   Commit filter bar (issue #111)
+   ============================================================================= */
+
+.commit-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.commit-filter-bar__icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--fg-3);
+  padding: 0 4px;
+}
+
+.commit-filter-bar__add {
+  background: transparent;
+  border: 1px dashed var(--bg-3);
+  color: var(--fg-2);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.commit-filter-bar__add:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border-color: var(--fg-3);
+}
+.commit-filter-bar__add-label { font-weight: 500; }
+
+.commit-filter-bar__clear {
+  background: transparent;
+  border: 0;
+  color: var(--fg-3);
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.commit-filter-bar__clear:hover { color: var(--danger); }
+
+.commit-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px 2px 8px;
+  font-size: 11px;
+}
+.commit-filter-chip__label {
+  color: var(--fg-3);
+  font-weight: 500;
+  padding-right: 4px;
+  border-right: 1px solid var(--bg-3);
+}
+.commit-filter-chip__input {
+  background: transparent;
+  border: 0;
+  color: var(--fg-0);
+  padding: 2px 4px;
+  font-family: inherit;
+  font-size: 11px;
+  width: 140px;
+  outline: none;
+}
+.commit-filter-chip__input:focus {
+  background: var(--bg-3);
+  border-radius: var(--radius-xs, 2px);
+}
+.commit-filter-chip__remove {
+  background: transparent;
+  border: 0;
+  color: var(--fg-3);
+  padding: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-xs, 2px);
+}
+.commit-filter-chip__remove:hover {
+  background: var(--bg-3);
+  color: var(--danger);
+}
+

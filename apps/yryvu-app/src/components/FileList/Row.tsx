@@ -24,6 +24,10 @@ export interface RowProps {
   onClick: () => void;
   /// File-row only; ignored for directories.
   actions?: RowAction[];
+  /// File-row context menu trigger (issue #7 — "Show history"). Receives
+  /// the native event so the caller can compute the popup anchor +
+  /// preventDefault. Optional: when omitted, native browser menu wins.
+  onContextMenu?: (e: MouseEvent, path: string) => void;
 }
 
 export function Row(props: RowProps) {
@@ -50,6 +54,7 @@ function FileLine(props: RowProps) {
         data-active={props.active ? "true" : "false"}
         style={{ "padding-left": `${indent()}px`, height: `${ROW_HEIGHT}px` }}
         onClick={() => props.onClick()}
+        onContextMenu={(e) => props.onContextMenu?.(e, props.row.path)}
       >
         <span class="changed-files__status" data-tone={tone().tone}>
           {tone().label}

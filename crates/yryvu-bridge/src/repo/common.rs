@@ -63,12 +63,19 @@ pub(super) fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, Bac
         } else {
             None
         };
-        let is_binary = delta.flags().contains(git2::DiffFlags::BINARY)
-            || new_file.is_binary()
-            || old_file.is_binary();
         let new_size = new_file.size();
         let old_size = old_file.size();
         let too_large = new_size > DIFF_MAX_FILE_BYTES || old_size > DIFF_MAX_FILE_BYTES;
+        // libgit2 sets `BINARY` (and `DiffFile::is_binary()`) eagerly on
+        // files above its internal patch-cost cutoff even when the
+        // content is plain text. Above our own size cap we can't trust
+        // that signal — the "too large" notice is more accurate copy
+        // and lets the UI show a consistent fallback regardless of
+        // libgit2's heuristic.
+        let is_binary = !too_large
+            && (delta.flags().contains(git2::DiffFlags::BINARY)
+                || new_file.is_binary()
+                || old_file.is_binary());
 
         let mut file_diff = FileDiff {
             path,

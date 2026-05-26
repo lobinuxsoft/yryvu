@@ -5,10 +5,12 @@ import { For, Show } from "solid-js";
 import {
   activeColumnSettings,
   dirtyFileCount,
+  commitFilter,
   hoveredRef,
+  pathShaSet,
 } from "../../../state";
 import { formatCommitDateTime } from "../columns";
-import { isRowMemberOfHoveredRef } from "../hoverDim";
+import { isRowVisible } from "../hoverDim";
 import { rowWrapperClass } from "../rowClass";
 import { AuthorBadge, ROW_HEIGHT } from "../RowRenderer";
 import { Tooltip } from "../../Tooltip";
@@ -64,13 +66,11 @@ function AuthorZone(props: { deps: ZoneDeps }) {
               if (!r) return null;
               return (
                 <li
-                  class={rowWrapperClass(
-                    r.is_merge ? "merge" : "commit",
-                    deps.hoveredCommit() === r.sha,
-                    deps.selection.selectedShasSet().has(r.sha),
-                  )}
+                  class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
                   classList={{
-                    "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                    "is-hovering": deps.hoveredCommit() === r.sha,
+                    "is-selected": deps.selection.selectedShasSet().has(r.sha),
+                    "is-dimmed": !isRowVisible(r, hoveredRef(), commitFilter(), pathShaSet()),
                   }}
                   data-selected={
                     deps.selection.selectedShasSet().has(r.sha)
@@ -148,13 +148,11 @@ function DateTimeZone(props: { deps: ZoneDeps }) {
               if (!r) return null;
               return (
                 <li
-                  class={rowWrapperClass(
-                    r.is_merge ? "merge" : "commit",
-                    deps.hoveredCommit() === r.sha,
-                    deps.selection.selectedShasSet().has(r.sha),
-                  )}
+                  class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
                   classList={{
-                    "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                    "is-hovering": deps.hoveredCommit() === r.sha,
+                    "is-selected": deps.selection.selectedShasSet().has(r.sha),
+                    "is-dimmed": !isRowVisible(r, hoveredRef(), commitFilter(), pathShaSet()),
                   }}
                   data-selected={
                     deps.selection.selectedShasSet().has(r.sha)
@@ -210,13 +208,11 @@ function ShaZone(props: { deps: ZoneDeps }) {
               if (!r) return null;
               return (
                 <li
-                  class={rowWrapperClass(
-                    r.is_merge ? "merge" : "commit",
-                    deps.hoveredCommit() === r.sha,
-                    deps.selection.selectedShasSet().has(r.sha),
-                  )}
+                  class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
                   classList={{
-                    "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                    "is-hovering": deps.hoveredCommit() === r.sha,
+                    "is-selected": deps.selection.selectedShasSet().has(r.sha),
+                    "is-dimmed": !isRowVisible(r, hoveredRef(), commitFilter(), pathShaSet()),
                   }}
                   data-selected={
                     deps.selection.selectedShasSet().has(r.sha)

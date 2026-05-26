@@ -17,6 +17,7 @@ import {
   commitDescription,
   commitMessage,
   dirtyFileCount,
+  flashCommitCreated,
   inspectorMode,
   refreshBranches,
   refreshGraph,
@@ -209,6 +210,7 @@ export function RightPanel() {
     refreshGraph();
     refreshBranches();
     setSelectedCommit(newSha);
+    flashCommitCreated(newSha);
     setInspectorMode("details");
     notify.success(opts.amend ? "Amended" : "Commit created", {
       message: newSha.slice(0, 7),
@@ -241,6 +243,7 @@ export function RightPanel() {
     refreshGraph();
     refreshBranches();
     setSelectedCommit(newSha);
+    flashCommitCreated(newSha);
     setInspectorMode("details");
     notify.success("Commit and push", {
       message: newSha.slice(0, 7),

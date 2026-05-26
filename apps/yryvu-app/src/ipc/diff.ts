@@ -77,6 +77,87 @@ export interface CombinedDiff {
   rename_detection_skipped?: boolean;
 }
 
+/// Raw file content at one of three sources — backs the INLINE / CONTENT
+/// diff view modes (issue #59). HUNK / SPLIT still read from
+/// `getUnstagedDiff` / `getStagedDiff` / `getCommitDiff`.
+export type FileContentSource =
+  | { kind: "working-tree" }
+  | { kind: "index" }
+  | { kind: "head" }
+  | { kind: "commit"; sha: string };
+
+export interface FileContent {
+  content: string;
+  isBinary: boolean;
+  size: number;
+  missing: boolean;
+  truncated: boolean;
+}
+
+export function readFileContent(
+  repoPath: string,
+  path: string,
+  source: FileContentSource
+): Promise<FileContent> {
+  return invoke<FileContent>("read_file_content", { repoPath, path, source });
+}
+
+/// Per-file commit history with rename-following (issue #7).
+export interface FileHistoryEntry {
+  sha: string;
+  shortSha: string;
+  authorName: string;
+  authorEmail: string;
+  time: number;
+  summary: string;
+  status: FileStatus;
+  renamedFrom: string | null;
+}
+
+export function getFileHistory(
+  repoPath: string,
+  path: string,
+  max?: number
+): Promise<FileHistoryEntry[]> {
+  return invoke<FileHistoryEntry[]>("file_history", { repoPath, path, max });
+}
+
+/// Per-line blame (issue #8).
+export interface BlameLine {
+  lineNo: number;
+  sha: string;
+  shortSha: string;
+  authorName: string;
+  authorEmail: string;
+  time: number;
+  summary: string;
+  content: string;
+  continuesRun: boolean;
+}
+
+export interface FileBlame {
+  lines: BlameLine[];
+  isBinary: boolean;
+  size: number;
+}
+
+export function getFileBlame(
+  repoPath: string,
+  path: string,
+  sha?: string
+): Promise<FileBlame> {
+  return invoke<FileBlame>("file_blame", { repoPath, path, sha });
+}
+
+/// Destructive single-file checkout. Caller must confirm beforehand.
+export function checkoutFileAt(
+  repoPath: string,
+  path: string,
+  sha: string
+): Promise<void> {
+  return invoke<void>("checkout_file_at", { repoPath, path, sha });
+}
+
 export function getCombinedCommitDiff(
   repoPath: string,
   shas: string[],

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { repoPath, setRepoPathRaw } from "./repo-base";
+import { reloadCommitFilterForRepo } from "./commit-filter";
 import { clearSelection } from "./selection";
 import { setSelectedDiffFile } from "./diff";
 import { setHoveredRef, setInspectorMode, setPinnedSha } from "./inspector";
@@ -44,4 +45,7 @@ export function setRepoPath(next: string | undefined): void {
   // repo's `Undo` label would otherwise flash on the toolbar until
   // the new sidecar fetch resolves.
   mutateUndoRedoState(undefined);
+  // Filter chips persist per-repo — reload the new repo's saved
+  // filter (or fall back to empty when the repo has none).
+  reloadCommitFilterForRepo();
 }

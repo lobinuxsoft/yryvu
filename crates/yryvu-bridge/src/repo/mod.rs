@@ -15,12 +15,16 @@
 //! file so this index stays focused on module wiring).
 
 mod backend_impl;
+pub(crate) mod blame;
 mod branches;
+pub(crate) mod checkout_file;
 pub(crate) mod clone;
 pub(crate) mod commits;
 pub(crate) mod common;
 pub(crate) mod config_custom;
 pub(crate) mod conflicts;
+pub(crate) mod file_content;
+pub(crate) mod file_history;
 pub(crate) mod gitflow;
 pub(crate) mod hooks;
 pub(crate) mod hosting;

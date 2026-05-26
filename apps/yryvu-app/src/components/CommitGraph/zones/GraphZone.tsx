@@ -6,11 +6,14 @@ import {
   activeColumnSettings,
   commitZoneMode,
   dirtyFileCount,
+  commitFilter,
+  hasConflicts,
   hoveredRef,
+  pathShaSet,
   inspectorMode,
   workdirSelected,
 } from "../../../state";
-import { isRowMemberOfHoveredRef } from "../hoverDim";
+import { isRowVisible } from "../hoverDim";
 import { rowWrapperClass } from "../rowClass";
 import { CommitRowGraph, getRenderDims, ROW_HEIGHT } from "../RowRenderer";
 import { Tooltip } from "../../Tooltip";
@@ -70,6 +73,44 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                   aria-hidden="true"
                   style={{ left: `${deps.layout.wipNodeX()}px` }}
                 />
+                {/* Layer 4 — conflict triangle (issue #53). Anchored at
+                    the WIP node's upper-right slot. Overrides the WIP
+                    cell's 0.7 opacity via `opacity: 1` on the wrapper.
+                    Visible only when `RepoState.conflict_paths` is
+                    non-empty. */}
+                <Show when={hasConflicts()}>
+                  <svg
+                    class="commit-graph__wip-conflict"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    style={{
+                      position: "absolute",
+                      left: `${deps.layout.wipNodeX() + 5}px`,
+                      top: "5px",
+                      opacity: 1,
+                    }}
+                    aria-label="Working tree has unresolved conflicts"
+                  >
+                    <title>Working tree has unresolved conflicts</title>
+                    <path
+                      d="M 0 2 L 12 2 L 6 12 z"
+                      fill="#e74c3c"
+                      stroke="#000"
+                      stroke-width="0.5"
+                    />
+                    <text
+                      x="6"
+                      y="9.5"
+                      font-size="7"
+                      font-weight="700"
+                      text-anchor="middle"
+                      fill="#fff"
+                    >
+                      !
+                    </text>
+                  </svg>
+                </Show>
               </li>
               </Tooltip>
               {/* WIP-to-HEAD dashed connector — 1:1 with GitKraken's
@@ -113,13 +154,11 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                   2;
                 return (
                   <li
-                    class={rowWrapperClass(
-                      r.is_merge ? "merge" : "commit",
-                      deps.hoveredCommit() === r.sha,
-                      deps.selection.selectedShasSet().has(r.sha),
-                    )}
+                    class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
                     classList={{
-                      "is-dimmed": !isRowMemberOfHoveredRef(r, hoveredRef()),
+                      "is-hovering": deps.hoveredCommit() === r.sha,
+                      "is-selected": deps.selection.selectedShasSet().has(r.sha),
+                      "is-dimmed": !isRowVisible(r, hoveredRef(), commitFilter(), pathShaSet()),
                     }}
                     data-selected={
                       deps.selection.selectedShasSet().has(r.sha)
@@ -151,6 +190,7 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                       edges={deps.edgeStates()[item.index] ?? new Map()}
                       hostingService={deps.hostingService()}
                       compact={commitZoneMode() === "compact"}
+                      isHovered={deps.hoveredCommit() === r.sha}
                     />
                   </li>
                 );

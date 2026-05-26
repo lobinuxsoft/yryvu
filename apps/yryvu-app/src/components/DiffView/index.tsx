@@ -1,96 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import hljs from "highlight.js/lib/core";
-import bash from "highlight.js/lib/languages/bash";
-import css from "highlight.js/lib/languages/css";
-import go from "highlight.js/lib/languages/go";
-import javascript from "highlight.js/lib/languages/javascript";
-import json from "highlight.js/lib/languages/json";
-import markdown from "highlight.js/lib/languages/markdown";
-import python from "highlight.js/lib/languages/python";
-import rust from "highlight.js/lib/languages/rust";
-import shell from "highlight.js/lib/languages/shell";
-import sql from "highlight.js/lib/languages/sql";
-import toml from "highlight.js/lib/languages/ini";
-import typescript from "highlight.js/lib/languages/typescript";
-import xml from "highlight.js/lib/languages/xml";
-import yaml from "highlight.js/lib/languages/yaml";
 import { createSignal, For, type JSX, Show } from "solid-js";
 
-import type { CommitDiff, DiffLine, FileDiff, FileStatus } from "../../ipc";
+import type { BlameLine, CommitDiff, DiffLine, FileDiff, FileStatus } from "../../ipc";
+import { BlameView } from "./BlameView";
+import {
+  FileContentView,
+  FullFileMissing,
+  InlineFullFileView,
+} from "./FullFileView";
+import { detectLanguage, highlightLine } from "./highlight";
 import { HunkActions, type HunkStagingActions } from "./HunkActions";
 import { LineActions, type LineStagingApi } from "./LineActions";
 import { pairLines, SplitLineRow } from "./SplitView";
 
 export type { HunkStagingActions, LineStagingApi };
-
-hljs.registerLanguage("bash", bash);
-hljs.registerLanguage("css", css);
-hljs.registerLanguage("go", go);
-hljs.registerLanguage("javascript", javascript);
-hljs.registerLanguage("json", json);
-hljs.registerLanguage("markdown", markdown);
-hljs.registerLanguage("python", python);
-hljs.registerLanguage("rust", rust);
-hljs.registerLanguage("shell", shell);
-hljs.registerLanguage("sql", sql);
-hljs.registerLanguage("toml", toml);
-hljs.registerLanguage("typescript", typescript);
-hljs.registerLanguage("xml", xml);
-hljs.registerLanguage("yaml", yaml);
-
-const EXTENSION_TO_LANG: Record<string, string> = {
-  rs: "rust",
-  ts: "typescript",
-  tsx: "typescript",
-  js: "javascript",
-  jsx: "javascript",
-  mjs: "javascript",
-  cjs: "javascript",
-  py: "python",
-  go: "go",
-  css: "css",
-  scss: "css",
-  json: "json",
-  md: "markdown",
-  markdown: "markdown",
-  sh: "bash",
-  bash: "bash",
-  zsh: "shell",
-  sql: "sql",
-  toml: "toml",
-  ini: "toml",
-  html: "xml",
-  htm: "xml",
-  xml: "xml",
-  svg: "xml",
-  yaml: "yaml",
-  yml: "yaml",
-};
-
-function detectLanguage(path: string): string | undefined {
-  const dot = path.lastIndexOf(".");
-  if (dot === -1) return undefined;
-  const ext = path.slice(dot + 1).toLowerCase();
-  return EXTENSION_TO_LANG[ext];
-}
-
-function highlightLine(content: string, lang: string | undefined): string {
-  if (content.length === 0) return "";
-  if (!lang) return escapeHtml(content);
-  try {
-    return hljs.highlight(content, { language: lang, ignoreIllegals: true }).value;
-  } catch {
-    return escapeHtml(content);
-  }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
 
 function statusLabel(status: FileStatus): { label: string; tone: string } {
   switch (status) {
@@ -117,7 +41,22 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export type DiffViewMode = "unified" | "split";
+/// GitKraken parity (issue #59 + #8). `fileDisplayModes` in the bundle
+/// plus the Blame mode added as a 3rd outer-toggle slot in yryvu:
+///
+/// - `content` — File View: current file content, no diff markers.
+/// - `hunk` — Hunk View (default): only changed hunks, stacked.
+/// - `inline` — full file, unified `+`/`-` markers on changed lines.
+/// - `split` — side-by-side, original left / modified right.
+/// - `blame` — per-line authorship annotations over file content.
+///
+/// Monaco's `renderSideBySide` is `mode === "split"`. The HUNK/INLINE
+/// distinction is which model is rendered (hunks-only vs full file).
+export type FileViewMode = "content" | "hunk" | "inline" | "split" | "blame";
+
+/// Subset usable as diff (toolbar's inner toggle).
+export const DIFF_VIEW_MODES = ["hunk", "inline", "split"] as const;
+export type DiffViewMode = (typeof DIFF_VIEW_MODES)[number];
 
 export interface DiffFileBlockProps {
   file: FileDiff;
@@ -129,11 +68,36 @@ export interface DiffFileBlockProps {
   headless?: boolean;
   alwaysExpanded?: boolean;
   /**
-   * `unified` is the single-column view with +/- sigils (default, good for
-   * narrow panels). `split` is the side-by-side GitKraken-style view
-   * (old on the left, new on the right); better for wide surfaces.
+   * `hunk` (default) renders only the changed hunks stacked. `inline`
+   * renders the full file with `+`/`-` markers. `split` renders the
+   * original / modified side-by-side. `content` skips diff and shows
+   * the raw file content. INLINE / CONTENT both require `fullContent`
+   * / `originalContent` props since hunks alone don't carry context
+   * lines outside the hunk window.
    */
-  viewMode?: DiffViewMode;
+  viewMode?: FileViewMode;
+  /**
+   * Modified-side full content. Required when `viewMode === "inline"`
+   * (full file with `+`/`-` markers) or `viewMode === "content"`
+   * (no-diff file view). Ignored for HUNK / SPLIT.
+   */
+  fullContent?: string;
+  /**
+   * Original-side full content. Reserved for future SPLIT-with-context
+   * upgrades; currently ignored.
+   */
+  originalContent?: string;
+  /**
+   * Per-line blame entries used when `viewMode === "blame"`. The blame
+   * fetch lives in the parent — the renderer just consumes the array.
+   */
+  blameLines?: BlameLine[];
+  /**
+   * Click-through callback when the user activates a blame annotation.
+   * The parent (FileDiffTab) opens that commit in the graph + diff
+   * view.
+   */
+  onJumpToBlameCommit?: (sha: string) => void;
   /// When present, renders Stage/Unstage/Discard buttons in each hunk
   /// header. Absent (commit diffs, historical views) means read-only.
   stagingActions?: HunkStagingActions;
@@ -149,6 +113,7 @@ export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
   const isOpen = () => props.alwaysExpanded || expanded();
   const status = () => statusLabel(props.file.status);
   const lang = () => detectLanguage(props.file.path);
+  const mode = (): FileViewMode => props.viewMode ?? "hunk";
 
   return (
     <div class="diff-file" data-status={props.file.status}>
@@ -193,73 +158,97 @@ export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
             — diff truncated. Open the file externally to inspect.
           </div>
         </Show>
-        <Show
-          when={
-            !props.file.is_binary &&
-            !props.file.truncated &&
-            props.file.hunks.length > 0
-          }
-        >
-          <div
-            class="diff-file__hunks"
-            data-view-mode={props.viewMode ?? "unified"}
-          >
-            <For each={props.file.hunks}>
-              {(hunk, hunkIdx) => (
-                <div class="diff-hunk">
-                  <div class="diff-hunk__header">
-                    <span class="diff-hunk__range">{hunk.header}</span>
-                    <Show when={props.stagingActions}>
-                      <HunkActions
-                        index={hunkIdx()}
-                        actions={props.stagingActions!}
-                      />
-                    </Show>
-                  </div>
-                  <Show
-                    when={props.viewMode === "split"}
-                    fallback={
-                      <For each={hunk.lines}>
-                        {(line, lineIdx) => (
-                          <DiffLineRow
-                            line={line}
-                            language={lang()}
-                            hunkIndex={hunkIdx()}
-                            lineIndex={lineIdx()}
-                            lineStagingApi={props.lineStagingApi}
-                          />
-                        )}
-                      </For>
-                    }
-                  >
-                    <For each={pairLines(hunk.lines)}>
-                      {(pair) => (
-                        <SplitLineRow
-                          pair={pair}
-                          hunkIndex={hunkIdx()}
-                          highlight={(c) => highlightLine(c, lang())}
-                          lineStagingApi={props.lineStagingApi}
-                        />
-                      )}
-                    </For>
-                  </Show>
-                </div>
-              )}
-            </For>
-          </div>
-        </Show>
-        <Show
-          when={
-            !props.file.is_binary &&
-            !props.file.truncated &&
-            props.file.hunks.length === 0
-          }
-        >
-          <div class="diff-file__notice">
-            No textual changes (empty file / mode change only).
-          </div>
+        <Show when={!props.file.is_binary && !props.file.truncated}>
+          {renderBody(props, mode(), lang())}
         </Show>
       </Show>
+    </div>
+  );
+}
+
+function renderBody(
+  props: DiffFileBlockProps,
+  mode: FileViewMode,
+  lang: string | undefined,
+): JSX.Element {
+  if (mode === "blame") {
+    if (props.blameLines === undefined) {
+      return <FullFileMissing reason="loading" />;
+    }
+    return (
+      <BlameView
+        lines={props.blameLines}
+        language={lang}
+        onJumpToCommit={props.onJumpToBlameCommit}
+      />
+    );
+  }
+  if (mode === "content") {
+    if (props.fullContent === undefined) {
+      return <FullFileMissing reason="loading" />;
+    }
+    return <FileContentView content={props.fullContent} language={lang} />;
+  }
+  if (mode === "inline") {
+    if (props.fullContent === undefined) {
+      return <FullFileMissing reason="loading" />;
+    }
+    return (
+      <InlineFullFileView
+        fullContent={props.fullContent}
+        hunks={props.file.hunks}
+        language={lang}
+      />
+    );
+  }
+  if (props.file.hunks.length === 0) {
+    return (
+      <div class="diff-file__notice">
+        No textual changes (empty file / mode change only).
+      </div>
+    );
+  }
+  return (
+    <div class="diff-file__hunks" data-view-mode={mode}>
+      <For each={props.file.hunks}>
+        {(hunk, hunkIdx) => (
+          <div class="diff-hunk">
+            <div class="diff-hunk__header">
+              <span class="diff-hunk__range">{hunk.header}</span>
+              <Show when={props.stagingActions}>
+                <HunkActions index={hunkIdx()} actions={props.stagingActions!} />
+              </Show>
+            </div>
+            <Show
+              when={mode === "split"}
+              fallback={
+                <For each={hunk.lines}>
+                  {(line, lineIdx) => (
+                    <DiffLineRow
+                      line={line}
+                      language={lang}
+                      hunkIndex={hunkIdx()}
+                      lineIndex={lineIdx()}
+                      lineStagingApi={props.lineStagingApi}
+                    />
+                  )}
+                </For>
+              }
+            >
+              <For each={pairLines(hunk.lines)}>
+                {(pair) => (
+                  <SplitLineRow
+                    pair={pair}
+                    hunkIndex={hunkIdx()}
+                    highlight={(c) => highlightLine(c, lang)}
+                    lineStagingApi={props.lineStagingApi}
+                  />
+                )}
+              </For>
+            </Show>
+          </div>
+        )}
+      </For>
     </div>
   );
 }

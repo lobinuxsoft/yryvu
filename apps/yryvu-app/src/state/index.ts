@@ -46,6 +46,10 @@ export {
   openDiffTab,
   openStagingDiffTab,
   closeDiffTab,
+  selectedHistoryFile,
+  setSelectedHistoryFile,
+  openFileHistory,
+  closeFileHistory,
   type MainView,
   type SelectedDiffFile,
 } from "./diff";
@@ -148,6 +152,44 @@ export {
   resetPreferences,
   type PreferenceSectionId,
 } from "./preferences";
+export {
+  FILE_VIEW_MODES,
+  DIFF_VIEW_MODES,
+  fileViewMode,
+  setFileViewMode,
+  setDiffViewMode,
+  setOuterView,
+  isDiffMode,
+  outerView,
+  diffNavigator,
+  setDiffNavigator,
+  clearDiffNavigator,
+  type FileViewMode,
+  type DiffViewMode,
+  type DiffNavigator,
+  type OuterView,
+} from "./diff-view-mode";
+export {
+  recentlyCreatedSha,
+  highlightedSha,
+  flashCommitCreated,
+  flashCommitHighlight,
+} from "./commit-animations";
+export { repoState, hasConflicts } from "./repo-state";
+export { prsByHeadSha } from "./prs-by-head-sha";
+export {
+  commitFilter,
+  setCommitFilter,
+  clearCommitFilter,
+  reloadCommitFilterForRepo,
+  isCommitFilterActive,
+  isFilterEmpty,
+  matchesCommitFilter,
+  matchesCommitFilterWithPath,
+  pathShaSet,
+  EMPTY_FILTER,
+  type CommitFilter,
+} from "./commit-filter";
 // `issue-tracker` is intentionally NOT re-exported here. It imports
 // `./preferences` whose `createResource` fetcher fires `invoke()` at
 // module-eval time; pulling that into the barrel would force every

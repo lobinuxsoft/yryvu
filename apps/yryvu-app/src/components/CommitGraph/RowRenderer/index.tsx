@@ -28,6 +28,12 @@
 import { For, Show } from "solid-js";
 
 import type { GraphRow, HostingService } from "../../../ipc";
+import {
+  highlightedSha,
+  prsByHeadSha,
+  recentlyCreatedSha,
+  selectedShas,
+} from "../../../state";
 import type { RowEdgeCell, RowEdges } from "../edgeStates";
 import { CommitAvatar } from "./CommitAvatar";
 import { getRenderDims } from "./dims";
@@ -37,6 +43,15 @@ import {
   renderStartingEdge,
 } from "./edges";
 import { laneCenterX, laneColor, ROW_HEIGHT } from "./geometry";
+import {
+  AnimationWrapper,
+  HoverHalo,
+  InitialCommitOutline,
+  MergeRing,
+  PrAttributionIcon,
+  SelectionRing,
+  TagStar,
+} from "./NodeOverlays";
 
 export { AuthorBadge, resolveAvatarUrl } from "./avatar";
 export { getRenderDims, type RenderDims } from "./dims";
@@ -49,7 +64,14 @@ export interface CommitRowGraphProps {
   /** When `true`, render with the compact dimension preset (smaller
    *  lanes + nodes). Mirrors GK's `commitZone.mode === Compact`. */
   compact: boolean;
+  /** Forwarded from the zone — drives the hover halo. */
+  isHovered?: boolean;
 }
+
+/// 18 px minimum vertical budget before the avatar overlay renders
+/// (GK doc 16). Compact modes that bring `ROW_HEIGHT` below this
+/// would fall back to a plain lane disc.
+const AVATAR_MIN_HEIGHT_PX = 18;
 
 export function CommitRowGraph(props: CommitRowGraphProps) {
   const dims = () => getRenderDims(props.compact);
@@ -111,28 +133,123 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
           </>
         )}
       </For>
+      {renderNodeWithOverlays(props, dims, midY, radius, commitColor)}
+    </svg>
+  );
+}
+
+function renderNodeWithOverlays(
+  props: CommitRowGraphProps,
+  dims: () => ReturnType<typeof getRenderDims>,
+  midY: number,
+  radius: () => number,
+  commitColor: () => string,
+) {
+  const cx = () => laneCenterX(props.row.lane, dims());
+  const isMerge = () => props.row.is_merge;
+  // GraphRow only holds real commits — the WIP pseudo-row is injected
+  // by `GraphZone` as a separate `<li>` and never reaches this
+  // renderer, so an `is_wip` check here would be dead. Initial-commit
+  // detection therefore relies on `parent_lanes` alone.
+  const isInitial = () => props.row.parent_lanes.length === 0;
+  const tagPresent = () => props.row.refs.some((r) => r.kind === "Tag");
+  const pr = () => prsByHeadSha()?.get(props.row.sha);
+  const isSelected = () => selectedShas().includes(props.row.sha);
+  const showAvatar = () => !isMerge() && ROW_HEIGHT >= AVATAR_MIN_HEIGHT_PX;
+
+  return (
+    <AnimationWrapper
+      row={props.row}
+      recentlyCreated={recentlyCreatedSha() === props.row.sha}
+      highlighted={highlightedSha() === props.row.sha}
+      laneColor={commitColor()}
+      cx={cx()}
+      cy={midY}
+      radius={radius()}
+    >
+      {/* Layer 8 — paint before the node so the halo sits underneath. */}
+      <Show when={props.isHovered}>
+        <HoverHalo
+          cx={cx()}
+          cy={midY}
+          radius={radius()}
+          laneColor={commitColor()}
+        />
+      </Show>
+
+      {/* Layers 1+2+3 — lane circle + merge ring + avatar */}
       <Show
-        when={!props.row.is_merge}
+        when={!isMerge()}
         fallback={
-          <circle
-            cx={laneCenterX(props.row.lane, dims())}
+          <MergeRing
+            cx={cx()}
             cy={midY}
-            r={radius()}
-            fill={commitColor()}
+            radius={radius()}
+            laneColor={commitColor()}
           />
         }
       >
-        <CommitAvatar
-          cx={laneCenterX(props.row.lane, dims())}
+        <Show
+          when={showAvatar()}
+          fallback={
+            <circle cx={cx()} cy={midY} r={radius()} fill={commitColor()} />
+          }
+        >
+          <CommitAvatar
+            cx={cx()}
+            cy={midY}
+            radius={radius()}
+            colorIdx={props.row.color_idx}
+            authorEmail={props.row.author_email}
+            authorInitials={props.row.author_initials}
+            gravatarHash={props.row.gravatar_hash}
+            hostingService={props.hostingService}
+          />
+        </Show>
+        <Show when={isInitial()}>
+          <InitialCommitOutline
+            cx={cx()}
+            cy={midY}
+            radius={radius()}
+            laneColor={commitColor()}
+          />
+        </Show>
+      </Show>
+
+      {/* Layer 4 (conflict triangle) lives on the WIP pseudo-row in
+          GraphZone, not here — real commits never hold conflict
+          state. See `commit-graph__wip-cell--graph`. */}
+
+      {/* Layer 5 — PR attribution. */}
+      <Show when={pr()}>
+        <PrAttributionIcon
+          cx={cx()}
           cy={midY}
           radius={radius()}
-          colorIdx={props.row.color_idx}
-          authorEmail={props.row.author_email}
-          authorInitials={props.row.author_initials}
-          gravatarHash={props.row.gravatar_hash}
-          hostingService={props.hostingService}
+          laneColor={commitColor()}
+          pr={pr()!}
         />
       </Show>
-    </svg>
+
+      {/* Layer 6 — tag star. */}
+      <Show when={tagPresent()}>
+        <TagStar
+          cx={cx()}
+          cy={midY}
+          radius={radius()}
+          laneColor={commitColor()}
+        />
+      </Show>
+
+      {/* Layer 7 — selection ring outside everything. */}
+      <Show when={isSelected()}>
+        <SelectionRing
+          cx={cx()}
+          cy={midY}
+          radius={radius()}
+          laneColor={commitColor()}
+        />
+      </Show>
+    </AnimationWrapper>
   );
 }

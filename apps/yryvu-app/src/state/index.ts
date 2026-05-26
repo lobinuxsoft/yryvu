@@ -170,6 +170,14 @@ export {
   type OuterView,
 } from "./diff-view-mode";
 export {
+  recentlyCreatedSha,
+  highlightedSha,
+  flashCommitCreated,
+  flashCommitHighlight,
+} from "./commit-animations";
+export { repoState, hasConflicts } from "./repo-state";
+export { prsByHeadSha } from "./prs-by-head-sha";
+export {
   commitFilter,
   setCommitFilter,
   clearCommitFilter,

@@ -2,6 +2,8 @@
 
 import { createSignal } from "solid-js";
 
+import { flashCommitHighlight } from "./commit-animations";
+
 /// Pending ref-click navigation request. The CommitGraph effect resolves
 /// `sha` against the current row list, scrolls if needed, and selects the
 /// commit. The `seq` field bumps on every call so two clicks on the same
@@ -27,6 +29,9 @@ export function navigateToRef(sha: string): void {
   if (!sha) return;
   seq += 1;
   setPendingRefNavInternal({ sha, seq });
+  // Pair with #53 commitHighlight flash so the destination node
+  // pulses lane-color opacity right after the scroll lands.
+  flashCommitHighlight(sha);
 }
 
 /// Clear the pending request — called by the CommitGraph effect after it

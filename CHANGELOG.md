@@ -5,6 +5,25 @@ format is maintained by [release-please](https://github.com/googleapis/release-p
 each merged `feat:` or `fix:` commit on `main` produces a release PR
 that updates this file.
 
+## [0.3.0](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.2.0...yryvu-v0.3.0) (2026-05-26)
+
+
+### Features
+
+* **diff:** file view modes (Hunk/Inline/Split/Content) + toolbar ([c039c91](https://github.com/lobinuxsoft/yryvu/commit/c039c91587fec9fafd7ea6581d665094f65a3fda))
+* **diff:** file view modes (Hunk/Inline/Split/Content) + toolbar ([a45b25b](https://github.com/lobinuxsoft/yryvu/commit/a45b25ba1fb1c7986f5812a446e0ffc99b380b66))
+* **graph:** commit filter bar (author/message/date/sha/path) ([ba12f90](https://github.com/lobinuxsoft/yryvu/commit/ba12f905911ebf612ff5d3f0d119ac96bb3b152b))
+* **graph:** commit filter bar (author/message/date/sha/path) ([ac8806e](https://github.com/lobinuxsoft/yryvu/commit/ac8806ea97cd7a62d5f8d2474e99056f97687860))
+* **graph:** commit-node overlay system ([#53](https://github.com/lobinuxsoft/yryvu/issues/53)) ([0204967](https://github.com/lobinuxsoft/yryvu/commit/02049675c24ee8932d82346c377b73ce9aae4798))
+* **graph:** commit-node overlay system ([#53](https://github.com/lobinuxsoft/yryvu/issues/53)) ([738961d](https://github.com/lobinuxsoft/yryvu/commit/738961d97914a1396a779e47f8d3251478bfa7c2))
+* **history+blame:** per-file history panel + blame view mode ([7fab560](https://github.com/lobinuxsoft/yryvu/commit/7fab56071d4b5e6c56c4bc5d54c83cf932915126))
+* **history+blame:** per-file history panel + blame view mode ([b948879](https://github.com/lobinuxsoft/yryvu/commit/b948879e557d02221c8e6b1abf0ea22c4422f2a3))
+
+
+### Misc
+
+* prepare v0.3.0 release ([51703dc](https://github.com/lobinuxsoft/yryvu/commit/51703dc8ded253e2575314c0f42e13d2304f0230))
+
 ## [0.2.0](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.1.4...yryvu-v0.2.0) (2026-05-26)
 
 

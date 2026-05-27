@@ -19,7 +19,7 @@ mod stash;
 pub use checkout::{
     checkout_branch, checkout_commit, checkout_remote_tracking, is_working_tree_dirty,
 };
-pub use cherry_pick::cherry_pick_commit;
+pub use cherry_pick::{cherry_pick_commit, cherry_pick_commits_onto};
 pub use repo_state::{abort_merge, repo_state};
 pub use reset::reset_to_commit;
 pub use revert::revert_commit;

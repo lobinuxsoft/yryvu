@@ -14,6 +14,7 @@ import { Show, type JSX } from "solid-js";
 
 import {
   cherryPickCommit,
+  cherryPickCommits,
   mergeBranch,
   rebaseCurrentOnto,
   resetToCommit,
@@ -69,6 +70,15 @@ async function applyAction(
         await cherryPickCommit(repo, sha);
         notify.success("Cherry-picked", {
           message: sha.slice(0, 7),
+          category: "commit",
+        });
+        break;
+      }
+      case "cherry-pick-onto-ref": {
+        if (source.kind !== "commit" || target.kind !== "ref") return;
+        await cherryPickCommits(repo, [source.sha], target.tag.name);
+        notify.success("Cherry-picked", {
+          message: `${source.sha.slice(0, 7)} → ${target.tag.name}`,
           category: "commit",
         });
         break;

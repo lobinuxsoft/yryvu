@@ -3,6 +3,10 @@
 import { Show } from "solid-js";
 
 import { Dialog } from "../Dialog";
+import {
+  CherryPickOntoDialog,
+  type CherryPickOntoState,
+} from "./dialogs/CherryPickOntoDialog";
 import type { CommitOps } from "./useCommitOps";
 
 export function CommitDialogs(props: { ops: CommitOps }) {
@@ -31,6 +35,11 @@ export function CommitDialogs(props: { ops: CommitOps }) {
   const patchSavedState = () =>
     ops.dialog()?.kind === "patch-saved"
       ? (ops.dialog() as { path: string })
+      : undefined;
+
+  const cherryPickOntoState = (): CherryPickOntoState | undefined =>
+    ops.dialog()?.kind === "cherry-pick-onto"
+      ? (ops.dialog() as CherryPickOntoState)
       : undefined;
 
   return (
@@ -285,6 +294,13 @@ export function CommitDialogs(props: { ops: CommitOps }) {
           <p class="dialog__error">{ops.dialogError()}</p>
         </Show>
       </Dialog>
+
+      <CherryPickOntoDialog
+        state={cherryPickOntoState()}
+        error={ops.dialogError()}
+        onClose={ops.closeDialog}
+        onSubmit={(target) => void ops.doCherryPickOnto(target)}
+      />
     </>
   );
 }

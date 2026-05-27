@@ -147,6 +147,21 @@ pub trait GitBackend: Send + Sync {
     /// Leaves the repo in cherry-pick state with `MergeConflict` on conflicts.
     fn cherry_pick_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError>;
 
+    /// Cherry-pick a batch of commits, optionally switching to
+    /// `target_branch` first. `shas` are applied in array order. A clean
+    /// working tree is required when `target_branch` differs from current
+    /// HEAD; otherwise [`BackendError::WorkingTreeDirty`] is returned and
+    /// the UI is expected to offer the caller's auto-stash path before
+    /// retrying. Mid-batch conflicts halt the loop and leave the repo on
+    /// the target branch with N-1 picks applied + CHERRY_PICK_HEAD set on
+    /// the failing commit.
+    fn cherry_pick_commits_onto(
+        &self,
+        repo_path: &Path,
+        shas: &[&str],
+        target_branch: Option<&str>,
+    ) -> Result<(), BackendError>;
+
     /// Create an inverse commit that undoes `sha`. Leaves the repo in revert
     /// state with `MergeConflict` on conflicts.
     fn revert_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError>;

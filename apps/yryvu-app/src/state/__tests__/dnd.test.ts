@@ -71,9 +71,17 @@ describe("resolveDropActions — commit onto commit", () => {
 });
 
 describe("resolveDropActions — commit onto ref", () => {
-  it("offers cherry-pick onto current", () => {
+  it("offers cherry-pick onto current when target is HEAD", () => {
     const source: DragPayload = { kind: "commit", sha: "abc1".padEnd(40, "0") };
-    const actions = resolveDropActions(source, refTarget("main"));
+    const actions = resolveDropActions(source, refTarget("HEAD", "Head"));
     expect(actions.map((a) => a.id)).toEqual(["cherry-pick"]);
+    expect(actions[0].label).toContain("onto current");
+  });
+
+  it("offers cherry-pick onto that branch when target is a regular ref", () => {
+    const source: DragPayload = { kind: "commit", sha: "abc1".padEnd(40, "0") };
+    const actions = resolveDropActions(source, refTarget("release-2"));
+    expect(actions.map((a) => a.id)).toEqual(["cherry-pick-onto-ref"]);
+    expect(actions[0].label).toContain("'release-2'");
   });
 });

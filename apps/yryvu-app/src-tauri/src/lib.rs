@@ -85,6 +85,7 @@ pub fn run() {
             yryvu_bridge::commands::list_tags,
             yryvu_bridge::commands::reset_to_commit,
             yryvu_bridge::commands::cherry_pick_commit,
+            yryvu_bridge::commands::cherry_pick_commits,
             yryvu_bridge::commands::revert_commit,
             yryvu_bridge::commands::format_patch,
             yryvu_bridge::commands::stash_push,

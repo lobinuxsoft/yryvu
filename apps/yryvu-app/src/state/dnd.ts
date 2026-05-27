@@ -38,6 +38,7 @@ export type DropActionId =
   | "rebase-current-onto"
   | "fast-forward"
   | "cherry-pick"
+  | "cherry-pick-onto-ref"
   | "reset-soft"
   | "reset-mixed"
   | "reset-hard"
@@ -85,12 +86,21 @@ export function resolveDropActions(
     return refOntoCommitActions(source.tag, target.sha);
   }
   if (source.kind === "commit" && target.kind === "ref") {
-    // Symmetric with ref-onto-commit but inverted intent: dragging a
-    // commit onto a branch typically expresses "cherry-pick onto this
-    // branch's tip" which is more naturally done by checking out and
-    // then cherry-picking. We surface only the simpler cherry-pick to
-    // the active branch path here.
-    return [{ id: "cherry-pick", label: `Cherry-pick ${source.sha.slice(0, 7)} onto current` }];
+    // Dragging a commit onto a branch ref expresses "cherry-pick this
+    // commit onto that branch". The backend handles the optional switch
+    // to the target branch + commits the pick there (issue #13). Head /
+    // synthetic-current still resolves to "onto current".
+    if (target.tag.kind === "Head") {
+      return [
+        { id: "cherry-pick", label: `Cherry-pick ${source.sha.slice(0, 7)} onto current` },
+      ];
+    }
+    return [
+      {
+        id: "cherry-pick-onto-ref",
+        label: `Cherry-pick ${source.sha.slice(0, 7)} onto '${target.tag.name}'`,
+      },
+    ];
   }
   if (source.kind === "commit" && target.kind === "commit") {
     return commitOntoCommitActions(source.sha);

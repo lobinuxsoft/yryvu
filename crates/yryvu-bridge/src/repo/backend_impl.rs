@@ -322,6 +322,15 @@ impl GitBackend for GixBackend {
         worktree::cherry_pick_commit(repo_path, sha)
     }
 
+    fn cherry_pick_commits_onto(
+        &self,
+        repo_path: &Path,
+        shas: &[&str],
+        target_branch: Option<&str>,
+    ) -> Result<(), BackendError> {
+        worktree::cherry_pick_commits_onto(repo_path, shas, target_branch)
+    }
+
     fn revert_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError> {
         worktree::revert_commit(repo_path, sha)
     }

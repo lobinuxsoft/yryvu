@@ -167,6 +167,22 @@ pub async fn cherry_pick_commit(repo_path: String, sha: String) -> Result<(), St
 }
 
 #[tauri::command]
+pub async fn cherry_pick_commits(
+    repo_path: String,
+    shas: Vec<String>,
+    target_branch: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let refs: Vec<&str> = shas.iter().map(String::as_str).collect();
+        GixBackend
+            .cherry_pick_commits_onto(&PathBuf::from(&repo_path), &refs, target_branch.as_deref())
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 pub async fn revert_commit(repo_path: String, sha: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend

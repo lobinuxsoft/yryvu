@@ -5,11 +5,12 @@ use std::collections::{BinaryHeap, HashMap};
 use std::path::Path;
 
 use anyhow::Context;
-use graph_core::Commit;
+use graph_core::{Commit, NodeType};
 
 use crate::backend::BackendError;
 
 use super::super::common::{open_git2, open_repo};
+use super::super::stashes::list_stashes;
 use super::ref_scan::collect_ref_tips;
 
 pub fn walk_commits(
@@ -21,12 +22,38 @@ pub fn walk_commits(
     let git2_repo = open_git2(repo_path).ok();
 
     let scan = collect_ref_tips(&repo, git2_repo.as_ref())?;
-    if scan.tips.is_empty() {
+
+    // Stash shas seed the walk alongside ref tips so each `refs/stash@{N}`
+    // shows up as its own node in the graph (GK rev-walk loop tagging,
+    // bundle `:189083`). `list_stashes` returns entries newest-first; we
+    // build a sha → subject map keyed by the stash commit so the emit
+    // loop can flip `node_type = Stash` and override the message.
+    let stashes = list_stashes(repo_path).unwrap_or_default();
+    let stash_subject_by_sha: HashMap<String, String> = stashes
+        .iter()
+        .map(|s| {
+            let subject = s.message.lines().next().unwrap_or("").to_string();
+            (s.sha.clone(), subject)
+        })
+        .collect();
+
+    let mut all_tips = scan.tips.clone();
+    let mut seen_tips: std::collections::HashSet<gix::ObjectId> =
+        scan.tips.iter().copied().collect();
+    for entry in &stashes {
+        if let Ok(oid) = gix::ObjectId::from_hex(entry.sha.as_bytes()) {
+            if seen_tips.insert(oid) {
+                all_tips.push(oid);
+            }
+        }
+    }
+
+    if all_tips.is_empty() {
         return Ok(Box::new(std::iter::empty()));
     }
 
     let walk = repo
-        .rev_walk(scan.tips.clone())
+        .rev_walk(all_tips.clone())
         .sorting(gix::revision::walk::Sorting::ByCommitTime(
             gix::traverse::commit::simple::CommitTimeOrder::NewestFirst,
         ))
@@ -62,11 +89,29 @@ pub fn walk_commits(
         // author==committer commits but drifted on cherry-picks / rebases /
         // PR-merges. Split the two timestamps now that both flow to the right-panel.
         let author_date = author.time.seconds;
-        let summary = message.summary().to_string();
+        // Stash entries override the subject with the stash message so the
+        // graph row shows "WIP on main: …" instead of the underlying commit's
+        // summary (which is just the index parent's subject in git's stash
+        // commit format).
+        let sha = info.id.to_string();
+        let stash_subject = stash_subject_by_sha.get(&sha).cloned();
+        let summary = stash_subject
+            .clone()
+            .unwrap_or_else(|| message.summary().to_string());
         // Raw body, no trailer stripping — GitKraken renders the full body
         // including `Co-Authored-By:` lines (frontend parses trailers separately).
-        let body = message.body.map(|b| b.to_string()).unwrap_or_default();
-        let sha = info.id.to_string();
+        // For stash entries the body is empty since the subject already carries
+        // the whole identifier.
+        let body = if stash_subject.is_some() {
+            String::new()
+        } else {
+            message.body.map(|b| b.to_string()).unwrap_or_default()
+        };
+        let node_type = if stash_subject.is_some() {
+            NodeType::Stash
+        } else {
+            NodeType::Commit
+        };
 
         let refs = refs_by_oid.remove(&info.id).unwrap_or_default();
 
@@ -93,19 +138,20 @@ pub fn walk_commits(
                 committer_email,
                 committer_date,
                 refs,
+                node_type,
             },
         );
     }
 
-    // `seed_order`: the sequence of unique SHAs appearing in `scan.tips` in
-    // the order `collect_ref_tips` added them (alphabetical by ref name per
-    // `platform.local_branches()` / remote_branches / tags). This matches
+    // `seed_order`: the sequence of unique SHAs appearing in the full tip
+    // set (ref tips first in `collect_ref_tips` order, then stash tips in
+    // reflog order — newest-first per `list_stashes`). This matches
     // `git log --date-order`'s insertion-order tie-break for commits sharing
     // the same committer-time — essential when testbeds / imported repos
     // have mass-identical timestamps.
-    let mut seed_order: Vec<String> = Vec::with_capacity(scan.tips.len());
+    let mut seed_order: Vec<String> = Vec::with_capacity(all_tips.len());
     let mut seen_seed: std::collections::HashSet<String> = std::collections::HashSet::new();
-    for tip in &scan.tips {
+    for tip in &all_tips {
         let sha = tip.to_string();
         if seen_seed.insert(sha.clone()) {
             seed_order.push(sha);

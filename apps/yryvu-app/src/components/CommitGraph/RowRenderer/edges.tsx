@@ -45,9 +45,15 @@ export function renderStartingEdge(
   edgeCol: number,
   nodeCol: number,
   dims: RenderDims,
+  dashed = false,
 ) {
   const edgeX = laneCenterX(edgeCol, dims);
   const color = laneColor(edgeCol);
+  // Non-commit/non-merge rows (Stash, WorkDir) dash their outgoing edge
+  // to the parent — mirrors GK's predicate `!(type===commit||type===merge)`
+  // (research doc 07). Plain commits omit the attribute entirely so the
+  // SVG keeps its solid stroke default.
+  const dash = dashed ? "3 3" : undefined;
   if (edgeCol === nodeCol) {
     return (
       <line
@@ -57,6 +63,7 @@ export function renderStartingEdge(
         y2={ROW_HEIGHT}
         stroke={color}
         stroke-width={dims.lineWidth}
+        stroke-dasharray={dash}
       />
     );
   }
@@ -76,12 +83,14 @@ export function renderStartingEdge(
         y2={ROW_HEIGHT}
         stroke={color}
         stroke-width={dims.lineWidth}
+        stroke-dasharray={dash}
       />
       <path
         d={arcPath(arcCx, arcCy, startAngle, endAngle, dims)}
         stroke={color}
         fill="none"
         stroke-width={dims.lineWidth}
+        stroke-dasharray={dash}
       />
       <line
         x1={arcCx}
@@ -90,6 +99,7 @@ export function renderStartingEdge(
         y2={ROW_HEIGHT / 2}
         stroke={color}
         stroke-width={dims.lineWidth}
+        stroke-dasharray={dash}
       />
     </>
   );

@@ -40,6 +40,14 @@ pub trait GitBackend: Send + Sync {
     /// (no stashes ever taken in this repo). See [`StashInfo`].
     fn list_stashes(&self, repo_path: &Path) -> Result<Vec<StashInfo>, BackendError>;
 
+    /// Diff `stash@{index}` against its primary parent (HEAD-at-stash-
+    /// time). Used by the StashDetails right-panel inspector (#173).
+    fn stash_diff(
+        &self,
+        repo_path: &Path,
+        index: usize,
+    ) -> Result<crate::backend::CommitDiff, BackendError>;
+
     /// Enumerate the main worktree plus every linked worktree under
     /// `.git/worktrees/`. The first row is always the main worktree.
     /// See [`WorktreeInfo`].

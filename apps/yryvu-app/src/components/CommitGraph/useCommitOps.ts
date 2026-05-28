@@ -20,9 +20,12 @@ import {
   refreshWorkingTree,
   repoPath,
   selectedShas,
+  stashByCommitSha,
 } from "../../state";
 import type { ContextMenuItem } from "../ContextMenu";
 import { notify } from "../Notifications";
+import { buildCommitMenuItems } from "./commitMenuItems";
+import { buildStashMenuItems } from "./stashMenuItems";
 
 export type CommitMenuState = {
   x: number;
@@ -308,64 +311,39 @@ export function createCommitOps(deps: CommitOpsDeps) {
 
   function openCommitContextMenu(e: MouseEvent, sha: string, shortSha: string) {
     e.preventDefault();
+    // Stash nodes (issue #172) get a dedicated menu — Apply / Pop /
+    // Drop / Copy SHA. The shared `branchOps/menus/stash` menu lives
+    // behind a heavier `MenuDeps` surface (used by the sidebar with
+    // its dialog stack); duplicating the four-action menu inline here
+    // is cheaper than threading those deps through CommitGraph just
+    // for one branch.
+    const stashHit = stashByCommitSha().get(sha);
+    if (stashHit) {
+      setMenu({
+        x: e.clientX,
+        y: e.clientY,
+        sha,
+        shortSha,
+        items: buildStashMenuItems(stashHit.info, stashHit.index, sha, copySha),
+      });
+      return;
+    }
     const sel = selectedShas();
     const batchSize = sel.includes(sha) && sel.length > 1 ? sel.length : 0;
-    const cherryLabel =
-      batchSize > 0 ? `Cherry-pick ${batchSize} commits onto…` : "Cherry-pick onto…";
-    const items: ContextMenuItem[] = [
-      {
-        label: "Checkout this commit",
-        onSelect: () => void tryCheckout(sha, shortSha),
+    const items = buildCommitMenuItems(sha, shortSha, batchSize, {
+      tryCheckout,
+      openCreateBranchDialog,
+      openCreateTagDialog,
+      doReset,
+      openResetHardConfirm: (s, ss) => {
+        setDialogError(null);
+        setDialog({ kind: "reset-hard-confirm", sha: s, shortSha: ss });
       },
-      { type: "separator" },
-      {
-        label: "Create branch here…",
-        onSelect: () => openCreateBranchDialog(sha, shortSha),
-      },
-      {
-        label: "Create tag here…",
-        onSelect: () => openCreateTagDialog(sha, shortSha, false),
-      },
-      {
-        label: "Create annotated tag here…",
-        onSelect: () => openCreateTagDialog(sha, shortSha, true),
-      },
-      { type: "separator" },
-      {
-        label: "Reset current branch here (soft)",
-        onSelect: () => void doReset(sha, "soft"),
-      },
-      {
-        label: "Reset current branch here (mixed)",
-        onSelect: () => void doReset(sha, "mixed"),
-      },
-      {
-        label: "Reset current branch here (hard)…",
-        danger: true,
-        onSelect: () => {
-          setDialogError(null);
-          setDialog({ kind: "reset-hard-confirm", sha, shortSha });
-        },
-      },
-      { type: "separator" },
-      {
-        label: cherryLabel,
-        onSelect: () => openCherryPickOntoDialog(sha),
-      },
-      {
-        label: "Revert commit",
-        onSelect: () => void doRevert(sha),
-      },
-      { type: "separator" },
-      {
-        label: "Create patch from commit…",
-        onSelect: () => void doFormatPatch(sha),
-      },
-      {
-        label: "Copy commit SHA",
-        onSelect: () => void copySha(sha),
-      },
-    ];
+      openCherryPickOntoDialog,
+      doRevert,
+      doFormatPatch,
+      copySha,
+    });
     setMenu({ x: e.clientX, y: e.clientY, sha, shortSha, items });
   }
 

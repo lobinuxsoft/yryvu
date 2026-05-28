@@ -1,0 +1,68 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Stash-specific inspector chrome (issue #173). Mirrors the commit
+ * inspector's structure but trims it to stash semantics: index pill,
+ * subject, timestamp, three-action row.  */
+
+.inspector__header {
+  padding: 12px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-1);
+}
+.inspector__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-1);
+}
+.inspector__stash-index {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--bg-2);
+  color: var(--fg-2);
+}
+.inspector__sha {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--fg-3);
+}
+.inspector__subtitle {
+  margin: 0;
+  font-size: 11px;
+  color: var(--fg-3);
+}
+.inspector__block {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-1);
+}
+.inspector__message {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg-1);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.inspector__stash-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-1);
+}
+.inspector__stash-actions .dialog__btn {
+  flex: 1;
+}
+.dialog__btn--danger {
+  background: var(--danger-bg, #c0392b);
+  color: var(--danger-fg, #fff);
+  border-color: var(--danger-border, #a93226);
+}
+.dialog__btn--danger:hover {
+  background: var(--danger-hover, #a93226);
+}

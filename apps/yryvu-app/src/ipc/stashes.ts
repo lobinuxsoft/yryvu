@@ -2,6 +2,8 @@
 
 import { invoke } from "@tauri-apps/api/core";
 
+import type { CommitDiff } from "./diff";
+
 /**
  * Mirrors `yryvu_bridge::backend::StashInfo`. `parent_sha` is the WIP
  * base commit (where HEAD was when stashed); `index_sha` and
@@ -46,4 +48,15 @@ export function stashApply(repoPath: string, index: number): Promise<void> {
 /// GC (~90 days) so undo can resurrect it.
 export function stashDrop(repoPath: string, index: number): Promise<void> {
   return invoke<void>("stash_drop", { repoPath, index });
+}
+
+/// Diff `stash@{index}` against its primary parent (HEAD-at-stash-time).
+/// Powers the StashDetails right-panel inspector (issue #173). Reuses
+/// the standard `CommitDiff` shape so the FileList renderer can mount
+/// the diff without a special path for stashes.
+export function stashDiff(
+  repoPath: string,
+  index: number,
+): Promise<CommitDiff> {
+  return invoke<CommitDiff>("stash_diff", { repoPath, index });
 }

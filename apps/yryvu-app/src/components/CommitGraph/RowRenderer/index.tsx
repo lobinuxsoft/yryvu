@@ -50,6 +50,7 @@ import {
   MergeRing,
   PrAttributionIcon,
   SelectionRing,
+  StashGlyph,
   TagStar,
 } from "./NodeOverlays";
 
@@ -76,6 +77,7 @@ const AVATAR_MIN_HEIGHT_PX = 18;
 export function CommitRowGraph(props: CommitRowGraphProps) {
   const dims = () => getRenderDims(props.compact);
   const midY = ROW_HEIGHT / 2;
+  const isStash = () => props.row.node_type === "Stash";
   const radius = () =>
     props.row.is_merge ? dims().mergeRadius : dims().commitRadius;
   const commitColor = () => laneColor(props.row.color_idx);
@@ -122,7 +124,7 @@ export function CommitRowGraph(props: CommitRowGraphProps) {
         {([col, cell]) => (
           <>
             <Show when={cell.starting}>
-              {renderStartingEdge(col, props.row.lane, dims())}
+              {renderStartingEdge(col, props.row.lane, dims(), isStash())}
             </Show>
             <Show when={cell.passThrough}>
               {renderPassThrough(col, dims())}
@@ -147,6 +149,7 @@ function renderNodeWithOverlays(
 ) {
   const cx = () => laneCenterX(props.row.lane, dims());
   const isMerge = () => props.row.is_merge;
+  const isStash = () => props.row.node_type === "Stash";
   // GraphRow only holds real commits — the WIP pseudo-row is injected
   // by `GraphZone` as a separate `<li>` and never reaches this
   // renderer, so an `is_wip` check here would be dead. Initial-commit
@@ -177,42 +180,58 @@ function renderNodeWithOverlays(
         />
       </Show>
 
-      {/* Layers 1+2+3 — lane circle + merge ring + avatar */}
+      {/* Layers 1+2+3 — lane circle + merge ring + avatar.
+          Stash nodes (issue #171) replace the whole circle/merge-ring
+          stack with a rounded-rectangle glyph so they read as distinct
+          at a glance. Tag/PR/selection overlays below still apply. */}
       <Show
-        when={!isMerge()}
+        when={!isStash()}
         fallback={
-          <MergeRing
+          <StashGlyph
             cx={cx()}
             cy={midY}
             radius={radius()}
             laneColor={commitColor()}
+            message={props.row.summary}
           />
         }
       >
         <Show
-          when={showAvatar()}
+          when={!isMerge()}
           fallback={
-            <circle cx={cx()} cy={midY} r={radius()} fill={commitColor()} />
+            <MergeRing
+              cx={cx()}
+              cy={midY}
+              radius={radius()}
+              laneColor={commitColor()}
+            />
           }
         >
-          <CommitAvatar
-            cx={cx()}
-            cy={midY}
-            radius={radius()}
-            colorIdx={props.row.color_idx}
-            authorEmail={props.row.author_email}
-            authorInitials={props.row.author_initials}
-            gravatarHash={props.row.gravatar_hash}
-            hostingService={props.hostingService}
-          />
-        </Show>
-        <Show when={isInitial()}>
-          <InitialCommitOutline
-            cx={cx()}
-            cy={midY}
-            radius={radius()}
-            laneColor={commitColor()}
-          />
+          <Show
+            when={showAvatar()}
+            fallback={
+              <circle cx={cx()} cy={midY} r={radius()} fill={commitColor()} />
+            }
+          >
+            <CommitAvatar
+              cx={cx()}
+              cy={midY}
+              radius={radius()}
+              colorIdx={props.row.color_idx}
+              authorEmail={props.row.author_email}
+              authorInitials={props.row.author_initials}
+              gravatarHash={props.row.gravatar_hash}
+              hostingService={props.hostingService}
+            />
+          </Show>
+          <Show when={isInitial()}>
+            <InitialCommitOutline
+              cx={cx()}
+              cy={midY}
+              radius={radius()}
+              laneColor={commitColor()}
+            />
+          </Show>
         </Show>
       </Show>
 

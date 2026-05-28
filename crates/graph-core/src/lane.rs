@@ -335,6 +335,14 @@ pub fn layout_commits(
                 .map(|p| sha_to_lane.get(p).copied().unwrap_or(lane))
                 .collect();
             let is_merge = commit.parents.len() > 1;
+            // Derive `Merge` post-hoc only when the caller left the default
+            // (`Commit`). Stash / WorkDir come pre-tagged by the bridge and
+            // must not be reclassified — a merge stash, for instance, is
+            // still a stash to the renderer.
+            let node_type = match commit.node_type {
+                crate::NodeType::Commit if is_merge => crate::NodeType::Merge,
+                other => other,
+            };
             let color_idx = lane % palette_size;
             let short_sha = commit.sha.chars().take(7).collect();
             let author_initials = crate::author_initials(&commit.author_name, &commit.author_email);
@@ -370,6 +378,7 @@ pub fn layout_commits(
                 color_idx,
                 refs: commit.refs,
                 is_merge,
+                node_type,
                 child_refs: crate::ChildRefs::default(),
                 active_lanes,
             }

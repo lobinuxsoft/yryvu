@@ -41,6 +41,14 @@ impl GitBackend for GixBackend {
         stashes::list_stashes(repo_path)
     }
 
+    fn stash_diff(
+        &self,
+        repo_path: &Path,
+        index: usize,
+    ) -> Result<crate::backend::CommitDiff, BackendError> {
+        stashes::stash_diff(repo_path, index)
+    }
+
     fn list_worktrees(&self, repo_path: &Path) -> Result<Vec<WorktreeInfo>, BackendError> {
         worktrees::list_worktrees(repo_path)
     }

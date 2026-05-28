@@ -185,6 +185,13 @@ export interface GraphRow {
   color_idx: number;
   refs: RefTag[];
   is_merge: boolean;
+  /**
+   * Per-row kind. Drives the renderer's node-glyph switch (commit circle /
+   * merge ring / stash rounded rect / WorkDir dashed circle). Mirrors
+   * `graph_core::NodeType`. Pre-stash data and serde-stripped fixtures
+   * land as `"Commit"` via the backend's `#[serde(default)]`.
+   */
+  node_type: "Commit" | "Merge" | "Stash" | "WorkDir";
   child_refs: ChildRefs;
   /**
    * Lane indices carrying a visual edge through this row (sorted ascending,

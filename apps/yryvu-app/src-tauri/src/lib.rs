@@ -95,6 +95,7 @@ pub fn run() {
             yryvu_bridge::commands::stash_drop,
             yryvu_bridge::commands::stash_count,
             yryvu_bridge::commands::list_stashes,
+            yryvu_bridge::commands::stash_diff,
             yryvu_bridge::commands::list_worktrees,
             yryvu_bridge::commands::worktree_lock,
             yryvu_bridge::commands::worktree_unlock,

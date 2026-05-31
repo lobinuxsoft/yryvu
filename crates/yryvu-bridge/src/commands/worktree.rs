@@ -42,10 +42,20 @@ pub async fn checkout_remote_tracking(
 }
 
 #[tauri::command]
-pub async fn stash_push(repo_path: String, message: Option<String>) -> Result<(), String> {
+pub async fn stash_push(
+    repo_path: String,
+    message: Option<String>,
+    include_untracked: Option<bool>,
+    include_ignored: Option<bool>,
+) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
-            .stash_push(&PathBuf::from(&repo_path), message.as_deref())
+            .stash_push(
+                &PathBuf::from(&repo_path),
+                message.as_deref(),
+                include_untracked.unwrap_or(true),
+                include_ignored.unwrap_or(false),
+            )
             .map_err(|e| e.to_string())
     })
     .await

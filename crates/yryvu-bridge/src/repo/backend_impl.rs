@@ -41,6 +41,14 @@ impl GitBackend for GixBackend {
         stashes::list_stashes(repo_path)
     }
 
+    fn stash_diff(
+        &self,
+        repo_path: &Path,
+        index: usize,
+    ) -> Result<crate::backend::CommitDiff, BackendError> {
+        stashes::stash_diff(repo_path, index)
+    }
+
     fn list_worktrees(&self, repo_path: &Path) -> Result<Vec<WorktreeInfo>, BackendError> {
         worktrees::list_worktrees(repo_path)
     }
@@ -322,6 +330,15 @@ impl GitBackend for GixBackend {
         worktree::cherry_pick_commit(repo_path, sha)
     }
 
+    fn cherry_pick_commits_onto(
+        &self,
+        repo_path: &Path,
+        shas: &[&str],
+        target_branch: Option<&str>,
+    ) -> Result<(), BackendError> {
+        worktree::cherry_pick_commits_onto(repo_path, shas, target_branch)
+    }
+
     fn revert_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError> {
         worktree::revert_commit(repo_path, sha)
     }
@@ -335,8 +352,14 @@ impl GitBackend for GixBackend {
         patches::format_patch(repo_path, sha, out_dir)
     }
 
-    fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError> {
-        worktree::stash_push(repo_path, message)
+    fn stash_push(
+        &self,
+        repo_path: &Path,
+        message: Option<&str>,
+        include_untracked: bool,
+        include_ignored: bool,
+    ) -> Result<(), BackendError> {
+        worktree::stash_push(repo_path, message, include_untracked, include_ignored)
     }
 
     fn stash_pop(&self, repo_path: &Path) -> Result<(), BackendError> {

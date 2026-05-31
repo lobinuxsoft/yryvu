@@ -40,6 +40,14 @@ pub trait GitBackend: Send + Sync {
     /// (no stashes ever taken in this repo). See [`StashInfo`].
     fn list_stashes(&self, repo_path: &Path) -> Result<Vec<StashInfo>, BackendError>;
 
+    /// Diff `stash@{index}` against its primary parent (HEAD-at-stash-
+    /// time). Used by the StashDetails right-panel inspector (#173).
+    fn stash_diff(
+        &self,
+        repo_path: &Path,
+        index: usize,
+    ) -> Result<crate::backend::CommitDiff, BackendError>;
+
     /// Enumerate the main worktree plus every linked worktree under
     /// `.git/worktrees/`. The first row is always the main worktree.
     /// See [`WorktreeInfo`].
@@ -147,6 +155,21 @@ pub trait GitBackend: Send + Sync {
     /// Leaves the repo in cherry-pick state with `MergeConflict` on conflicts.
     fn cherry_pick_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError>;
 
+    /// Cherry-pick a batch of commits, optionally switching to
+    /// `target_branch` first. `shas` are applied in array order. A clean
+    /// working tree is required when `target_branch` differs from current
+    /// HEAD; otherwise [`BackendError::WorkingTreeDirty`] is returned and
+    /// the UI is expected to offer the caller's auto-stash path before
+    /// retrying. Mid-batch conflicts halt the loop and leave the repo on
+    /// the target branch with N-1 picks applied + CHERRY_PICK_HEAD set on
+    /// the failing commit.
+    fn cherry_pick_commits_onto(
+        &self,
+        repo_path: &Path,
+        shas: &[&str],
+        target_branch: Option<&str>,
+    ) -> Result<(), BackendError>;
+
     /// Create an inverse commit that undoes `sha`. Leaves the repo in revert
     /// state with `MergeConflict` on conflicts.
     fn revert_commit(&self, repo_path: &Path, sha: &str) -> Result<(), BackendError>;
@@ -160,7 +183,13 @@ pub trait GitBackend: Send + Sync {
         out_dir: &Path,
     ) -> Result<String, BackendError>;
 
-    fn stash_push(&self, repo_path: &Path, message: Option<&str>) -> Result<(), BackendError>;
+    fn stash_push(
+        &self,
+        repo_path: &Path,
+        message: Option<&str>,
+        include_untracked: bool,
+        include_ignored: bool,
+    ) -> Result<(), BackendError>;
 
     fn stash_pop(&self, repo_path: &Path) -> Result<(), BackendError>;
 

@@ -15,6 +15,32 @@ pub enum RefKind {
     Head,
 }
 
+/// Per-row kind discriminator, mirroring GitKraken's `node_type` enum
+/// (bundle constants at `:241969`). All four variants flow through the
+/// same `<RowRenderer>` pipeline — the renderer keys off this value to
+/// pick a node glyph (circle / rounded rect / dashed circle) and to
+/// flip the parent-edge stroke to dashed for non-commit/merge rows
+/// (GK predicate `!(type === commit || type === merge)`).
+///
+/// `Default = Commit` matches the input shape consumers populate first;
+/// the lane allocator overrides to `Merge` post-hoc for `parents.len() > 1`
+/// when the input was left at the default.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum NodeType {
+    #[default]
+    Commit,
+    Merge,
+    /// `refs/stash@{N}` tip — emitted by the bridge via `collect_stash_tips`
+    /// and tagged in `walk_commits`. Message is overridden to the stash
+    /// subject; parent edge to HEAD is dashed.
+    Stash,
+    /// Synthetic working-tree row, prepended by the bridge when the tree
+    /// is dirty. Sentinel sha (never a real Git object), lane / color
+    /// borrowed from HEAD. Issue #174 unifies WIP through this variant.
+    WorkDir,
+}
+
 /// Union of ref names reachable from this commit's descendants, bucketed by kind.
 ///
 /// Populated by [`crate::populate_child_refs`] during layout. Consumed by the
@@ -82,6 +108,12 @@ pub struct Commit {
     pub committer_email: Option<String>,
     pub committer_date: Option<i64>,
     pub refs: Vec<RefTag>,
+    /// Per-row kind. `Default = Commit`. The bridge sets `Stash` for
+    /// `refs/stash@{N}` tips and `WorkDir` for the synthetic dirty-tree
+    /// row; `Merge` is derived in `layout_commits` from `parents.len() > 1`
+    /// when the input was left at the default. Mirrors GK's `node_type`
+    /// constants (bundle `:241969`).
+    pub node_type: NodeType,
 }
 
 impl Commit {
@@ -146,6 +178,13 @@ pub struct GraphRow {
     pub color_idx: u16,
     pub refs: Vec<RefTag>,
     pub is_merge: bool,
+    /// Per-row kind, propagated from [`Commit::node_type`]. The frontend
+    /// switches on this to pick the node glyph (circle / rounded rect /
+    /// dashed circle) and to dash the parent edge when the row is non-
+    /// commit/merge. `is_merge` is kept alongside for the existing
+    /// renderer call-sites that haven't migrated to `node_type` yet.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub node_type: NodeType,
     /// Refs reachable from this commit's strict descendants (not including the
     /// row's own refs — those live in [`refs`] and are checked separately by
     /// consumers). Populated post-layout via [`crate::populate_child_refs`].

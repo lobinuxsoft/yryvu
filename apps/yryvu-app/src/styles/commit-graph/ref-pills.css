@@ -137,6 +137,18 @@
   opacity: 1;
 }
 
+/* Drop-target highlight (issue #9 — DnD). 2 px accent ring + faint
+   accent wash; pairs with the cursor change driven by `dropEffect`. */
+.ref-pill.is-drop-target {
+  box-shadow: 0 0 0 2px var(--accent-1, #58a6ff);
+  background: color-mix(in srgb, var(--accent-1, #58a6ff) 25%, transparent);
+}
+
+.graph-row-wrapper.is-drop-target {
+  outline: 2px dashed var(--accent-1, #58a6ff);
+  outline-offset: -2px;
+}
+
 /* Type-color variants — GitHub status palette conventions, not lane colors.
    Doc 06 explicitly discards lane tinting as a chajá-specific deviation. */
 .ref-pill--head {

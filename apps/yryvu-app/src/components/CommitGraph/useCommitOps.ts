@@ -4,7 +4,7 @@ import { createSignal } from "solid-js";
 
 import {
   checkoutCommit,
-  cherryPickCommit,
+  cherryPickCommits,
   createBranch,
   createTag,
   formatPatch,
@@ -14,9 +14,18 @@ import {
   stashPush,
   type ResetMode,
 } from "../../ipc";
-import { refreshBranches, refreshGraph, refreshWorkingTree, repoPath } from "../../state";
+import {
+  refreshBranches,
+  refreshGraph,
+  refreshWorkingTree,
+  repoPath,
+  selectedShas,
+  stashByCommitSha,
+} from "../../state";
 import type { ContextMenuItem } from "../ContextMenu";
 import { notify } from "../Notifications";
+import { buildCommitMenuItems } from "./commitMenuItems";
+import { buildStashMenuItems } from "./stashMenuItems";
 
 export type CommitMenuState = {
   x: number;
@@ -31,6 +40,7 @@ export type CommitDialogState =
   | { kind: "create-tag"; sha: string; shortSha: string; annotated: boolean }
   | { kind: "checkout-dirty"; sha: string; shortSha: string }
   | { kind: "reset-hard-confirm"; sha: string; shortSha: string }
+  | { kind: "cherry-pick-onto"; shas: string[]; shortShas: string[] }
   | { kind: "patch-saved"; path: string }
   | null;
 
@@ -213,20 +223,46 @@ export function createCommitOps(deps: CommitOpsDeps) {
     }
   }
 
-  async function doCherryPick(sha: string) {
+  /**
+   * Open the "Cherry-pick onto…" branch picker. When the right-clicked
+   * commit is part of the active multi-selection, the dialog operates on
+   * the whole selection (youngest-first in state — reversed here to the
+   * chronological order the backend expects, matching acceptance "Batch
+   * picks apply in the original order" from issue #13). Otherwise it
+   * operates on the single right-clicked sha.
+   */
+  function openCherryPickOntoDialog(sha: string) {
+    const sel = selectedShas();
+    const inSel = sel.includes(sha);
+    const shas = inSel && sel.length > 1 ? sel.slice().reverse() : [sha];
+    setDialogError(null);
+    setDialog({
+      kind: "cherry-pick-onto",
+      shas,
+      shortShas: shas.map((s) => s.slice(0, 7)),
+    });
+  }
+
+  async function doCherryPickOnto(targetBranch: string) {
+    const state = dialog();
+    if (state?.kind !== "cherry-pick-onto") return;
     const path = repoPath();
     if (!path) return;
-    const shortSha = sha.slice(0, 7);
     try {
-      await cherryPickCommit(path, sha);
+      await cherryPickCommits(path, state.shas, targetBranch);
+      closeDialog();
       refreshGraph();
       refreshBranches();
       // Conflicts leave the working tree dirty with markers; clean
       // applies write a new commit and the WT stays clean — either way
       // the panel needs to refetch.
       refreshWorkingTree();
-      notify.success("Cherry-picked", {
-        message: shortSha,
+      const n = state.shas.length;
+      notify.success(n > 1 ? `Cherry-picked ${n} commits` : "Cherry-picked", {
+        message:
+          n > 1
+            ? `${state.shortShas[0]} … ${state.shortShas[n - 1]} → ${targetBranch}`
+            : `${state.shortShas[0]} → ${targetBranch}`,
         category: "commit",
       });
     } catch (err) {
@@ -275,60 +311,39 @@ export function createCommitOps(deps: CommitOpsDeps) {
 
   function openCommitContextMenu(e: MouseEvent, sha: string, shortSha: string) {
     e.preventDefault();
-    const items: ContextMenuItem[] = [
-      {
-        label: "Checkout this commit",
-        onSelect: () => void tryCheckout(sha, shortSha),
+    // Stash nodes (issue #172) get a dedicated menu — Apply / Pop /
+    // Drop / Copy SHA. The shared `branchOps/menus/stash` menu lives
+    // behind a heavier `MenuDeps` surface (used by the sidebar with
+    // its dialog stack); duplicating the four-action menu inline here
+    // is cheaper than threading those deps through CommitGraph just
+    // for one branch.
+    const stashHit = stashByCommitSha().get(sha);
+    if (stashHit) {
+      setMenu({
+        x: e.clientX,
+        y: e.clientY,
+        sha,
+        shortSha,
+        items: buildStashMenuItems(stashHit.info, stashHit.index, sha, copySha),
+      });
+      return;
+    }
+    const sel = selectedShas();
+    const batchSize = sel.includes(sha) && sel.length > 1 ? sel.length : 0;
+    const items = buildCommitMenuItems(sha, shortSha, batchSize, {
+      tryCheckout,
+      openCreateBranchDialog,
+      openCreateTagDialog,
+      doReset,
+      openResetHardConfirm: (s, ss) => {
+        setDialogError(null);
+        setDialog({ kind: "reset-hard-confirm", sha: s, shortSha: ss });
       },
-      { type: "separator" },
-      {
-        label: "Create branch here…",
-        onSelect: () => openCreateBranchDialog(sha, shortSha),
-      },
-      {
-        label: "Create tag here…",
-        onSelect: () => openCreateTagDialog(sha, shortSha, false),
-      },
-      {
-        label: "Create annotated tag here…",
-        onSelect: () => openCreateTagDialog(sha, shortSha, true),
-      },
-      { type: "separator" },
-      {
-        label: "Reset current branch here (soft)",
-        onSelect: () => void doReset(sha, "soft"),
-      },
-      {
-        label: "Reset current branch here (mixed)",
-        onSelect: () => void doReset(sha, "mixed"),
-      },
-      {
-        label: "Reset current branch here (hard)…",
-        danger: true,
-        onSelect: () => {
-          setDialogError(null);
-          setDialog({ kind: "reset-hard-confirm", sha, shortSha });
-        },
-      },
-      { type: "separator" },
-      {
-        label: "Cherry-pick commit",
-        onSelect: () => void doCherryPick(sha),
-      },
-      {
-        label: "Revert commit",
-        onSelect: () => void doRevert(sha),
-      },
-      { type: "separator" },
-      {
-        label: "Create patch from commit…",
-        onSelect: () => void doFormatPatch(sha),
-      },
-      {
-        label: "Copy commit SHA",
-        onSelect: () => void copySha(sha),
-      },
-    ];
+      openCherryPickOntoDialog,
+      doRevert,
+      doFormatPatch,
+      copySha,
+    });
     setMenu({ x: e.clientX, y: e.clientY, sha, shortSha, items });
   }
 
@@ -350,6 +365,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
     submitCreateBranch,
     submitCreateTag,
     doReset,
+    doCherryPickOnto,
   };
 }
 

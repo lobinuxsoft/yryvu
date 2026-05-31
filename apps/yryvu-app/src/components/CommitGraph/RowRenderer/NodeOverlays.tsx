@@ -62,6 +62,39 @@ export function MergeRing(props: NodeBaseProps): JSX.Element {
   );
 }
 
+/// Layer 1/2 variant for stash entries (issue #171). Replaces the
+/// circle/merge-ring with a rounded rectangle filled in the lane color.
+/// Slightly narrower than the commit circle so two adjacent stash
+/// nodes don't bleed into each other, and rounded corners (r=2) keep
+/// the silhouette friendly without reading as a button. GK uses a
+/// similar rounded-rect glyph in its rendered bundle (`stash-node`
+/// constant at `:241969`).
+interface StashGlyphProps extends NodeBaseProps {
+  message?: string;
+}
+
+export function StashGlyph(props: StashGlyphProps): JSX.Element {
+  const halfSide = () => props.radius * 0.95;
+  const x = () => props.cx - halfSide();
+  const y = () => props.cy - halfSide();
+  const side = () => halfSide() * 2;
+  return (
+    <rect
+      x={x()}
+      y={y()}
+      width={side()}
+      height={side()}
+      rx={2}
+      ry={2}
+      fill={props.laneColor}
+    >
+      <Show when={props.message}>
+        <title>Stash: {props.message}</title>
+      </Show>
+    </rect>
+  );
+}
+
 /// Layer 2 — initial commit (no parent) gets a thin outline on top of
 /// the solid lane disc so it visually distinguishes from regular
 /// commits without changing the shape.

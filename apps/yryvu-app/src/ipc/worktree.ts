@@ -26,8 +26,32 @@ export function checkoutRemoteTracking(
   });
 }
 
-export function stashPush(repoPath: string, message?: string): Promise<void> {
-  return invoke<void>("stash_push", { repoPath, message });
+export interface StashPushOptions {
+  message?: string;
+  /// Stash untracked working-tree files alongside tracked changes.
+  /// Defaults to `true` backend-side for backwards compatibility with
+  /// the toolbar's one-click flow.
+  includeUntracked?: boolean;
+  /// Also include ignored files. Defaults to `false`. Useful for the
+  /// occasional case where build artifacts need to survive a quick
+  /// checkout.
+  includeIgnored?: boolean;
+}
+
+export function stashPush(
+  repoPath: string,
+  optsOrMessage?: string | StashPushOptions,
+): Promise<void> {
+  const opts: StashPushOptions =
+    typeof optsOrMessage === "string"
+      ? { message: optsOrMessage }
+      : (optsOrMessage ?? {});
+  return invoke<void>("stash_push", {
+    repoPath,
+    message: opts.message,
+    includeUntracked: opts.includeUntracked,
+    includeIgnored: opts.includeIgnored,
+  });
 }
 
 export function stashPop(repoPath: string): Promise<void> {

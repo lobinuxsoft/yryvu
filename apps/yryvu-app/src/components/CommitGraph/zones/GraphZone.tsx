@@ -7,10 +7,16 @@ import {
   commitZoneMode,
   dirtyFileCount,
   commitFilter,
+  dragPayload,
+  dragTarget,
+  endDrag,
   hasConflicts,
   hoveredRef,
+  openDropPopover,
   pathShaSet,
   inspectorMode,
+  resolveDropActions,
+  setDropTarget,
   workdirSelected,
 } from "../../../state";
 import { isRowVisible } from "../hoverDim";
@@ -159,6 +165,10 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                       "is-hovering": deps.hoveredCommit() === r.sha,
                       "is-selected": deps.selection.selectedShasSet().has(r.sha),
                       "is-dimmed": !isRowVisible(r, hoveredRef(), commitFilter(), pathShaSet()),
+                      "is-drop-target": (() => {
+                        const t = dragTarget();
+                        return t?.kind === "commit" && t.sha === r.sha;
+                      })(),
                     }}
                     data-selected={
                       deps.selection.selectedShasSet().has(r.sha)
@@ -175,6 +185,37 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                     onMouseLeave={() => {
                       if (deps.hoveredCommit() === r.sha)
                         deps.setHoveredCommit(undefined);
+                    }}
+                    onDragOver={(e) => {
+                      const src = dragPayload();
+                      if (!src) return;
+                      // No-self-target for commit drags.
+                      if (src.kind === "commit" && src.sha === r.sha) return;
+                      e.preventDefault();
+                      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+                      setDropTarget({ kind: "commit", sha: r.sha });
+                    }}
+                    onDragLeave={() => {
+                      const t = dragTarget();
+                      if (t?.kind === "commit" && t.sha === r.sha)
+                        setDropTarget(undefined);
+                    }}
+                    onDrop={(e) => {
+                      const src = dragPayload();
+                      if (!src) return;
+                      e.preventDefault();
+                      const target = { kind: "commit" as const, sha: r.sha };
+                      const actions = resolveDropActions(src, target);
+                      if (actions.length > 0) {
+                        openDropPopover({
+                          x: e.clientX,
+                          y: e.clientY,
+                          source: src,
+                          target,
+                          actions,
+                        });
+                      }
+                      endDrag();
                     }}
                   >
                     <span

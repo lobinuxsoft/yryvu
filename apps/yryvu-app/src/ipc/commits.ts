@@ -21,6 +21,29 @@ export function cherryPickCommit(repoPath: string, sha: string): Promise<void> {
   return invoke<void>("cherry_pick_commit", { repoPath, sha });
 }
 
+/**
+ * Apply a batch of commits, optionally switching to `targetBranch` first.
+ * `shas` are applied in array order (oldest → newest is the canonical
+ * "in their original order" the issue #13 acceptance bullet asks for).
+ * When `targetBranch` differs from the current HEAD label the working
+ * tree must be clean — the backend returns the `WorkingTreeDirty`
+ * variant and the UI is expected to gate / auto-stash as it does for
+ * branch checkout. Mid-batch conflicts leave the repo on the target
+ * branch with N-1 picks applied and CHERRY_PICK_HEAD on the failing
+ * commit, so the StateBanner can surface the abort affordance.
+ */
+export function cherryPickCommits(
+  repoPath: string,
+  shas: string[],
+  targetBranch: string | null,
+): Promise<void> {
+  return invoke<void>("cherry_pick_commits", {
+    repoPath,
+    shas,
+    targetBranch,
+  });
+}
+
 export function revertCommit(repoPath: string, sha: string): Promise<void> {
   return invoke<void>("revert_commit", { repoPath, sha });
 }
@@ -162,6 +185,13 @@ export interface GraphRow {
   color_idx: number;
   refs: RefTag[];
   is_merge: boolean;
+  /**
+   * Per-row kind. Drives the renderer's node-glyph switch (commit circle /
+   * merge ring / stash rounded rect / WorkDir dashed circle). Mirrors
+   * `graph_core::NodeType`. Pre-stash data and serde-stripped fixtures
+   * land as `"Commit"` via the backend's `#[serde(default)]`.
+   */
+  node_type: "Commit" | "Merge" | "Stash" | "WorkDir";
   child_refs: ChildRefs;
   /**
    * Lane indices carrying a visual edge through this row (sorted ascending,

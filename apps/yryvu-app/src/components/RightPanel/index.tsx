@@ -24,6 +24,7 @@ import {
   refreshWorkingTree,
   repoPath,
   selectedCommit,
+  selectedShas,
   setAmendEnabled,
   setCommitDescription,
   setCommitMessage,
@@ -32,11 +33,14 @@ import {
   setSignCommitEnabled,
   signCommitEnabled,
   skipHooksEnabled,
+  stashByCommitSha,
+  workdirSelected,
   workingTreeStatus,
 } from "../../state";
 import { CommitDetails } from "./CommitDetails";
 import { CommitPanel } from "./CommitPanel";
 import { DiscardDialog } from "./DiscardDialog";
+import { StashDetails } from "./StashDetails";
 import { notify } from "../Notifications";
 
 export function RightPanel() {
@@ -284,7 +288,22 @@ export function RightPanel() {
         </Show>
 
         <Show when={inspectorMode() === "details"}>
-          <CommitDetails />
+          {(() => {
+            // Stash inspector (#173) takes over when the active selection
+            // is a single stash node. The detector lives here so both the
+            // graph and the (eventual) stash list panel feed the same
+            // switch — no duplication of detection logic.
+            const stashSha = (): string | undefined => {
+              const shas = selectedShas();
+              if (shas.length !== 1 || workdirSelected()) return undefined;
+              return stashByCommitSha().has(shas[0]) ? shas[0] : undefined;
+            };
+            return (
+              <Show when={stashSha()} fallback={<CommitDetails />}>
+                {(sha) => <StashDetails sha={sha()} />}
+              </Show>
+            );
+          })()}
         </Show>
       </div>
 

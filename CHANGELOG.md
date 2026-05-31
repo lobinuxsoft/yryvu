@@ -5,6 +5,25 @@ format is maintained by [release-please](https://github.com/googleapis/release-p
 each merged `feat:` or `fix:` commit on `main` produces a release PR
 that updates this file.
 
+## [0.4.0](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.3.0...yryvu-v0.4.0) (2026-05-31)
+
+
+### Features
+
+* **cherry-pick:** visual cherry-pick with branch picker + multi-select ([a42bba7](https://github.com/lobinuxsoft/yryvu/commit/a42bba7276747c96f7479a8cea0190782c00b4aa))
+* **cherry-pick:** visual cherry-pick with branch picker + multi-select ([#13](https://github.com/lobinuxsoft/yryvu/issues/13)) ([1296d50](https://github.com/lobinuxsoft/yryvu/commit/1296d50fd64ceff9b690757cb1fa1b77da4f0fb3))
+* **dnd:** drag & drop branches for merge/rebase ([#9](https://github.com/lobinuxsoft/yryvu/issues/9)) ([5f5581b](https://github.com/lobinuxsoft/yryvu/commit/5f5581bf727a9aba2521e39ee5c3f5294baf301e))
+* **dnd:** drag & drop branches for merge/rebase ([#9](https://github.com/lobinuxsoft/yryvu/issues/9)) ([f8b03c5](https://github.com/lobinuxsoft/yryvu/commit/f8b03c5b2ac037f825e8a15c475f53b4e7b7cbd2))
+* **graph:** stash nodes + context menu + inspector ([f3ea024](https://github.com/lobinuxsoft/yryvu/commit/f3ea024f1025197ed1fcfa78719109d00d7bd52d))
+* **graph:** stash nodes + context menu + inspector ([#171](https://github.com/lobinuxsoft/yryvu/issues/171), [#172](https://github.com/lobinuxsoft/yryvu/issues/172), [#173](https://github.com/lobinuxsoft/yryvu/issues/173)) ([7f338e1](https://github.com/lobinuxsoft/yryvu/commit/7f338e1affec1e3fecb4357f9fe41c5cf3b09d5a))
+* **stash:** stash management UI ([#12](https://github.com/lobinuxsoft/yryvu/issues/12)) ([830760d](https://github.com/lobinuxsoft/yryvu/commit/830760db12546f357bac500bbf9be68834bf07c1))
+* **stash:** stash management UI ([#12](https://github.com/lobinuxsoft/yryvu/issues/12)) ([2a27588](https://github.com/lobinuxsoft/yryvu/commit/2a27588e59a1b5e38baa8b81ff63c343ea1afca2))
+
+
+### Misc
+
+* release 0.4.0 ([1684978](https://github.com/lobinuxsoft/yryvu/commit/1684978df1575c4558f4367e927175d215e433df))
+
 ## [0.3.0](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.2.0...yryvu-v0.3.0) (2026-05-26)
 
 

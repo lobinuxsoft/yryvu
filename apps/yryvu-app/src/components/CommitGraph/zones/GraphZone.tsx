@@ -53,100 +53,78 @@ export function GraphZone(props: { deps: ZoneDeps }) {
               "min-width": `${deps.layout.graphContentWidth()}px`,
             }}
           >
-            <Show when={dirtyFileCount() > 0}>
-              <Tooltip text="View working-directory changes">
-              <li
-                class="commit-graph__wip-cell commit-graph__wip-cell--graph"
-                data-active={
-                  workdirSelected() || inspectorMode() === "staging"
-                    ? "true"
-                    : "false"
-                }
-                style={{
-                  top: "0px",
-                  height: `${ROW_HEIGHT}px`,
-                  "--wip-lane-color": `var(--column-${deps.layout.headColorIdx()}-color)`,
-                }}
-                onClick={(e) => deps.selection.handleWipClick(e)}
-              >
-                <span
-                  class="commit-graph__wip-tint"
-                  aria-hidden="true"
-                  style={{ left: `${deps.layout.wipNodeX()}px` }}
-                />
-                <span
-                  class="commit-graph__wip-node"
-                  aria-hidden="true"
-                  style={{ left: `${deps.layout.wipNodeX()}px` }}
-                />
-                {/* Layer 4 — conflict triangle (issue #53). Anchored at
-                    the WIP node's upper-right slot. Overrides the WIP
-                    cell's 0.7 opacity via `opacity: 1` on the wrapper.
-                    Visible only when `RepoState.conflict_paths` is
-                    non-empty. */}
-                <Show when={hasConflicts()}>
-                  <svg
-                    class="commit-graph__wip-conflict"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    style={{
-                      position: "absolute",
-                      left: `${deps.layout.wipNodeX() + 5}px`,
-                      top: "5px",
-                      opacity: 1,
-                    }}
-                    aria-label="Working tree has unresolved conflicts"
-                  >
-                    <title>Working tree has unresolved conflicts</title>
-                    <path
-                      d="M 0 2 L 12 2 L 6 12 z"
-                      fill="#e74c3c"
-                      stroke="#000"
-                      stroke-width="0.5"
-                    />
-                    <text
-                      x="6"
-                      y="9.5"
-                      font-size="7"
-                      font-weight="700"
-                      text-anchor="middle"
-                      fill="#fff"
-                    >
-                      !
-                    </text>
-                  </svg>
-                </Show>
-              </li>
-              </Tooltip>
-              {/* WIP-to-HEAD dashed connector — 1:1 with GitKraken's
-                  `stroke-dasharray="5 5"` SVG path. Travels from the WIP
-                  node's centre (row 0 midpoint) down to HEAD's circle
-                  centre, vertical-only since both share the HEAD lane.
-                  Hidden when HEAD is not visible in the current stream. */}
-              <Show when={deps.layout.headRowIndex() >= 0}>
-                <svg
-                  class="commit-graph__wip-edge"
-                  style={{
-                    width: `${deps.layout.graphContentWidth()}px`,
-                    height: `${(deps.layout.headRowIndex() + 1) * ROW_HEIGHT + ROW_HEIGHT / 2}px`,
-                  }}
-                  aria-hidden="true"
-                >
-                  <path
-                    d={`M ${deps.layout.wipNodeX()} ${ROW_HEIGHT / 2} L ${deps.layout.wipNodeX()} ${(deps.layout.headRowIndex() + 1) * ROW_HEIGHT + ROW_HEIGHT / 2}`}
-                    stroke={`var(--column-${deps.layout.headColorIdx()}-color)`}
-                    stroke-width="2"
-                    stroke-dasharray="5 5"
-                    fill="none"
-                  />
-                </svg>
-              </Show>
-            </Show>
             <For each={deps.virtualizer.getVirtualItems()}>
               {(item) => {
                 const r = deps.rows()[item.index];
                 if (!r) return null;
+                if (r.node_type === "WorkDir") {
+                  return (
+                    <Tooltip text="View working-directory changes">
+                      <li
+                        class="commit-graph__wip-cell commit-graph__wip-cell--graph"
+                        data-active={
+                          workdirSelected() || inspectorMode() === "staging"
+                            ? "true"
+                            : "false"
+                        }
+                        style={{
+                          top: `${item.start}px`,
+                          height: `${ROW_HEIGHT}px`,
+                          "--wip-lane-color": `var(--column-${deps.layout.headColorIdx()}-color)`,
+                        }}
+                        onClick={(e) => deps.selection.handleWipClick(e)}
+                      >
+                        <span
+                          class="commit-graph__wip-tint"
+                          aria-hidden="true"
+                          style={{ left: `${deps.layout.wipNodeX()}px` }}
+                        />
+                        <span
+                          class="commit-graph__wip-node"
+                          aria-hidden="true"
+                          style={{ left: `${deps.layout.wipNodeX()}px` }}
+                        />
+                        {/* Layer 4 — conflict triangle (issue #53). Anchored
+                            at the WIP node's upper-right slot. Overrides the
+                            WIP cell's 0.7 opacity via `opacity: 1`. Visible
+                            only when `RepoState.conflict_paths` is non-empty. */}
+                        <Show when={hasConflicts()}>
+                          <svg
+                            class="commit-graph__wip-conflict"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 14 14"
+                            style={{
+                              position: "absolute",
+                              left: `${deps.layout.wipNodeX() + 5}px`,
+                              top: "5px",
+                              opacity: 1,
+                            }}
+                            aria-label="Working tree has unresolved conflicts"
+                          >
+                            <title>Working tree has unresolved conflicts</title>
+                            <path
+                              d="M 0 2 L 12 2 L 6 12 z"
+                              fill="#e74c3c"
+                              stroke="#000"
+                              stroke-width="0.5"
+                            />
+                            <text
+                              x="6"
+                              y="9.5"
+                              font-size="7"
+                              font-weight="700"
+                              text-anchor="middle"
+                              fill="#fff"
+                            >
+                              !
+                            </text>
+                          </svg>
+                        </Show>
+                      </li>
+                    </Tooltip>
+                  );
+                }
                 // Reactive getters — recompute when commitZoneMode flips
                 // so the tint anchor follows the new node geometry. A
                 // plain const here would freeze on first mount and leave
@@ -176,7 +154,7 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                         : "false"
                     }
                     style={{
-                      top: `${item.start + deps.layout.wipShift()}px`,
+                      top: `${item.start}px`,
                       height: `${ROW_HEIGHT}px`,
                       "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                     }}
@@ -228,7 +206,10 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                     />
                     <CommitRowGraph
                       row={r}
-                      edges={deps.edgeStates()[item.index] ?? new Map()}
+                      edges={
+                        deps.edgeStates()[item.index - deps.layout.wipOffset()] ??
+                        new Map()
+                      }
                       hostingService={deps.hostingService()}
                       compact={commitZoneMode() === "compact"}
                       isHovered={deps.hoveredCommit() === r.sha}
@@ -237,6 +218,33 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                 );
               }}
             </For>
+            {/* WIP-to-HEAD dashed connector — 1:1 with GitKraken's
+                `stroke-dasharray="5 5"` SVG path. Overlay (not virtualized):
+                travels from the WIP node's centre (row 0 midpoint) down to
+                HEAD's circle centre, vertical-only since both share HEAD's
+                lane. Rendered once when the tree is dirty and HEAD is in the
+                stream; the WIP row sits at display index 0 so HEAD's display
+                index is `headRowIndex() + 1`. */}
+            <Show
+              when={dirtyFileCount() > 0 && deps.layout.headRowIndex() >= 0}
+            >
+              <svg
+                class="commit-graph__wip-edge"
+                style={{
+                  width: `${deps.layout.graphContentWidth()}px`,
+                  height: `${(deps.layout.headRowIndex() + 1) * ROW_HEIGHT + ROW_HEIGHT / 2}px`,
+                }}
+                aria-hidden="true"
+              >
+                <path
+                  d={`M ${deps.layout.wipNodeX()} ${ROW_HEIGHT / 2} L ${deps.layout.wipNodeX()} ${(deps.layout.headRowIndex() + 1) * ROW_HEIGHT + ROW_HEIGHT / 2}`}
+                  stroke={`var(--column-${deps.layout.headColorIdx()}-color)`}
+                  stroke-width="2"
+                  stroke-dasharray="5 5"
+                  fill="none"
+                />
+              </svg>
+            </Show>
           </ul>
         </div>
         {/* Streaks overlay — absolute at the zone's right edge,
@@ -253,6 +261,8 @@ export function GraphZone(props: { deps: ZoneDeps }) {
               {(item) => {
                 const r = deps.rows()[item.index];
                 if (!r) return null;
+                // The synthetic WorkDir row carries no lane streak.
+                if (r.node_type === "WorkDir") return null;
                 const streakHeight = () =>
                   getRenderDims(commitZoneMode() === "compact").commitRadius *
                   2;
@@ -260,7 +270,7 @@ export function GraphZone(props: { deps: ZoneDeps }) {
                   <span
                     class="commit-graph__lane-streak"
                     style={{
-                      top: `${item.start + (ROW_HEIGHT - streakHeight()) / 2 + deps.layout.wipShift()}px`,
+                      top: `${item.start + (ROW_HEIGHT - streakHeight()) / 2}px`,
                       height: `${streakHeight()}px`,
                       "background-color": `var(--lane-${r.color_idx % 10})`,
                     }}

@@ -3,7 +3,7 @@
 import { For, Show } from "solid-js";
 
 import { commitFilter, hoveredRef, pathShaSet } from "../../../state";
-import { activeColumnSettings, dirtyFileCount, inspectorMode, workdirSelected } from "../../../state";
+import { activeColumnSettings, inspectorMode, workdirSelected } from "../../../state";
 import { isRowVisible } from "../hoverDim";
 import { rowWrapperClass } from "../rowClass";
 import { RefPillGroup } from "../RefPills";
@@ -28,32 +28,34 @@ export function BranchZone(props: { deps: ZoneDeps }) {
           class="commit-graph__col-branch"
           style={{ height: `${deps.layout.totalHeight()}px` }}
         >
-          <Show when={dirtyFileCount() > 0}>
-            <Tooltip text="View working-directory changes">
-              <li
-                class="commit-graph__wip-cell commit-graph__wip-cell--branch"
-                data-active={
-                  workdirSelected() || inspectorMode() === "staging"
-                    ? "true"
-                    : "false"
-                }
-                style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
-                onClick={(e) => deps.selection.handleWipClick(e)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    deps.selection.openStaging();
-                  }
-                }}
-              />
-            </Tooltip>
-          </Show>
           <For each={deps.virtualizer.getVirtualItems()}>
             {(item) => {
               const r = deps.rows()[item.index];
               if (!r) return null;
+              if (r.node_type === "WorkDir") {
+                return (
+                  <Tooltip text="View working-directory changes">
+                    <li
+                      class="commit-graph__wip-cell commit-graph__wip-cell--branch"
+                      data-active={
+                        workdirSelected() || inspectorMode() === "staging"
+                          ? "true"
+                          : "false"
+                      }
+                      style={{ top: `${item.start}px`, height: `${ROW_HEIGHT}px` }}
+                      onClick={(e) => deps.selection.handleWipClick(e)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          deps.selection.openStaging();
+                        }
+                      }}
+                    />
+                  </Tooltip>
+                );
+              }
               return (
                 <li
                   class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
@@ -68,7 +70,7 @@ export function BranchZone(props: { deps: ZoneDeps }) {
                       : "false"
                   }
                   style={{
-                    top: `${item.start + deps.layout.wipShift()}px`,
+                    top: `${item.start}px`,
                     height: `${ROW_HEIGHT}px`,
                     "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                   }}

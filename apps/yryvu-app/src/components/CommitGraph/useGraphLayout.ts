@@ -15,7 +15,50 @@ import {
   dirtyFileCount,
   pinnedSha,
 } from "../../state";
-import { getRenderDims, ROW_HEIGHT } from "./RowRenderer";
+import { getRenderDims } from "./RowRenderer";
+
+/**
+ * Sentinel sha for the synthetic working-directory row. Forty zeroes —
+ * never a real Git object — so any sha-keyed lookup (selection, ref-nav,
+ * edge target) naturally misses it. Exported so click handlers can detect
+ * the WIP row by identity when a `node_type` check isn't in scope.
+ */
+export const WIP_SENTINEL_SHA = "0".repeat(40);
+
+/**
+ * Assemble the synthetic `WorkDir` row from the resolved HEAD row. Lane,
+ * color, and the single parent edge are borrowed from HEAD so the WIP node
+ * sits directly above the checked-out commit in HEAD's column. All identity
+ * / author / committer fields are blank — the renderer special-cases this
+ * row and never reads them.
+ */
+export function buildWorkDirRow(head: GraphRow): GraphRow {
+  return {
+    sha: WIP_SENTINEL_SHA,
+    short_sha: "",
+    summary: "",
+    body: "",
+    author_name: "",
+    author_email: "",
+    author_initials: "",
+    gravatar_hash: "",
+    author_date: 0,
+    committer_name: null,
+    committer_email: null,
+    committer_date: null,
+    committer_initials: null,
+    committer_gravatar_hash: null,
+    lane: head.lane,
+    parent_lanes: [head.lane],
+    parent_shas: [head.sha],
+    color_idx: head.color_idx,
+    refs: [],
+    is_merge: false,
+    node_type: "WorkDir",
+    child_refs: { heads: [], remotes: [], tags: [] },
+    active_lanes: [head.lane],
+  };
+}
 
 interface LayoutOptions {
   rows: Accessor<GraphRow[]>;
@@ -26,24 +69,22 @@ interface LayoutOptions {
 }
 
 /**
- * Layout-derived state for the commit graph: WIP shift, total scroll
- * height, max-lane / content-width, the HEAD-row resolution chain, the
- * WIP-node geometry, and the column-width CSS effects.
+ * Layout-derived state for the commit graph: the WIP-aware display list,
+ * total scroll height, max-lane / content-width, the HEAD-row resolution
+ * chain, the WIP-node geometry, and the column-width CSS effects.
  *
  * Lives in its own hook so `index.tsx` doesn't sprawl with the (mostly
  * mechanical) memos and DOM-side effects that don't talk to the JSX
  * directly.
  */
 export function useGraphLayout(opts: LayoutOptions) {
-  // When the working tree is dirty, GK reserves the top slot of the
-  // commit list (index 0) for the WIP pseudo-node — see research doc 07
-  // and `getCommitOrderWithWipNode = compact(concat(wip, order))` in the
-  // GK bundle. That means the WIP scrolls with the list; it is NOT
-  // sticky. We model this by shifting every real commit's `top` down by
-  // `wipShift()` pixels and rendering the WIP row absolute-positioned
-  // inside the same scroll-synced coordinate system.
-  const wipShift = () => (dirtyFileCount() > 0 ? ROW_HEIGHT : 0);
-  const totalHeight = () => opts.virtualSize() + wipShift();
+  // Number of synthetic rows prepended ahead of the real commit stream —
+  // 0 or 1. Zones subtract this from a virtual item's index to recover the
+  // matching `edgeStates()` entry (which is keyed by real-commit index).
+  // The synthetic `WorkDir` row itself is assembled in `displayRows`
+  // (defined below, after the HEAD-row resolution it borrows lane/color from).
+  const wipOffset = () => (dirtyFileCount() > 0 ? 1 : 0);
+  const totalHeight = () => opts.virtualSize();
 
   /* Graph-column intrinsic width (#141 follow-up) — when the repo fans out
    * beyond the GRAPH cell's viewport width, lanes disappear off the right
@@ -171,8 +212,22 @@ export function useGraphLayout(opts: LayoutOptions) {
     return all.indexOf(head);
   });
 
+  // GK's `getCommitOrderWithWipNode = compact(concat(wip, order))` selector,
+  // ported reactively: prepend a synthetic `WorkDir` row when the tree is
+  // dirty so the WIP flows through the same virtualized `<For>` as commits.
+  // `opts.rows()` stays commit-only — the incremental edge builder (#141)
+  // never sees the prepended row, keeping its append-only invariant.
+  const displayRows = createMemo<GraphRow[]>(() => {
+    const base = opts.rows();
+    if (dirtyFileCount() === 0) return base;
+    const head = headRow();
+    if (!head) return base;
+    return [buildWorkDirRow(head), ...base];
+  });
+
   return {
-    wipShift,
+    wipOffset,
+    displayRows,
     totalHeight,
     graphContentWidth,
     headRow,

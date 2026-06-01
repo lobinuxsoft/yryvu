@@ -12,6 +12,7 @@ import {
   type SectionKey,
 } from "../../state";
 import { refKey, sectionLabel } from "../helpers";
+import { buildGithubFlowMenuItems, resolveGithubFlowBase } from "./gitflow";
 import type { MenuDeps } from "./types";
 
 /**
@@ -57,6 +58,14 @@ export function buildSectionMenuItems(
       disabled: !someHidden,
       onSelect: () => localKeys.forEach((k) => setHiddenRef(k, false)),
     });
+    items.push({ type: "separator" });
+    // GitHub Flow lives here (not the GITFLOW section) so it's reachable
+    // without a `[gitflow]` config — issue #19.
+    const base = resolveGithubFlowBase(
+      deps.gitflowConfigSource(),
+      locals.map((b) => b.name),
+    );
+    items.push(...buildGithubFlowMenuItems(deps, base));
     items.push({ type: "separator" });
   } else if (key === "REMOTE" && branchSrc) {
     const remoteKeys = branchSrc

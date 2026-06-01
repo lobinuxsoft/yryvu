@@ -4,7 +4,6 @@ import { For, Show } from "solid-js";
 
 import {
   activeColumnSettings,
-  dirtyFileCount,
   commitFilter,
   hoveredRef,
   pathShaSet,
@@ -54,16 +53,18 @@ function AuthorZone(props: { deps: ZoneDeps }) {
           class="commit-graph__col-author"
           style={{ height: `${deps.layout.totalHeight()}px` }}
         >
-          <Show when={dirtyFileCount() > 0}>
-            <li
-              class="commit-graph__wip-cell commit-graph__wip-cell--author"
-              style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
-            />
-          </Show>
           <For each={deps.virtualizer.getVirtualItems()}>
             {(item) => {
               const r = deps.rows()[item.index];
               if (!r) return null;
+              if (r.node_type === "WorkDir") {
+                return (
+                  <li
+                    class="commit-graph__wip-cell commit-graph__wip-cell--author"
+                    style={{ top: `${item.start}px`, height: `${ROW_HEIGHT}px` }}
+                  />
+                );
+              }
               return (
                 <li
                   class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
@@ -78,7 +79,7 @@ function AuthorZone(props: { deps: ZoneDeps }) {
                       : "false"
                   }
                   style={{
-                    top: `${item.start + deps.layout.wipShift()}px`,
+                    top: `${item.start}px`,
                     height: `${ROW_HEIGHT}px`,
                     "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                   }}
@@ -136,16 +137,18 @@ function DateTimeZone(props: { deps: ZoneDeps }) {
           class="commit-graph__col-date-time"
           style={{ height: `${deps.layout.totalHeight()}px` }}
         >
-          <Show when={dirtyFileCount() > 0}>
-            <li
-              class="commit-graph__wip-cell commit-graph__wip-cell--date-time"
-              style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
-            />
-          </Show>
           <For each={deps.virtualizer.getVirtualItems()}>
             {(item) => {
               const r = deps.rows()[item.index];
               if (!r) return null;
+              if (r.node_type === "WorkDir") {
+                return (
+                  <li
+                    class="commit-graph__wip-cell commit-graph__wip-cell--date-time"
+                    style={{ top: `${item.start}px`, height: `${ROW_HEIGHT}px` }}
+                  />
+                );
+              }
               return (
                 <li
                   class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
@@ -160,7 +163,7 @@ function DateTimeZone(props: { deps: ZoneDeps }) {
                       : "false"
                   }
                   style={{
-                    top: `${item.start + deps.layout.wipShift()}px`,
+                    top: `${item.start}px`,
                     height: `${ROW_HEIGHT}px`,
                     "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                   }}
@@ -196,16 +199,18 @@ function ShaZone(props: { deps: ZoneDeps }) {
           class="commit-graph__col-sha"
           style={{ height: `${deps.layout.totalHeight()}px` }}
         >
-          <Show when={dirtyFileCount() > 0}>
-            <li
-              class="commit-graph__wip-cell commit-graph__wip-cell--sha"
-              style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
-            />
-          </Show>
           <For each={deps.virtualizer.getVirtualItems()}>
             {(item) => {
               const r = deps.rows()[item.index];
               if (!r) return null;
+              if (r.node_type === "WorkDir") {
+                return (
+                  <li
+                    class="commit-graph__wip-cell commit-graph__wip-cell--sha"
+                    style={{ top: `${item.start}px`, height: `${ROW_HEIGHT}px` }}
+                  />
+                );
+              }
               return (
                 <li
                   class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
@@ -220,7 +225,7 @@ function ShaZone(props: { deps: ZoneDeps }) {
                       : "false"
                   }
                   style={{
-                    top: `${item.start + deps.layout.wipShift()}px`,
+                    top: `${item.start}px`,
                     height: `${ROW_HEIGHT}px`,
                     "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                   }}

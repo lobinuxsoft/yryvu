@@ -37,38 +37,42 @@ export function MessageZone(props: { deps: ZoneDeps }) {
           class="commit-graph__col-messages"
           style={{ height: `${deps.layout.totalHeight()}px` }}
         >
-          <Show when={dirtyFileCount() > 0}>
-            <Tooltip text="View working-directory changes">
-            <li
-              class="commit-graph__wip-cell commit-graph__wip-cell--messages"
-              data-active={
-                workdirSelected() || inspectorMode() === "staging"
-                  ? "true"
-                  : "false"
-              }
-              style={{ top: "0px", height: `${ROW_HEIGHT}px` }}
-              onClick={(e) => deps.selection.handleWipClick(e)}
-            >
-              <input
-                class="commit-graph__wip-input"
-                type="text"
-                placeholder={
-                  deps.layout.headBranchName()
-                    ? `WIP on ${deps.layout.headBranchName()}`
-                    : "WIP"
-                }
-                value={commitMessage()}
-                onInput={(e) => setCommitMessage(e.currentTarget.value)}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <span class="commit-graph__wip-badge">+{dirtyFileCount()}</span>
-            </li>
-            </Tooltip>
-          </Show>
           <For each={deps.virtualizer.getVirtualItems()}>
             {(item) => {
               const r = deps.rows()[item.index];
               if (!r) return null;
+              if (r.node_type === "WorkDir") {
+                return (
+                  <Tooltip text="View working-directory changes">
+                    <li
+                      class="commit-graph__wip-cell commit-graph__wip-cell--messages"
+                      data-active={
+                        workdirSelected() || inspectorMode() === "staging"
+                          ? "true"
+                          : "false"
+                      }
+                      style={{ top: `${item.start}px`, height: `${ROW_HEIGHT}px` }}
+                      onClick={(e) => deps.selection.handleWipClick(e)}
+                    >
+                      <input
+                        class="commit-graph__wip-input"
+                        type="text"
+                        placeholder={
+                          deps.layout.headBranchName()
+                            ? `WIP on ${deps.layout.headBranchName()}`
+                            : "WIP"
+                        }
+                        value={commitMessage()}
+                        onInput={(e) => setCommitMessage(e.currentTarget.value)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span class="commit-graph__wip-badge">
+                        +{dirtyFileCount()}
+                      </span>
+                    </li>
+                  </Tooltip>
+                );
+              }
               return (
                 <li
                   class={rowWrapperClass(r.is_merge ? "merge" : "commit")}
@@ -83,7 +87,7 @@ export function MessageZone(props: { deps: ZoneDeps }) {
                       : "false"
                   }
                   style={{
-                    top: `${item.start + deps.layout.wipShift()}px`,
+                    top: `${item.start}px`,
                     height: `${ROW_HEIGHT}px`,
                     "--row-lane-color": `var(--lane-${r.color_idx % 10})`,
                   }}

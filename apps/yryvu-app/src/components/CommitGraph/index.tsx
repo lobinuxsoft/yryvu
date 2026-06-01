@@ -67,24 +67,30 @@ export function CommitGraph(props: CommitGraphProps) {
 
   const data = useGraphData(() => props.repoPath);
 
+  // Layout owns the WIP-aware `displayRows` selector (commit stream with the
+  // synthetic WorkDir row prepended when dirty). Created before the
+  // virtualizer so the latter can count `displayRows`; the `virtualSize`
+  // thunk back-references the virtualizer lazily (only read in the JSX).
+  const layout = useGraphLayout({
+    rows: data.rows,
+    virtualSize: () => virtualizer.getTotalSize(),
+    rootRef: () => rootEl,
+  });
+
   // Vertical virtualizer 1:1 with GK's `MultiGrid` (which underlies its
   // graph view in `react-virtualized`). Single instance shared across
-  // every visible zone.
+  // every visible zone. Counts `displayRows` so the WIP row occupies a real
+  // virtual slot (index 0) and scrolls with the list — no offset arithmetic.
   const virtualizer = createVirtualizer({
     get count() {
-      return data.rows().length;
+      return layout.displayRows().length;
     },
     getScrollElement: () => zonesScroll ?? null,
     estimateSize: () => ROW_HEIGHT,
     overscan: OVERSCAN_ROWS,
   });
 
-  const layout = useGraphLayout({
-    rows: data.rows,
-    virtualSize: () => virtualizer.getTotalSize(),
-    rootRef: () => rootEl,
-  });
-  const selection = useGraphSelection({ rows: data.rows });
+  const selection = useGraphSelection({ rows: layout.displayRows });
 
   // Sidebar ref-click navigation (issue #72). Mirrors GK's `setScrollToSha`:
   // resolve the requested sha to a row index, scroll only when off-screen
@@ -94,7 +100,7 @@ export function CommitGraph(props: CommitGraphProps) {
   createEffect(
     on(pendingRefNav, (req) => {
       if (!req) return;
-      const rows = data.rows();
+      const rows = layout.displayRows();
       const idx = rows.findIndex((r) => r.sha === req.sha);
       if (idx < 0) {
         clearPendingRefNav();
@@ -118,7 +124,7 @@ export function CommitGraph(props: CommitGraphProps) {
   );
 
   const deps: ZoneDeps = {
-    rows: data.rows,
+    rows: layout.displayRows,
     hostingService: data.hostingService,
     edgeStates: data.edgeStates,
     virtualizer,
@@ -144,9 +150,11 @@ export function CommitGraph(props: CommitGraphProps) {
       <Show when={isInitialLoading()}>
         <LoadingSkeleton topOffset={dirtyFileCount() > 0 ? ROW_HEIGHT : 0} />
       </Show>
-      {/* WIP pseudo-row architecture mirrors GitKraken exactly: each
-          zone injects its own WIP cell at index 0 inside the same
-          scroll-synced coordinate system. See zones/*.tsx. */}
+      {/* WIP pseudo-row mirrors GitKraken's `getCommitOrderWithWipNode`
+          selector: `layout.displayRows()` prepends a synthetic WorkDir row
+          (index 0) when the tree is dirty, and each zone branches on
+          `node_type === "WorkDir"` inside its virtualized `<For>`. See
+          zones/*.tsx. */}
       <div class="commit-graph__zones" ref={zonesScroll}>
         <BranchZone deps={deps} />
         <GraphZone deps={deps} />

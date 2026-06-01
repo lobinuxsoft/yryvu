@@ -38,3 +38,108 @@ export function writeGitflowConfig(
 export function gitflowDefaults(): Promise<GitflowConfig> {
   return invoke<GitflowConfig>("gitflow_defaults");
 }
+
+// ---- branch operations (issue #19) ----
+
+/// Result of a gitflow / GitHub Flow `finish`. Mirrors
+/// `yryvu_bridge::repo::gitflow::ops::FinishOutcome`. A `conflict`
+/// leaves the repo merge-in-progress; `tag` (when present) was created
+/// on the production branch before the halt.
+export type GitflowFinishOutcome =
+  | { kind: "completed"; tag: string | null }
+  | { kind: "conflict"; paths: string[]; step: string; tag: string | null };
+
+/// Create `{featurePrefix}{name}` off develop and check it out.
+export function gitflowFeatureStart(
+  repoPath: string,
+  name: string,
+): Promise<string> {
+  return invoke<string>("gitflow_feature_start", { repoPath, name });
+}
+
+/// No-ff merge the feature into develop, then optionally delete it.
+export function gitflowFeatureFinish(
+  repoPath: string,
+  name: string,
+  keepBranch: boolean,
+): Promise<GitflowFinishOutcome> {
+  return invoke<GitflowFinishOutcome>("gitflow_feature_finish", {
+    repoPath,
+    name,
+    keepBranch,
+  });
+}
+
+/// Create `{releasePrefix}{version}` off develop and check it out.
+export function gitflowReleaseStart(
+  repoPath: string,
+  version: string,
+): Promise<string> {
+  return invoke<string>("gitflow_release_start", { repoPath, version });
+}
+
+/// No-ff merge the release into production + develop, tag production
+/// (`{versionTagPrefix}{version}`, empty message => lightweight), then
+/// optionally delete.
+export function gitflowReleaseFinish(
+  repoPath: string,
+  version: string,
+  tagMessage: string,
+  keepBranch: boolean,
+): Promise<GitflowFinishOutcome> {
+  return invoke<GitflowFinishOutcome>("gitflow_release_finish", {
+    repoPath,
+    version,
+    tagMessage,
+    keepBranch,
+  });
+}
+
+/// Create `{hotfixPrefix}{version}` off production and check it out.
+export function gitflowHotfixStart(
+  repoPath: string,
+  version: string,
+): Promise<string> {
+  return invoke<string>("gitflow_hotfix_start", { repoPath, version });
+}
+
+/// No-ff merge the hotfix into production + develop, tag production,
+/// then optionally delete.
+export function gitflowHotfixFinish(
+  repoPath: string,
+  version: string,
+  tagMessage: string,
+  keepBranch: boolean,
+): Promise<GitflowFinishOutcome> {
+  return invoke<GitflowFinishOutcome>("gitflow_hotfix_finish", {
+    repoPath,
+    version,
+    tagMessage,
+    keepBranch,
+  });
+}
+
+/// GitHub Flow: branch off `base` (no prefix, no config required).
+export function githubFlowStart(
+  repoPath: string,
+  base: string,
+  name: string,
+): Promise<string> {
+  return invoke<string>("github_flow_start", { repoPath, base, name });
+}
+
+/// GitHub Flow finish: no-ff merge back into `base`, then optionally
+/// delete the branch.
+export function githubFlowFinish(
+  repoPath: string,
+  base: string,
+  name: string,
+  keepBranch: boolean,
+): Promise<GitflowFinishOutcome> {
+  return invoke<GitflowFinishOutcome>("github_flow_finish", {
+    repoPath,
+    base,
+    name,
+    keepBranch,
+  });
+}

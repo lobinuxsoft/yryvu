@@ -49,4 +49,24 @@ export type DialogState =
       name: string;
     }
   | { kind: "remove-remote"; name: string }
+  | {
+      /// Git Flow / GitHub Flow start (issue #19). `flow` selects the
+      /// topic kind; the name/version comes from `gitflowName`. GitHub
+      /// Flow also reads `gitflowBase`.
+      kind: "gitflow-start";
+      flow: GitflowFlow;
+    }
+  | {
+      /// Git Flow / GitHub Flow finish. `candidates` are the branches
+      /// the user can pick to finish (topic branches matching the
+      /// prefix, or every local branch for GitHub Flow).
+      kind: "gitflow-finish";
+      flow: GitflowFlow;
+      candidates: string[];
+    }
   | null;
+
+/// Which workflow a gitflow dialog drives. `feature` / `release` /
+/// `hotfix` are Git Flow; `github` is GitHub Flow (branch off a base,
+/// merge back).
+export type GitflowFlow = "feature" | "release" | "hotfix" | "github";

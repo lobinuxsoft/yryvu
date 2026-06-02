@@ -8,6 +8,8 @@ import { DeleteDialog } from "./dialogs/DeleteDialog";
 import { DeleteRemoteDialog } from "./dialogs/DeleteRemoteDialog";
 import { DeleteTagDialog } from "./dialogs/DeleteTagDialog";
 import { EditRemoteDialog } from "./dialogs/EditRemoteDialog";
+import { GitflowFinishDialog } from "./dialogs/GitflowFinishDialog";
+import { GitflowStartDialog } from "./dialogs/GitflowStartDialog";
 import { MergePickDialog } from "./dialogs/MergePickDialog";
 import { MergeResultDialog } from "./dialogs/MergeResultDialog";
 import { RemoveRemoteDialog } from "./dialogs/RemoveRemoteDialog";
@@ -40,6 +42,8 @@ export function DialogsHost(props: { ops: BranchOps }) {
       <AddRemoteDialog ops={props.ops} />
       <EditRemoteDialog ops={props.ops} />
       <RemoveRemoteDialog ops={props.ops} />
+      <GitflowStartDialog ops={props.ops} />
+      <GitflowFinishDialog ops={props.ops} />
     </>
   );
 }

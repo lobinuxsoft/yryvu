@@ -11,11 +11,15 @@
 //!
 //! Out of scope for this module:
 //!
-//! - "Start Feature / Release / Hotfix" branch operations — those live
-//!   under a future workflow-ops feature, not the preferences side.
 //! - gitflow-avh extensions.
 //! - `gitflow.path.*` keys some tooling writes; we keep the surface
 //!   small.
+//!
+//! The branch *operations* (feature / release / hotfix start + finish,
+//! plus GitHub Flow) live in [`ops`] — they consume the config this
+//! module reads.
+
+pub mod ops;
 
 use std::path::Path;
 
@@ -52,6 +56,10 @@ pub enum GitflowError {
         #[source]
         source: git2::Error,
     },
+    #[error("gitflow is not initialised for this repository")]
+    NotInitialised,
+    #[error(transparent)]
+    Backend(#[from] crate::backend::BackendError),
 }
 
 /// Per-repo gitflow configuration. Mirrors the keys

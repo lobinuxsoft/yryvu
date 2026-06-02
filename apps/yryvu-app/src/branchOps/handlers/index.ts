@@ -4,6 +4,7 @@ import type { BranchOpsState } from "../state";
 
 import { createBranchHandlers } from "./branch";
 import { createCheckoutHandlers } from "./checkout";
+import { createGitflowHandlers } from "./gitflow";
 import { createMergeHandlers } from "./merge";
 import { createRefHandlers } from "./refs";
 import { createRemoteHandlers } from "./remote";
@@ -30,6 +31,7 @@ export function createHandlers(deps: HandlersDeps) {
     ...createSubmoduleHandlers(deps),
     ...createRemoteHandlers(deps),
     ...createTagHandlers(deps),
+    ...createGitflowHandlers(deps),
   };
 }
 

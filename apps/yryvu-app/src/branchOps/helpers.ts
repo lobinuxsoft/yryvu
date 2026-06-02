@@ -36,5 +36,7 @@ export function sectionLabel(key: SectionKey): string {
       return "Tags";
     case "SUBMODULES":
       return "Submodules";
+    case "GITFLOW":
+      return "Git Flow";
   }
 }

@@ -19,7 +19,10 @@ export interface SidebarSectionProps {
   icon: JSX.Element;
   count?: number;
   addable?: boolean;
-  onAdd?: () => void;
+  /// Receives the click event so menu-style add buttons (GITFLOW) can
+  /// anchor a context menu at the cursor. Dialog-style adders (LOCAL)
+  /// just ignore it.
+  onAdd?: (e: MouseEvent) => void;
   onRefresh?: () => void;
   refreshing?: boolean;
   /// Right-click on the header → builder for the section context menu
@@ -74,7 +77,7 @@ export function SidebarSection(props: SidebarSectionProps) {
             aria-label={`Add to ${props.title}`}
             onClick={(e) => {
               e.stopPropagation();
-              props.onAdd?.();
+              props.onAdd?.(e);
             }}
           >
             +

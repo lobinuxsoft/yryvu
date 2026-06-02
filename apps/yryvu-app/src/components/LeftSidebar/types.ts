@@ -50,6 +50,20 @@ export type DialogState =
     }
   | { kind: "remove-remote"; name: string }
   | {
+      /// Add a worktree (issue #20). Path + branch live in
+      /// dialogPathInput / dialogNameInput; the create-branch toggle and
+      /// base ref live in their own signals.
+      kind: "worktree-add";
+    }
+  | {
+      /// Confirm removing a worktree (issue #20). `dirty` drives the
+      /// extra data-loss warning.
+      kind: "worktree-remove";
+      workdir: string;
+      branch: string;
+      dirty: boolean;
+    }
+  | {
       /// Git Flow / GitHub Flow start (issue #19). `flow` selects the
       /// topic kind; the name/version comes from `gitflowName`. GitHub
       /// Flow also reads `gitflowBase`.

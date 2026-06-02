@@ -26,6 +26,7 @@ import { openStashContextMenu } from "./menus/stash";
 import { openSubmoduleContextMenu } from "./menus/submodule";
 import { openTagContextMenu } from "./menus/tag";
 import { openWorktreeContextMenu } from "./menus/worktree";
+import { openWorktreeHeaderContextMenu } from "./menus/worktree-header";
 import type { MenuDeps } from "./menus/types";
 
 export { refKey } from "./helpers";
@@ -94,6 +95,9 @@ export function createBranchOps(deps: BranchOpsDeps) {
     tagSource: () => tagSource?.(),
     remotesSource: () => remotesSource?.(),
     gitflowConfigSource: () => gitflowConfigSource?.() ?? null,
+    openWorktreeAddDialog: openers.openWorktreeAddDialog,
+    openWorktreeRemoveDialog: openers.openWorktreeRemoveDialog,
+    doWorktreePrune: handlers.doWorktreePrune,
     openGitflowStartDialog: openers.openGitflowStartDialog,
     openGitflowFinishDialog: openers.openGitflowFinishDialog,
     openDeleteTagDialog: openers.openDeleteTagDialog,
@@ -128,6 +132,10 @@ export function createBranchOps(deps: BranchOpsDeps) {
     setGitflowKeepBranch: state.setGitflowKeepBranch,
     gitflowBase: state.gitflowBase,
     setGitflowBase: state.setGitflowBase,
+    worktreeCreateBranch: state.worktreeCreateBranch,
+    setWorktreeCreateBranch: state.setWorktreeCreateBranch,
+    worktreeBase: state.worktreeBase,
+    setWorktreeBase: state.setWorktreeBase,
 
     // dialog openers / closers
     openCreateDialog: openers.openCreateDialog,
@@ -145,6 +153,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openRemoveRemoteDialog: openers.openRemoveRemoteDialog,
     openGitflowStartDialog: openers.openGitflowStartDialog,
     openGitflowFinishDialog: openers.openGitflowFinishDialog,
+    openWorktreeAddDialog: openers.openWorktreeAddDialog,
+    openWorktreeRemoveDialog: openers.openWorktreeRemoveDialog,
     closeDialog: state.closeDialog,
 
     // context menus (bound to local menuDeps)
@@ -164,6 +174,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
       openSubmoduleContextMenu(menuDeps, e, info),
     openWorktreeContextMenu: (e: MouseEvent, info: WorktreeInfo) =>
       openWorktreeContextMenu(menuDeps, e, info),
+    openWorktreeHeaderContextMenu: (e: MouseEvent) =>
+      openWorktreeHeaderContextMenu(menuDeps, e),
     openTagContextMenu: (e: MouseEvent, tag: TagInfo) =>
       openTagContextMenu(menuDeps, e, tag),
     openGitflowMenu: (e: MouseEvent) => openGitflowMenu(menuDeps, e),
@@ -196,6 +208,9 @@ export function createBranchOps(deps: BranchOpsDeps) {
     submitRemoveRemote: handlers.submitRemoveRemote,
     submitGitflowStart: handlers.submitGitflowStart,
     submitGitflowFinish: handlers.submitGitflowFinish,
+    submitWorktreeAdd: handlers.submitWorktreeAdd,
+    submitWorktreeRemove: handlers.submitWorktreeRemove,
+    doWorktreePrune: handlers.doWorktreePrune,
   };
 }
 

@@ -17,6 +17,9 @@ export interface WorktreeInfo {
   is_bare: boolean;
   locked: string | null;
   prunable: string | null;
+  /// `true` when the worktree's own working tree has uncommitted
+  /// changes — the remove dialog warns harder in that case.
+  dirty: boolean;
   main_repo_workdir: string;
 }
 
@@ -58,4 +61,28 @@ export function worktreeRemove(
   targetWorkdir: string,
 ): Promise<void> {
   return invoke<void>("worktree_remove", { repoPath, targetWorkdir });
+}
+
+/// Add a linked worktree at `path` checked out to `branch`. When
+/// `createBranch` is set, `branch` is created at `base` (or HEAD) first;
+/// otherwise an existing local branch is used.
+export function worktreeAdd(
+  repoPath: string,
+  path: string,
+  branch: string,
+  base: string | null,
+  createBranch: boolean,
+): Promise<void> {
+  return invoke<void>("worktree_add", {
+    repoPath,
+    path,
+    branch,
+    base,
+    createBranch,
+  });
+}
+
+/// Prune every prunable linked worktree. Resolves to the number pruned.
+export function worktreePrune(repoPath: string): Promise<number> {
+  return invoke<number>("worktree_prune", { repoPath });
 }

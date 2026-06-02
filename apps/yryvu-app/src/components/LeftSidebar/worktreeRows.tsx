@@ -67,6 +67,13 @@ export function WorktreeRow(props: WorktreeRowProps) {
             </span>
           </Tooltip>
         </Show>
+        <Show when={wt().dirty}>
+          <Tooltip text="Uncommitted changes">
+            <span class="sidebar__row-badge sidebar__row-badge--warn">
+              uncommitted
+            </span>
+          </Tooltip>
+        </Show>
       </div>
     </Tooltip>
   );

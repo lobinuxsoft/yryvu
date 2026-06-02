@@ -78,6 +78,10 @@ pub struct WorktreeInfo {
     pub is_bare: bool,
     pub locked: Option<String>,
     pub prunable: Option<String>,
+    /// Whether the worktree's own working tree has uncommitted changes
+    /// (tracked or untracked). Drives the extra "you'll lose work"
+    /// warning in the remove-confirmation dialog (issue #20).
+    pub dirty: bool,
     pub main_repo_workdir: String,
 }
 

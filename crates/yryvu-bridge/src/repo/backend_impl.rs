@@ -70,6 +70,21 @@ impl GitBackend for GixBackend {
         worktrees::worktree_remove(repo_path, target_workdir)
     }
 
+    fn worktree_add(
+        &self,
+        repo_path: &Path,
+        path: &Path,
+        branch: &str,
+        base: Option<&str>,
+        create_branch: bool,
+    ) -> Result<(), BackendError> {
+        worktrees::worktree_add(repo_path, path, branch, base, create_branch)
+    }
+
+    fn worktree_prune(&self, repo_path: &Path) -> Result<usize, BackendError> {
+        worktrees::worktree_prune(repo_path)
+    }
+
     fn list_submodules(&self, repo_path: &Path) -> Result<Vec<SubmoduleInfo>, BackendError> {
         submodules::list_submodules(repo_path)
     }

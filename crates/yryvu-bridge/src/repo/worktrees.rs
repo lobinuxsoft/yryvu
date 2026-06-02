@@ -57,6 +57,7 @@ pub fn list_worktrees(repo_path: &Path) -> Result<Vec<WorktreeInfo>, BackendErro
             Err(_) => ("HEAD".to_string(), None),
         };
 
+        let dirty = is_path_dirty(&workdir);
         out.push(WorktreeInfo {
             workdir,
             branch,
@@ -65,11 +66,31 @@ pub fn list_worktrees(repo_path: &Path) -> Result<Vec<WorktreeInfo>, BackendErro
             is_bare: false,
             locked,
             prunable,
+            dirty,
             main_repo_workdir: main_workdir.clone(),
         });
     }
 
     Ok(out)
+}
+
+/// Whether the working tree rooted at `workdir` has uncommitted changes
+/// (tracked or untracked). Opens the path as its own git2 repo — linked
+/// worktrees resolve their `.git` file transparently. Returns `false`
+/// on any error (missing / bare / unreadable path): a worktree we can't
+/// inspect is treated as clean so it never blocks a remove.
+fn is_path_dirty(workdir: &str) -> bool {
+    if workdir.is_empty() {
+        return false;
+    }
+    let Ok(repo) = git2::Repository::open(workdir) else {
+        return false;
+    };
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(true).include_ignored(false);
+    repo.statuses(Some(&mut opts))
+        .map(|st| !st.is_empty())
+        .unwrap_or(false)
 }
 
 fn worktree_row_from_repo(
@@ -82,6 +103,7 @@ fn worktree_row_from_repo(
         .map(|p| p.display().to_string())
         .unwrap_or_default();
     let (branch, head) = head_branch(repo);
+    let dirty = is_path_dirty(&workdir);
     WorktreeInfo {
         workdir,
         branch,
@@ -90,6 +112,7 @@ fn worktree_row_from_repo(
         is_bare: repo.is_bare(),
         locked: None,
         prunable: None,
+        dirty,
         main_repo_workdir: main_workdir.to_string(),
     }
 }
@@ -167,6 +190,76 @@ pub fn worktree_remove(repo_path: &Path, target_workdir: &Path) -> Result<(), Ba
     Ok(())
 }
 
+/// Add a linked worktree at `path` checked out to `branch`. When
+/// `create_branch` is set, `branch` is created at `base` (or HEAD when
+/// `base` is `None`) first; otherwise an existing local branch is used.
+/// Equivalent to `git worktree add <path> <branch>` /
+/// `git worktree add -b <branch> <path> <base>`.
+///
+/// git2 because gix's worktree creation is still behind unstable
+/// feature gates as of 0.68. A branch already checked out in another
+/// worktree makes git2 fail — that error is surfaced verbatim.
+pub fn worktree_add(
+    repo_path: &Path,
+    path: &Path,
+    branch: &str,
+    base: Option<&str>,
+    create_branch: bool,
+) -> Result<(), BackendError> {
+    let repo = super::common::open_git2(repo_path)?;
+
+    let reference = if create_branch {
+        let target = repo
+            .revparse_single(base.unwrap_or("HEAD"))
+            .map_err(super::common::git2_err)?
+            .peel_to_commit()
+            .map_err(super::common::git2_err)?;
+        repo.branch(branch, &target, false)
+            .map_err(super::common::git2_err)?
+            .into_reference()
+    } else {
+        repo.find_branch(branch, git2::BranchType::Local)
+            .map_err(super::common::git2_err)?
+            .into_reference()
+    };
+
+    // The admin name under `.git/worktrees/<name>` — derive from the
+    // target directory's tail, the same default `git worktree add` uses.
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| BackendError::Git(anyhow!("worktree path has no final segment")))?;
+
+    let mut opts = git2::WorktreeAddOptions::new();
+    opts.reference(Some(&reference));
+    repo.worktree(name, path, Some(&opts))
+        .map_err(super::common::git2_err)?;
+    Ok(())
+}
+
+/// Prune every prunable linked worktree (admin entries whose working
+/// directory is gone / invalid), equivalent to `git worktree prune`.
+/// Returns how many were pruned. Locked worktrees are left untouched.
+pub fn worktree_prune(repo_path: &Path) -> Result<usize, BackendError> {
+    let repo = super::common::open_git2(repo_path)?;
+    let names = repo.worktrees().map_err(super::common::git2_err)?;
+    let mut pruned = 0;
+    for i in 0..names.len() {
+        let Some(name) = names.get(i) else { continue };
+        let wt = repo.find_worktree(name).map_err(super::common::git2_err)?;
+        // Default prune options: only reports prunable when the working
+        // tree is missing/invalid and the entry isn't locked.
+        let mut opts = git2::WorktreePruneOptions::new();
+        if wt.is_prunable(Some(&mut opts)).unwrap_or(false) {
+            let mut prune_opts = git2::WorktreePruneOptions::new();
+            wt.prune(Some(&mut prune_opts))
+                .map_err(super::common::git2_err)?;
+            pruned += 1;
+        }
+    }
+    Ok(pruned)
+}
+
 /// Walk every linked worktree on `repo` and return the one whose path
 /// matches `target` byte-for-byte. Used by lock / unlock / remove —
 /// the frontend ships the workdir string from the row click, the
@@ -190,4 +283,93 @@ fn find_worktree_by_path(
         "no linked worktree found at {}",
         target.display()
     )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use git2::{RepositoryInitOptions, Signature};
+    use tempfile::TempDir;
+
+    /// Repo on `main` with an identity configured and one (empty) commit
+    /// so HEAD resolves — `worktree_add` needs a commit to branch from.
+    fn init() -> (TempDir, git2::Repository) {
+        let dir = TempDir::new().unwrap();
+        let mut opts = RepositoryInitOptions::new();
+        opts.initial_head("main");
+        let repo = git2::Repository::init_opts(dir.path(), &opts).unwrap();
+        let mut config = repo.config().unwrap();
+        config.set_str("user.name", "Test").unwrap();
+        config.set_str("user.email", "test@example.com").unwrap();
+        drop(config);
+        {
+            let sig = Signature::now("Test", "test@example.com").unwrap();
+            let mut idx = repo.index().unwrap();
+            let tree_oid = idx.write_tree().unwrap();
+            let tree = repo.find_tree(tree_oid).unwrap();
+            repo.commit(Some("HEAD"), &sig, &sig, "init", &tree, &[])
+                .unwrap();
+        }
+        (dir, repo)
+    }
+
+    fn linked(list: &[WorktreeInfo]) -> Vec<&WorktreeInfo> {
+        list.iter().filter(|w| !w.is_main).collect()
+    }
+
+    #[test]
+    fn add_creates_new_branch_and_worktree() {
+        let (dir, repo) = init();
+        let wt_root = TempDir::new().unwrap();
+        let path = wt_root.path().join("feature-x");
+        worktree_add(dir.path(), &path, "feature/x", None, true).unwrap();
+
+        assert!(path.exists());
+        assert!(repo
+            .find_branch("feature/x", git2::BranchType::Local)
+            .is_ok());
+        let list = list_worktrees(dir.path()).unwrap();
+        assert_eq!(list.len(), 2);
+        assert!(linked(&list).iter().any(|w| w.branch == "feature/x"));
+    }
+
+    #[test]
+    fn add_checks_out_existing_branch() {
+        let (dir, repo) = init();
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        repo.branch("existing", &head, false).unwrap();
+        let wt_root = TempDir::new().unwrap();
+        let path = wt_root.path().join("existing-wt");
+        worktree_add(dir.path(), &path, "existing", None, false).unwrap();
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn dirty_flag_tracks_uncommitted_work() {
+        let (dir, _repo) = init();
+        let wt_root = TempDir::new().unwrap();
+        let path = wt_root.path().join("dirty-wt");
+        worktree_add(dir.path(), &path, "feature/d", None, true).unwrap();
+
+        let clean = list_worktrees(dir.path()).unwrap();
+        assert!(!linked(&clean)[0].dirty);
+
+        std::fs::write(path.join("new.txt"), "uncommitted").unwrap();
+        let dirty = list_worktrees(dir.path()).unwrap();
+        assert!(linked(&dirty)[0].dirty);
+    }
+
+    #[test]
+    fn prune_removes_worktrees_with_missing_dir() {
+        let (dir, _repo) = init();
+        let wt_root = TempDir::new().unwrap();
+        let path = wt_root.path().join("gone");
+        worktree_add(dir.path(), &path, "feature/g", None, true).unwrap();
+        // Delete the working dir behind git's back -> admin entry is now
+        // prunable.
+        std::fs::remove_dir_all(&path).unwrap();
+
+        assert_eq!(worktree_prune(dir.path()).unwrap(), 1);
+        assert_eq!(list_worktrees(dir.path()).unwrap().len(), 1);
+    }
 }

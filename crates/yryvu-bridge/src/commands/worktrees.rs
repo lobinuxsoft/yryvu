@@ -56,3 +56,37 @@ pub async fn worktree_remove(repo_path: String, target_workdir: String) -> Resul
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn worktree_add(
+    repo_path: String,
+    path: String,
+    branch: String,
+    base: Option<String>,
+    create_branch: bool,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .worktree_add(
+                &PathBuf::from(&repo_path),
+                &PathBuf::from(&path),
+                &branch,
+                base.as_deref(),
+                create_branch,
+            )
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn worktree_prune(repo_path: String) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .worktree_prune(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

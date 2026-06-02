@@ -100,6 +100,8 @@ pub fn run() {
             yryvu_bridge::commands::worktree_lock,
             yryvu_bridge::commands::worktree_unlock,
             yryvu_bridge::commands::worktree_remove,
+            yryvu_bridge::commands::worktree_add,
+            yryvu_bridge::commands::worktree_prune,
             yryvu_bridge::commands::list_submodules,
             yryvu_bridge::commands::submodule_init,
             yryvu_bridge::commands::submodule_update,

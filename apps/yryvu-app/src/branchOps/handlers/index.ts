@@ -10,6 +10,7 @@ import { createRefHandlers } from "./refs";
 import { createRemoteHandlers } from "./remote";
 import { createSubmoduleHandlers } from "./submodule";
 import { createTagHandlers } from "./tags";
+import { createWorktreeHandlers } from "./worktree";
 
 export interface HandlersDeps {
   state: BranchOpsState;
@@ -32,6 +33,7 @@ export function createHandlers(deps: HandlersDeps) {
     ...createRemoteHandlers(deps),
     ...createTagHandlers(deps),
     ...createGitflowHandlers(deps),
+    ...createWorktreeHandlers(deps),
   };
 }
 

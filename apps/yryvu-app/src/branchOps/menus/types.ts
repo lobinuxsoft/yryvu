@@ -49,6 +49,15 @@ export interface MenuDeps {
   /// gitflow + GitHub Flow menus read prefixes / production branch.
   gitflowConfigSource: () => GitflowConfig | null;
 
+  // worktree-menu specific openers / handlers (#20)
+  openWorktreeAddDialog: () => void;
+  openWorktreeRemoveDialog: (
+    workdir: string,
+    branch: string,
+    dirty: boolean,
+  ) => void;
+  doWorktreePrune: () => Promise<void>;
+
   // gitflow-menu specific openers (#19)
   openGitflowStartDialog: (flow: GitflowFlow, base?: string) => void;
   openGitflowFinishDialog: (

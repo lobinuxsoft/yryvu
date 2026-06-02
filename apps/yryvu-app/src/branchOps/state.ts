@@ -40,6 +40,13 @@ export function createBranchOpsState() {
   const [gitflowKeepBranch, setGitflowKeepBranch] = createSignal(false);
   const [gitflowBase, setGitflowBase] = createSignal("");
 
+  /// Worktree-add dialog fields (issue #20). Path + branch reuse the
+  /// generic dialogPathInput / dialogNameInput; these two cover the
+  /// "create new branch vs use existing" toggle and the base ref the new
+  /// branch starts from.
+  const [worktreeCreateBranch, setWorktreeCreateBranch] = createSignal(true);
+  const [worktreeBase, setWorktreeBase] = createSignal("");
+
   function closeDialog() {
     setDialog(null);
     setDialogError(null);
@@ -69,6 +76,10 @@ export function createBranchOpsState() {
     setGitflowKeepBranch,
     gitflowBase,
     setGitflowBase,
+    worktreeCreateBranch,
+    setWorktreeCreateBranch,
+    worktreeBase,
+    setWorktreeBase,
     closeDialog,
   };
 }

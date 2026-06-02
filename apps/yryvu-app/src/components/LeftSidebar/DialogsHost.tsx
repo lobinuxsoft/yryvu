@@ -11,6 +11,8 @@ import { EditRemoteDialog } from "./dialogs/EditRemoteDialog";
 import { GitflowFinishDialog } from "./dialogs/GitflowFinishDialog";
 import { GitflowStartDialog } from "./dialogs/GitflowStartDialog";
 import { MergePickDialog } from "./dialogs/MergePickDialog";
+import { WorktreeAddDialog } from "./dialogs/WorktreeAddDialog";
+import { WorktreeRemoveDialog } from "./dialogs/WorktreeRemoveDialog";
 import { MergeResultDialog } from "./dialogs/MergeResultDialog";
 import { RemoveRemoteDialog } from "./dialogs/RemoveRemoteDialog";
 import { RenameDialog } from "./dialogs/RenameDialog";
@@ -44,6 +46,8 @@ export function DialogsHost(props: { ops: BranchOps }) {
       <RemoveRemoteDialog ops={props.ops} />
       <GitflowStartDialog ops={props.ops} />
       <GitflowFinishDialog ops={props.ops} />
+      <WorktreeAddDialog ops={props.ops} />
+      <WorktreeRemoveDialog ops={props.ops} />
     </>
   );
 }

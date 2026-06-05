@@ -176,6 +176,16 @@ export {
   flashCommitHighlight,
 } from "./commit-animations";
 export { repoState, hasConflicts } from "./repo-state";
+export {
+  profilesStore,
+  activeProfile,
+  blankProfile,
+  saveProfile,
+  deleteProfile,
+  duplicateProfile,
+  setDefaultProfile,
+  setActiveRepoOverride,
+} from "./profiles";
 export { prsByHeadSha } from "./prs-by-head-sha";
 export { stashes, stashByCommitSha } from "./stashes";
 export {

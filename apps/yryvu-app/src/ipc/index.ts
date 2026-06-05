@@ -18,6 +18,7 @@ export * from "./init";
 export * from "./issue_tracker";
 export * from "./merge";
 export * from "./preferences";
+export * from "./profiles";
 export * from "./rebase";
 export * from "./release_notes";
 export * from "./search";

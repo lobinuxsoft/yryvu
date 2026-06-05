@@ -6,6 +6,7 @@ pub mod backend;
 pub mod commands;
 pub mod integrations;
 pub mod preferences;
+pub mod profiles;
 pub mod repo;
 pub mod templates;
 pub mod themes;

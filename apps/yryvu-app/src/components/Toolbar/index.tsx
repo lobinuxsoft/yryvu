@@ -14,6 +14,7 @@ import { openAbout } from "../About";
 import { Bell } from "../Notifications";
 import { BranchSwitcher } from "./BranchSwitcher";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { ProfilePicker } from "./ProfilePicker";
 import { RepoSwitcher } from "./RepoSwitcher";
 import { SplitButton } from "./SplitButton";
 import { ToolbarBtn } from "./ToolbarBtn";
@@ -162,6 +163,7 @@ export function Toolbar(props: ToolbarProps) {
           title="Open preferences"
           onClick={() => openPreferences()}
         />
+        <ProfilePicker />
         <Bell />
         <ToolbarBtn icon={<IconSearch />} label="Search" disabled />
       </div>

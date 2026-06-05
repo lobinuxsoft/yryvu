@@ -40,6 +40,30 @@ pub struct CommitOptions {
     /// Requires `user.signingkey` set in git config.
     #[serde(default)]
     pub gpg_sign: bool,
+    /// Author/committer name override stamped by the command layer from
+    /// the active profile (see `crate::profiles::resolve`). Never sent by
+    /// the renderer; `None` falls back to the repo's git config identity.
+    #[serde(default)]
+    pub author_name: Option<String>,
+    /// Author/committer email override, paired with [`Self::author_name`].
+    #[serde(default)]
+    pub author_email: Option<String>,
+}
+
+impl CommitOptions {
+    /// Build the commit signature: the profile override when both name
+    /// and email are present, otherwise the repo's configured identity.
+    pub fn signature<'a>(
+        &self,
+        repo: &'a git2::Repository,
+    ) -> Result<git2::Signature<'a>, git2::Error> {
+        match (&self.author_name, &self.author_email) {
+            (Some(name), Some(email)) if !name.is_empty() && !email.is_empty() => {
+                git2::Signature::now(name, email)
+            }
+            _ => repo.signature(),
+        }
+    }
 }
 
 /// A single file entry in the working-tree status view.

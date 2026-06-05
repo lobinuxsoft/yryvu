@@ -97,6 +97,18 @@
   border-color: var(--bg-4);
 }
 
+.ui-panel__btn--danger {
+  background: var(--bg-2);
+  color: var(--danger);
+  border-color: var(--border);
+}
+
+.ui-panel__btn--danger:hover {
+  background: var(--danger);
+  color: var(--accent-fg);
+  border-color: var(--danger);
+}
+
 .ui-panel__checkbox {
   display: inline-flex;
   align-items: center;

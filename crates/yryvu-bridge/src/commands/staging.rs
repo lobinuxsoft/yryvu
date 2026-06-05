@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+use tauri::AppHandle;
+
 use crate::backend::{
     CommitOptions, FileDiff, GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange,
     SignConfig, SignFormat, WorkingTreeStatus,
@@ -130,10 +132,20 @@ pub async fn discard_paths(repo_path: String, paths: Vec<String>) -> Result<(), 
 }
 
 #[tauri::command]
-pub async fn create_commit(repo_path: String, options: CommitOptions) -> Result<String, String> {
+pub async fn create_commit(
+    app: AppHandle,
+    repo_path: String,
+    options: CommitOptions,
+) -> Result<String, String> {
+    let config_dir = super::profiles::config_dir(&app).ok();
     tauri::async_runtime::spawn_blocking(move || {
+        let path = PathBuf::from(&repo_path);
+        let mut options = options;
+        if let Some(dir) = &config_dir {
+            super::profiles::stamp_profile_identity(dir, &path, &mut options);
+        }
         GixBackend
-            .create_commit(&PathBuf::from(&repo_path), &options)
+            .create_commit(&path, &options)
             .map_err(|e| e.to_string())
     })
     .await
@@ -141,10 +153,20 @@ pub async fn create_commit(repo_path: String, options: CommitOptions) -> Result<
 }
 
 #[tauri::command]
-pub async fn commit_and_push(repo_path: String, options: CommitOptions) -> Result<String, String> {
+pub async fn commit_and_push(
+    app: AppHandle,
+    repo_path: String,
+    options: CommitOptions,
+) -> Result<String, String> {
+    let config_dir = super::profiles::config_dir(&app).ok();
     tauri::async_runtime::spawn_blocking(move || {
+        let path = PathBuf::from(&repo_path);
+        let mut options = options;
+        if let Some(dir) = &config_dir {
+            super::profiles::stamp_profile_identity(dir, &path, &mut options);
+        }
         GixBackend
-            .commit_and_push(&PathBuf::from(&repo_path), &options)
+            .commit_and_push(&path, &options)
             .map_err(|e| e.to_string())
     })
     .await

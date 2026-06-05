@@ -26,11 +26,13 @@ export interface AuthData {
  * - `"sidecar schema version"` → render schema-mismatch error
  */
 export function saveIntegrationToken(
+  profileId: string | null,
   integrationType: string,
   token: string,
   hostname?: string,
 ): Promise<void> {
   return invoke<void>("save_integration_token", {
+    profileId,
     integrationType,
     token,
     hostname: hostname ?? null,
@@ -43,9 +45,13 @@ export function saveIntegrationToken(
  * state for an unconfigured integration.
  */
 export function getIntegrationToken(
+  profileId: string | null,
   integrationType: string,
 ): Promise<AuthData | null> {
-  return invoke<AuthData | null>("get_integration_token", { integrationType });
+  return invoke<AuthData | null>("get_integration_token", {
+    profileId,
+    integrationType,
+  });
 }
 
 /**
@@ -54,8 +60,14 @@ export function getIntegrationToken(
  * is preserved so a subsequent re-connect doesn't lose the user's
  * URL config.
  */
-export function removeIntegrationToken(integrationType: string): Promise<void> {
-  return invoke<void>("remove_integration_token", { integrationType });
+export function removeIntegrationToken(
+  profileId: string | null,
+  integrationType: string,
+): Promise<void> {
+  return invoke<void>("remove_integration_token", {
+    profileId,
+    integrationType,
+  });
 }
 
 /**
@@ -63,8 +75,10 @@ export function removeIntegrationToken(integrationType: string): Promise<void> {
  * Cheap (no keyring round-trip) — drives the sub-tab sidebar's
  * "connected" indicator dot via a single call on Preferences mount.
  */
-export function listConfiguredIntegrations(): Promise<string[]> {
-  return invoke<string[]>("list_configured_integrations", {});
+export function listConfiguredIntegrations(
+  profileId: string | null,
+): Promise<string[]> {
+  return invoke<string[]>("list_configured_integrations", { profileId });
 }
 
 /**
@@ -72,10 +86,15 @@ export function listConfiguredIntegrations(): Promise<string[]> {
  * configure the URL before pasting / importing the token.
  */
 export function setIntegrationHostname(
+  profileId: string | null,
   integrationType: string,
   hostname: string,
 ): Promise<void> {
-  return invoke<void>("set_integration_hostname", { integrationType, hostname });
+  return invoke<void>("set_integration_hostname", {
+    profileId,
+    integrationType,
+    hostname,
+  });
 }
 
 /**
@@ -83,9 +102,13 @@ export function setIntegrationHostname(
  * when no hostname is configured.
  */
 export function getIntegrationHostname(
+  profileId: string | null,
   integrationType: string,
 ): Promise<string | null> {
-  return invoke<string | null>("get_integration_hostname", { integrationType });
+  return invoke<string | null>("get_integration_hostname", {
+    profileId,
+    integrationType,
+  });
 }
 
 /**

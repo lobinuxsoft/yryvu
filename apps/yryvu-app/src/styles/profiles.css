@@ -267,3 +267,28 @@
   gap: 8px;
   margin-top: 8px;
 }
+
+/* --- Integrations panel profile selector --------------------------------- */
+
+.integrations__profile-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.integrations__profile-select {
+  padding: 5px 10px;
+  background: var(--bg-1);
+  color: var(--fg-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+
+.integrations__profile-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}

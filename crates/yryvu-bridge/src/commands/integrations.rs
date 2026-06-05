@@ -31,14 +31,21 @@ fn sidecar_path(app: &AppHandle) -> Result<PathBuf, String> {
 /// repeats (sidecar load → not-connected error → self-hosted hostname
 /// gate). Returns `(AuthData, Option<&'a str>)` where the hostname is
 /// `Some` only for self-hosted variants.
-async fn load_auth_and_host(app: &AppHandle, integration_type: &str) -> Result<AuthData, String> {
+async fn load_auth_and_host(
+    app: &AppHandle,
+    profile_id: Option<&str>,
+    integration_type: &str,
+) -> Result<AuthData, String> {
     let path = sidecar_path(app)?;
     let it = integration_type.to_string();
-    tauri::async_runtime::spawn_blocking(move || integrations::get_integration(&path as &Path, &it))
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| format!("integration '{integration_type}' is not connected"))
+    let pid = profile_id.map(str::to_string);
+    tauri::async_runtime::spawn_blocking(move || {
+        integrations::get_integration(&path as &Path, pid.as_deref(), &it)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("integration '{integration_type}' is not connected"))
 }
 
 fn host_for<'a>(integration_type: &str, auth: &'a AuthData) -> Option<&'a str> {
@@ -50,6 +57,7 @@ fn host_for<'a>(integration_type: &str, auth: &'a AuthData) -> Option<&'a str> {
 #[tauri::command]
 pub async fn save_integration_token(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     token: String,
     hostname: Option<String>,
@@ -58,6 +66,7 @@ pub async fn save_integration_token(
     tauri::async_runtime::spawn_blocking(move || {
         integrations::save_integration(
             &path as &Path,
+            profile_id.as_deref(),
             &integration_type,
             &token,
             hostname.as_deref(),
@@ -71,11 +80,13 @@ pub async fn save_integration_token(
 #[tauri::command]
 pub async fn get_integration_token(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
 ) -> Result<Option<AuthData>, String> {
     let path = sidecar_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
-        integrations::get_integration(&path as &Path, &integration_type).map_err(|e| e.to_string())
+        integrations::get_integration(&path as &Path, profile_id.as_deref(), &integration_type)
+            .map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -84,11 +95,12 @@ pub async fn get_integration_token(
 #[tauri::command]
 pub async fn remove_integration_token(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
 ) -> Result<(), String> {
     let path = sidecar_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
-        integrations::remove_integration(&path as &Path, &integration_type)
+        integrations::remove_integration(&path as &Path, profile_id.as_deref(), &integration_type)
             .map_err(|e| e.to_string())
     })
     .await
@@ -96,10 +108,14 @@ pub async fn remove_integration_token(
 }
 
 #[tauri::command]
-pub async fn list_configured_integrations(app: AppHandle) -> Result<Vec<String>, String> {
+pub async fn list_configured_integrations(
+    app: AppHandle,
+    profile_id: Option<String>,
+) -> Result<Vec<String>, String> {
     let path = sidecar_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
-        integrations::list_configured(&path as &Path).map_err(|e| e.to_string())
+        integrations::list_configured(&path as &Path, profile_id.as_deref())
+            .map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -108,13 +124,19 @@ pub async fn list_configured_integrations(app: AppHandle) -> Result<Vec<String>,
 #[tauri::command]
 pub async fn set_integration_hostname(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     hostname: String,
 ) -> Result<(), String> {
     let path = sidecar_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
-        integrations::set_hostname(&path as &Path, &integration_type, &hostname)
-            .map_err(|e| e.to_string())
+        integrations::set_hostname(
+            &path as &Path,
+            profile_id.as_deref(),
+            &integration_type,
+            &hostname,
+        )
+        .map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -123,11 +145,13 @@ pub async fn set_integration_hostname(
 #[tauri::command]
 pub async fn get_integration_hostname(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
 ) -> Result<Option<String>, String> {
     let path = sidecar_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
-        integrations::get_hostname(&path as &Path, &integration_type).map_err(|e| e.to_string())
+        integrations::get_hostname(&path as &Path, profile_id.as_deref(), &integration_type)
+            .map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -168,6 +192,7 @@ pub async fn integration_preflight(
 #[tauri::command]
 pub async fn integration_list_prs(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
@@ -176,7 +201,10 @@ pub async fn integration_list_prs(
     let path = sidecar_path(&app)?;
     let auth = tauri::async_runtime::spawn_blocking({
         let integration_type = integration_type.clone();
-        move || integrations::get_integration(&path as &Path, &integration_type)
+        let profile_id = profile_id.clone();
+        move || {
+            integrations::get_integration(&path as &Path, profile_id.as_deref(), &integration_type)
+        }
     })
     .await
     .map_err(|e| e.to_string())?
@@ -255,6 +283,7 @@ pub async fn integration_list_prs(
 #[tauri::command]
 pub async fn integration_list_issues(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
@@ -262,7 +291,10 @@ pub async fn integration_list_issues(
     let path = sidecar_path(&app)?;
     let auth = tauri::async_runtime::spawn_blocking({
         let integration_type = integration_type.clone();
-        move || integrations::get_integration(&path as &Path, &integration_type)
+        let profile_id = profile_id.clone();
+        move || {
+            integrations::get_integration(&path as &Path, profile_id.as_deref(), &integration_type)
+        }
     })
     .await
     .map_err(|e| e.to_string())?
@@ -283,6 +315,7 @@ pub async fn integration_list_issues(
 #[tauri::command]
 pub async fn integration_get_issue_detail(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
@@ -291,7 +324,10 @@ pub async fn integration_get_issue_detail(
     let path = sidecar_path(&app)?;
     let auth = tauri::async_runtime::spawn_blocking({
         let integration_type = integration_type.clone();
-        move || integrations::get_integration(&path as &Path, &integration_type)
+        let profile_id = profile_id.clone();
+        move || {
+            integrations::get_integration(&path as &Path, profile_id.as_deref(), &integration_type)
+        }
     })
     .await
     .map_err(|e| e.to_string())?
@@ -326,6 +362,7 @@ fn target_from_str(target: &str) -> Result<CommentTarget, String> {
 #[tauri::command]
 pub async fn integration_list_comments(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
@@ -333,7 +370,7 @@ pub async fn integration_list_comments(
     number: u64,
 ) -> Result<Vec<Comment>, String> {
     let target = target_from_str(&target)?;
-    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let auth = load_auth_and_host(&app, profile_id.as_deref(), &integration_type).await?;
     let hostname = host_for(&integration_type, &auth);
     integrations::list_comments(
         &integration_type,
@@ -352,8 +389,10 @@ pub async fn integration_list_comments(
 /// freshly created `Comment` so the UI can append it without a
 /// follow-up fetch.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn integration_create_comment(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
@@ -362,7 +401,7 @@ pub async fn integration_create_comment(
     input: CreateCommentInput,
 ) -> Result<Comment, String> {
     let target = target_from_str(&target)?;
-    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let auth = load_auth_and_host(&app, profile_id.as_deref(), &integration_type).await?;
     let hostname = host_for(&integration_type, &auth);
     integrations::create_comment(
         &integration_type,
@@ -384,11 +423,12 @@ pub async fn integration_create_comment(
 #[tauri::command]
 pub async fn integration_list_labels(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
 ) -> Result<Vec<Identifier>, String> {
-    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let auth = load_auth_and_host(&app, profile_id.as_deref(), &integration_type).await?;
     let hostname = host_for(&integration_type, &auth);
     integrations::list_labels(&integration_type, &auth.token, hostname, &owner, &repo)
         .await
@@ -401,11 +441,12 @@ pub async fn integration_list_labels(
 #[tauri::command]
 pub async fn integration_list_collaborators(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
 ) -> Result<Vec<Identifier>, String> {
-    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let auth = load_auth_and_host(&app, profile_id.as_deref(), &integration_type).await?;
     let hostname = host_for(&integration_type, &auth);
     integrations::list_collaborators(&integration_type, &auth.token, hostname, &owner, &repo)
         .await
@@ -419,9 +460,10 @@ pub async fn integration_list_collaborators(
 #[tauri::command]
 pub async fn integration_list_clone_candidates(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
 ) -> Result<Vec<CloneRepoCandidate>, String> {
-    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let auth = load_auth_and_host(&app, profile_id.as_deref(), &integration_type).await?;
     let hostname = host_for(&integration_type, &auth);
     integrations::list_clone_candidates(&integration_type, &auth.token, hostname)
         .await
@@ -433,11 +475,12 @@ pub async fn integration_list_clone_candidates(
 #[tauri::command]
 pub async fn integration_list_milestones(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
 ) -> Result<Vec<Identifier>, String> {
-    let auth = load_auth_and_host(&app, &integration_type).await?;
+    let auth = load_auth_and_host(&app, profile_id.as_deref(), &integration_type).await?;
     let hostname = host_for(&integration_type, &auth);
     integrations::list_milestones(&integration_type, &auth.token, hostname, &owner, &repo)
         .await
@@ -451,6 +494,7 @@ pub async fn integration_list_milestones(
 #[tauri::command]
 pub async fn integration_create_pr(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
@@ -459,7 +503,10 @@ pub async fn integration_create_pr(
     let path = sidecar_path(&app)?;
     let auth = tauri::async_runtime::spawn_blocking({
         let integration_type = integration_type.clone();
-        move || integrations::get_integration(&path as &Path, &integration_type)
+        let profile_id = profile_id.clone();
+        move || {
+            integrations::get_integration(&path as &Path, profile_id.as_deref(), &integration_type)
+        }
     })
     .await
     .map_err(|e| e.to_string())?
@@ -487,6 +534,7 @@ pub async fn integration_create_pr(
 #[tauri::command]
 pub async fn integration_create_issue(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
@@ -495,7 +543,10 @@ pub async fn integration_create_issue(
     let path = sidecar_path(&app)?;
     let auth = tauri::async_runtime::spawn_blocking({
         let integration_type = integration_type.clone();
-        move || integrations::get_integration(&path as &Path, &integration_type)
+        let profile_id = profile_id.clone();
+        move || {
+            integrations::get_integration(&path as &Path, profile_id.as_deref(), &integration_type)
+        }
     })
     .await
     .map_err(|e| e.to_string())?

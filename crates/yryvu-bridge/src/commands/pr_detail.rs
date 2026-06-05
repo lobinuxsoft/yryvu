@@ -26,12 +26,15 @@ fn sidecar_path(app: &AppHandle) -> Result<PathBuf, String> {
 
 async fn load_auth(
     app: &AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
 ) -> Result<integrations::AuthData, String> {
     let path = sidecar_path(app)?;
     tauri::async_runtime::spawn_blocking({
         let integration_type = integration_type.clone();
-        move || integrations::get_integration(&path as &Path, &integration_type)
+        move || {
+            integrations::get_integration(&path as &Path, profile_id.as_deref(), &integration_type)
+        }
     })
     .await
     .map_err(|e| e.to_string())?
@@ -65,12 +68,13 @@ fn unsupported_for_detail(integration_type: &str) -> String {
 #[tauri::command]
 pub async fn integration_get_pr_detail(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
     number: u64,
 ) -> Result<PullRequestDetail, String> {
-    let auth = load_auth(&app, integration_type.clone()).await?;
+    let auth = load_auth(&app, profile_id.clone(), integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     let host = hostname.as_deref();
     match ProviderFamily::from_integration_type(&integration_type) {
@@ -96,12 +100,13 @@ pub async fn integration_get_pr_detail(
 #[tauri::command]
 pub async fn integration_list_pr_commits(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
     number: u64,
 ) -> Result<Vec<PrCommit>, String> {
-    let auth = load_auth(&app, integration_type.clone()).await?;
+    let auth = load_auth(&app, profile_id.clone(), integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     let host = hostname.as_deref();
     match ProviderFamily::from_integration_type(&integration_type) {
@@ -127,12 +132,13 @@ pub async fn integration_list_pr_commits(
 #[tauri::command]
 pub async fn integration_list_pr_files(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
     number: u64,
 ) -> Result<Vec<PrFile>, String> {
-    let auth = load_auth(&app, integration_type.clone()).await?;
+    let auth = load_auth(&app, profile_id.clone(), integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     let host = hostname.as_deref();
     match ProviderFamily::from_integration_type(&integration_type) {
@@ -163,13 +169,14 @@ pub async fn integration_list_pr_files(
 #[tauri::command]
 pub async fn integration_list_pr_checks(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
     head_sha: String,
     number: Option<u64>,
 ) -> Result<Vec<CheckRun>, String> {
-    let auth = load_auth(&app, integration_type.clone()).await?;
+    let auth = load_auth(&app, profile_id.clone(), integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     let host = hostname.as_deref();
     match ProviderFamily::from_integration_type(&integration_type) {
@@ -201,6 +208,7 @@ pub async fn integration_list_pr_checks(
 #[tauri::command]
 pub async fn integration_pr_action(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
@@ -208,7 +216,7 @@ pub async fn integration_pr_action(
     action: String,
 ) -> Result<PullRequestDetail, String> {
     let (gh_action, gl_action) = parse_action(&action)?;
-    let auth = load_auth(&app, integration_type.clone()).await?;
+    let auth = load_auth(&app, profile_id.clone(), integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     let host = hostname.as_deref();
     match ProviderFamily::from_integration_type(&integration_type) {
@@ -248,6 +256,7 @@ pub async fn integration_pr_action(
 #[allow(clippy::too_many_arguments)]
 pub async fn integration_merge_pr(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
@@ -258,7 +267,7 @@ pub async fn integration_merge_pr(
     delete_source_branch: bool,
     squash: Option<bool>,
 ) -> Result<PullRequestDetail, String> {
-    let auth = load_auth(&app, integration_type.clone()).await?;
+    let auth = load_auth(&app, profile_id.clone(), integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     let host = hostname.as_deref();
     let parsed_method = match method.as_str() {
@@ -323,13 +332,14 @@ pub async fn integration_merge_pr(
 #[tauri::command]
 pub async fn integration_rebase_mr(
     app: AppHandle,
+    profile_id: Option<String>,
     integration_type: String,
     owner: String,
     repo: String,
     number: u64,
     skip_ci: bool,
 ) -> Result<PullRequestDetail, String> {
-    let auth = load_auth(&app, integration_type.clone()).await?;
+    let auth = load_auth(&app, profile_id.clone(), integration_type.clone()).await?;
     let hostname = pick_hostname(&integration_type, &auth);
     let host = hostname.as_deref();
     match ProviderFamily::from_integration_type(&integration_type) {

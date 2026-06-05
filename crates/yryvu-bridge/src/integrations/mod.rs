@@ -20,6 +20,9 @@ pub mod oauth;
 mod sidecar;
 mod types;
 
+#[cfg(test)]
+mod scoping_tests;
+
 pub use clients::{
     create_comment, create_gitea_issue, create_gitea_pr, create_github_issue, create_github_pr,
     create_gitlab_issue, create_gitlab_pr, create_issue, create_pr, enrich_github_prs,
@@ -49,26 +52,75 @@ use std::path::Path;
 
 use crate::backend::BackendError;
 
-/// Store credentials for `integration_type`. Writes the secret token
-/// to the keyring and the metadata (hostname + `configured: true`) to
-/// the sidecar in one logical operation.
+/// Compose the keyring account for a token. Profile-scoped tokens use
+/// `"{profile_id}:{type}"`; the global/legacy namespace is just `type`.
+/// Profile IDs are UUIDs (no `:`), so the namespaces never collide.
+fn account(profile_id: Option<&str>, integration_type: &str) -> String {
+    match profile_id {
+        Some(pid) => format!("{pid}:{integration_type}"),
+        None => integration_type.to_string(),
+    }
+}
+
+/// Read-only handle to the entry for `(profile_id, type)`. `None`
+/// profile reads the legacy global map.
+fn lookup_entry<'a>(
+    cfg: &'a IntegrationsConfig,
+    profile_id: Option<&str>,
+    integration_type: &str,
+) -> Option<&'a IntegrationEntry> {
+    match profile_id {
+        Some(pid) => cfg.profiles.get(pid).and_then(|m| m.get(integration_type)),
+        None => cfg.integrations.get(integration_type),
+    }
+}
+
+/// Resolve `(profile_id, type)` to its `AuthData` (sidecar entry + keyring
+/// token), or `None` when not configured or the token is missing.
+fn resolve_entry(
+    cfg: &IntegrationsConfig,
+    profile_id: Option<&str>,
+    integration_type: &str,
+) -> Result<Option<AuthData>, BackendError> {
+    let entry = match lookup_entry(cfg, profile_id, integration_type) {
+        Some(e) if e.configured => e,
+        _ => return Ok(None),
+    };
+    let token = match get_token(&account(profile_id, integration_type))? {
+        Some(t) => t,
+        None => return Ok(None),
+    };
+    Ok(Some(AuthData {
+        token,
+        hostname: entry.hostname.clone(),
+    }))
+}
+
+/// Store credentials under `profile_id` (or the legacy global namespace
+/// when `None`). Writes the secret token to the keyring and the metadata
+/// (hostname + `configured: true`) to the sidecar in one logical op.
 ///
 /// **Atomicity caveat**: the two writes aren't transactional. If the
 /// keyring write succeeds and the sidecar write fails, a recovery
 /// pass is needed (the keyring has a token but the sidecar says
-/// "not configured"). For chajá's UX this is acceptable: the next
+/// "not configured"). For yryvu's UX this is acceptable: the next
 /// successful save overwrites consistently, and the orphan keyring
 /// entry doesn't leak (it's just unused). Callers don't need to
 /// worry about it.
 pub fn save_integration(
     sidecar_path: &Path,
+    profile_id: Option<&str>,
     integration_type: &str,
     token: &str,
     hostname: Option<&str>,
 ) -> Result<(), BackendError> {
-    save_token(integration_type, token)?;
+    save_token(&account(profile_id, integration_type), token)?;
     let mut cfg = read_sidecar(sidecar_path)?;
-    cfg.integrations.insert(
+    let map = match profile_id {
+        Some(pid) => cfg.profiles.entry(pid.to_string()).or_default(),
+        None => &mut cfg.integrations,
+    };
+    map.insert(
         integration_type.to_string(),
         IntegrationEntry {
             configured: true,
@@ -79,52 +131,98 @@ pub fn save_integration(
     Ok(())
 }
 
-/// Fetch credentials for `integration_type`. Returns `Ok(None)` when
-/// no token is stored (the sidecar's `configured` flag false OR the
-/// keyring entry is missing — either way, treat as "not configured").
+/// Fetch credentials for `integration_type`, honouring `profile_id`.
+///
+/// - **`Some(pid)`** (panel context — "show this profile's state"):
+///   the profile-scoped entry, else the legacy global namespace as a
+///   migration fallback. Does NOT peek at other profiles, so the
+///   connected indicator reflects the selected profile honestly.
+/// - **`None`** (consumption context — git ops / API calls that didn't
+///   specify a profile): the legacy namespace first, then any profile
+///   that has this integration configured. This lets push / clone / PR
+///   listing "just work" with whatever token the user connected,
+///   scoped or not. When several profiles share a provider the choice
+///   is arbitrary; callers wanting a specific account pass `Some(pid)`.
 pub fn get_integration(
     sidecar_path: &Path,
+    profile_id: Option<&str>,
     integration_type: &str,
 ) -> Result<Option<AuthData>, BackendError> {
     let cfg = read_sidecar(sidecar_path)?;
-    let entry = match cfg.integrations.get(integration_type) {
-        Some(e) if e.configured => e,
-        _ => return Ok(None),
-    };
-    let token = match get_token(integration_type)? {
-        Some(t) => t,
-        None => return Ok(None),
-    };
-    Ok(Some(AuthData {
-        token,
-        hostname: entry.hostname.clone(),
-    }))
+    if profile_id.is_some() {
+        if let Some(auth) = resolve_entry(&cfg, profile_id, integration_type)? {
+            return Ok(Some(auth));
+        }
+        return resolve_entry(&cfg, None, integration_type);
+    }
+    if let Some(auth) = resolve_entry(&cfg, None, integration_type)? {
+        return Ok(Some(auth));
+    }
+    for pid in cfg.profiles.keys() {
+        if let Some(auth) = resolve_entry(&cfg, Some(pid.as_str()), integration_type)? {
+            return Ok(Some(auth));
+        }
+    }
+    Ok(None)
 }
 
-/// Wipe credentials for `integration_type`. Removes the keyring entry
-/// AND clears the sidecar's `configured` flag. The hostname (if any)
-/// is preserved so a re-connect doesn't lose the user's URL config.
-pub fn remove_integration(sidecar_path: &Path, integration_type: &str) -> Result<(), BackendError> {
-    remove_token(integration_type)?;
+/// Wipe credentials for `(profile_id, type)`. Removes the keyring entry
+/// AND clears the sidecar's `configured` flag (hostname preserved). Does
+/// not touch the legacy namespace when a profile is given.
+pub fn remove_integration(
+    sidecar_path: &Path,
+    profile_id: Option<&str>,
+    integration_type: &str,
+) -> Result<(), BackendError> {
+    remove_token(&account(profile_id, integration_type))?;
     let mut cfg = read_sidecar(sidecar_path)?;
-    if let Some(entry) = cfg.integrations.get_mut(integration_type) {
+    let entry = match profile_id {
+        Some(pid) => cfg
+            .profiles
+            .get_mut(pid)
+            .and_then(|m| m.get_mut(integration_type)),
+        None => cfg.integrations.get_mut(integration_type),
+    };
+    if let Some(entry) = entry {
         entry.configured = false;
     }
     write_sidecar(sidecar_path, &cfg)?;
     Ok(())
 }
 
-/// Enumerate integration types with a `configured: true` entry in the
-/// sidecar. Cheap (no keyring round-trip) — drives the UI's
-/// "connected" indicator dot in the sub-tab sidebar.
-pub fn list_configured(sidecar_path: &Path) -> Result<Vec<String>, BackendError> {
+/// Enumerate integration types with a `configured: true` entry.
+///
+/// - **`Some(pid)`** (panel): exactly that profile's configured types —
+///   drives the "connected" dot for the selected profile.
+/// - **`None`** (consumption): the union of the legacy namespace and
+///   every profile, so a consumer that didn't specify a profile knows a
+///   token exists *somewhere* (paired with [`get_integration`]'s
+///   any-profile resolution). Deduplicated + sorted.
+pub fn list_configured(
+    sidecar_path: &Path,
+    profile_id: Option<&str>,
+) -> Result<Vec<String>, BackendError> {
     let cfg = read_sidecar(sidecar_path)?;
-    Ok(cfg
-        .integrations
-        .iter()
-        .filter(|(_, e)| e.configured)
-        .map(|(k, _)| k.clone())
-        .collect())
+    match profile_id {
+        Some(pid) => Ok(cfg
+            .profiles
+            .get(pid)
+            .into_iter()
+            .flatten()
+            .filter(|(_, e)| e.configured)
+            .map(|(k, _)| k.clone())
+            .collect()),
+        None => {
+            let mut set = std::collections::BTreeSet::new();
+            let maps = std::iter::once(&cfg.integrations).chain(cfg.profiles.values());
+            for (k, e) in maps.flatten() {
+                if e.configured {
+                    set.insert(k.clone());
+                }
+            }
+            Ok(set.into_iter().collect())
+        }
+    }
 }
 
 /// Set just the hostname (no token write) — the user may configure
@@ -132,28 +230,34 @@ pub fn list_configured(sidecar_path: &Path) -> Result<Vec<String>, BackendError>
 /// token. Idempotent.
 pub fn set_hostname(
     sidecar_path: &Path,
+    profile_id: Option<&str>,
     integration_type: &str,
     hostname: &str,
 ) -> Result<(), BackendError> {
     let mut cfg = read_sidecar(sidecar_path)?;
-    let entry = cfg
-        .integrations
-        .entry(integration_type.to_string())
-        .or_default();
-    entry.hostname = Some(hostname.to_string());
+    let map = match profile_id {
+        Some(pid) => cfg.profiles.entry(pid.to_string()).or_default(),
+        None => &mut cfg.integrations,
+    };
+    map.entry(integration_type.to_string())
+        .or_default()
+        .hostname = Some(hostname.to_string());
     write_sidecar(sidecar_path, &cfg)?;
     Ok(())
 }
 
-/// Read just the hostname for a self-hosted integration. Returns
-/// `None` when no entry or no hostname is set.
+/// Read the hostname for a self-hosted integration. Falls back to the
+/// legacy namespace when a profile-scoped hostname isn't set. Returns
+/// `None` when no entry or no hostname exists.
 pub fn get_hostname(
     sidecar_path: &Path,
+    profile_id: Option<&str>,
     integration_type: &str,
 ) -> Result<Option<String>, BackendError> {
     let cfg = read_sidecar(sidecar_path)?;
-    Ok(cfg
-        .integrations
-        .get(integration_type)
-        .and_then(|e| e.hostname.clone()))
+    let scoped = lookup_entry(&cfg, profile_id, integration_type).and_then(|e| e.hostname.clone());
+    if scoped.is_none() && profile_id.is_some() {
+        return Ok(lookup_entry(&cfg, None, integration_type).and_then(|e| e.hostname.clone()));
+    }
+    Ok(scoped)
 }

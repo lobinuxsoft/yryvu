@@ -28,8 +28,14 @@ use super::types::{IntegrationEntry, SIDECAR_VERSION};
 pub struct IntegrationsConfig {
     #[serde(default = "default_version")]
     pub version: u32,
+    /// Legacy v1 global entries (`type → entry`). Read-only fallback —
+    /// new writes go to [`Self::profiles`]. Preserved across writes so
+    /// pre-v2 tokens keep resolving.
     #[serde(default)]
     pub integrations: HashMap<String, IntegrationEntry>,
+    /// v2 profile-scoped entries: `profile_id → type → entry`.
+    #[serde(default)]
+    pub profiles: HashMap<String, HashMap<String, IntegrationEntry>>,
 }
 
 fn default_version() -> u32 {
@@ -41,6 +47,7 @@ impl Default for IntegrationsConfig {
         Self {
             version: SIDECAR_VERSION,
             integrations: HashMap::new(),
+            profiles: HashMap::new(),
         }
     }
 }

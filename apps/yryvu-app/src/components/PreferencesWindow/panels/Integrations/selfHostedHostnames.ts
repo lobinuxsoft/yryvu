@@ -3,6 +3,7 @@
 import { createSignal, type Accessor } from "solid-js";
 import { getIntegrationHostname, setIntegrationHostname } from "../../../../ipc";
 import type { IntegrationType } from "./providerTable";
+import { selectedCredentialProfileId } from "./selectedProfile";
 
 /**
  * Per-integration custom hostname storage. Backed by the Rust sidecar
@@ -50,7 +51,8 @@ export async function hydrateHostname(type: IntegrationType): Promise<string> {
     return getSignal(type)[0]();
   }
   try {
-    const value = (await getIntegrationHostname(type)) ?? "";
+    const value =
+      (await getIntegrationHostname(selectedCredentialProfileId(), type)) ?? "";
     getSignal(type)[1](value);
     HYDRATED.add(type);
     return value;
@@ -67,9 +69,22 @@ export async function setSelfHostedHostname(
   type: IntegrationType,
   url: string,
 ): Promise<void> {
-  await setIntegrationHostname(type, url);
+  await setIntegrationHostname(selectedCredentialProfileId(), type, url);
   getSignal(type)[1](url);
   HYDRATED.add(type);
+}
+
+/**
+ * Drop every hydrated hostname so the next `hydrateHostname` re-fetches
+ * for the now-active profile. Called when the panel's profile selector
+ * changes — hostnames are profile-scoped, so the cache must not bleed
+ * across profiles.
+ */
+export function resetHostnameHydration(): void {
+  HYDRATED.clear();
+  for (const [, signal] of SIGNALS) {
+    signal[1]("");
+  }
 }
 
 /**

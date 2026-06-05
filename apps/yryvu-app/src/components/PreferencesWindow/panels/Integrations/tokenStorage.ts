@@ -14,7 +14,8 @@ import {
   type UserInfo,
 } from "../../../../ipc";
 import { PROVIDERS, type IntegrationType } from "./providerTable";
-import { hydrateHostname } from "./selfHostedHostnames";
+import { selectedCredentialProfileId } from "./selectedProfile";
+import { hydrateHostname, resetHostnameHydration } from "./selfHostedHostnames";
 import { setIntegrationState } from "./state";
 
 /**
@@ -46,7 +47,7 @@ export function isIntegrationConfigured(type: IntegrationType): Accessor<boolean
  */
 export async function hydrateConfigured(): Promise<void> {
   try {
-    const list = await listConfiguredIntegrations();
+    const list = await listConfiguredIntegrations(selectedCredentialProfileId());
     setConfigured(new Set<IntegrationType>(list as IntegrationType[]));
   } catch {
     // Soft-fail: empty set means no "connected" indicators light up.
@@ -80,7 +81,8 @@ export async function saveToken(
   token: string,
   hostname?: string,
 ): Promise<void> {
-  await saveIntegrationToken(type, token, hostname);
+  const profileId = selectedCredentialProfileId();
+  await saveIntegrationToken(profileId, type, token, hostname);
   setConfigured((prev) => {
     const next = new Set(prev);
     next.add(type);
@@ -98,7 +100,7 @@ export async function saveToken(
     }
     // Roll back the keyring write so the user can retry cleanly.
     try {
-      await removeIntegrationToken(type);
+      await removeIntegrationToken(profileId, type);
     } catch {
       // Roll back failed — leave the orphan rather than mask the
       // original error. Next save will overwrite consistently.
@@ -131,7 +133,7 @@ export async function hydrateIntegrationsOnAppStart(): Promise<void> {
     }
   }
   try {
-    const list = await listConfiguredIntegrations();
+    const list = await listConfiguredIntegrations(selectedCredentialProfileId());
     for (const type of list) {
       void hydrateConnectedState(type as IntegrationType);
     }
@@ -151,7 +153,7 @@ export async function hydrateIntegrationsOnAppStart(): Promise<void> {
 export async function hydrateConnectedState(type: IntegrationType): Promise<void> {
   let auth;
   try {
-    auth = await getIntegrationToken(type);
+    auth = await getIntegrationToken(selectedCredentialProfileId(), type);
   } catch {
     return;
   }
@@ -184,12 +186,34 @@ export async function hydrateConnectedState(type: IntegrationType): Promise<void
  * lose the user's URL config.
  */
 export async function removeToken(type: IntegrationType): Promise<void> {
-  await removeIntegrationToken(type);
+  await removeIntegrationToken(selectedCredentialProfileId(), type);
   setConfigured((prev) => {
     const next = new Set(prev);
     next.delete(type);
     return next;
   });
+}
+
+/**
+ * Re-hydrate the panel for the currently-selected profile: reset the
+ * connected-state signals + hostname cache, then reload `configured`
+ * and each integration's live state. Called by the panel when the
+ * profile selector changes so the UI reflects that profile's
+ * credentials, not the previous one's.
+ */
+export async function rehydrateForSelectedProfile(): Promise<void> {
+  for (const p of PROVIDERS) {
+    setIntegrationState(p.type, { tag: "disconnected" });
+  }
+  resetHostnameHydration();
+  await hydrateConfigured();
+  for (const p of PROVIDERS) {
+    if (p.isSelfHosted) void hydrateHostname(p.type);
+  }
+  const list = await listConfiguredIntegrations(selectedCredentialProfileId());
+  for (const type of list) {
+    void hydrateConnectedState(type as IntegrationType);
+  }
 }
 
 /**

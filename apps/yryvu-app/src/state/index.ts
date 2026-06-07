@@ -153,6 +153,14 @@ export {
   type PreferenceSectionId,
 } from "./preferences";
 export {
+  credentialWizard,
+  authEnv,
+  primeAuthEnv,
+  handleRemoteAuthError,
+  closeCredentialWizard,
+  type CredentialWizardState,
+} from "./credentialWizard";
+export {
   FILE_VIEW_MODES,
   DIFF_VIEW_MODES,
   fileViewMode,

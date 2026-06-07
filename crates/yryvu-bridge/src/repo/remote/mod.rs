@@ -2,6 +2,9 @@
 
 //! Remote operations split by concern:
 //!
+//! - [`auth_env`] — pre-flight probe of the host credential environment
+//!   (SSH agent / credential helper) so the UI can offer a setup path
+//!   when a push has no usable credentials (#44).
 //! - [`credentials`] — shared SSH agent / credential-helper callback.
 //! - [`management`] — add / remove / set_url / list / get_url. The
 //!   REMOTE-header context menu surface (#227).
@@ -15,6 +18,7 @@
 //! else is re-exported flat so `super::remote::add_remote` etc. keep
 //! working from the rest of the crate without touching call sites.
 
+pub mod auth_env;
 pub(crate) mod credentials;
 mod management;
 mod push;

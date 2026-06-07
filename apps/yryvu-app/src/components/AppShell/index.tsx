@@ -34,6 +34,7 @@ import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
 import { ToastContainer } from "../Notifications";
+import { CredentialSetupDialog } from "../CredentialSetup/CredentialSetupDialog";
 import { hydrateIntegrationsOnAppStart } from "../PreferencesWindow/panels/Integrations/tokenStorage";
 import { Tooltip } from "../Tooltip";
 import { wireAnimationMode } from "./animationMode";
@@ -44,6 +45,7 @@ import {
   dirtyFileCount,
   inspectorMode,
   mainView,
+  primeAuthEnv,
   pushRecentRepo,
   refreshBranches,
   repoPath,
@@ -147,6 +149,10 @@ export function AppShell() {
     // the Preferences > Integrations panel see "connected" without
     // waiting for the user to open Preferences first.
     void hydrateIntegrationsOnAppStart();
+    // Probe the credential environment once at startup so the setup
+    // wizard (#44) can render the detected state without a round-trip on
+    // the first push failure.
+    void primeAuthEnv();
     // Animation mode wiring (#316). Sets `<html data-animations>`
     // from `preferences().ui.animations`; subscribes to OS
     // `prefers-reduced-motion` live for the `system` policy.
@@ -439,6 +445,7 @@ export function AppShell() {
       <PreferencesWindow />
       <DropActionMenu />
       <StashCreateDialog />
+      <CredentialSetupDialog />
       <About />
       <ToastContainer />
     </div>

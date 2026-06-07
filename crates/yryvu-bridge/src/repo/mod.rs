@@ -33,7 +33,7 @@ mod merge;
 mod patches;
 pub(crate) mod rebase;
 pub(crate) mod reflog;
-mod remote;
+pub(crate) mod remote;
 pub(crate) mod search;
 pub(crate) mod smart_branches;
 pub(crate) mod sparse_checkout;

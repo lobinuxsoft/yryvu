@@ -8,7 +8,12 @@ import {
   setUpstream,
   type ResetMode,
 } from "../../ipc";
-import { refreshGraph, refreshWorkingTree, repoPath } from "../../state";
+import {
+  handleRemoteAuthError,
+  refreshGraph,
+  refreshWorkingTree,
+  repoPath,
+} from "../../state";
 import { notify } from "../../components/Notifications";
 import type { BranchOpsState } from "../state";
 
@@ -84,6 +89,7 @@ export function createRefHandlers(deps: RefHandlersDeps) {
       refresh();
       notify.success("Pushed", { category: "remoteSync" });
     } catch (err) {
+      if (await handleRemoteAuthError(err, path)) return;
       notify.error("Push failed", {
         message: String(err),
         category: "remoteSync",

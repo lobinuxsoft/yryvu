@@ -34,7 +34,7 @@ import {
   stagedFilesCollapsed,
   unstagedFilesCollapsed,
 } from "../../state";
-import { FileList, type RowAction } from "../FileList";
+import { type RowAction } from "../FileList";
 import { FileListToolbar } from "../FileList/FileListToolbar";
 import { Tooltip } from "../Tooltip";
 import {
@@ -47,6 +47,7 @@ import {
   buildTreeFromPaths,
   collectDirPaths,
 } from "../FileList/treeBuild";
+import { CommitFileSection } from "./CommitFileSection";
 import { CoAuthorPicker } from "./CoAuthorPicker";
 import { CommitButton } from "./CommitButton";
 import { CommitMessage } from "./CommitMessage";
@@ -264,97 +265,33 @@ export function CommitPanel(props: CommitPanelProps) {
         />
       </Show>
 
-      <section class="commit-panel__section" data-side="unstaged">
-        <header class="commit-panel__section-header">
-          <Tooltip text={unstagedFilesCollapsed() ? "Expand" : "Collapse"}>
-            <button
-              class="commit-panel__section-toggle"
-              type="button"
-              aria-expanded={!unstagedFilesCollapsed()}
-              onClick={() => setUnstagedFilesCollapsed((v) => !v)}
-            >
-              <span
-                class="commit-panel__section-chevron"
-                data-collapsed={unstagedFilesCollapsed() ? "true" : "false"}
-              >
-                ▸
-              </span>
-              <span class="commit-panel__section-title">Unstaged Files</span>
-              <span class="commit-panel__section-count">
-                {unstaged().length}
-              </span>
-            </button>
-          </Tooltip>
-          <Show when={unstaged().length > 0}>
-            <Tooltip text="Stage All Changes">
-              <button
-                class="commit-panel__bulk"
-                type="button"
-                onClick={() => props.onStageAll()}
-              >
-                Stage All Changes
-              </button>
-            </Tooltip>
-          </Show>
-        </header>
-        <Show when={!unstagedFilesCollapsed() && unstaged().length > 0}>
-          <FileList
-            repoId={repoId()}
-            revKey={UNSTAGED_REV}
-            listType="unstaged"
-            files={unstagedFiles()}
-            activeFilePath={activeFor("unstaged")}
-            onSelectFile={(p) => openStagingDiffTab("unstaged", p)}
-            rowActions={unstagedActions}
-            hideToolbar
-          />
-        </Show>
-      </section>
+      <CommitFileSection
+        side="unstaged"
+        title="Unstaged Files"
+        bulkLabel="Stage All Changes"
+        collapsed={unstagedFilesCollapsed()}
+        onToggleCollapsed={() => setUnstagedFilesCollapsed((v) => !v)}
+        onBulk={() => props.onStageAll()}
+        repoId={repoId()}
+        files={unstagedFiles()}
+        activeFilePath={activeFor("unstaged")}
+        onSelectFile={(p) => openStagingDiffTab("unstaged", p)}
+        rowActions={unstagedActions}
+      />
 
-      <section class="commit-panel__section" data-side="staged">
-        <header class="commit-panel__section-header">
-          <Tooltip text={stagedFilesCollapsed() ? "Expand" : "Collapse"}>
-            <button
-              class="commit-panel__section-toggle"
-              type="button"
-              aria-expanded={!stagedFilesCollapsed()}
-              onClick={() => setStagedFilesCollapsed((v) => !v)}
-            >
-              <span
-                class="commit-panel__section-chevron"
-                data-collapsed={stagedFilesCollapsed() ? "true" : "false"}
-              >
-                ▸
-              </span>
-              <span class="commit-panel__section-title">Staged Files</span>
-              <span class="commit-panel__section-count">{staged().length}</span>
-            </button>
-          </Tooltip>
-          <Show when={staged().length > 0}>
-            <Tooltip text="Unstage All Changes">
-              <button
-                class="commit-panel__bulk"
-                type="button"
-                onClick={() => props.onUnstageAll()}
-              >
-                Unstage All Changes
-              </button>
-            </Tooltip>
-          </Show>
-        </header>
-        <Show when={!stagedFilesCollapsed() && staged().length > 0}>
-          <FileList
-            repoId={repoId()}
-            revKey={STAGED_REV}
-            listType="staged"
-            files={stagedFiles()}
-            activeFilePath={activeFor("staged")}
-            onSelectFile={(p) => openStagingDiffTab("staged", p)}
-            rowActions={stagedActions}
-            hideToolbar
-          />
-        </Show>
-      </section>
+      <CommitFileSection
+        side="staged"
+        title="Staged Files"
+        bulkLabel="Unstage All Changes"
+        collapsed={stagedFilesCollapsed()}
+        onToggleCollapsed={() => setStagedFilesCollapsed((v) => !v)}
+        onBulk={() => props.onUnstageAll()}
+        repoId={repoId()}
+        files={stagedFiles()}
+        activeFilePath={activeFor("staged")}
+        onSelectFile={(p) => openStagingDiffTab("staged", p)}
+        rowActions={stagedActions}
+      />
 
       <section class="commit-panel__commit-form">
         <header class="commit-panel__commit-form__header">

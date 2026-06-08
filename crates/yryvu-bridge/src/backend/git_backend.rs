@@ -22,6 +22,12 @@ use crate::repo::staging::{
 ///
 /// `gix` is the primary backend; `git2-rs` / shell-out variants exist to cover operations
 /// not yet production-ready in gitoxide (e.g. interactive rebase — issue #11).
+///
+/// **400-LOC cap exception**: a single trait definition of ~80 method
+/// signatures. Rust cannot split one trait across files; decomposing into
+/// per-domain supertraits would ripple a `use` change through ~17 call
+/// sites for no behavioural gain. Kept whole by design — see the matching
+/// note in `repo/backend_impl.rs`.
 pub trait GitBackend: Send + Sync {
     fn walk_commits(
         &self,

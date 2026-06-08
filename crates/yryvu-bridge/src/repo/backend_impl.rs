@@ -4,6 +4,13 @@
 //! every method forwards to the corresponding submodule under `repo/`.
 //! Rust requires a single `impl Trait for Type` block, so we keep the
 //! whole table here rather than scattering it across the submodules.
+//!
+//! **400-LOC cap exception**: this is one trait impl of ~80 one-line
+//! delegations — a contract table, not coupled logic. Rust cannot split a
+//! single trait impl across files; the only alternative (decomposing
+//! `GitBackend` into per-domain supertraits) would ripple a `use` change
+//! through ~17 call sites for no behavioural gain. The volume is the
+//! method count, so the file stays whole by design.
 
 use std::path::Path;
 

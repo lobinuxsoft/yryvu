@@ -14,7 +14,8 @@ use crate::backend::BackendError;
 use super::super::github::PullRequestSummary;
 use super::dsl::{parse_filters, GitlabFilters};
 use super::graphql_endpoint;
-use super::prs::{post_graphql, project_node, GlMrNode, NODE_FIELDS};
+use super::prs::{post_graphql, project_node, NODE_FIELDS};
+use super::wire::GlMrNode;
 
 /// Search merge requests in `owner/repo` matching `dsl`. `dsl` is
 /// the raw user-typed text — parsing happens internally via
@@ -124,7 +125,7 @@ struct GlSearchResp {
     #[serde(default)]
     data: Option<GlSearchData>,
     #[serde(default)]
-    errors: Option<Vec<super::prs::GlGraphqlError>>,
+    errors: Option<Vec<super::wire::GlGraphqlError>>,
 }
 
 #[derive(Debug, Deserialize)]

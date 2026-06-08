@@ -9,7 +9,6 @@
 //! reviewers, approval state, and head-pipeline status in one
 //! round-trip — no enrichment step needed.
 
-use serde::Deserialize;
 use serde_json::json;
 
 use reqwest::Method;
@@ -20,6 +19,7 @@ use super::super::github::{CiStatus, PullRequestState, PullRequestSummary, Revie
 use super::super::http::{self, GITLAB_QUIRKS};
 use super::super::types::{Label, UserInfo};
 use super::graphql_endpoint;
+use super::wire::{GlMrNode, GlMrsResp, GlUserConnection};
 
 /// List merge requests in `owner/repo`. GitLab uses `fullPath` (e.g.
 /// `gitlab-org/gitlab`) for the project lookup; we synthesise that
@@ -128,28 +128,6 @@ pub(super) fn project_node(node: GlMrNode) -> PullRequestSummary {
     }
 }
 
-impl From<GlUser> for UserInfo {
-    fn from(raw: GlUser) -> Self {
-        Self {
-            display_name: raw.name.clone().unwrap_or_else(|| raw.username.clone()),
-            login: raw.username,
-            avatar_url: raw.avatar_url.unwrap_or_default(),
-        }
-    }
-}
-
-/// GitLab returns label colours WITH the leading `#`; the canonical
-/// hex shape used by `Label` (and the GitHub adapter) strips it so
-/// frontend CSS rules apply uniformly.
-impl From<GlLabelNode> for Label {
-    fn from(raw: GlLabelNode) -> Self {
-        Self {
-            name: raw.title,
-            color: raw.color.trim_start_matches('#').to_string(),
-        }
-    }
-}
-
 /// Approximate GitHub-style [`ReviewDecision`] from GitLab's approval
 /// model. GitLab has no first-class "changes requested" aggregate —
 /// reviewers signal that via unresolved threads which don't surface
@@ -186,94 +164,6 @@ pub(super) fn parse_ci(raw: &str) -> Option<CiStatus> {
         // CANCELED, SKIPPED — surface nothing rather than mislead.
         _ => None,
     }
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
-struct GlMrsResp {
-    #[serde(default)]
-    data: Option<GlMrsData>,
-    #[serde(default)]
-    errors: Option<Vec<GlGraphqlError>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GlMrsData {
-    project: Option<GlProject>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct GlProject {
-    merge_requests: GlMrConnection,
-}
-
-#[derive(Debug, Deserialize)]
-struct GlMrConnection {
-    nodes: Vec<GlMrNode>,
-}
-
-#[derive(Debug, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct GlMrNode {
-    pub iid: Option<String>,
-    pub title: Option<String>,
-    pub state: Option<String>,
-    pub draft: Option<bool>,
-    pub web_url: Option<String>,
-    pub created_at: Option<String>,
-    pub updated_at: Option<String>,
-    pub target_branch: Option<String>,
-    pub source_branch: Option<String>,
-    pub sha: Option<String>,
-    pub author: Option<GlUser>,
-    pub labels: Option<GlLabelConnection>,
-    pub assignees: Option<GlUserConnection>,
-    pub reviewers: Option<GlUserConnection>,
-    pub approvals_required: Option<i32>,
-    pub approvals_left: Option<i32>,
-    /// Present in the response shape but not consumed: the
-    /// `approvalsRequired` / `approvalsLeft` pair is sufficient for
-    /// the ReviewDecision derivation. Kept for forward-compat so a
-    /// future surface ("Approved by X, Y") can drop right in.
-    #[allow(dead_code)]
-    pub approved_by: Option<GlUserConnection>,
-    pub head_pipeline: Option<GlPipeline>,
-}
-
-#[derive(Debug, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct GlUser {
-    pub username: String,
-    pub name: Option<String>,
-    pub avatar_url: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct GlUserConnection {
-    pub nodes: Vec<GlUser>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct GlLabelConnection {
-    pub nodes: Vec<GlLabelNode>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct GlLabelNode {
-    pub title: String,
-    pub color: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct GlPipeline {
-    pub status: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
-pub(super) struct GlGraphqlError {
-    pub message: String,
 }
 
 #[cfg(test)]

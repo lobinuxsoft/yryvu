@@ -24,6 +24,7 @@ mod detail;
 mod dsl;
 mod issues;
 mod merge;
+mod pr_wire;
 mod preflight;
 mod prs;
 mod repo_metadata;

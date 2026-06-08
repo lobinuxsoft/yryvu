@@ -29,6 +29,7 @@ mod project_settings;
 mod prs;
 mod repo_metadata;
 mod search;
+mod wire;
 
 pub use clone_candidates::list_clone_candidates;
 pub use comments::{create_comment, list_comments};

@@ -5,6 +5,33 @@ format is maintained by [release-please](https://github.com/googleapis/release-p
 each merged `feat:` or `fix:` commit on `main` produces a release PR
 that updates this file.
 
+## [0.5.0](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.4.0...yryvu-v0.5.0) (2026-06-10)
+
+
+### Features
+
+* **auth:** credential detection + setup wizard ([c4c51dd](https://github.com/lobinuxsoft/yryvu/commit/c4c51dd5bd4c4d1dc891672c71e857fe77894404))
+* **auth:** credential detection + setup wizard ([ce3301f](https://github.com/lobinuxsoft/yryvu/commit/ce3301fb2d5cf1121368bb5f14fec6baeb4e55b4)), closes [#44](https://github.com/lobinuxsoft/yryvu/issues/44)
+* **gitflow:** feature/release/hotfix + GitHub Flow branch operations ([b3fa388](https://github.com/lobinuxsoft/yryvu/commit/b3fa388c9e2d06ad6eb0a96d0aa935fab7bfce75)), closes [#19](https://github.com/lobinuxsoft/yryvu/issues/19)
+* **gitflow:** Git Flow + GitHub Flow start/finish operations ([849e70b](https://github.com/lobinuxsoft/yryvu/commit/849e70be881b2d03256e07d723a7179a6da2620c))
+* **gitflow:** GITFLOW sidebar section + start/finish menu & dialogs ([1838834](https://github.com/lobinuxsoft/yryvu/commit/18388344ffdedd986f5cfd24aaf066dc93be1746)), closes [#19](https://github.com/lobinuxsoft/yryvu/issues/19)
+* **gitflow:** Tauri commands + ipc bindings for branch operations ([16a54f4](https://github.com/lobinuxsoft/yryvu/commit/16a54f47f2ecf84b960ed14975c71266e25acfea))
+* **graph:** render stash node as a storage-box glyph ([5772c4f](https://github.com/lobinuxsoft/yryvu/commit/5772c4f559901d0a1df14030627d07ba8b663113))
+* **graph:** unify WIP row into commit stream via NodeType::WorkDir ([ebac4aa](https://github.com/lobinuxsoft/yryvu/commit/ebac4aa37ed2658ab190fbbeddbc85ffc33dce05)), closes [#174](https://github.com/lobinuxsoft/yryvu/issues/174)
+* **graph:** unify WIP row via NodeType::WorkDir + stash box glyph ([7af8794](https://github.com/lobinuxsoft/yryvu/commit/7af8794493cef0082cb989229113bca45a4eb2b5))
+* **integrations:** profile-scoped credentials (PAT/OAuth per profile) ([6c1f1d4](https://github.com/lobinuxsoft/yryvu/commit/6c1f1d4891d76f51aeb736a1cc0d6f0020f7c6f4))
+* **integrations:** profile-scoped credentials (PAT/OAuth per profile) ([a4f0dce](https://github.com/lobinuxsoft/yryvu/commit/a4f0dced31fc650452c325b632f1a46a99f9d9d2))
+* **profiles:** user profile management with per-repo identity resolution ([640d7ce](https://github.com/lobinuxsoft/yryvu/commit/640d7cee8fc5a36d88c9800a555abe8f212770af))
+* **profiles:** user profile management with per-repo identity resolution ([dadfeb4](https://github.com/lobinuxsoft/yryvu/commit/dadfeb43a2b63f1c7b39eae644887dc3ddf62d16))
+* **worktrees:** add dialog + button, remove confirmation, prune menu ([59e353e](https://github.com/lobinuxsoft/yryvu/commit/59e353e4f0df6c79a32b95c7cff86ca4b17c8f4b)), closes [#20](https://github.com/lobinuxsoft/yryvu/issues/20)
+* **worktrees:** worktree_add + worktree_prune + dirty detection ([cb770c6](https://github.com/lobinuxsoft/yryvu/commit/cb770c63e1d2197a343317b0c2defd11c85432db)), closes [#20](https://github.com/lobinuxsoft/yryvu/issues/20)
+* **worktrees:** worktrees management UI ([72748ce](https://github.com/lobinuxsoft/yryvu/commit/72748ce8bee4121fde50b20434d1ed5e2513f7f6))
+
+
+### Misc
+
+* release 0.5.0 ([3e92c18](https://github.com/lobinuxsoft/yryvu/commit/3e92c18f4b0108e443605dddd496252d4a856c46))
+
 ## [0.4.0](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.3.0...yryvu-v0.4.0) (2026-05-31)
 
 

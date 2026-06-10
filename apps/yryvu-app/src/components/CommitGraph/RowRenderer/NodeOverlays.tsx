@@ -63,35 +63,60 @@ export function MergeRing(props: NodeBaseProps): JSX.Element {
 }
 
 /// Layer 1/2 variant for stash entries (issue #171). Replaces the
-/// circle/merge-ring with a rounded rectangle filled in the lane color.
-/// Slightly narrower than the commit circle so two adjacent stash
-/// nodes don't bleed into each other, and rounded corners (r=2) keep
-/// the silhouette friendly without reading as a button. GK uses a
-/// similar rounded-rect glyph in its rendered bundle (`stash-node`
-/// constant at `:241969`).
+/// circle/merge-ring with a storage-box glyph filled in the lane color:
+/// a square body, a lid band across the top, and a short handle slot in
+/// the lid centre. Reads as "something stowed away" rather than a generic
+/// rounded rect. Lid/handle strokes use semi-transparent black so they
+/// stay legible on any lane color. GK marks these `stash-node` in its
+/// bundle (`:241969`).
 interface StashGlyphProps extends NodeBaseProps {
   message?: string;
 }
 
 export function StashGlyph(props: StashGlyphProps): JSX.Element {
-  const halfSide = () => props.radius * 0.95;
-  const x = () => props.cx - halfSide();
-  const y = () => props.cy - halfSide();
-  const side = () => halfSide() * 2;
+  const half = () => props.radius * 0.95;
+  const x = () => props.cx - half();
+  const y = () => props.cy - half();
+  const side = () => half() * 2;
+  // Lid band sits in the top third; the handle slot is centred within it.
+  const lidY = () => y() + side() * 0.34;
+  const handleHalf = () => side() * 0.18;
+  const handleY = () => y() + side() * 0.17;
+  const lineStroke = "rgba(0, 0, 0, 0.5)";
   return (
-    <rect
-      x={x()}
-      y={y()}
-      width={side()}
-      height={side()}
-      rx={2}
-      ry={2}
-      fill={props.laneColor}
-    >
+    <g>
       <Show when={props.message}>
         <title>Stash: {props.message}</title>
       </Show>
-    </rect>
+      <rect
+        x={x()}
+        y={y()}
+        width={side()}
+        height={side()}
+        rx={2}
+        ry={2}
+        fill={props.laneColor}
+      />
+      {/* Lid separator across the full width. */}
+      <line
+        x1={x()}
+        y1={lidY()}
+        x2={x() + side()}
+        y2={lidY()}
+        stroke={lineStroke}
+        stroke-width={1}
+      />
+      {/* Handle slot centred in the lid. */}
+      <line
+        x1={props.cx - handleHalf()}
+        y1={handleY()}
+        x2={props.cx + handleHalf()}
+        y2={handleY()}
+        stroke={lineStroke}
+        stroke-width={1.4}
+        stroke-linecap="round"
+      />
+    </g>
   );
 }
 

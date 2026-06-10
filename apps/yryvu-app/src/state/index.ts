@@ -153,6 +153,14 @@ export {
   type PreferenceSectionId,
 } from "./preferences";
 export {
+  credentialWizard,
+  authEnv,
+  primeAuthEnv,
+  handleRemoteAuthError,
+  closeCredentialWizard,
+  type CredentialWizardState,
+} from "./credentialWizard";
+export {
   FILE_VIEW_MODES,
   DIFF_VIEW_MODES,
   fileViewMode,
@@ -176,6 +184,16 @@ export {
   flashCommitHighlight,
 } from "./commit-animations";
 export { repoState, hasConflicts } from "./repo-state";
+export {
+  profilesStore,
+  activeProfile,
+  blankProfile,
+  saveProfile,
+  deleteProfile,
+  duplicateProfile,
+  setDefaultProfile,
+  setActiveRepoOverride,
+} from "./profiles";
 export { prsByHeadSha } from "./prs-by-head-sha";
 export { stashes, stashByCommitSha } from "./stashes";
 export {

@@ -524,6 +524,29 @@ the File ▸ Open Repo… menu entry, `Ctrl+O`, the folder icon in the tab bar,
 the Cold Start `[Open]` button, or the repo-name dropdown in the toolbar when
 empty.
 
+### 5.3 Credential setup wizard (Yryvu addition)
+
+Not in GitKraken — Yryvu's recovery path for a push / delete-remote that fails
+because libgit2 found no usable credentials (issue #44). Mounted globally in
+`AppShell`; opened by `handleRemoteAuthError` when a remote op rejects with
+`no credentials available`, instead of dumping that text in a toast.
+
+The backend probes the environment on startup and again on each failure
+(`detect_auth_env` → `AuthEnv`: SSH agent socket, keys loaded via `ssh-add -l`,
+global `credential.helper`, host OS). The dialog opens with a `dialog__warning`
+header summarising what was tried, then three recovery options:
+
+- **Paste a token** (primary) — closes the wizard and opens
+  Preferences ▸ Integrations, where the existing PAT entry flow stores the
+  token in the OS keyring.
+- **Configure SSH** — opens the provider-specific "generate an SSH key" docs
+  (`sshDocsUrl`), a graceful fallback until the in-app SSH generation flow
+  (#47) lands.
+- **Install the GitHub CLI** — shows the OS-specific install command
+  (`brew` / `winget`; Linux shows docs only), with a Copy button
+  (`navigator.clipboard`) and an install-docs link. After `gh auth login`, the
+  PAT flow can import the token from the `gh` session.
+
 ---
 
 ## 6. Keyboard shortcuts

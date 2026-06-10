@@ -4,6 +4,13 @@
 //! every method forwards to the corresponding submodule under `repo/`.
 //! Rust requires a single `impl Trait for Type` block, so we keep the
 //! whole table here rather than scattering it across the submodules.
+//!
+//! **400-LOC cap exception**: this is one trait impl of ~80 one-line
+//! delegations — a contract table, not coupled logic. Rust cannot split a
+//! single trait impl across files; the only alternative (decomposing
+//! `GitBackend` into per-domain supertraits) would ripple a `use` change
+//! through ~17 call sites for no behavioural gain. The volume is the
+//! method count, so the file stays whole by design.
 
 use std::path::Path;
 
@@ -68,6 +75,21 @@ impl GitBackend for GixBackend {
 
     fn worktree_remove(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError> {
         worktrees::worktree_remove(repo_path, target_workdir)
+    }
+
+    fn worktree_add(
+        &self,
+        repo_path: &Path,
+        path: &Path,
+        branch: &str,
+        base: Option<&str>,
+        create_branch: bool,
+    ) -> Result<(), BackendError> {
+        worktrees::worktree_add(repo_path, path, branch, base, create_branch)
+    }
+
+    fn worktree_prune(&self, repo_path: &Path) -> Result<usize, BackendError> {
+        worktrees::worktree_prune(repo_path)
     }
 
     fn list_submodules(&self, repo_path: &Path) -> Result<Vec<SubmoduleInfo>, BackendError> {

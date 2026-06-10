@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { GitflowFlow } from "../components/LeftSidebar/types";
 import type { BranchOpsState } from "./state";
 
 /**
@@ -16,6 +17,12 @@ export function createDialogOpeners(state: BranchOpsState) {
     setDialogNameInput,
     setDialogPathInput,
     setMergeStrategy,
+    setGitflowName,
+    setGitflowTagMessage,
+    setGitflowKeepBranch,
+    setGitflowBase,
+    setWorktreeCreateBranch,
+    setWorktreeBase,
   } = state;
 
   function openCreateDialog(from?: string) {
@@ -104,7 +111,51 @@ export function createDialogOpeners(state: BranchOpsState) {
     setDialog({ kind: "remove-remote", name });
   }
 
+  function openWorktreeAddDialog() {
+    setDialogError(null);
+    setDialogPathInput("");
+    setDialogNameInput("");
+    setWorktreeCreateBranch(true);
+    setWorktreeBase("");
+    setDialog({ kind: "worktree-add" });
+  }
+
+  function openWorktreeRemoveDialog(
+    workdir: string,
+    branch: string,
+    dirty: boolean,
+  ) {
+    setDialogError(null);
+    setDialog({ kind: "worktree-remove", workdir, branch, dirty });
+  }
+
+  function openGitflowStartDialog(flow: GitflowFlow, base = "") {
+    setDialogError(null);
+    setGitflowName("");
+    setGitflowBase(base);
+    setDialog({ kind: "gitflow-start", flow });
+  }
+
+  function openGitflowFinishDialog(
+    flow: GitflowFlow,
+    candidates: string[],
+    base = "",
+  ) {
+    setDialogError(null);
+    // Default selection: first candidate. Tag message empty (=>
+    // lightweight). Keep-branch off (gitflow deletes by default).
+    setGitflowName(candidates[0] ?? "");
+    setGitflowTagMessage("");
+    setGitflowKeepBranch(false);
+    setGitflowBase(base);
+    setDialog({ kind: "gitflow-finish", flow, candidates });
+  }
+
   return {
+    openWorktreeAddDialog,
+    openWorktreeRemoveDialog,
+    openGitflowStartDialog,
+    openGitflowFinishDialog,
     openCreateDialog,
     openRenameDialog,
     openDeleteDialog,

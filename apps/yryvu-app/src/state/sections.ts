@@ -5,9 +5,11 @@ import { createSignal } from "solid-js";
 import { STORAGE_PREFIX } from "./storage";
 
 /// LeftPanel section identity. Mirrors GK's HEADER_KEYS (audit doc 00),
-/// minus CLOUD_PATCHES, TEAM_VISIBILITY, FOCUS_VIEW (proprietary), and
-/// GITFLOW (deferred — low priority). Used as the unit for hide /
-/// expand / maximize state.
+/// minus CLOUD_PATCHES, TEAM_VISIBILITY, FOCUS_VIEW (proprietary). Used
+/// as the unit for hide / expand / maximize state. GITFLOW only renders
+/// when the repo has a `[gitflow]` config (issue #19), but it keeps a
+/// key here so its expand / hidden state persists like every other
+/// section.
 export type SectionKey =
   | "LOCAL"
   | "REMOTE"
@@ -16,7 +18,8 @@ export type SectionKey =
   | "PULL_REQUESTS"
   | "ISSUES"
   | "TAGS"
-  | "SUBMODULES";
+  | "SUBMODULES"
+  | "GITFLOW";
 
 export const ALL_SECTION_KEYS: readonly SectionKey[] = [
   "LOCAL",
@@ -27,6 +30,7 @@ export const ALL_SECTION_KEYS: readonly SectionKey[] = [
   "ISSUES",
   "TAGS",
   "SUBMODULES",
+  "GITFLOW",
 ];
 
 /// LOCAL is always visible — GK gates the visibility checkbox to

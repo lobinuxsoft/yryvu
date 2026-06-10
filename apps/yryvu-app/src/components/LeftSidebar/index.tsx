@@ -10,6 +10,7 @@ import {
 import { useBranchOps } from "../../branchOps";
 import { Tooltip } from "../Tooltip";
 import { AuxSections } from "./sections/AuxSections";
+import { GitflowSection } from "./sections/GitflowSection";
 import { RefsSections } from "./sections/RefsSections";
 import { StateBanner } from "./StateBanner";
 import { useSidebarData } from "./useSidebarData";
@@ -29,6 +30,7 @@ export function LeftSidebar() {
   ops.setBranchSource(() => data.branches() ?? []);
   ops.setTagSource(() => data.tags() ?? []);
   ops.setRemotesSource(() => data.remoteNames() ?? []);
+  ops.setGitflowConfigSource(() => data.gitflowConfig() ?? null);
 
   onMount(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -115,6 +117,7 @@ export function LeftSidebar() {
 
       <div class="sidebar__sections">
         <RefsSections data={data} ops={ops} />
+        <GitflowSection data={data} ops={ops} />
         <AuxSections data={data} ops={ops} />
 
         <Show

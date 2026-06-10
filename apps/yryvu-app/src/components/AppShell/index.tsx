@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { createEffect, createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js";
-import { getVersion } from "@tauri-apps/api/app";
-import { open } from "@tauri-apps/plugin-dialog";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { type UnlistenFn } from "@tauri-apps/api/event";
 
 import { About } from "../About";
 import { CommitGraph } from "../CommitGraph";
@@ -12,7 +10,6 @@ import { NewTabBody } from "../NewTabBody";
 import { CreateIssueDialog } from "../CreateIssueDialog";
 import { CreatePrDialog } from "../CreatePrDialog";
 import { CommandPalette } from "../CommandPalette";
-import { openCommandPalette } from "../CommandPalette/state";
 import { ConflictResolverDialog } from "../ConflictResolverDialog";
 import { RebaseInteractiveDialog } from "../RebaseInteractiveDialog";
 import { CommitFilterBar } from "../CommitFilterBar";
@@ -34,6 +31,7 @@ import { RightPanel } from "../RightPanel";
 import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
 import { ToastContainer } from "../Notifications";
+import { CredentialSetupDialog } from "../CredentialSetup/CredentialSetupDialog";
 import { hydrateIntegrationsOnAppStart } from "../PreferencesWindow/panels/Integrations/tokenStorage";
 import { Tooltip } from "../Tooltip";
 import { wireAnimationMode } from "./animationMode";
@@ -44,13 +42,11 @@ import {
   dirtyFileCount,
   inspectorMode,
   mainView,
-  pushRecentRepo,
+  primeAuthEnv,
   refreshBranches,
   repoPath,
   selectedCommit,
   setRepoPath,
-  setShowLeftPanel,
-  setShowTerminalPanel,
   showLeftPanel,
 } from "../../state";
 import {
@@ -61,7 +57,6 @@ import {
   hydrateDetailPanelLayout,
   setDetailPanelOpen,
   setDetailPanelWidth,
-  toggleDetailPanelOpen,
 } from "../../state/detail-panel-layout";
 import {
   clampWidth as clampLeftSidebarWidth,
@@ -72,11 +67,8 @@ import {
 } from "../../state/left-sidebar-layout";
 import { STORAGE_PREFIX } from "../../state/storage";
 import { ResizableEdge } from "../ResizableEdge";
-import { matchTabKeybind, runTabKeybind } from "../../tabs/keybinds";
 import {
-  handleCloseTabShortcut,
   openNewTab,
-  openReleaseNotes,
   openRepoInAnotherTab,
   openRepoManagementTab,
 } from "../../tabs/ops";
@@ -86,33 +78,9 @@ import {
   hydrateTabsFromPreferences,
   tabs,
 } from "../../tabs/state";
-import { runRedo, runUndo } from "../../undoOps";
-
-/// True when the keyboard event target is a text-editing element. The
-/// global Ctrl/Cmd+Z listener bails on those so the user's typing-level
-/// undo (browser default) survives intact.
-function isInsideEditable(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA") return true;
-  return target.isContentEditable;
-}
-
-async function openRepoPicker() {
-  const selected = await open({
-    directory: true,
-    multiple: false,
-    title: "Open a Git repository",
-  });
-  if (typeof selected === "string") {
-    pushRecentRepo(selected);
-    setRepoPath(selected);
-    // Also create or switch to a REPO tab for the picked path. The ops
-    // layer dedupes via switchToRepoTabIfItExists so picking a path
-    // that's already open just switches to its existing tab.
-    void openRepoInAnotherTab(selected);
-  }
-}
+import { handleGlobalKeyDown } from "./globalKeydown";
+import { registerMenuListeners } from "./menuListeners";
+import { openRepoPicker } from "./repoActions";
 
 export function AppShell() {
   const unlisteners: UnlistenFn[] = [];
@@ -147,6 +115,10 @@ export function AppShell() {
     // the Preferences > Integrations panel see "connected" without
     // waiting for the user to open Preferences first.
     void hydrateIntegrationsOnAppStart();
+    // Probe the credential environment once at startup so the setup
+    // wizard (#44) can render the detected state without a round-trip on
+    // the first push failure.
+    void primeAuthEnv();
     // Animation mode wiring (#316). Sets `<html data-animations>`
     // from `preferences().ui.animations`; subscribes to OS
     // `prefers-reduced-motion` live for the `system` policy.
@@ -160,86 +132,10 @@ export function AppShell() {
       }
     }
 
-    unlisteners.push(await listen("menu:open-repo", () => void openRepoPicker()));
-    unlisteners.push(await listen("menu:toggle-left-panel", () => setShowLeftPanel((v) => !v)));
-    unlisteners.push(await listen("menu:toggle-right-panel", () => toggleDetailPanelOpen()));
-    unlisteners.push(await listen("menu:toggle-terminal", () => setShowTerminalPanel((v) => !v)));
-    // Tab keybinds that GTK/WebKit2GTK reserves at the WebView level
-    // (Cmd/Ctrl+T, Cmd/Ctrl+W) come through the native Tauri menu —
-    // accelerators on menu items capture before GTK gets to it. The
-    // remaining tab keybinds (Tab/Shift+Tab/1-9/Shift+T) live in the
-    // window keydown listener since GTK doesn't reserve those.
-    unlisteners.push(await listen("menu:new-tab", () => void openNewTab()));
-    unlisteners.push(await listen("menu:close-tab", () => void handleCloseTabShortcut()));
-    // Help → Release Notes — captures the current app version at click
-    // time, matching GK at bundle:2614 (the version is captured at tab
-    // create time so an in-place GK auto-update doesn't drift the open
-    // tab). Tauri's `getVersion()` reads from tauri.conf.json.
-    unlisteners.push(
-      await listen("menu:release-notes", async () => {
-        const version = await getVersion();
-        void openReleaseNotes(version);
-      }),
-    );
-    unlisteners.push(
-      await listen("menu:repo-management", () => void openRepoManagementTab()),
-    );
+    unlisteners.push(...(await registerMenuListeners()));
 
-    // Global Undo / Redo keyboard shortcuts (issue #187, sub-PR 3 of
-    // #130). Skip when focus is inside an editable element so the user
-    // can still Ctrl+Z inside the commit message editor and dialog
-    // inputs without triggering a repo-level undo. Tauri abstracts the
-    // platform — `metaKey || ctrlKey` covers Cmd on macOS and Ctrl on
-    // Linux / Windows. `Ctrl+Y` is also accepted as a Windows-style
-    // Redo alias.
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isInsideEditable(e.target)) return;
-      const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
-      const key = e.key.toLowerCase();
-
-      // Command palette (issue #14): Ctrl/Cmd+P. Cmd+K used to also
-      // open the palette, but GK binds it to the inspector toggle
-      // (audit doc 01-panel-chrome.md → `RightPanel.toggleDetailPanel`)
-      // and that's the user-visible expectation when porting from GK.
-      if (key === "p") {
-        e.preventDefault();
-        openCommandPalette();
-        return;
-      }
-      if (key === "k") {
-        e.preventDefault();
-        toggleDetailPanelOpen();
-        return;
-      }
-
-      // Undo / Redo (issue #187, #130 cluster).
-      if (key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        void runUndo();
-        return;
-      }
-      if ((key === "z" && e.shiftKey) || key === "y") {
-        e.preventDefault();
-        void runRedo();
-        return;
-      }
-
-      // Tab keybinds (issue #207, #135 cluster). Matcher is pure — see
-      // tabs/keybinds.ts for the full table + cross-app default rationale.
-      const tabIntent = matchTabKeybind({
-        key: e.key,
-        metaKey: e.metaKey,
-        ctrlKey: e.ctrlKey,
-        shiftKey: e.shiftKey,
-      });
-      if (tabIntent) {
-        e.preventDefault();
-        void runTabKeybind(tabIntent);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    onCleanup(() => window.removeEventListener("keydown", onKeyDown));
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    onCleanup(() => window.removeEventListener("keydown", handleGlobalKeyDown));
   });
 
   onCleanup(() => unlisteners.forEach((fn) => fn()));
@@ -439,6 +335,7 @@ export function AppShell() {
       <PreferencesWindow />
       <DropActionMenu />
       <StashCreateDialog />
+      <CredentialSetupDialog />
       <About />
       <ToastContainer />
     </div>

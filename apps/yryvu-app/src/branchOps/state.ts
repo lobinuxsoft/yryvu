@@ -28,6 +28,25 @@ export function createBranchOpsState() {
     createSignal<MergeStrategy>("fast-forward-or-merge");
   const [refreshingRemote, setRefreshingRemote] = createSignal(false);
 
+  /// Gitflow / GitHub Flow dialog fields (issue #19). Kept as dedicated
+  /// signals rather than overloading dialogNameInput/Path so the
+  /// start + finish dialogs stay readable. `gitflowName` is the topic
+  /// name / version (Start) or the selected branch (Finish);
+  /// `gitflowTagMessage` feeds the release/hotfix auto-tag;
+  /// `gitflowKeepBranch` toggles delete-after-finish; `gitflowBase` is
+  /// the GitHub Flow base branch.
+  const [gitflowName, setGitflowName] = createSignal("");
+  const [gitflowTagMessage, setGitflowTagMessage] = createSignal("");
+  const [gitflowKeepBranch, setGitflowKeepBranch] = createSignal(false);
+  const [gitflowBase, setGitflowBase] = createSignal("");
+
+  /// Worktree-add dialog fields (issue #20). Path + branch reuse the
+  /// generic dialogPathInput / dialogNameInput; these two cover the
+  /// "create new branch vs use existing" toggle and the base ref the new
+  /// branch starts from.
+  const [worktreeCreateBranch, setWorktreeCreateBranch] = createSignal(true);
+  const [worktreeBase, setWorktreeBase] = createSignal("");
+
   function closeDialog() {
     setDialog(null);
     setDialogError(null);
@@ -49,6 +68,18 @@ export function createBranchOpsState() {
     setMergeStrategy,
     refreshingRemote,
     setRefreshingRemote,
+    gitflowName,
+    setGitflowName,
+    gitflowTagMessage,
+    setGitflowTagMessage,
+    gitflowKeepBranch,
+    setGitflowKeepBranch,
+    gitflowBase,
+    setGitflowBase,
+    worktreeCreateBranch,
+    setWorktreeCreateBranch,
+    worktreeBase,
+    setWorktreeBase,
     closeDialog,
   };
 }

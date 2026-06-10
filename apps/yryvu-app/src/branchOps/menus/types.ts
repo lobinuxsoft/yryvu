@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { BranchInfo, ResetMode, TagInfo } from "../../ipc";
-import type { MenuState } from "../../components/LeftSidebar/types";
+import type { BranchInfo, GitflowConfig, ResetMode, TagInfo } from "../../ipc";
+import type {
+  GitflowFlow,
+  MenuState,
+} from "../../components/LeftSidebar/types";
 
 /**
  * Wide-but-explicit dependency surface every menu builder picks from.
@@ -42,6 +45,26 @@ export interface MenuDeps {
   /// List of configured remote names. Tag menu uses it to render
   /// per-remote Push / Delete entries; section menu may use it later.
   remotesSource: () => string[] | undefined;
+  /// Current repo's gitflow config (null when not initialised). The
+  /// gitflow + GitHub Flow menus read prefixes / production branch.
+  gitflowConfigSource: () => GitflowConfig | null;
+
+  // worktree-menu specific openers / handlers (#20)
+  openWorktreeAddDialog: () => void;
+  openWorktreeRemoveDialog: (
+    workdir: string,
+    branch: string,
+    dirty: boolean,
+  ) => void;
+  doWorktreePrune: () => Promise<void>;
+
+  // gitflow-menu specific openers (#19)
+  openGitflowStartDialog: (flow: GitflowFlow, base?: string) => void;
+  openGitflowFinishDialog: (
+    flow: GitflowFlow,
+    candidates: string[],
+    base?: string,
+  ) => void;
 
   // tag-menu specific openers / handlers
   openDeleteTagDialog: (

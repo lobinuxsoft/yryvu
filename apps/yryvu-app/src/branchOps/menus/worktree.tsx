@@ -1,18 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {
-  worktreeLock,
-  worktreeRemove,
-  worktreeUnlock,
-  type WorktreeInfo,
-} from "../../ipc";
+import { worktreeLock, worktreeUnlock, type WorktreeInfo } from "../../ipc";
 import type { ContextMenuItem } from "../../components/ContextMenu";
-import {
-  refreshBranches,
-  refreshWorkingTree,
-  repoPath,
-  setRepoPath,
-} from "../../state";
+import { refreshBranches, repoPath, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { notify } from "../../components/Notifications";
 import type { MenuDeps } from "./types";
@@ -99,24 +89,12 @@ export function openWorktreeContextMenu(
     });
     items.push({ type: "separator" });
     items.push({
-      label: "Remove",
+      label: "Remove…",
       danger: true,
-      onSelect: async () => {
-        try {
-          await worktreeRemove(path, info.workdir);
-          refreshBranches();
-          refreshWorkingTree();
-          notify.info("Worktree removed", {
-            message: info.workdir,
-            category: "repoObject",
-          });
-        } catch (err) {
-          notify.error("Remove failed", {
-            message: String(err),
-            category: "repoObject",
-          });
-        }
-      },
+      // Always confirm (acceptance #20). The dialog warns harder when
+      // the worktree has uncommitted work.
+      onSelect: () =>
+        deps.openWorktreeRemoveDialog(info.workdir, info.branch, info.dirty),
     });
   }
 

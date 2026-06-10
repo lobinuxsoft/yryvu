@@ -10,7 +10,9 @@ import {
   listSubmodules,
   listTags,
   listWorktrees,
+  readGitflowConfig,
   type BranchInfo,
+  type GitflowConfig,
   type RepoStateInfo,
   type StashInfo,
   type SubmoduleInfo,
@@ -123,8 +125,48 @@ export function useSidebarData(filterQuery: Accessor<string>) {
     { initialValue: [] },
   );
 
+  // Gitflow config drives the GITFLOW section's visibility (it only
+  // renders once `git flow init` populated `[gitflow]`). Keyed on
+  // branchesNonce so init / re-init from Preferences shows up without a
+  // dedicated nonce.
+  const [gitflowConfig] = createResource<GitflowConfig | null, [string, number]>(
+    () => [repoPath() ?? "", branchesNonce()] as [string, number],
+    async ([path]) => {
+      if (!path) return null;
+      try {
+        return await readGitflowConfig(path);
+      } catch {
+        return null;
+      }
+    },
+    { initialValue: null },
+  );
+
   const locals = () => (branches() ?? []).filter((b) => b.kind === "local");
   const remotes = () => (branches() ?? []).filter((b) => b.kind === "remote");
+
+  /// Local branches that belong to the gitflow model: the long-lived
+  /// production / integration branches plus anything under a configured
+  /// topic prefix. Order: production, develop, then topic branches as
+  /// listed. Empty when gitflow isn't initialised.
+  const gitflowLocals = () => {
+    const cfg = gitflowConfig();
+    if (!cfg) return [] as BranchInfo[];
+    const prefixes = [
+      cfg.featurePrefix,
+      cfg.releasePrefix,
+      cfg.hotfixPrefix,
+      cfg.bugfixPrefix,
+      cfg.supportPrefix,
+    ].filter((p) => p.length > 0);
+    const longLived = [cfg.masterBranch, cfg.developBranch];
+    const ls = locals();
+    const pinned = ls.filter((b) => longLived.includes(b.name));
+    const topics = ls.filter((b) => prefixes.some((p) => b.name.startsWith(p)));
+    return [...pinned, ...topics];
+  };
+  const filteredGitflowLocals = () =>
+    gitflowLocals().filter((b) => matches(b.name, filterQuery()));
   const tagList = () => tags() ?? [];
   const worktreeList = () => worktrees() ?? [];
   const stashList = () => stashes() ?? [];
@@ -170,6 +212,9 @@ export function useSidebarData(filterQuery: Accessor<string>) {
     repoState,
     tags,
     remoteNames,
+    gitflowConfig,
+    gitflowLocals,
+    filteredGitflowLocals,
     locals,
     remotes,
     tagList,

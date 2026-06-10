@@ -2,10 +2,15 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Sidecar JSON schema version. Bump only when there's a load-time
-/// migration; adding optional fields with `#[serde(default)]` does not
-/// require a bump (matches chajá's existing schema-versioning pattern).
-pub const SIDECAR_VERSION: u32 = 1;
+/// Sidecar JSON schema version.
+///
+/// - v1: flat `integrations: { type → entry }` (global tokens).
+/// - v2: adds `profiles: { profile_id → { type → entry } }` for
+///   profile-scoped tokens. The v1 `integrations` map is kept as a
+///   read-only legacy fallback so pre-v2 tokens keep working — see
+///   [`super::get_integration`]. A v1 file (version 1) loads cleanly
+///   into the v2 struct (empty `profiles`); the next write stamps v2.
+pub const SIDECAR_VERSION: u32 = 2;
 
 /// Combined credentials returned from `get_integration_token`. The
 /// frontend gets both the secret token (from keyring) and the

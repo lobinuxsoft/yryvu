@@ -38,7 +38,7 @@ pub fn create_commit(repo_path: &Path, opts: &CommitOptions) -> Result<String, B
         .ok_or_else(|| BackendError::Git(anyhow::anyhow!("commit message cannot be empty")))?;
 
     let repo = open_git2(repo_path)?;
-    let signature = repo.signature().map_err(git2_err)?;
+    let signature = opts.signature(&repo).map_err(git2_err)?;
 
     let mut index = repo.index().map_err(git2_err)?;
     let tree_oid = index.write_tree().map_err(git2_err)?;

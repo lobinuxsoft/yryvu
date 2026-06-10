@@ -4,6 +4,7 @@
 //! callers can keep `import { ... } from "../ipc"` without caring how the
 //! internals are organised.
 
+export * from "./auth";
 export * from "./branches";
 export * from "./cliImport";
 export * from "./clone";
@@ -18,6 +19,7 @@ export * from "./init";
 export * from "./issue_tracker";
 export * from "./merge";
 export * from "./preferences";
+export * from "./profiles";
 export * from "./rebase";
 export * from "./release_notes";
 export * from "./search";

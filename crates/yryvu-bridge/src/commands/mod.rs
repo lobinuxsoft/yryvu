@@ -5,6 +5,7 @@
 //! `invoke_handler` registration in `src-tauri/src/lib.rs` and any other
 //! caller continues to reach them as `yryvu_bridge::commands::foo`.
 
+mod auth;
 mod branches;
 mod cli_import;
 mod clone;
@@ -21,6 +22,7 @@ mod issue_tracker;
 mod merge;
 mod pr_detail;
 mod preferences;
+mod profiles;
 mod rebase;
 mod release_notes;
 mod remote;
@@ -40,6 +42,7 @@ mod validate;
 mod worktree;
 mod worktrees;
 
+pub use auth::*;
 pub use branches::*;
 pub use cli_import::*;
 pub use clone::*;
@@ -55,6 +58,7 @@ pub use issue_tracker::*;
 pub use merge::*;
 pub use pr_detail::*;
 pub use preferences::*;
+pub use profiles::*;
 pub use rebase::*;
 pub use release_notes::*;
 pub use remote::*;

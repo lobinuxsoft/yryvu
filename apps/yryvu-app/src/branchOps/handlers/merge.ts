@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { abortMerge, deleteRemoteBranch, mergeBranch } from "../../ipc";
-import { refreshWorkingTree, repoPath } from "../../state";
+import {
+  handleRemoteAuthError,
+  refreshWorkingTree,
+  repoPath,
+} from "../../state";
 import { notify } from "../../components/Notifications";
 import type { BranchOpsState } from "../state";
 
@@ -81,6 +85,10 @@ export function createMergeHandlers(deps: MergeHandlersDeps) {
         category: "branch",
       });
     } catch (err) {
+      if (await handleRemoteAuthError(err, path)) {
+        closeDialog();
+        return;
+      }
       setDialogError(String(err));
       notify.error("Delete remote branch failed", {
         message: String(err),

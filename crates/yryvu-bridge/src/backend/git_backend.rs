@@ -22,6 +22,12 @@ use crate::repo::staging::{
 ///
 /// `gix` is the primary backend; `git2-rs` / shell-out variants exist to cover operations
 /// not yet production-ready in gitoxide (e.g. interactive rebase — issue #11).
+///
+/// **400-LOC cap exception**: a single trait definition of ~80 method
+/// signatures. Rust cannot split one trait across files; decomposing into
+/// per-domain supertraits would ripple a `use` change through ~17 call
+/// sites for no behavioural gain. Kept whole by design — see the matching
+/// note in `repo/backend_impl.rs`.
 pub trait GitBackend: Send + Sync {
     fn walk_commits(
         &self,
@@ -209,6 +215,17 @@ pub trait GitBackend: Send + Sync {
     fn worktree_unlock(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError>;
 
     fn worktree_remove(&self, repo_path: &Path, target_workdir: &Path) -> Result<(), BackendError>;
+
+    fn worktree_add(
+        &self,
+        repo_path: &Path,
+        path: &Path,
+        branch: &str,
+        base: Option<&str>,
+        create_branch: bool,
+    ) -> Result<(), BackendError>;
+
+    fn worktree_prune(&self, repo_path: &Path) -> Result<usize, BackendError>;
 
     fn submodule_init(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
 

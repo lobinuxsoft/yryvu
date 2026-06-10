@@ -17,8 +17,8 @@ use super::super::github::PullRequestDetail;
 use super::super::http::{self, GITEA_QUIRKS};
 use super::super::types::CreatePrInput;
 use super::api_base;
-use super::detail::{project_pr, GiteaPullDetail};
 use super::issues::parse_ids;
+use super::pr_wire::{project_pr, GiteaPullDetail};
 
 pub async fn create_pr(
     token: &str,

@@ -47,6 +47,7 @@ import { IssueTrackerPanel } from "./panels/IssueTracker";
 import { GitHooksPanel } from "./panels/GitHooks";
 import { GpgPanel } from "./panels/Gpg";
 import { GitflowPanel } from "./panels/Gitflow";
+import { ProfilesPanel } from "./panels/Profiles";
 import { SparseCheckoutPanel } from "./panels/SparseCheckout";
 
 export interface SectionDef {
@@ -148,7 +149,8 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "profiles",
     label: "Profiles",
     icon: IconUsers,
-    panel: () => Placeholder({ section: "Profiles" }),
+    panel: ProfilesPanel,
+    issue: 22,
   },
   {
     id: "sparse_checkout",

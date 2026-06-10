@@ -143,7 +143,8 @@ async function fetchPullRequests(source: PrSourceKey): Promise<PullRequestsResul
   setActivePrContext({ integrationType, owner: info.owner, repo: info.repo });
   let configured: string[];
   try {
-    configured = await listConfiguredIntegrations();
+    // null = consumption scope: any profile (or legacy) that has a token.
+    configured = await listConfiguredIntegrations(null);
   } catch (err) {
     return { kind: "error", detail: String(err) };
   }

@@ -81,7 +81,9 @@ export function AuxSections(props: Props) {
               ? props.data.filteredWorktrees().length
               : props.data.worktreeList().length
           }
-          onContextMenu={props.ops.openSectionContextMenu}
+          addable
+          onAdd={() => props.ops.openWorktreeAddDialog()}
+          onContextMenu={(e) => props.ops.openWorktreeHeaderContextMenu(e)}
         >
           <Show
             when={repoPath()}

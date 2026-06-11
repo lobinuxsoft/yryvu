@@ -3,9 +3,15 @@
 import { For, Show } from "solid-js";
 
 import type { BranchOps } from "../../../branchOps";
-import { hiddenSections, repoPath } from "../../../state";
+import {
+  collapsedRemoteFolders,
+  hiddenSections,
+  repoPath,
+  toggleRemoteFolderCollapsed,
+} from "../../../state";
 import { IconBranch, IconCloud, IconTag } from "../../Icons";
 import { LocalBranchRow, RemoteBranchRow } from "../branchRows";
+import { RemoteFolderRow } from "../remoteFolderRow";
 import { SidebarSection } from "../SidebarSection";
 import { TagRow } from "../tagRows";
 import type { SidebarData } from "../useSidebarData";
@@ -86,23 +92,49 @@ export function RefsSections(props: Props) {
           onContextMenu={(e) => props.ops.openRemoteHeaderContextMenu(e)}
         >
           <Show
-            when={props.data.filteredRemotes().length > 0}
+            when={props.data.groupedRemotes().length > 0}
             fallback={
               <p class="sidebar__empty">
-                {props.data.isFiltering()
-                  ? "No matches"
-                  : props.data.remotes().length === 0
-                    ? "No remote branches"
-                    : ""}
+                {props.data.isFiltering() ? "No matches" : "No remotes"}
               </p>
             }
           >
-            <For each={props.data.filteredRemotes()}>
-              {(b) => (
-                <RemoteBranchRow
-                  branch={b}
-                  onContextMenu={props.ops.openRemoteContextMenu}
-                />
+            <For each={props.data.groupedRemotes()}>
+              {(group) => (
+                <>
+                  <RemoteFolderRow
+                    remote={group.remote}
+                    count={group.branches.length}
+                    collapsed={collapsedRemoteFolders(repoPath() ?? "").has(
+                      group.remote,
+                    )}
+                    onToggle={(r) =>
+                      toggleRemoteFolderCollapsed(repoPath() ?? "", r)
+                    }
+                    onContextMenu={(e, r) =>
+                      props.ops.openRemoteFolderContextMenu(e, r)
+                    }
+                  />
+                  <Show
+                    when={
+                      props.data.isFiltering() ||
+                      !collapsedRemoteFolders(repoPath() ?? "").has(
+                        group.remote,
+                      )
+                    }
+                  >
+                    <For each={group.branches}>
+                      {(b) => (
+                        <RemoteBranchRow
+                          branch={b}
+                          displayName={b.name.slice(group.remote.length + 1)}
+                          nested
+                          onContextMenu={props.ops.openRemoteContextMenu}
+                        />
+                      )}
+                    </For>
+                  </Show>
+                </>
               )}
             </For>
           </Show>

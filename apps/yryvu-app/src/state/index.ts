@@ -104,6 +104,10 @@ export {
   type SectionKey,
 } from "./sections";
 export {
+  collapsedRemoteFolders,
+  toggleRemoteFolderCollapsed,
+} from "./remoteFolders";
+export {
   graphColumns,
   graphContainerWidth,
   commitZoneMode,

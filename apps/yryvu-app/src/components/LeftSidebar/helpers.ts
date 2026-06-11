@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { MergeResult } from "../../ipc";
+import type { BranchInfo, MergeResult } from "../../ipc";
 
 export function parseRemoteBranchName(
   shortName: string,
@@ -8,6 +8,51 @@ export function parseRemoteBranchName(
   const idx = shortName.indexOf("/");
   if (idx === -1) return null;
   return { remote: shortName.slice(0, idx), name: shortName.slice(idx + 1) };
+}
+
+export interface RemoteGroup {
+  remote: string;
+  branches: BranchInfo[];
+}
+
+/**
+ * Group remote-tracking branches under their configured remote for the
+ * two-level REMOTE section (#239). Folder semantics mirror GK (audit
+ * doc 03):
+ *
+ *   - No filter: every configured remote gets a folder row, including
+ *     remotes with zero tracking refs (a freshly-added remote must be
+ *     visible before its first fetch).
+ *   - Filtering: a query matching the remote's name keeps the folder
+ *     with ALL its branches; otherwise only matching branches are
+ *     kept, and folders left empty disappear (GK hides empty remotes
+ *     mid-filter).
+ *
+ * Branches whose `remote/` prefix doesn't match any configured remote
+ * are dropped — `git remote remove` prunes `refs/remotes/<r>/*`, so
+ * orphans only exist transiently.
+ */
+export function groupRemoteBranches(
+  remoteNames: string[],
+  branches: BranchInfo[],
+  query: string,
+): RemoteGroup[] {
+  const q = query.toLowerCase();
+  const groups = remoteNames.map((remote) => {
+    const prefix = `${remote}/`;
+    const members = branches.filter((b) => b.name.startsWith(prefix));
+    if (q === "" || remote.toLowerCase().includes(q)) {
+      return { remote, branches: members };
+    }
+    return {
+      remote,
+      branches: members.filter((b) => b.name.toLowerCase().includes(q)),
+    };
+  });
+  if (q === "") return groups;
+  return groups.filter(
+    (g) => g.branches.length > 0 || g.remote.toLowerCase().includes(q),
+  );
 }
 
 export function mergeResultTitle(result?: MergeResult): string {

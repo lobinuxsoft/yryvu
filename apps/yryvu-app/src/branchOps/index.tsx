@@ -19,6 +19,7 @@ import { createHandlers } from "./handlers";
 import { openBranchContextMenu } from "./menus/branch";
 import { openGitflowMenu } from "./menus/gitflow";
 import { openRemoteContextMenu } from "./menus/remote";
+import { openRemoteFolderContextMenu } from "./menus/remote-folder";
 import { openRemoteHeaderContextMenu } from "./menus/remote-header";
 import { openRefContextMenu } from "./menus/ref";
 import { openSectionContextMenu } from "./menus/section";
@@ -164,6 +165,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
       openRemoteContextMenu(menuDeps, e, b),
     openRemoteHeaderContextMenu: (e: MouseEvent) =>
       openRemoteHeaderContextMenu(menuDeps, e),
+    openRemoteFolderContextMenu: (e: MouseEvent, remote: string) =>
+      openRemoteFolderContextMenu(menuDeps, e, remote),
     openRefContextMenu: (e: MouseEvent, tag: RefTag, sha: string) =>
       openRefContextMenu(menuDeps, e, tag, sha),
     openSectionContextMenu: (e: MouseEvent, key: SectionKey) =>

@@ -5,6 +5,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 
 import {
   addSshKeyToAgent,
+  ensureSshConfigEntry,
   generateSshKey,
   testSshConnection,
   type GeneratedSshKey,
@@ -46,6 +47,7 @@ export function SshKeyGenDialog(): JSX.Element {
   );
   const [passphrase, setPassphrase] = createSignal("");
   const [host, setHost] = createSignal<string | null>(null);
+  const [writeConfig, setWriteConfig] = createSignal(true);
   const [phase, setPhase] = createSignal<Phase>({ kind: "form" });
   const [testResult, setTestResult] = createSignal<SshTestResult | null>(null);
   const [testing, setTesting] = createSignal(false);
@@ -60,6 +62,7 @@ export function SshKeyGenDialog(): JSX.Element {
     setAlgorithm("ed25519");
     setPassphrase("");
     setHost(null);
+    setWriteConfig(true);
     setPhase({ kind: "form" });
     setTestResult(null);
     setTesting(false);
@@ -75,14 +78,37 @@ export function SshKeyGenDialog(): JSX.Element {
     }
     setPhase({ kind: "generating" });
     try {
+      const hadPassphrase = passphrase() !== "";
       const key = await generateSshKey({
         algorithm: algorithm(),
         comment: `yryvu@${h}`,
         passphrase: passphrase(),
         fileName: `yryvu_${h.replace(/[^A-Za-z0-9]+/g, "_")}`,
       });
-      setPhase({ kind: "success", key, hadPassphrase: passphrase() !== "" });
+      setPhase({ kind: "success", key, hadPassphrase });
       setPassphrase("");
+      // A custom-named key is invisible to ssh unless the agent holds
+      // it or ~/.ssh/config points at it — do both proactively so
+      // "Test connection" and real pushes work without extra clicks.
+      if (writeConfig()) {
+        try {
+          await ensureSshConfigEntry(h, key.privateKeyPath);
+        } catch (e) {
+          notify.error("Could not update ~/.ssh/config", {
+            message: String(e),
+          });
+        }
+      }
+      if (!hadPassphrase) {
+        try {
+          await addSshKeyToAgent(key.privateKeyPath);
+          setAgentLoaded(true);
+          void primeAuthEnv();
+        } catch {
+          // Agent may not be running — the config entry still covers
+          // terminal git; the manual button stays available.
+        }
+      }
       // Acceptance: private key path recorded in settings, reused
       // across sessions. Best effort — the key itself already exists.
       try {
@@ -139,10 +165,19 @@ export function SshKeyGenDialog(): JSX.Element {
   }
 
   async function runTest() {
+    const p = phase();
     setTesting(true);
     setTestResult(null);
     try {
-      setTestResult(await testSshConnection(effectiveHost().trim()));
+      setTestResult(
+        await testSshConnection(
+          effectiveHost().trim(),
+          // Pin the test to the key we just generated — environment
+          // state (agent contents, default identities) must not turn
+          // a correctly-installed key into a false negative.
+          p.kind === "success" ? p.key.privateKeyPath : undefined,
+        ),
+      );
     } catch (e) {
       setTestResult({ authenticated: false, message: String(e) });
     } finally {
@@ -235,6 +270,18 @@ export function SshKeyGenDialog(): JSX.Element {
               onInput={(e) => setPassphrase(e.currentTarget.value)}
               disabled={phase().kind === "generating"}
             />
+          </label>
+          <label class="dialog__field dialog__field--inline">
+            <input
+              type="checkbox"
+              checked={writeConfig()}
+              onChange={(e) => setWriteConfig(e.currentTarget.checked)}
+              disabled={phase().kind === "generating"}
+            />
+            <span>
+              Add to <code>~/.ssh/config</code> (recommended — ssh and
+              terminal git find the key automatically)
+            </span>
           </label>
           <Show when={algorithm() === "rsa4096"}>
             <p class="dialog__hint">RSA 4096 takes a few seconds to generate.</p>

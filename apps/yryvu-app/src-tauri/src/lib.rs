@@ -114,6 +114,7 @@ pub fn run() {
             yryvu_bridge::commands::test_ssh_connection,
             yryvu_bridge::commands::add_ssh_key_to_agent,
             yryvu_bridge::commands::read_ssh_public_key,
+            yryvu_bridge::commands::ensure_ssh_config_entry,
             yryvu_bridge::commands::merge_branch,
             yryvu_bridge::commands::delete_remote_branch,
             yryvu_bridge::commands::abort_merge,

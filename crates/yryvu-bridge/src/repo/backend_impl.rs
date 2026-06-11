@@ -109,12 +109,26 @@ impl GitBackend for GixBackend {
         repo_path: &Path,
         url: &str,
         target_path: &Path,
+        branch: Option<&str>,
+        name: Option<&str>,
     ) -> Result<(), BackendError> {
-        submodules::submodule_add(repo_path, url, target_path)
+        submodules::submodule_add(repo_path, url, target_path, branch, name)
     }
 
     fn submodule_remove(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
         submodules::submodule_remove(repo_path, name)
+    }
+
+    fn submodule_sync(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        submodules::submodule_sync(repo_path, name)
+    }
+
+    fn submodule_reset(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        submodules::submodule_reset(repo_path, name)
+    }
+
+    fn submodule_deinit(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        submodules::submodule_deinit(repo_path, name)
     }
 
     fn rebase_current_onto(

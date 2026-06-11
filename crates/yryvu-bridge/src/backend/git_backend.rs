@@ -236,9 +236,25 @@ pub trait GitBackend: Send + Sync {
         repo_path: &Path,
         url: &str,
         target_path: &Path,
+        branch: Option<&str>,
+        name: Option<&str>,
     ) -> Result<(), BackendError>;
 
     fn submodule_remove(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Copy the `.gitmodules` URL into `.git/config` for `name` —
+    /// `git submodule sync <name>`.
+    fn submodule_sync(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Force-checkout the parent-pinned commit in the submodule's
+    /// working tree, discarding local changes — `git submodule update
+    /// --force <name>`.
+    fn submodule_reset(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Unregister an initialized submodule and clear its working tree
+    /// while keeping the `.gitmodules` entry — `git submodule deinit
+    /// -f <name>`.
+    fn submodule_deinit(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
 
     /// Rebase the current branch onto `target_branch`. Aborts on
     /// conflict (chajá doesn't yet expose per-step rebase resolution).

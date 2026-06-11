@@ -23,6 +23,8 @@ export function createDialogOpeners(state: BranchOpsState) {
     setGitflowBase,
     setWorktreeCreateBranch,
     setWorktreeBase,
+    setSubmoduleBranch,
+    setSubmoduleName,
   } = state;
 
   function openCreateDialog(from?: string) {
@@ -57,12 +59,24 @@ export function createDialogOpeners(state: BranchOpsState) {
     setDialogError(null);
     setDialogNameInput("");
     setDialogPathInput("");
+    setSubmoduleBranch("");
+    setSubmoduleName("");
     setDialog({ kind: "submodule-add" });
   }
 
   function openSubmoduleRemoveDialog(name: string, path: string) {
     setDialogError(null);
     setDialog({ kind: "submodule-remove", name, path });
+  }
+
+  function openSubmoduleResetDialog(name: string, dirty: boolean) {
+    setDialogError(null);
+    setDialog({ kind: "submodule-reset", name, dirty });
+  }
+
+  function openSubmoduleDeinitDialog(name: string, path: string, dirty: boolean) {
+    setDialogError(null);
+    setDialog({ kind: "submodule-deinit", name, path, dirty });
   }
 
   function openSetUpstreamDialog(
@@ -163,6 +177,8 @@ export function createDialogOpeners(state: BranchOpsState) {
     openDeleteRemoteDialog,
     openSubmoduleAddDialog,
     openSubmoduleRemoveDialog,
+    openSubmoduleResetDialog,
+    openSubmoduleDeinitDialog,
     openSetUpstreamDialog,
     openDeleteTagDialog,
     openAnnotateTagDialog,

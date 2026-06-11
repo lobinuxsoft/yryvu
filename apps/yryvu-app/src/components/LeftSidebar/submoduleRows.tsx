@@ -53,6 +53,13 @@ export function SubmoduleRow(props: SubmoduleRowProps) {
             </span>
           </Tooltip>
         </Show>
+        <Show when={sub().is_dirty}>
+          <Tooltip text="Submodule has uncommitted changes">
+            <span class="sidebar__row-badge sidebar__row-badge--warn">
+              dirty
+            </span>
+          </Tooltip>
+        </Show>
         <Show when={sub().ahead > 0}>
           <Tooltip text={`${sub().ahead} commits ahead of parent-pinned`}>
             <span class="sidebar__row-counter">↑{sub().ahead}</span>

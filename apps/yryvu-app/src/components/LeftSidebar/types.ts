@@ -26,6 +26,8 @@ export type DialogState =
   | { kind: "delete-remote"; remote: string; name: string }
   | { kind: "submodule-add" }
   | { kind: "submodule-remove"; name: string; path: string }
+  | { kind: "submodule-reset"; name: string; dirty: boolean }
+  | { kind: "submodule-deinit"; name: string; path: string; dirty: boolean }
   | { kind: "set-upstream"; branchName: string; currentUpstream: string | null }
   | {
       /// Tag deletion — `scope` discriminates between local-only,

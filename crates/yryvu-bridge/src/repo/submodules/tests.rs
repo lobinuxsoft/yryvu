@@ -39,7 +39,10 @@ fn commit_file(repo_path: &Path, file: &str, content: &str, message: &str) -> gi
     index.write().unwrap();
     let tree_id = index.write_tree().unwrap();
     let tree = repo.find_tree(tree_id).unwrap();
-    let sig = repo.signature().unwrap();
+    // Explicit signature: this helper also commits inside cloned inner
+    // repos that lack user.name/email config (hermetic on CI runners
+    // with no global gitconfig).
+    let sig = git2::Signature::now("Committer", "committer@example.com").unwrap();
     let parents: Vec<git2::Commit<'_>> = repo
         .head()
         .ok()

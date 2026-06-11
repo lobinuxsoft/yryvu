@@ -40,3 +40,14 @@ pub async fn add_ssh_key_to_agent(private_key_path: String) -> Result<(), String
     .await
     .map_err(|e| e.to_string())?
 }
+
+/// Read the `.pub` sibling of a generated private key for the
+/// preferences panel's copy action.
+#[tauri::command]
+pub async fn read_ssh_public_key(private_key_path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        ssh_keygen::read_public_key(&PathBuf::from(&private_key_path)).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

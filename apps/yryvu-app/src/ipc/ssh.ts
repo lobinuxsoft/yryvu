@@ -48,3 +48,9 @@ export function testSshConnection(host: string): Promise<SshTestResult> {
 export function addSshKeyToAgent(privateKeyPath: string): Promise<void> {
   return invoke<void>("add_ssh_key_to_agent", { privateKeyPath });
 }
+
+/// Read the `.pub` sibling of a generated private key (the private key
+/// never crosses IPC).
+export function readSshPublicKey(privateKeyPath: string): Promise<string> {
+  return invoke<string>("read_ssh_public_key", { privateKeyPath });
+}

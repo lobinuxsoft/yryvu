@@ -70,23 +70,36 @@ pub fn generate_ssh_keypair(req: &GenerateSshKeyRequest) -> Result<GeneratedSshK
 /// own failure (auth, network) — any other exit code means the remote
 /// command ran, i.e. authentication succeeded (GitHub returns 1 by
 /// design, GitLab/Gitea/Bitbucket return 0).
-pub fn test_ssh_connection(host: &str) -> Result<SshTestResult, BackendError> {
+///
+/// `private_key_path` pins the test to one identity (`-i` +
+/// `IdentitiesOnly`). Without it, a freshly-generated key with a
+/// custom file name is invisible to ssh (not a default identity, not
+/// in the agent yet) and the test reports a false negative even
+/// though the key is correctly installed on the provider.
+pub fn test_ssh_connection(
+    host: &str,
+    private_key_path: Option<&Path>,
+) -> Result<SshTestResult, BackendError> {
     validate_host(host)?;
-    let out = Command::new("ssh")
-        .args([
-            "-T",
-            // No interactive prompts: a passphrase-protected key that
-            // isn't in the agent fails cleanly instead of hanging.
-            "-o",
-            "BatchMode=yes",
-            // First contact with a host must not block on the
-            // known_hosts prompt.
-            "-o",
-            "StrictHostKeyChecking=accept-new",
-            "-o",
-            "ConnectTimeout=10",
-            &format!("git@{host}"),
-        ])
+    let mut cmd = Command::new("ssh");
+    cmd.args([
+        "-T",
+        // No interactive prompts: a passphrase-protected key that
+        // isn't in the agent fails cleanly instead of hanging.
+        "-o",
+        "BatchMode=yes",
+        // First contact with a host must not block on the
+        // known_hosts prompt.
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "ConnectTimeout=10",
+    ]);
+    if let Some(key) = private_key_path {
+        cmd.arg("-i").arg(key).args(["-o", "IdentitiesOnly=yes"]);
+    }
+    let out = cmd
+        .arg(format!("git@{host}"))
         .output()
         .map_err(|e| BackendError::Git(anyhow!("spawn ssh: {e}")))?;
     let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
@@ -129,6 +142,88 @@ pub fn read_public_key(private_key_path: &Path) -> Result<String, BackendError> 
     fs::read_to_string(&pub_path)
         .map(|s| s.trim().to_string())
         .map_err(|e| BackendError::Git(anyhow!("read {}: {e}", pub_path.display())))
+}
+
+/// Append a `Host` block to `~/.ssh/config` pointing `host` at the
+/// generated key, so the OpenSSH stack (terminal git included) finds
+/// a custom-named key without manual `ssh-add`. `AddKeysToAgent yes`
+/// makes ssh load it into the agent on first use, prompting for the
+/// passphrase with the desktop's native askpass — yryvu never touches
+/// the secret. Returns `false` (untouched) when any existing `Host`
+/// line already mentions `host`: the user's config wins over ours.
+pub fn ensure_ssh_config_entry(host: &str, private_key_path: &Path) -> Result<bool, BackendError> {
+    let ssh_dir = default_ssh_dir()?;
+    ensure_config_entry_in(&ssh_dir, host, private_key_path)
+}
+
+fn ensure_config_entry_in(
+    ssh_dir: &Path,
+    host: &str,
+    private_key_path: &Path,
+) -> Result<bool, BackendError> {
+    validate_host(host)?;
+    let config_path = ssh_dir.join("config");
+    let existing = match fs::read_to_string(&config_path) {
+        Ok(s) => s,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => {
+            return Err(BackendError::Git(anyhow!(
+                "read {}: {e}",
+                config_path.display()
+            )))
+        }
+    };
+    if host_already_configured(&existing, host) {
+        return Ok(false);
+    }
+
+    let block = format!(
+        "{}# Added by yryvu (#47)\nHost {host}\n  IdentityFile {}\n  AddKeysToAgent yes\n",
+        if existing.is_empty() || existing.ends_with("\n\n") {
+            ""
+        } else if existing.ends_with('\n') {
+            "\n"
+        } else {
+            "\n\n"
+        },
+        private_key_path.display(),
+    );
+
+    fs::create_dir_all(ssh_dir)
+        .map_err(|e| BackendError::Git(anyhow!("create {}: {e}", ssh_dir.display())))?;
+    let mut opts = fs::OpenOptions::new();
+    opts.create(true).append(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        // Only effective when the open creates the file — existing
+        // configs keep their permissions.
+        opts.mode(0o600);
+    }
+    let mut file = opts
+        .open(&config_path)
+        .map_err(|e| BackendError::Git(anyhow!("open {}: {e}", config_path.display())))?;
+    file.write_all(block.as_bytes())
+        .and_then(|()| file.sync_all())
+        .map_err(|e| BackendError::Git(anyhow!("write {}: {e}", config_path.display())))?;
+    Ok(true)
+}
+
+/// Whether any `Host` pattern line in an ssh config already covers
+/// `host` (exact token match — wildcards are left to the user's own
+/// judgement; a `Host *` catch-all usually sets options, not
+/// identities, so it doesn't count as "configured").
+fn host_already_configured(config: &str, host: &str) -> bool {
+    config.lines().any(|line| {
+        let trimmed = line.trim();
+        let Some(rest) = trimmed
+            .strip_prefix("Host ")
+            .or_else(|| trimmed.strip_prefix("Host\t"))
+        else {
+            return false;
+        };
+        rest.split_whitespace().any(|pattern| pattern == host)
+    })
 }
 
 fn generate_into(
@@ -346,6 +441,72 @@ mod tests {
             validate_file_stem(" ok-name_1.key ").unwrap(),
             "ok-name_1.key"
         );
+    }
+
+    #[test]
+    fn ssh_config_entry_written_once_and_respects_existing() {
+        let dir = TempDir::new().unwrap();
+        let key = dir.path().join("yryvu_github_com");
+
+        // First write creates the file with the Host block.
+        assert!(ensure_config_entry_in(dir.path(), "github.com", &key).unwrap());
+        let config = fs::read_to_string(dir.path().join("config")).unwrap();
+        assert!(config.contains("Host github.com"));
+        assert!(config.contains(&format!("IdentityFile {}", key.display())));
+        assert!(config.contains("AddKeysToAgent yes"));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(dir.path().join("config"))
+                .unwrap()
+                .permissions()
+                .mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
+
+        // Second call is a no-op (host already covered).
+        assert!(!ensure_config_entry_in(dir.path(), "github.com", &key).unwrap());
+        assert_eq!(
+            fs::read_to_string(dir.path().join("config")).unwrap(),
+            config
+        );
+
+        // A different host appends without clobbering.
+        assert!(ensure_config_entry_in(dir.path(), "gitlab.com", &key).unwrap());
+        let both = fs::read_to_string(dir.path().join("config")).unwrap();
+        assert!(both.contains("Host github.com"));
+        assert!(both.contains("Host gitlab.com"));
+    }
+
+    #[test]
+    fn existing_user_host_entry_wins() {
+        let dir = TempDir::new().unwrap();
+        fs::write(
+            dir.path().join("config"),
+            "Host github.com gitlab.com\n  IdentityFile ~/.ssh/mine\n",
+        )
+        .unwrap();
+        let key = dir.path().join("yryvu_key");
+        assert!(!ensure_config_entry_in(dir.path(), "github.com", &key).unwrap());
+        assert!(!ensure_config_entry_in(dir.path(), "gitlab.com", &key).unwrap());
+        // Untouched.
+        assert!(!fs::read_to_string(dir.path().join("config"))
+            .unwrap()
+            .contains("yryvu_key"));
+    }
+
+    #[test]
+    fn host_already_configured_matches_tokens_not_substrings() {
+        assert!(host_already_configured("Host github.com\n", "github.com"));
+        assert!(!host_already_configured(
+            "Host github.company.dev\n",
+            "github.com"
+        ));
+        assert!(!host_already_configured(
+            "# Host github.com\n",
+            "github.com"
+        ));
+        assert!(!host_already_configured("", "github.com"));
     }
 
     #[test]

@@ -39,8 +39,27 @@ export function generateSshKey(
 
 /// Verify SSH auth against `git@{host}` via the real `ssh -T` binary.
 /// Provider-agnostic: exit 255 = failed, anything else = authenticated.
-export function testSshConnection(host: string): Promise<SshTestResult> {
-  return invoke<SshTestResult>("test_ssh_connection", { host });
+/// `privateKeyPath` pins the test to that identity (`-i` +
+/// `IdentitiesOnly`) — without it a custom-named key outside the agent
+/// false-negatives even when correctly installed on the provider.
+export function testSshConnection(
+  host: string,
+  privateKeyPath?: string,
+): Promise<SshTestResult> {
+  return invoke<SshTestResult>("test_ssh_connection", {
+    host,
+    privateKeyPath: privateKeyPath ?? null,
+  });
+}
+
+/// Append a Host block (IdentityFile + AddKeysToAgent yes) to
+/// ~/.ssh/config so ssh and terminal git find the generated key.
+/// Resolves false when the host is already configured by the user.
+export function ensureSshConfigEntry(
+  host: string,
+  privateKeyPath: string,
+): Promise<boolean> {
+  return invoke<boolean>("ensure_ssh_config_entry", { host, privateKeyPath });
 }
 
 /// Load a private key into the running ssh-agent (non-interactive —

@@ -51,10 +51,12 @@ export function SshPanel(): JSX.Element {
     }
   }
 
-  async function runTest(host: string) {
+  async function runTest(host: string, path: string) {
     setTests((t) => ({ ...t, [host]: "testing" }));
     try {
-      const result = await testSshConnection(host);
+      // Pin the test to this key — agent contents must not turn a
+      // correctly-installed key into a false negative.
+      const result = await testSshConnection(host, path);
       setTests((t) => ({ ...t, [host]: result }));
     } catch (e) {
       setTests((t) => ({
@@ -141,7 +143,7 @@ export function SshPanel(): JSX.Element {
                     type="button"
                     class="dialog__btn"
                     disabled={result() === "testing"}
-                    onClick={() => void runTest(host)}
+                    onClick={() => void runTest(host, path)}
                   >
                     {result() === "testing" ? "Testing…" : "Test connection"}
                   </button>

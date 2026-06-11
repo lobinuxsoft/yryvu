@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::repo::remote::ssh_keygen::{
     self, GenerateSshKeyRequest, GeneratedSshKey, SshTestResult,
@@ -19,11 +19,34 @@ pub async fn generate_ssh_key(req: GenerateSshKeyRequest) -> Result<GeneratedSsh
 }
 
 /// Run `ssh -T git@{host}` to verify the installed key authenticates.
-/// Network round-trip with a 10s connect timeout — blocking thread.
+/// `private_key_path` pins the test to one identity — without it a
+/// custom-named key outside the agent false-negatives. Network
+/// round-trip with a 10s connect timeout — blocking thread.
 #[tauri::command]
-pub async fn test_ssh_connection(host: String) -> Result<SshTestResult, String> {
+pub async fn test_ssh_connection(
+    host: String,
+    private_key_path: Option<String>,
+) -> Result<SshTestResult, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        ssh_keygen::test_ssh_connection(&host).map_err(|e| e.to_string())
+        ssh_keygen::test_ssh_connection(&host, private_key_path.as_deref().map(Path::new))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Append a Host block (IdentityFile + AddKeysToAgent) to
+/// `~/.ssh/config` so the OpenSSH stack finds the generated key.
+/// Returns false when the host is already configured (user's config
+/// wins).
+#[tauri::command]
+pub async fn ensure_ssh_config_entry(
+    host: String,
+    private_key_path: String,
+) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        ssh_keygen::ensure_ssh_config_entry(&host, &PathBuf::from(&private_key_path))
+            .map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?

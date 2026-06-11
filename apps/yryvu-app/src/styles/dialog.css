@@ -470,3 +470,15 @@
   color: var(--fg-3);
   font-style: italic;
 }
+
+/* Inline checkbox field (#47 ssh dialog) — checkbox + label on one
+   row, unlike the stacked label/input default. */
+.dialog__field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.dialog__field--inline input[type="checkbox"] {
+  flex-shrink: 0;
+}

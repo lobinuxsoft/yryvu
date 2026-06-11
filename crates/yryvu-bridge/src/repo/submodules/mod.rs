@@ -23,6 +23,12 @@ use crate::backend::{BackendError, SubmoduleInfo};
 use super::branches::ahead_behind;
 use super::common::{git2_err, open_git2, open_repo};
 
+mod auto_update;
+
+pub use auto_update::{
+    auto_update_all, auto_update_setting, resolve_auto_update, set_auto_update_setting,
+};
+
 #[cfg(test)]
 mod tests;
 

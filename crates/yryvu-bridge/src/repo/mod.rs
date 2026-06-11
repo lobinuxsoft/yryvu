@@ -39,7 +39,7 @@ pub(crate) mod smart_branches;
 pub(crate) mod sparse_checkout;
 pub(crate) mod staging;
 mod stashes;
-mod submodules;
+pub(crate) mod submodules;
 mod tags;
 pub(crate) mod undo;
 mod worktree;

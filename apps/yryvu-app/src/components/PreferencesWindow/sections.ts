@@ -50,6 +50,7 @@ import { GitflowPanel } from "./panels/Gitflow";
 import { ProfilesPanel } from "./panels/Profiles";
 import { SparseCheckoutPanel } from "./panels/SparseCheckout";
 import { SshPanel } from "./panels/Ssh";
+import { SubmodulesPanel } from "./panels/Submodules";
 
 export interface SectionDef {
   id: PreferenceSectionId;
@@ -170,8 +171,7 @@ export const SECTIONS: readonly SectionDef[] = [
     id: "submodules",
     label: "Submodules",
     icon: IconLayers,
-    panel: () => Placeholder({ section: "Submodules", issue: 98 }),
-    issue: 98,
+    panel: SubmodulesPanel,
   },
   {
     id: "tools",

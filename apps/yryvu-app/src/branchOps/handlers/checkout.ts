@@ -7,7 +7,11 @@ import {
   isWorkingTreeDirty,
   stashPush,
 } from "../../ipc";
-import { refreshWorkingTree, repoPath } from "../../state";
+import {
+  maybeAutoUpdateSubmodules,
+  refreshWorkingTree,
+  repoPath,
+} from "../../state";
 import { notify } from "../../components/Notifications";
 import type { BranchOpsState } from "../state";
 
@@ -50,6 +54,7 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
       refresh();
       refreshWorkingTree();
       notify.success("Checked out", { message: target, category: "branch" });
+      void maybeAutoUpdateSubmodules(path);
     } catch (err) {
       setDialogError(String(err));
       notify.error("Checkout failed", {
@@ -145,6 +150,7 @@ export function createCheckoutHandlers(deps: CheckoutDeps) {
         message: fullRemoteName,
         category: "branch",
       });
+      void maybeAutoUpdateSubmodules(path);
     } catch (err) {
       setDialogError(String(err));
       notify.error("Checkout failed", {

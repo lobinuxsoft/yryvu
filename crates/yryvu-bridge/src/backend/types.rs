@@ -105,6 +105,11 @@ pub struct SubmoduleInfo {
     pub is_deleted: bool,
     pub ahead: u32,
     pub behind: u32,
+    /// Whether the submodule's working tree has uncommitted changes
+    /// (tracked or untracked). Always `false` for uninitialized
+    /// submodules — there's no working tree to inspect. Drives the
+    /// dirty badge + the sidebar warning banner (issue #98).
+    pub is_dirty: bool,
 }
 
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]

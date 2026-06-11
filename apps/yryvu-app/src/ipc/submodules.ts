@@ -20,6 +20,9 @@ export interface SubmoduleInfo {
   is_deleted: boolean;
   ahead: number;
   behind: number;
+  /// Whether the submodule's working tree has uncommitted changes.
+  /// Always false for uninitialized submodules.
+  is_dirty: boolean;
 }
 
 /**
@@ -44,13 +47,43 @@ export function submoduleUpdate(repoPath: string, name: string): Promise<void> {
 
 /// Add a new submodule: clones `url` into `targetPath` (relative to the
 /// parent repo) and stages `.gitmodules` + the gitlink. The caller is
-/// expected to commit afterwards. Equivalent to `git submodule add <url> <path>`.
+/// expected to commit afterwards. `branch` records the tracking branch
+/// in `.gitmodules`; `name` overrides the default path-derived name.
+/// Equivalent to `git submodule add [--name <n>] [-b <b>] <url> <path>`.
 export function submoduleAdd(
   repoPath: string,
   url: string,
   targetPath: string,
+  branch?: string,
+  name?: string,
 ): Promise<void> {
-  return invoke<void>("submodule_add", { repoPath, url, targetPath });
+  return invoke<void>("submodule_add", {
+    repoPath,
+    url,
+    targetPath,
+    branch: branch ?? null,
+    name: name ?? null,
+  });
+}
+
+/// Copy the `.gitmodules` URL into `.git/config` for `name`.
+/// Equivalent to `git submodule sync <name>`.
+export function submoduleSync(repoPath: string, name: string): Promise<void> {
+  return invoke<void>("submodule_sync", { repoPath, name });
+}
+
+/// Force-checkout the parent-pinned commit in the submodule's working
+/// tree, discarding local changes. Equivalent to
+/// `git submodule update --force <name>`.
+export function submoduleReset(repoPath: string, name: string): Promise<void> {
+  return invoke<void>("submodule_reset", { repoPath, name });
+}
+
+/// Unregister an initialized submodule and clear its working tree,
+/// keeping `.gitmodules` + the cached gitdir so re-init is cheap.
+/// Equivalent to `git submodule deinit -f <name>`.
+export function submoduleDeinit(repoPath: string, name: string): Promise<void> {
+  return invoke<void>("submodule_deinit", { repoPath, name });
 }
 
 /// Remove a submodule end-to-end: deinit + rm + drop cached gitdir.

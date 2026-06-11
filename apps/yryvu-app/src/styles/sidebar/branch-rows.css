@@ -126,3 +126,14 @@
 .sidebar__branch-row--nested {
   padding-left: 38px;
 }
+
+/* Warning banner inside a section body (#98) — surfaces dirty
+   submodules above the rows without stealing the StateBanner surface
+   reserved for repo-wide states (merge / rebase / …). */
+.sidebar__warning-banner {
+  margin: 0;
+  padding: 4px 10px 4px 24px;
+  font-size: 11px;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}

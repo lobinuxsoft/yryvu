@@ -92,6 +92,7 @@ export {
   undoRedoState,
   dirtyFileCount,
 } from "./refresh";
+export { maybeAutoUpdateSubmodules } from "./submoduleAutoUpdate";
 export { hiddenRefs, setHiddenRef, clearHiddenRefs } from "./refs";
 export {
   ALL_SECTION_KEYS,

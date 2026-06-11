@@ -137,6 +137,13 @@ export interface SshPreferences {
   keyPaths: Record<string, string>;
 }
 
+/// Mirrors `yryvu_bridge::preferences::SubmodulesPreferences` (#98).
+/// Global default for "Keep submodules up to date"; the per-repo
+/// tri-state override travels via `ipc/submodules.ts`, not here.
+export interface SubmodulesPreferences {
+  autoUpdateDefault: boolean;
+}
+
 /// Mirrors `yryvu_bridge::preferences::IssueTrackerPreferences` (#306).
 /// Holds the global default pattern + linkify / auto-detect toggles.
 /// Per-repo overrides live in the repo's own `.git/config` under
@@ -203,6 +210,7 @@ export interface Preferences {
   issueTracker: IssueTrackerPreferences;
   gpg: GpgPreferences;
   ssh: SshPreferences;
+  submodules: SubmodulesPreferences;
   layout: LayoutPreferences;
 }
 

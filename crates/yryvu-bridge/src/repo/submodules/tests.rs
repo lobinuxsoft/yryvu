@@ -188,6 +188,51 @@ fn deinit_unregisters_but_keeps_gitmodules_entry() {
 }
 
 #[test]
+fn auto_update_setting_roundtrips_and_default_removes_key() {
+    let (_g, repo) = init_repo();
+    // Absent key reads as "default".
+    assert_eq!(auto_update_setting(&repo).unwrap(), "default");
+
+    set_auto_update_setting(&repo, "enabled").unwrap();
+    assert_eq!(auto_update_setting(&repo).unwrap(), "enabled");
+    set_auto_update_setting(&repo, "disabled").unwrap();
+    assert_eq!(auto_update_setting(&repo).unwrap(), "disabled");
+
+    // "default" removes the key rather than storing a literal.
+    set_auto_update_setting(&repo, "default").unwrap();
+    assert_eq!(auto_update_setting(&repo).unwrap(), "default");
+    let cfg = git2::Repository::open(&repo).unwrap().config().unwrap();
+    assert!(cfg.get_string("yryvu.submoduleAutoUpdate").is_err());
+
+    assert!(set_auto_update_setting(&repo, "sometimes").is_err());
+}
+
+#[test]
+fn resolve_auto_update_tristate() {
+    assert!(resolve_auto_update("enabled", false));
+    assert!(!resolve_auto_update("disabled", true));
+    assert!(resolve_auto_update("default", true));
+    assert!(!resolve_auto_update("default", false));
+}
+
+#[test]
+fn auto_update_all_noops_without_gitmodules_and_repins_with() {
+    let (_g, plain) = init_repo();
+    commit_file(&plain, "a.txt", "x", "initial");
+    // No .gitmodules → no git spawn, reports false.
+    assert!(!auto_update_all(&plain).unwrap());
+
+    let (_pg, parent, _cg, _child) = parent_with_submodule();
+    // Move the inner HEAD off the pin; auto-update must repin it.
+    let inner = parent.join("sub");
+    commit_file(&inner, "extra.txt", "x", "inner: ahead");
+    assert!(find_sub(&parent, "sub").ahead > 0);
+
+    assert!(auto_update_all(&parent).unwrap());
+    assert_eq!(find_sub(&parent, "sub").ahead, 0);
+}
+
+#[test]
 fn add_with_custom_name_and_branch_records_both() {
     allow_file_protocol();
     let (child_dir, child_path) = init_repo();

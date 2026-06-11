@@ -10,6 +10,7 @@ import {
 } from "../../ipc";
 import {
   handleRemoteAuthError,
+  maybeAutoUpdateSubmodules,
   refreshGraph,
   refreshWorkingTree,
   repoPath,
@@ -69,6 +70,7 @@ export function createRefHandlers(deps: RefHandlersDeps) {
         setDialog({ kind: "merge-result", result });
       } else {
         notify.success("Pulled", { category: "remoteSync" });
+        void maybeAutoUpdateSubmodules(path);
       }
     } catch (err) {
       notify.error("Pull failed", {

@@ -3,6 +3,7 @@
 import { abortMerge, deleteRemoteBranch, mergeBranch } from "../../ipc";
 import {
   handleRemoteAuthError,
+  maybeAutoUpdateSubmodules,
   refreshWorkingTree,
   repoPath,
 } from "../../state";
@@ -36,6 +37,9 @@ export function createMergeHandlers(deps: MergeHandlersDeps) {
       setDialog({ kind: "merge-result", result });
       refresh();
       refreshWorkingTree();
+      if (result.kind === "fast-forward" || result.kind === "merged") {
+        void maybeAutoUpdateSubmodules(path);
+      }
       switch (result.kind) {
         case "already-up-to-date":
           notify.success("Merge: already up to date", {

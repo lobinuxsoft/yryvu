@@ -86,6 +86,32 @@ export function submoduleDeinit(repoPath: string, name: string): Promise<void> {
   return invoke<void>("submodule_deinit", { repoPath, name });
 }
 
+/// Per-repo "Keep submodules up to date" tri-state (#98, GK parity).
+/// "default" falls through to the global preference.
+export type SubmoduleAutoUpdateSetting = "default" | "enabled" | "disabled";
+
+export function getSubmoduleAutoUpdate(
+  repoPath: string,
+): Promise<SubmoduleAutoUpdateSetting> {
+  return invoke<SubmoduleAutoUpdateSetting>("get_submodule_auto_update", {
+    repoPath,
+  });
+}
+
+export function setSubmoduleAutoUpdate(
+  repoPath: string,
+  value: SubmoduleAutoUpdateSetting,
+): Promise<void> {
+  return invoke<void>("set_submodule_auto_update", { repoPath, value });
+}
+
+/// Post-op hook: backend resolves the tri-state against the global
+/// preference and runs `git submodule update --init --recursive` when
+/// enabled. Resolves `true` when an update actually ran.
+export function submoduleAutoUpdate(repoPath: string): Promise<boolean> {
+  return invoke<boolean>("submodule_auto_update", { repoPath });
+}
+
 /// Remove a submodule end-to-end: deinit + rm + drop cached gitdir.
 /// Stages the resulting `.gitmodules` + index changes; the caller is
 /// expected to commit afterwards.

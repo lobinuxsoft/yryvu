@@ -39,6 +39,7 @@ function makePrefs(overrides: Partial<NotificationsPreferences> = {}): Preferenc
     issueTracker: {} as Preferences["issueTracker"],
     gpg: {} as Preferences["gpg"],
     ssh: { keyPaths: {} },
+    submodules: { autoUpdateDefault: true },
     layout: {} as Preferences["layout"],
   };
 }
@@ -135,6 +136,7 @@ describe("notify gating against NotificationsPreferences", () => {
       issueTracker: {} as Preferences["issueTracker"],
       gpg: {} as Preferences["gpg"],
       ssh: { keyPaths: {} },
+      submodules: { autoUpdateDefault: true },
       layout: {} as Preferences["layout"],
     };
     const id = storeMod.notify("success", "Pulled", { category: "remoteSync" });

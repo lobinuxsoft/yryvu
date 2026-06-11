@@ -50,7 +50,7 @@ jobs:
             bundles: msi
             artifact_glob: target/release/bundle/msi/*.msi
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.tag_name }}
 
@@ -97,7 +97,7 @@ jobs:
         run: cargo tauri build --bundles ${{ matrix.bundles }}
 
       - name: Upload bundle artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundles-${{ matrix.target }}
           path: ${{ matrix.artifact_glob }}
@@ -107,7 +107,7 @@ jobs:
       # AppImage job can grab it without rebuilding.
       - name: Upload raw Linux binary
         if: matrix.target == 'linux-amd64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-binary
           path: target/release/${{ env.BIN_NAME }}
@@ -118,12 +118,12 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.tag_name }}
 
       - name: Download Linux binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-binary
           path: artifacts/binary
@@ -335,7 +335,7 @@ jobs:
           ls -la "$OUTPUT"
 
       - name: Upload AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundles-appimage
           path: Yryvu_*_amd64.AppImage
@@ -346,12 +346,12 @@ jobs:
     needs: [build, appimage]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.tag_name }}
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -373,7 +373,7 @@ jobs:
           cat checksums-sha256.txt
 
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.tag_name }}
           append_body: true

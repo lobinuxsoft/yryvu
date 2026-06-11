@@ -111,7 +111,7 @@ export function SubmodulesPanel(): JSX.Element {
           </label>
           <select
             id="submodules-auto-update"
-            class="tools-panel__input"
+            class="ui-panel__select"
             value={repoSetting() ?? "default"}
             disabled={repoSetting.loading}
             onChange={(e) =>

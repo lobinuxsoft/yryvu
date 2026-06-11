@@ -191,7 +191,8 @@
 }
 
 .dialog__body input[type="text"],
-.dialog__body textarea {
+.dialog__body textarea,
+.dialog__body select {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -204,6 +205,27 @@
   font-family: var(--font-ui);
 }
 
+/* Native <select> ignores most theming unless appearance is reset —
+   WebKitGTK paints the system chrome otherwise. Chevron drawn with the
+   same two-gradient trick as .ui-panel__select so every dialog select
+   follows the active theme's tokens. */
+.dialog__body select {
+  appearance: none;
+  padding-right: 28px;
+  background-color: var(--bg-0);
+  background-image: linear-gradient(45deg, transparent 50%, var(--fg-2) 50%),
+    linear-gradient(135deg, var(--fg-2) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.dialog__body select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .dialog__body textarea {
   font-family: var(--font-mono, "FiraCodeNF", monospace);
   font-size: 12px;
@@ -213,7 +235,8 @@
 }
 
 .dialog__body input[type="text"]:focus,
-.dialog__body textarea:focus {
+.dialog__body textarea:focus,
+.dialog__body select:focus {
   outline: 2px solid var(--info);
   outline-offset: -2px;
 }

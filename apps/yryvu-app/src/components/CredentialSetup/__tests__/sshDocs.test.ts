@@ -2,7 +2,12 @@
 
 import { describe, expect, it } from "vitest";
 
-import { ghInstallCommand, sshDocsUrl } from "../sshDocs";
+import {
+  defaultSshHost,
+  ghInstallCommand,
+  sshDocsUrl,
+  sshSettingsUrl,
+} from "../sshDocs";
 import { hasUsableCredentials, type AuthEnv } from "../../../ipc/auth";
 
 describe("ghInstallCommand", () => {
@@ -29,6 +34,38 @@ describe("sshDocsUrl", () => {
   it("falls back to GitHub for github and unknown", () => {
     expect(sshDocsUrl("github")).toContain("github.com");
     expect(sshDocsUrl("unknown")).toContain("github.com");
+  });
+});
+
+describe("sshSettingsUrl", () => {
+  it("maps each provider to its key-settings page", () => {
+    expect(sshSettingsUrl("github")).toBe("https://github.com/settings/keys");
+    expect(sshSettingsUrl("gitlab")).toBe(
+      "https://gitlab.com/-/user_settings/ssh_keys",
+    );
+    expect(sshSettingsUrl("bitbucket")).toBe(
+      "https://bitbucket.org/account/settings/ssh-keys/",
+    );
+    expect(sshSettingsUrl("unknown")).toContain("github.com");
+  });
+
+  it("threads the self-hosted host into gitlab and gitea routes", () => {
+    expect(sshSettingsUrl("gitlab", "git.corp.dev")).toBe(
+      "https://git.corp.dev/-/user_settings/ssh_keys",
+    );
+    expect(sshSettingsUrl("gitea", "codeberg.org")).toBe(
+      "https://codeberg.org/user/settings/keys",
+    );
+  });
+});
+
+describe("defaultSshHost", () => {
+  it("prefills the SaaS host per provider, empty for self-hosted gitea", () => {
+    expect(defaultSshHost("github")).toBe("github.com");
+    expect(defaultSshHost("gitlab")).toBe("gitlab.com");
+    expect(defaultSshHost("bitbucket")).toBe("bitbucket.org");
+    expect(defaultSshHost("gitea")).toBe("");
+    expect(defaultSshHost("unknown")).toBe("github.com");
   });
 });
 

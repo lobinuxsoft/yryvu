@@ -131,6 +131,12 @@ export interface GpgPreferences {
   sshSigningEnabled: boolean;
 }
 
+/// Mirrors `yryvu_bridge::preferences::SshPreferences` (#47). Host →
+/// absolute private key path written by the SSH key generation wizard.
+export interface SshPreferences {
+  keyPaths: Record<string, string>;
+}
+
 /// Mirrors `yryvu_bridge::preferences::IssueTrackerPreferences` (#306).
 /// Holds the global default pattern + linkify / auto-detect toggles.
 /// Per-repo overrides live in the repo's own `.git/config` under
@@ -196,6 +202,7 @@ export interface Preferences {
   notifications: NotificationsPreferences;
   issueTracker: IssueTrackerPreferences;
   gpg: GpgPreferences;
+  ssh: SshPreferences;
   layout: LayoutPreferences;
 }
 

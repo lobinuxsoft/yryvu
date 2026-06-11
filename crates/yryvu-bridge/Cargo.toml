@@ -32,6 +32,7 @@ notify.workspace = true
 notify-debouncer-full.workspace = true
 shlex.workspace = true
 nucleo-matcher.workspace = true
+ssh-key.workspace = true
 
 [build-dependencies]
 dotenvy.workspace = true

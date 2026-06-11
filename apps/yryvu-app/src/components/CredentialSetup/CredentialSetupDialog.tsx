@@ -8,15 +8,15 @@ import {
   credentialWizard,
   closeCredentialWizard,
   openPreferences,
+  openSshKeyGen,
 } from "../../state";
-import { ghInstallCommand, sshDocsUrl } from "./sshDocs";
+import { ghInstallCommand } from "./sshDocs";
 
 /**
  * Credential setup wizard (#44). Opens when push / delete-remote fails
  * because libgit2 found no usable credentials. Offers the three recovery
- * paths from the auth-UX plan: install `gh`, configure SSH, or paste a
- * PAT — degrading gracefully on each (the in-app SSH generation flow #47
- * doesn't exist yet, so that path deep-links the provider's docs).
+ * paths from the auth-UX plan: install `gh`, configure SSH (in-app key
+ * generation, #47), or paste a PAT.
  */
 export function CredentialSetupDialog(): JSX.Element {
   const state = credentialWizard;
@@ -97,16 +97,20 @@ export function CredentialSetupDialog(): JSX.Element {
               <section class="cred-setup__option">
                 <h3 class="cred-setup__option-title">Configure SSH</h3>
                 <p class="cred-setup__option-body">
-                  Generate an SSH key and add it to your account, then load it
-                  into your agent with <code>ssh-add</code>.
+                  Generate an SSH key, install it on your account, and
+                  verify the connection — all guided.
                 </p>
                 <button
                   class="dialog__btn"
                   type="button"
                   data-testid="cred-setup-ssh"
-                  onClick={() => open(sshDocsUrl(s().provider))}
+                  onClick={() => {
+                    const provider = s().provider;
+                    closeCredentialWizard();
+                    openSshKeyGen(provider);
+                  }}
                 >
-                  Open SSH guide →
+                  Generate SSH key →
                 </button>
               </section>
 

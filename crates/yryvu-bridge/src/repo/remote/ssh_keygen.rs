@@ -120,6 +120,17 @@ pub fn add_key_to_agent(private_key_path: &Path) -> Result<(), BackendError> {
     Ok(())
 }
 
+/// Read the public half (`<private>.pub`) of a generated keypair so
+/// the preferences panel can re-surface the copy-to-clipboard action
+/// across sessions. Only the sibling `.pub` is ever read — the private
+/// key never crosses the IPC boundary.
+pub fn read_public_key(private_key_path: &Path) -> Result<String, BackendError> {
+    let pub_path = private_key_path.with_extension("pub");
+    fs::read_to_string(&pub_path)
+        .map(|s| s.trim().to_string())
+        .map_err(|e| BackendError::Git(anyhow!("read {}: {e}", pub_path.display())))
+}
+
 fn generate_into(
     ssh_dir: &Path,
     req: &GenerateSshKeyRequest,
@@ -303,6 +314,16 @@ mod tests {
             decrypted.fingerprint(HashAlg::Sha256).to_string(),
             key.fingerprint
         );
+    }
+
+    #[test]
+    fn read_public_key_returns_the_pub_sibling() {
+        let dir = TempDir::new().unwrap();
+        let key = generate_into(dir.path(), &req("ed25519", "")).unwrap();
+        let read = read_public_key(Path::new(&key.private_key_path)).unwrap();
+        assert_eq!(read, key.public_key);
+        // Missing sibling errors instead of panicking.
+        assert!(read_public_key(Path::new("/nonexistent/key")).is_err());
     }
 
     #[test]

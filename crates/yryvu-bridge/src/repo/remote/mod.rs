@@ -10,6 +10,8 @@
 //!   REMOTE-header context menu surface (#227).
 //! - [`push`] — push HEAD, delete remote branches, push and delete
 //!   remote tags. Anything that writes to a remote ref via the push wire.
+//! - [`ssh_keygen`] — in-app SSH keypair generation + `ssh -T`
+//!   connection test for the guided credential flow (#47).
 //! - [`sync`] — fetch_one / fetch_prune / pull / force_pull. Anything
 //!   that reads from the remote.
 //!
@@ -22,6 +24,7 @@ pub mod auth_env;
 pub(crate) mod credentials;
 mod management;
 mod push;
+pub mod ssh_keygen;
 mod sync;
 
 pub use management::{add_remote, get_remote_url, list_remotes, remove_remote, set_remote_url};

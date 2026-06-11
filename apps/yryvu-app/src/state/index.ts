@@ -162,7 +162,11 @@ export {
   primeAuthEnv,
   handleRemoteAuthError,
   closeCredentialWizard,
+  sshKeyGen,
+  openSshKeyGen,
+  closeSshKeyGen,
   type CredentialWizardState,
+  type SshKeyGenState,
 } from "./credentialWizard";
 export {
   FILE_VIEW_MODES,

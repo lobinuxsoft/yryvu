@@ -32,6 +32,7 @@ import { StatusBar } from "../StatusBar";
 import { ContextMenu } from "../ContextMenu";
 import { ToastContainer } from "../Notifications";
 import { CredentialSetupDialog } from "../CredentialSetup/CredentialSetupDialog";
+import { SshKeyGenDialog } from "../CredentialSetup/SshKeyGenDialog";
 import { hydrateIntegrationsOnAppStart } from "../PreferencesWindow/panels/Integrations/tokenStorage";
 import { Tooltip } from "../Tooltip";
 import { wireAnimationMode } from "./animationMode";
@@ -336,6 +337,7 @@ export function AppShell() {
       <DropActionMenu />
       <StashCreateDialog />
       <CredentialSetupDialog />
+      <SshKeyGenDialog />
       <About />
       <ToastContainer />
     </div>

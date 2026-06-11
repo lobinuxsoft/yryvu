@@ -85,3 +85,22 @@ export async function handleRemoteAuthError(
 export function closeCredentialWizard(): void {
   setCredentialWizard(null);
 }
+
+/** SSH key generation dialog state (#47). Opened from the credential
+ * wizard's "Configure SSH" path (which closes itself first — stacked
+ * dialogs fight over focus) or anywhere else that wants to mint a key
+ * for a provider. */
+export interface SshKeyGenState {
+  provider: HostingService;
+}
+
+const [sshKeyGen, setSshKeyGen] = createSignal<SshKeyGenState | null>(null);
+export { sshKeyGen };
+
+export function openSshKeyGen(provider: HostingService): void {
+  setSshKeyGen({ provider });
+}
+
+export function closeSshKeyGen(): void {
+  setSshKeyGen(null);
+}

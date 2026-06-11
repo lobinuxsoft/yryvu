@@ -27,6 +27,7 @@ export * from "./remote";
 export * from "./repo_management";
 export * from "./smart_branches";
 export * from "./sparse_checkout";
+export * from "./ssh";
 export * from "./staging";
 export * from "./stashes";
 export * from "./submodules";

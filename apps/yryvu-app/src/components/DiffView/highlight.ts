@@ -77,6 +77,22 @@ export function highlightLine(content: string, lang: string | undefined): string
   }
 }
 
+/// Highlight every `pre > code` block inside `root` with the shared hljs
+/// instance (markdown preview, issue #60). Reuses the same registered
+/// languages as the diff renderer — no second highlighter dependency.
+/// Clears the `data-highlighted` marker first so re-renders re-highlight
+/// instead of warning about an already-processed element.
+export function highlightCodeBlocks(root: HTMLElement): void {
+  root.querySelectorAll<HTMLElement>("pre code").forEach((el) => {
+    delete el.dataset.highlighted;
+    try {
+      hljs.highlightElement(el);
+    } catch {
+      // Unregistered fence language — leave the text un-highlighted.
+    }
+  });
+}
+
 export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

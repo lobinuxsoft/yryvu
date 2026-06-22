@@ -13,6 +13,7 @@ import { detectLanguage, highlightLine } from "./highlight";
 import { HunkActions, type HunkStagingActions } from "./HunkActions";
 import { ImageDiffView, type ImageSources } from "./ImageDiffView";
 import { LineActions, type LineStagingApi } from "./LineActions";
+import { MarkdownView } from "./MarkdownView";
 import { BinaryDiffView, DeletedFileBanner } from "./SpecialViews";
 import { pairLines, SplitLineRow } from "./SplitView";
 
@@ -43,6 +44,14 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/// Markdown extensions that get the File View Code/Preview toggle
+/// (issue #60, doc 08). Classification stays `text` — the preview is a
+/// sub-mode of File View, not a separate `fileDataType`.
+function isMarkdownPath(path: string): boolean {
+  const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  return ext === "md" || ext === "markdown" || ext === "mdx";
 }
 
 /// GitKraken parity (issue #59 + #8). `fileDisplayModes` in the bundle
@@ -226,6 +235,12 @@ function renderBody(
   if (mode === "content") {
     if (props.fullContent === undefined) {
       return <FullFileMissing reason="loading" />;
+    }
+    // File View Code/Preview toggle for Markdown (issue #60, doc 08).
+    // Diff modes (hunk/inline/split) never reach here, so they keep
+    // showing the raw Markdown source as GitKraken does.
+    if (isMarkdownPath(props.file.path)) {
+      return <MarkdownView content={props.fullContent} language={lang} />;
     }
     return <FileContentView content={props.fullContent} language={lang} />;
   }

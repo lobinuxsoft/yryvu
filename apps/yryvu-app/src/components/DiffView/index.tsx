@@ -11,9 +11,12 @@ import {
 } from "./FullFileView";
 import { detectLanguage, highlightLine } from "./highlight";
 import { HunkActions, type HunkStagingActions } from "./HunkActions";
+import { ImageDiffView, type ImageSources } from "./ImageDiffView";
 import { LineActions, type LineStagingApi } from "./LineActions";
 import { BinaryDiffView, DeletedFileBanner } from "./SpecialViews";
 import { pairLines, SplitLineRow } from "./SplitView";
+
+export type { ImageSources };
 
 export type { HunkStagingActions, LineStagingApi };
 
@@ -107,6 +110,11 @@ export interface DiffFileBlockProps {
   /// `stagingActions`: a tab usually passes both, but commit diffs pass
   /// neither.
   lineStagingApi?: LineStagingApi;
+  /// Old/new blob sources for the image viewer (issue #60). Supplied by
+  /// `FileDiffTab` for the focused single-file view; absent in the
+  /// read-only multi-file `DiffView`, where images fall back to the
+  /// binary placeholder.
+  imageSources?: ImageSources;
 }
 
 export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
@@ -175,9 +183,13 @@ function renderByDataType(
     case "binary":
       return <BinaryDiffView file={file} />;
     case "image":
-      // PR2 mounts the side-by-side image viewer; until then images
-      // (which are binary) get the same placeholder GitKraken shows.
-      return <BinaryDiffView file={file} />;
+      // The focused single-file view supplies blob sources; the read-only
+      // multi-file summary doesn't, so images fall back to the placeholder.
+      return props.imageSources ? (
+        <ImageDiffView sources={props.imageSources} />
+      ) : (
+        <BinaryDiffView file={file} />
+      );
     case "deleted":
       return (
         <>

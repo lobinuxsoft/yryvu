@@ -44,6 +44,9 @@ notify-debouncer-full = "0.7"
 shlex = "1"
 nucleo-matcher = "0.3"
 ssh-key = { version = "0.6", features = ["ed25519", "rsa", "encryption", "getrandom"] }
+# Pinned to 0.21 to reuse the version already resolved in the tree (no
+# duplicate base64 build). Used to ship image blob bytes to the UI (#60).
+base64 = "0.21"
 
 criterion = { version = "0.5", features = ["html_reports"] }
 

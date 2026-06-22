@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createEffect, createSignal, createResource, onCleanup, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  createResource,
+  onCleanup,
+  Show,
+} from "solid-js";
 
 import {
   discardHunks,
@@ -33,6 +40,7 @@ import { Dialog } from "../Dialog";
 import {
   DiffFileBlock,
   type HunkStagingActions,
+  type ImageSources,
   type LineStagingApi,
 } from "../DiffView";
 import { DiffToolbar } from "../DiffToolbar";
@@ -65,6 +73,27 @@ function selectionContentSource(
   return selection.side === "unstaged"
     ? { kind: "working-tree" }
     : { kind: "index" };
+}
+
+/// Old/new blob sources for the image viewer (issue #60). Commit
+/// selections diff the first parent against the commit; staging
+/// selections diff index↔working-tree (unstaged) or HEAD↔index (staged).
+function selectionImageSources(
+  repo: string,
+  selection: NonNullable<ReturnType<typeof selectedDiffFile>>,
+): ImageSources {
+  const path = selection.path;
+  if (selection.kind === "commit") {
+    return {
+      repoPath: repo,
+      path,
+      old: { kind: "commit-parent", sha: selection.sha },
+      new: { kind: "commit", sha: selection.sha },
+    };
+  }
+  return selection.side === "unstaged"
+    ? { repoPath: repo, path, old: { kind: "index" }, new: { kind: "working-tree" } }
+    : { repoPath: repo, path, old: { kind: "head" }, new: { kind: "index" } };
 }
 
 type DiffSource = [string, NonNullable<ReturnType<typeof selectedDiffFile>>, number];
@@ -163,6 +192,16 @@ export function FileDiffTab() {
 
   const selection = () => selectedDiffFile();
   const targetPath = () => selection()?.path;
+
+  /// Stable image sources for the focused file. Recomputed only when the
+  /// repo or selection changes, so the viewer's blob fetches aren't
+  /// re-triggered on unrelated re-renders.
+  const imageSources = createMemo<ImageSources | undefined>(() => {
+    const p = repoPath();
+    const sel = selection();
+    if (!p || !sel) return undefined;
+    return selectionImageSources(p, sel);
+  });
 
   async function handleHunkOp(
     op: (
@@ -318,6 +357,7 @@ export function FileDiffTab() {
               }}
               stagingActions={stagingActions()}
               lineStagingApi={lineStagingApi()}
+              imageSources={imageSources()}
             />
           </Show>
         </Show>

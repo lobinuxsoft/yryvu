@@ -133,6 +133,7 @@ pub fn run() {
             yryvu_bridge::commands::diff_unstaged,
             yryvu_bridge::commands::diff_staged,
             yryvu_bridge::commands::read_file_content,
+            yryvu_bridge::commands::read_file_bytes,
             yryvu_bridge::commands::file_history,
             yryvu_bridge::commands::file_blame,
             yryvu_bridge::commands::checkout_file_at,

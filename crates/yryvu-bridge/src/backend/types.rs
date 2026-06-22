@@ -238,6 +238,12 @@ pub struct FileDiff {
     pub additions: u32,
     pub deletions: u32,
     pub hunks: Vec<DiffHunk>,
+    /// For `FileDataType::Submodule`: the gitlink commit OIDs the parent
+    /// pins before/after the change. `None` when the side doesn't exist
+    /// (added → no old, deleted → no new) or the file isn't a submodule.
+    /// The pointer pane resolves each OID's summary on demand.
+    pub submodule_old_sha: Option<String>,
+    pub submodule_new_sha: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

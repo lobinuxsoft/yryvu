@@ -32,6 +32,28 @@ pub use auto_update::{
 #[cfg(test)]
 mod tests;
 
+/// Resolve the commit summary for a gitlink OID inside a submodule's own
+/// repository (issue #60 pointer pane). Returns `None` when the submodule
+/// isn't checked out or the commit object isn't present locally (not
+/// fetched) — the pane falls back to showing the bare OID.
+pub fn submodule_commit_summary(
+    repo_path: &Path,
+    submodule_path: &str,
+    sha: &str,
+) -> Result<Option<String>, BackendError> {
+    let inner = repo_path.join(submodule_path);
+    let Ok(repo) = open_git2(&inner) else {
+        return Ok(None);
+    };
+    let Ok(oid) = git2::Oid::from_str(sha) else {
+        return Ok(None);
+    };
+    let Ok(commit) = repo.find_commit(oid) else {
+        return Ok(None);
+    };
+    Ok(commit.summary().map(str::to_string))
+}
+
 pub fn list_submodules(repo_path: &Path) -> Result<Vec<SubmoduleInfo>, BackendError> {
     let repo = open_repo(repo_path)?;
     let iter = match repo

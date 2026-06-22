@@ -33,6 +33,21 @@ export function listSubmodules(repoPath: string): Promise<SubmoduleInfo[]> {
   return invoke<SubmoduleInfo[]>("list_submodules", { repoPath });
 }
 
+/// Resolve a gitlink OID's commit summary inside the submodule's repo —
+/// backs the diff pointer pane (issue #60). `null` when the submodule
+/// isn't checked out or the commit isn't fetched locally.
+export function submoduleCommitSummary(
+  repoPath: string,
+  submodulePath: string,
+  sha: string
+): Promise<string | null> {
+  return invoke<string | null>("submodule_commit_summary", {
+    repoPath,
+    submodulePath,
+    sha,
+  });
+}
+
 /// Initialize a submodule + clone its working tree to the parent-pinned
 /// commit. Equivalent to `git submodule update --init <name>`.
 export function submoduleInit(repoPath: string, name: string): Promise<void> {

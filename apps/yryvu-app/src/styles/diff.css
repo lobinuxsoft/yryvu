@@ -357,6 +357,73 @@
   padding-left: 1.6em;
 }
 
+/* Submodule pointer pane (issue #60, doc 11): old/new pinned commits
+   plus actions to open the submodule as its own repo tab. */
+.submodule-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px;
+  padding: 16px 18px;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: 6px;
+}
+
+.submodule-pane__title {
+  font-size: 13px;
+  color: var(--fg-2);
+}
+
+.submodule-pane__name {
+  font-family: var(--font-mono);
+  color: var(--fg-0);
+}
+
+.submodule-pane__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.submodule-pane__row-label {
+  color: var(--fg-3);
+  min-width: 84px;
+}
+
+.submodule-pane__oid {
+  font-family: var(--font-mono);
+  color: var(--accent, var(--info));
+}
+
+.submodule-pane__summary {
+  color: var(--fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submodule-pane__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.submodule-pane__btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  color: var(--fg-1);
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submodule-pane__btn:hover {
+  border-color: var(--accent, var(--info));
+}
+
 /* Banner above a deleted text file's original-only content. */
 .diff-file__deleted-banner {
   padding: 8px 12px;

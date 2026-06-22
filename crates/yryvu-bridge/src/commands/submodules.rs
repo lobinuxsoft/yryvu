@@ -19,6 +19,23 @@ pub async fn list_submodules(repo_path: String) -> Result<Vec<SubmoduleInfo>, St
     .map_err(|e| e.to_string())?
 }
 
+/// Resolve a gitlink OID's commit summary inside the submodule's repo —
+/// backs the diff pointer pane (issue #60). `None` when uncheckout-out or
+/// the commit isn't fetched.
+#[tauri::command]
+pub async fn submodule_commit_summary(
+    repo_path: String,
+    submodule_path: String,
+    sha: String,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        submodules::submodule_commit_summary(&PathBuf::from(&repo_path), &submodule_path, &sha)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn submodule_init(repo_path: String, name: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {

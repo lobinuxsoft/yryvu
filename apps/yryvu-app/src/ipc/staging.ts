@@ -29,6 +29,16 @@ export function unstageFiles(repoPath: string, paths: string[]): Promise<void> {
   return invoke<void>("unstage_files", { repoPath, paths });
 }
 
+/// Stage / unstage only a file-mode change (issue #60) — distinct from
+/// content staging so the UI can surface mode-specific errors.
+export function stageFilemode(repoPath: string, path: string): Promise<void> {
+  return invoke<void>("stage_filemode", { repoPath, path });
+}
+
+export function unstageFilemode(repoPath: string, path: string): Promise<void> {
+  return invoke<void>("unstage_filemode", { repoPath, path });
+}
+
 export function getUnstagedDiff(
   repoPath: string,
   path: string

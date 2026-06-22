@@ -51,6 +51,9 @@ pub use sign::{
     export_gpg_public_key, generate_gpg_key, inspect_config as inspect_sign_config, list_gpg_keys,
     set_signing_key, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, SignConfig, SignFormat,
 };
-pub use stage::{discard_paths, stage_all, stage_files, unstage_all, unstage_files};
+pub use stage::{
+    discard_paths, stage_all, stage_filemode, stage_files, unstage_all, unstage_filemode,
+    unstage_files,
+};
 pub use status::{dirty_summary, working_tree_status};
 pub use types::{CommitOptions, WorkingTreeChange, WorkingTreeStatus};

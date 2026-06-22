@@ -31,6 +31,21 @@ pub fn stage_files(repo_path: &Path, paths: &[String]) -> Result<(), BackendErro
     Ok(())
 }
 
+/// Stage only a file-mode change (issue #60). The pane that triggers
+/// this appears exclusively on filemode-only deltas (no content hunks),
+/// so re-adding the path updates just the index entry's mode — the blob
+/// is unchanged. Kept as a distinct action path from content staging so
+/// the UI can surface mode-specific affordances and errors.
+pub fn stage_filemode(repo_path: &Path, path: &str) -> Result<(), BackendError> {
+    stage_files(repo_path, std::slice::from_ref(&path.to_string()))
+}
+
+/// Unstage a file-mode change — resets the index entry back to HEAD,
+/// restoring the committed mode. Complement of [`stage_filemode`].
+pub fn unstage_filemode(repo_path: &Path, path: &str) -> Result<(), BackendError> {
+    unstage_files(repo_path, std::slice::from_ref(&path.to_string()))
+}
+
 pub fn unstage_files(repo_path: &Path, paths: &[String]) -> Result<(), BackendError> {
     let repo = open_git2(repo_path)?;
 
@@ -173,4 +188,55 @@ pub fn discard_paths(repo_path: &Path, paths: &[String]) -> Result<(), BackendEr
     }
 
     Ok(())
+}
+
+// Filemode staging needs a real executable bit, which only exists on unix
+// filesystems with core.filemode tracking — gate the test accordingly.
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    fn git(repo: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(repo)
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@t")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@t")
+            .status()
+            .expect("git");
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    fn index_mode(repo: &Path, path: &str) -> u32 {
+        let repo = git2::Repository::open(repo).unwrap();
+        let index = repo.index().unwrap();
+        index.get_path(Path::new(path), 0).unwrap().mode
+    }
+
+    #[test]
+    fn stage_and_unstage_filemode_touches_only_the_mode() {
+        let dir = tempfile::tempdir().unwrap();
+        git(dir.path(), &["init", "-q", "-b", "main"]);
+        git(dir.path(), &["config", "core.filemode", "true"]);
+        let file = dir.path().join("s.sh");
+        std::fs::write(&file, "#!/bin/sh\necho hi\n").unwrap();
+        git(dir.path(), &["add", "s.sh"]);
+        git(dir.path(), &["commit", "-qm", "init"]);
+        assert_eq!(index_mode(dir.path(), "s.sh"), 0o100644);
+
+        // Flip the executable bit in the working tree, stage only the mode.
+        let mut perms = std::fs::metadata(&file).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&file, perms).unwrap();
+        stage_filemode(dir.path(), "s.sh").unwrap();
+        assert_eq!(index_mode(dir.path(), "s.sh"), 0o100755);
+
+        // Unstage restores the committed mode.
+        unstage_filemode(dir.path(), "s.sh").unwrap();
+        assert_eq!(index_mode(dir.path(), "s.sh"), 0o100644);
+    }
 }

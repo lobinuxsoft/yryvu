@@ -15,10 +15,18 @@ import { ImageDiffView, type ImageSources } from "./ImageDiffView";
 import { LineActions, type LineStagingApi } from "./LineActions";
 import { MarkdownView } from "./MarkdownView";
 import { SubmodulePointerPane } from "./SubmodulePointerPane";
-import { BinaryDiffView, DeletedFileBanner } from "./SpecialViews";
+import { parseLfsPointer } from "./lfs";
+import {
+  BinaryDiffView,
+  DeletedFileBanner,
+  FilemodeView,
+  type FilemodeStaging,
+  LfsPointerView,
+} from "./SpecialViews";
 import { pairLines, SplitLineRow } from "./SplitView";
 
 export type { ImageSources };
+export type { FilemodeStaging };
 
 export type { HunkStagingActions, LineStagingApi };
 
@@ -53,6 +61,19 @@ function formatBytes(bytes: number): string {
 function isMarkdownPath(path: string): boolean {
   const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
   return ext === "md" || ext === "markdown" || ext === "mdx";
+}
+
+/// A pure file-mode change: both sides present, modes differ, and no
+/// content hunks. Routed to the File Mode Changes pane (issue #60).
+function isFilemodeOnlyChange(file: FileDiff): boolean {
+  return (
+    file.old_mode !== null &&
+    file.new_mode !== null &&
+    file.old_mode !== file.new_mode &&
+    file.hunks.length === 0 &&
+    !file.truncated &&
+    file.file_data_type !== "submodule"
+  );
 }
 
 /// GitKraken parity (issue #59 + #8). `fileDisplayModes` in the bundle
@@ -128,6 +149,10 @@ export interface DiffFileBlockProps {
   /// Parent repo path, used by the submodule pointer pane to resolve
   /// commit summaries and open the submodule as a tab (issue #60).
   repoPath?: string;
+  /// Stage/unstage actions for a file-mode-only change (issue #60).
+  /// Present only in a staging selection; absent in commit diffs makes
+  /// the mode pane read-only.
+  filemodeStaging?: FilemodeStaging;
 }
 
 export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
@@ -192,6 +217,17 @@ function renderByDataType(
       </div>
     );
   }
+  // File-mode-only changes route to the mode pane before the type switch
+  // — they carry no hunks, so the text path would show "no changes".
+  if (isFilemodeOnlyChange(file)) {
+    return (
+      <FilemodeView
+        oldMode={file.old_mode!}
+        newMode={file.new_mode!}
+        staging={props.filemodeStaging}
+      />
+    );
+  }
   switch (file.file_data_type) {
     case "binary":
       return <BinaryDiffView file={file} />;
@@ -238,6 +274,13 @@ function renderBody(
   if (mode === "content") {
     if (props.fullContent === undefined) {
       return <FullFileMissing reason="loading" />;
+    }
+    // LFS pointer is a post-load check on content (issue #60, doc 07):
+    // the pane switches to an object-size placeholder regardless of the
+    // file's classification.
+    const lfs = parseLfsPointer(props.fullContent);
+    if (lfs) {
+      return <LfsPointerView size={lfs.size} />;
     }
     // File View Code/Preview toggle for Markdown (issue #60, doc 08).
     // Diff modes (hunk/inline/split) never reach here, so they keep

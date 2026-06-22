@@ -78,6 +78,10 @@ function toFileDiff(change: WorkingTreeChange): FileDiff {
     path: change.path,
     old_path: change.old_path,
     status: change.status,
+    // The working-tree change shape carries no type classification; the
+    // FileList row only consumes path/status/stats, so `text` is a safe
+    // default that never reaches the diff-pane dispatcher.
+    file_data_type: "text",
     is_binary: false,
     truncated: false,
     old_size: 0,

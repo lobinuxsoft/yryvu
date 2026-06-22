@@ -12,6 +12,7 @@ import {
 import { detectLanguage, highlightLine } from "./highlight";
 import { HunkActions, type HunkStagingActions } from "./HunkActions";
 import { LineActions, type LineStagingApi } from "./LineActions";
+import { BinaryDiffView, DeletedFileBanner } from "./SpecialViews";
 import { pairLines, SplitLineRow } from "./SplitView";
 
 export type { HunkStagingActions, LineStagingApi };
@@ -146,24 +147,51 @@ export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
         </button>
       </Show>
 
-      <Show when={isOpen()}>
-        <Show when={props.file.is_binary}>
-          <div class="diff-file__notice">
-            Binary file — not shown. ({formatBytes(props.file.new_size || props.file.old_size)})
-          </div>
-        </Show>
-        <Show when={!props.file.is_binary && props.file.truncated}>
-          <div class="diff-file__notice">
-            File too large ({formatBytes(Math.max(props.file.new_size, props.file.old_size))})
-            — diff truncated. Open the file externally to inspect.
-          </div>
-        </Show>
-        <Show when={!props.file.is_binary && !props.file.truncated}>
-          {renderBody(props, mode(), lang())}
-        </Show>
-      </Show>
+      <Show when={isOpen()}>{renderByDataType(props, mode(), lang())}</Show>
     </div>
   );
+}
+
+/// Per-filetype dispatcher (issue #60). Routes on the backend's
+/// `file_data_type` before the text path. Each non-text branch is
+/// landing incrementally: the binary placeholder + deleted banner ship
+/// here; `image` and `submodule` reuse interim fallbacks until their
+/// dedicated viewers land (PR2 image, PR4 submodule pane).
+function renderByDataType(
+  props: DiffFileBlockProps,
+  mode: FileViewMode,
+  lang: string | undefined,
+): JSX.Element {
+  const file = props.file;
+  if (file.truncated) {
+    return (
+      <div class="diff-file__notice">
+        File too large ({formatBytes(Math.max(file.new_size, file.old_size))}) —
+        diff truncated. Open the file externally to inspect.
+      </div>
+    );
+  }
+  switch (file.file_data_type) {
+    case "binary":
+      return <BinaryDiffView file={file} />;
+    case "image":
+      // PR2 mounts the side-by-side image viewer; until then images
+      // (which are binary) get the same placeholder GitKraken shows.
+      return <BinaryDiffView file={file} />;
+    case "deleted":
+      return (
+        <>
+          <DeletedFileBanner />
+          {renderBody(props, mode, lang)}
+        </>
+      );
+    case "submodule":
+    // PR4 mounts the pointer pane; until then fall through to the raw
+    // "Subproject commit" hunks, which still convey the OID change.
+    case "directory":
+    case "text":
+      return renderBody(props, mode, lang);
+  }
 }
 
 function renderBody(

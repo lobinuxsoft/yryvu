@@ -173,6 +173,32 @@ pub enum FileStatus {
     Other,
 }
 
+/// How the UI should render a file's diff, mirroring GitKraken's
+/// `fileDataTypes` enum (research doc 06). The dispatcher in `DiffView`
+/// routes on this value before falling back to the text path:
+///
+/// - `Text` — Monaco / hunk renderer (the default).
+/// - `Image` — side-by-side image viewer + overlay toggle (doc 09).
+/// - `Binary` — "Binary file" placeholder (doc 10).
+/// - `Submodule` — old/new pointer pane (doc 11).
+/// - `Deleted` — text file removed: original-only content + banner (doc 11).
+/// - `Directory` — list-only tree node, never rendered in the diff pane;
+///   kept for enum parity since file diffs never carry it.
+///
+/// Classification priority is submodule → image → binary → deleted →
+/// text, so a deleted image still routes to the image viewer (with a
+/// missing-new pane) and a deleted binary to the binary placeholder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FileDataType {
+    Text,
+    Image,
+    Binary,
+    Submodule,
+    Deleted,
+    Directory,
+}
+
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineKind {
@@ -204,6 +230,7 @@ pub struct FileDiff {
     pub path: String,
     pub old_path: Option<String>,
     pub status: FileStatus,
+    pub file_data_type: FileDataType,
     pub is_binary: bool,
     pub truncated: bool,
     pub old_size: u64,

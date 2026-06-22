@@ -23,7 +23,16 @@ pub enum FileContentSource {
     WorkingTree,
     Index,
     Head,
-    Commit { sha: String },
+    Commit {
+        sha: String,
+    },
+    /// First parent of `sha`. Resolves the "before" side of a commit diff
+    /// without the frontend having to carry the parent OID — used by the
+    /// image viewer to fetch the old image (#60). A root commit (no
+    /// parent) resolves to missing, so an added file shows no old side.
+    CommitParent {
+        sha: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -88,24 +97,11 @@ fn missing() -> FileContent {
     }
 }
 
-fn from_blob(blob: &git2::Blob<'_>) -> FileContent {
-    if blob.is_binary() {
-        return FileContent {
-            content: String::new(),
-            is_binary: true,
-            size: blob.size() as u64,
-            missing: false,
-            truncated: false,
-        };
-    }
-    from_bytes(blob.content().to_vec())
-}
-
-fn read_workdir(repo_path: &Path, path: &str) -> Result<FileContent, BackendError> {
+fn workdir_bytes(repo_path: &Path, path: &str) -> Result<Option<Vec<u8>>, BackendError> {
     let abs = repo_path.join(path);
     match std::fs::read(&abs) {
-        Ok(bytes) => Ok(from_bytes(bytes)),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(missing()),
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(e) => Err(BackendError::Git(anyhow::anyhow!(
             "read {} failed: {e}",
             abs.display()
@@ -113,34 +109,87 @@ fn read_workdir(repo_path: &Path, path: &str) -> Result<FileContent, BackendErro
     }
 }
 
-fn read_index(repo: &git2::Repository, path: &str) -> Result<FileContent, BackendError> {
+fn index_bytes(repo: &git2::Repository, path: &str) -> Result<Option<Vec<u8>>, BackendError> {
     let index = repo.index().map_err(git2_err)?;
     let Some(entry) = index.get_path(Path::new(path), 0) else {
-        return Ok(missing());
+        return Ok(None);
     };
     let blob = repo.find_blob(entry.id).map_err(git2_err)?;
-    Ok(from_blob(&blob))
+    Ok(Some(blob.content().to_vec()))
 }
 
-fn read_commit(
+fn tree_blob_bytes(
     repo: &git2::Repository,
-    sha: &str,
+    tree: &git2::Tree<'_>,
     path: &str,
-) -> Result<FileContent, BackendError> {
-    let oid = git2::Oid::from_str(sha)
-        .map_err(|e| BackendError::Git(anyhow::anyhow!("invalid sha '{sha}': {e}")))?;
-    let commit = repo.find_commit(oid).map_err(git2_err)?;
-    let tree = commit.tree().map_err(git2_err)?;
+) -> Result<Option<Vec<u8>>, BackendError> {
     match tree.get_path(Path::new(path)) {
         Ok(entry) => {
             let object = entry.to_object(repo).map_err(git2_err)?;
-            let Some(blob) = object.as_blob() else {
-                return Ok(missing());
-            };
-            Ok(from_blob(blob))
+            Ok(object.as_blob().map(|b| b.content().to_vec()))
         }
-        Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(missing()),
+        Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(None),
         Err(e) => Err(git2_err(e)),
+    }
+}
+
+fn parse_oid(sha: &str) -> Result<git2::Oid, BackendError> {
+    git2::Oid::from_str(sha)
+        .map_err(|e| BackendError::Git(anyhow::anyhow!("invalid sha '{sha}': {e}")))
+}
+
+fn commit_bytes(
+    repo: &git2::Repository,
+    sha: &str,
+    path: &str,
+) -> Result<Option<Vec<u8>>, BackendError> {
+    let commit = repo.find_commit(parse_oid(sha)?).map_err(git2_err)?;
+    let tree = commit.tree().map_err(git2_err)?;
+    tree_blob_bytes(repo, &tree, path)
+}
+
+fn parent_bytes(
+    repo: &git2::Repository,
+    sha: &str,
+    path: &str,
+) -> Result<Option<Vec<u8>>, BackendError> {
+    let commit = repo.find_commit(parse_oid(sha)?).map_err(git2_err)?;
+    // A root commit has no parent — the file has no "before" side.
+    let Ok(parent) = commit.parent(0) else {
+        return Ok(None);
+    };
+    let tree = parent.tree().map_err(git2_err)?;
+    tree_blob_bytes(repo, &tree, path)
+}
+
+/// Resolve a `(path, source)` pair to its raw bytes, or `None` when the
+/// source has no entry for that path. Shared by the text reader
+/// (`read_file_content`) and the image-bytes reader (`read_file_bytes`).
+pub(super) fn source_bytes(
+    repo_path: &Path,
+    path: &str,
+    source: &FileContentSource,
+) -> Result<Option<Vec<u8>>, BackendError> {
+    match source {
+        FileContentSource::WorkingTree => workdir_bytes(repo_path, path),
+        FileContentSource::Index => {
+            let repo = open_git2(repo_path)?;
+            index_bytes(&repo, path)
+        }
+        FileContentSource::Head => {
+            let repo = open_git2(repo_path)?;
+            let head = repo.head().map_err(git2_err)?;
+            let commit = head.peel_to_commit().map_err(git2_err)?;
+            commit_bytes(&repo, &commit.id().to_string(), path)
+        }
+        FileContentSource::Commit { sha } => {
+            let repo = open_git2(repo_path)?;
+            commit_bytes(&repo, sha, path)
+        }
+        FileContentSource::CommitParent { sha } => {
+            let repo = open_git2(repo_path)?;
+            parent_bytes(&repo, sha, path)
+        }
     }
 }
 
@@ -149,22 +198,9 @@ pub fn read_file_content(
     path: &str,
     source: &FileContentSource,
 ) -> Result<FileContent, BackendError> {
-    match source {
-        FileContentSource::WorkingTree => read_workdir(repo_path, path),
-        FileContentSource::Index => {
-            let repo = open_git2(repo_path)?;
-            read_index(&repo, path)
-        }
-        FileContentSource::Head => {
-            let repo = open_git2(repo_path)?;
-            let head = repo.head().map_err(git2_err)?;
-            let commit = head.peel_to_commit().map_err(git2_err)?;
-            read_commit(&repo, &commit.id().to_string(), path)
-        }
-        FileContentSource::Commit { sha } => {
-            let repo = open_git2(repo_path)?;
-            read_commit(&repo, sha, path)
-        }
+    match source_bytes(repo_path, path, source)? {
+        Some(bytes) => Ok(from_bytes(bytes)),
+        None => Ok(missing()),
     }
 }
 
@@ -234,5 +270,48 @@ mod tests {
         let c = read_file_content(dir.path(), "b.bin", &FileContentSource::WorkingTree).unwrap();
         assert!(c.is_binary);
         assert!(c.content.is_empty());
+    }
+
+    fn head_sha(dir: &Path) -> String {
+        let repo = git2::Repository::open(dir).unwrap();
+        let commit = repo.head().unwrap().peel_to_commit().unwrap();
+        commit.id().to_string()
+    }
+
+    #[test]
+    fn commit_parent_resolves_old_side() {
+        let dir = init_repo();
+        std::fs::write(dir.path().join("a.txt"), "v2\n").unwrap();
+        git(dir.path(), &["commit", "-aqm", "second"]);
+        let head = head_sha(dir.path());
+
+        // The commit itself carries the new content; its parent the old.
+        let new = read_file_content(
+            dir.path(),
+            "a.txt",
+            &FileContentSource::Commit { sha: head.clone() },
+        )
+        .unwrap();
+        assert_eq!(new.content, "v2\n");
+        let old = read_file_content(
+            dir.path(),
+            "a.txt",
+            &FileContentSource::CommitParent { sha: head },
+        )
+        .unwrap();
+        assert_eq!(old.content, "hello\nworld\n");
+    }
+
+    #[test]
+    fn commit_parent_of_root_is_missing() {
+        let dir = init_repo();
+        let root = head_sha(dir.path());
+        let old = read_file_content(
+            dir.path(),
+            "a.txt",
+            &FileContentSource::CommitParent { sha: root },
+        )
+        .unwrap();
+        assert!(old.missing);
     }
 }

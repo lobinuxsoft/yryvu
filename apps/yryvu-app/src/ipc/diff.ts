@@ -98,7 +98,10 @@ export type FileContentSource =
   | { kind: "working-tree" }
   | { kind: "index" }
   | { kind: "head" }
-  | { kind: "commit"; sha: string };
+  | { kind: "commit"; sha: string }
+  /// First parent of `sha` — the "before" side of a commit diff. A root
+  /// commit resolves to missing, so an added file shows no old side.
+  | { kind: "commit-parent"; sha: string };
 
 export interface FileContent {
   content: string;
@@ -114,6 +117,23 @@ export function readFileContent(
   source: FileContentSource
 ): Promise<FileContent> {
   return invoke<FileContent>("read_file_content", { repoPath, path, source });
+}
+
+/// Raw blob bytes (base64 + MIME) for the image diff viewer (issue #60).
+/// `dataBase64` is empty when `missing`.
+export interface FileBytes {
+  dataBase64: string;
+  mime: string;
+  size: number;
+  missing: boolean;
+}
+
+export function readFileBytes(
+  repoPath: string,
+  path: string,
+  source: FileContentSource
+): Promise<FileBytes> {
+  return invoke<FileBytes>("read_file_bytes", { repoPath, path, source });
 }
 
 /// Per-file commit history with rename-following (issue #7).

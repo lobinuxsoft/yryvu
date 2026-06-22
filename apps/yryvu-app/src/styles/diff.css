@@ -116,6 +116,99 @@
   color: var(--fg-3);
 }
 
+/* Image diff viewer (issue #60): always-visible old/new pair plus a
+   single overlay toggle, matching GitKraken's two-control layout. */
+.image-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.image-diff__toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.image-diff__overlay-toggle {
+  font-size: 12px;
+  padding: 3px 10px;
+  color: var(--fg-2);
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.image-diff__overlay-toggle[aria-pressed="true"] {
+  color: var(--accent-fg, var(--fg-0));
+  border-color: var(--accent, var(--info));
+  background: color-mix(in srgb, var(--accent, var(--info)) 18%, var(--bg-1));
+}
+
+.image-diff__overlay-toggle:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.image-diff__panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.image-diff__pane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+}
+
+.image-diff__label {
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.image-diff__img {
+  max-width: 100%;
+  height: auto;
+  /* Checkerboard so transparent PNGs read against the theme background. */
+  background-image:
+    linear-gradient(45deg, var(--bg-2) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--bg-2) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--bg-2) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--bg-2) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.image-diff__overlay-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.image-diff__overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.image-diff__no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  padding: 24px;
+  font-size: 12px;
+  color: var(--fg-3);
+  border: 1px dashed var(--bg-3);
+  border-radius: 4px;
+}
+
 /* Banner above a deleted text file's original-only content. */
 .diff-file__deleted-banner {
   padding: 8px 12px;

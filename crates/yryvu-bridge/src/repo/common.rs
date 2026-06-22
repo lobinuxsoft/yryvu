@@ -15,9 +15,12 @@ const IMAGE_EXTENSIONS: &[&str] = &[
 ];
 
 /// Route a delta to a `FileDataType` for the UI dispatcher. Priority is
-/// submodule → image → binary → deleted → text so a deleted image still
-/// reaches the image viewer and a deleted binary the binary placeholder.
-/// `Directory` is never produced here — file diffs are always leaf files.
+/// submodule → oversized → image → binary → deleted → text. Oversized
+/// outranks image so a huge image falls back to the binary placeholder
+/// (doc 07) instead of being base64-shipped to the viewer; a deleted
+/// image still reaches the viewer (missing-new pane) and a deleted
+/// binary the binary placeholder. `Directory` is never produced here —
+/// file diffs are always leaf files.
 fn classify_file_data_type(
     path: &str,
     status: FileStatus,
@@ -29,6 +32,9 @@ fn classify_file_data_type(
     if new_mode == git2::FileMode::Commit || old_mode == git2::FileMode::Commit {
         return FileDataType::Submodule;
     }
+    if too_large {
+        return FileDataType::Binary;
+    }
     let is_image = path
         .rsplit('.')
         .next()
@@ -38,7 +44,7 @@ fn classify_file_data_type(
     if is_image {
         return FileDataType::Image;
     }
-    if is_binary || too_large {
+    if is_binary {
         return FileDataType::Binary;
     }
     if status == FileStatus::Deleted {
@@ -263,6 +269,12 @@ mod tests {
         assert_eq!(
             classify("UI/Logo.PNG", FileStatus::Added, true, false),
             FileDataType::Image
+        );
+        // An oversized image falls back to the binary placeholder (doc 07)
+        // rather than being base64-shipped to the viewer.
+        assert_eq!(
+            classify("ui/huge.png", FileStatus::Modified, false, true),
+            FileDataType::Binary
         );
     }
 

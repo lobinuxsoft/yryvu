@@ -12,6 +12,19 @@ export type FileStatus =
   | "unmodified"
   | "other";
 
+/// How the diff pane should render a file, mirroring the Rust
+/// `FileDataType` enum (kebab-case via `serde(rename_all)`) and
+/// GitKraken's `fileDataTypes` (research doc 06). The `DiffView`
+/// dispatcher routes on this before the text fallback. `directory` only
+/// exists for enum parity — file diffs never carry it.
+export type FileDataType =
+  | "text"
+  | "image"
+  | "binary"
+  | "submodule"
+  | "deleted"
+  | "directory";
+
 export type LineKind = "context" | "added" | "removed";
 
 export interface DiffLine {
@@ -34,6 +47,7 @@ export interface FileDiff {
   path: string;
   old_path: string | null;
   status: FileStatus;
+  file_data_type: FileDataType;
   is_binary: boolean;
   truncated: boolean;
   old_size: number;

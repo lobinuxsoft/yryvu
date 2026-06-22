@@ -16,8 +16,10 @@ import {
   getStagedDiff,
   getUnstagedDiff,
   readFileContent,
+  stageFilemode,
   stageHunks,
   stageLines,
+  unstageFilemode,
   unstageHunks,
   unstageLines,
   type FileBlame,
@@ -39,6 +41,7 @@ import {
 import { Dialog } from "../Dialog";
 import {
   DiffFileBlock,
+  type FilemodeStaging,
   type HunkStagingActions,
   type ImageSources,
   type LineStagingApi,
@@ -262,6 +265,29 @@ export function FileDiffTab() {
     refreshWorkingTree();
   }
 
+  function filemodeStaging(): FilemodeStaging | undefined {
+    const sel = selection();
+    if (!sel || sel.kind !== "staging") return undefined;
+    const run = async (
+      op: (p: string, path: string) => Promise<void>,
+      failTitle: string,
+    ) => {
+      const p = repoPath();
+      if (!p) return;
+      try {
+        await op(p, sel.path);
+      } catch (err) {
+        notify.error(failTitle, { message: String(err), category: "commit" });
+      }
+      refreshWorkingTree();
+    };
+    return {
+      side: sel.side,
+      onStage: () => void run(stageFilemode, "Stage filemode failed"),
+      onUnstage: () => void run(unstageFilemode, "Unstage filemode failed"),
+    };
+  }
+
   function lineStagingApi(): LineStagingApi | undefined {
     const sel = selection();
     if (!sel || sel.kind !== "staging") return undefined;
@@ -359,6 +385,7 @@ export function FileDiffTab() {
               lineStagingApi={lineStagingApi()}
               imageSources={imageSources()}
               repoPath={repoPath()}
+              filemodeStaging={filemodeStaging()}
             />
           </Show>
         </Show>

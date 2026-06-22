@@ -244,6 +244,12 @@ pub struct FileDiff {
     /// The pointer pane resolves each OID's summary on demand.
     pub submodule_old_sha: Option<String>,
     pub submodule_new_sha: Option<String>,
+    /// Octal file modes ("100644" / "100755" / "120000" / "160000")
+    /// before/after the change. `None` for the missing side of an
+    /// add/delete. When both are present and differ with no content
+    /// hunks, the UI shows the "File Mode Changes" pane (issue #60).
+    pub old_mode: Option<String>,
+    pub new_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

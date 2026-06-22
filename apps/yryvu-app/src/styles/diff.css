@@ -116,6 +116,26 @@
   color: var(--fg-3);
 }
 
+.diff-file__special-btn {
+  margin-top: 8px;
+  font-size: 12px;
+  padding: 4px 14px;
+  color: var(--fg-1);
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.diff-file__special-btn:hover:not(:disabled) {
+  border-color: var(--accent, var(--info));
+}
+
+.diff-file__special-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Image diff viewer (issue #60): always-visible old/new pair plus a
    single overlay toggle, matching GitKraken's two-control layout. */
 .image-diff {

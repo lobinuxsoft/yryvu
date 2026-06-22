@@ -131,6 +131,8 @@ pub fn run() {
             yryvu_bridge::commands::working_tree_status,
             yryvu_bridge::commands::stage_files,
             yryvu_bridge::commands::unstage_files,
+            yryvu_bridge::commands::stage_filemode,
+            yryvu_bridge::commands::unstage_filemode,
             yryvu_bridge::commands::diff_unstaged,
             yryvu_bridge::commands::diff_staged,
             yryvu_bridge::commands::read_file_content,

@@ -60,6 +60,11 @@ export interface FileDiff {
   /// submodule. The pointer pane resolves each summary on demand.
   submodule_old_sha: string | null;
   submodule_new_sha: string | null;
+  /// Octal file modes ("100644" / "100755" / …) before/after. `null` for
+  /// the missing side of an add/delete. Both present + different + no
+  /// hunks → the "File Mode Changes" pane.
+  old_mode: string | null;
+  new_mode: string | null;
 }
 
 export interface CommitDiff {

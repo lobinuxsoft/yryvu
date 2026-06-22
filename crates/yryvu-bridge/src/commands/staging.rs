@@ -43,6 +43,28 @@ pub async fn unstage_files(repo_path: String, paths: Vec<String>) -> Result<(), 
     .map_err(|e| e.to_string())?
 }
 
+/// Stage only a file-mode change (issue #60) — distinct action path from
+/// content staging so the UI surfaces the mode-specific affordance/error.
+#[tauri::command]
+pub async fn stage_filemode(repo_path: String, path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::repo::staging::stage_filemode(&PathBuf::from(&repo_path), &path)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn unstage_filemode(repo_path: String, path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::repo::staging::unstage_filemode(&PathBuf::from(&repo_path), &path)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn diff_unstaged(repo_path: String, path: String) -> Result<FileDiff, String> {
     tauri::async_runtime::spawn_blocking(move || {

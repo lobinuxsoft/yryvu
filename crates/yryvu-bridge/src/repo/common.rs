@@ -68,6 +68,20 @@ pub(super) fn short_sha(oid: &git2::Oid) -> String {
     oid.to_string().chars().take(7).collect()
 }
 
+/// Octal string for the file modes git tracks. Returns `None` for the
+/// empty/unreadable mode (the missing side of an add/delete) and tree
+/// modes (never appear in file diffs).
+fn mode_to_octal(mode: git2::FileMode) -> Option<String> {
+    match mode {
+        git2::FileMode::Blob => Some("100644".into()),
+        git2::FileMode::BlobGroupWritable => Some("100664".into()),
+        git2::FileMode::BlobExecutable => Some("100755".into()),
+        git2::FileMode::Link => Some("120000".into()),
+        git2::FileMode::Commit => Some("160000".into()),
+        _ => None,
+    }
+}
+
 pub(crate) fn open_repo(path: &Path) -> Result<gix::Repository, BackendError> {
     gix::open(path).map_err(|e| BackendError::Open {
         path: path.display().to_string(),
@@ -156,6 +170,8 @@ pub(super) fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, Bac
             hunks: Vec::new(),
             submodule_old_sha,
             submodule_new_sha,
+            old_mode: mode_to_octal(old_file.mode()),
+            new_mode: mode_to_octal(new_file.mode()),
         };
 
         if !is_binary && !too_large {

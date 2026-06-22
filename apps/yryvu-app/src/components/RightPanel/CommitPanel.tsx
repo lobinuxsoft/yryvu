@@ -91,6 +91,8 @@ function toFileDiff(change: WorkingTreeChange): FileDiff {
     hunks: [],
     submodule_old_sha: null,
     submodule_new_sha: null,
+    old_mode: null,
+    new_mode: null,
   };
 }
 

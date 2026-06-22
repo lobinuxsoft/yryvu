@@ -14,6 +14,7 @@ import { HunkActions, type HunkStagingActions } from "./HunkActions";
 import { ImageDiffView, type ImageSources } from "./ImageDiffView";
 import { LineActions, type LineStagingApi } from "./LineActions";
 import { MarkdownView } from "./MarkdownView";
+import { SubmodulePointerPane } from "./SubmodulePointerPane";
 import { BinaryDiffView, DeletedFileBanner } from "./SpecialViews";
 import { pairLines, SplitLineRow } from "./SplitView";
 
@@ -124,6 +125,9 @@ export interface DiffFileBlockProps {
   /// read-only multi-file `DiffView`, where images fall back to the
   /// binary placeholder.
   imageSources?: ImageSources;
+  /// Parent repo path, used by the submodule pointer pane to resolve
+  /// commit summaries and open the submodule as a tab (issue #60).
+  repoPath?: string;
 }
 
 export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
@@ -207,8 +211,7 @@ function renderByDataType(
         </>
       );
     case "submodule":
-    // PR4 mounts the pointer pane; until then fall through to the raw
-    // "Subproject commit" hunks, which still convey the OID change.
+      return <SubmodulePointerPane file={file} repoPath={props.repoPath} />;
     case "directory":
     case "text":
       return renderBody(props, mode, lang);

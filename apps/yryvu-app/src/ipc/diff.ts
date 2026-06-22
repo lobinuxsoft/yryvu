@@ -55,6 +55,11 @@ export interface FileDiff {
   additions: number;
   deletions: number;
   hunks: DiffHunk[];
+  /// For submodule gitlinks: the pinned commit OIDs before/after the
+  /// change. `null` when the side doesn't exist or the file isn't a
+  /// submodule. The pointer pane resolves each summary on demand.
+  submodule_old_sha: string | null;
+  submodule_new_sha: string | null;
 }
 
 export interface CommitDiff {

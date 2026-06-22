@@ -133,6 +133,15 @@ pub(super) fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, Bac
             too_large,
         );
 
+        // Submodule gitlinks carry the pinned commit OIDs in the delta
+        // file ids; a zero oid means that side doesn't exist.
+        let (submodule_old_sha, submodule_new_sha) = if file_data_type == FileDataType::Submodule {
+            let to_opt = |oid: git2::Oid| (!oid.is_zero()).then(|| oid.to_string());
+            (to_opt(old_file.id()), to_opt(new_file.id()))
+        } else {
+            (None, None)
+        };
+
         let mut file_diff = FileDiff {
             path,
             old_path,
@@ -145,6 +154,8 @@ pub(super) fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, Bac
             additions: 0,
             deletions: 0,
             hunks: Vec::new(),
+            submodule_old_sha,
+            submodule_new_sha,
         };
 
         if !is_binary && !too_large {

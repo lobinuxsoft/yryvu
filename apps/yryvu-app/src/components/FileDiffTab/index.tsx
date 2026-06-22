@@ -358,6 +358,7 @@ export function FileDiffTab() {
               stagingActions={stagingActions()}
               lineStagingApi={lineStagingApi()}
               imageSources={imageSources()}
+              repoPath={repoPath()}
             />
           </Show>
         </Show>

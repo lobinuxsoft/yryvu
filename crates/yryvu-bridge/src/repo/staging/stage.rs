@@ -190,6 +190,72 @@ pub fn discard_paths(repo_path: &Path, paths: &[String]) -> Result<(), BackendEr
     Ok(())
 }
 
+/// Discard ALL local changes — staged and unstaged — resetting the repo to
+/// HEAD. Equivalent to `git reset --hard HEAD && git clean -fd` (untracked
+/// files only, ignored files are left alone).
+///
+/// Steps:
+///   1. `repo.reset(HEAD, Hard)` — atomically resets index + working tree for
+///      every tracked file. This is what git itself does internally; per-path
+///      `checkout_head` can silently skip files with filters or open handles.
+///   2. Scan for remaining `WT_NEW` entries (untracked files not removed by
+///      the hard reset) and delete them from disk.
+///
+/// Unborn branch: clears the index (no HEAD to reset to) and removes all
+/// WT_NEW files.
+///
+/// BACKEND: git2 — `reset` with `ResetType::Hard` has no gix equivalent yet.
+pub fn discard_all(repo_path: &Path) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| BackendError::Git(anyhow::anyhow!("bare repo: no working tree")))?
+        .to_path_buf();
+
+    match repo.head() {
+        Ok(head) => {
+            let head_obj = head.peel(git2::ObjectType::Any).map_err(git2_err)?;
+            repo.reset(&head_obj, git2::ResetType::Hard, None)
+                .map_err(git2_err)?;
+        }
+        Err(e) if e.code() == git2::ErrorCode::UnbornBranch => {
+            let mut index = repo.index().map_err(git2_err)?;
+            index.clear().map_err(git2_err)?;
+            index.write().map_err(git2_err)?;
+        }
+        Err(e) => return Err(git2_err(e)),
+    }
+
+    // `reset --hard` only touches tracked files; untracked ones remain.
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(true).recurse_untracked_dirs(true);
+    let statuses = repo.statuses(Some(&mut opts)).map_err(git2_err)?;
+
+    for entry in statuses.iter() {
+        if !entry.status().contains(git2::Status::WT_NEW) {
+            continue;
+        }
+        let Some(rel) = entry.path() else { continue };
+        let abs = workdir.join(rel);
+        let result = if abs.is_dir() {
+            std::fs::remove_dir_all(&abs)
+        } else {
+            std::fs::remove_file(&abs)
+        };
+        match result {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => {
+                return Err(BackendError::Git(anyhow::anyhow!(
+                    "remove untracked '{rel}': {e}"
+                )))
+            }
+        }
+    }
+
+    Ok(())
+}
+
 // Filemode staging needs a real executable bit, which only exists on unix
 // filesystems with core.filemode tracking — gate the test accordingly.
 #[cfg(all(test, unix))]

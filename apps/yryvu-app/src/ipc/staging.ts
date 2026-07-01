@@ -89,6 +89,13 @@ export function discardPaths(
   return invoke<void>("discard_paths", { repoPath, paths });
 }
 
+/// Discard ALL local changes — equivalent to `git reset --hard HEAD` plus
+/// removal of untracked files. More reliable than `discardPaths` for binary,
+/// LFS, and filter-driven files. Caller must confirm beforehand — no undo.
+export function discardAll(repoPath: string): Promise<void> {
+  return invoke<void>("discard_all", { repoPath });
+}
+
 /// Options bundle mirroring the backend `CommitOptions` (serde camelCase).
 /// `skipHooks` is a no-op on the git2 backend — kept for API parity.
 /// `gpgSign=true` currently errors with `NotImplemented`.

@@ -114,3 +114,15 @@
 .commit-panel__bulk:hover {
   background: var(--accent-hover);
 }
+
+.commit-panel__bulk--danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  padding: 1px 7px;
+}
+
+.commit-panel__bulk--danger:hover {
+  background: var(--danger);
+  color: var(--fg-0);
+}

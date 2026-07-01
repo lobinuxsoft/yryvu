@@ -5,6 +5,7 @@ import { createEffect, createSignal, on, onCleanup, onMount, Show } from "solid-
 import {
   commitAndPush,
   createCommit,
+  discardAll,
   discardPaths,
   stageAll,
   stageFiles,
@@ -49,6 +50,10 @@ export function RightPanel() {
   const [pendingDiscard, setPendingDiscard] = createSignal<string[] | null>(
     null,
   );
+  // True when the pending discard originated from "Discard All" — signals
+  // confirmDiscard to unstage everything before wiping the working tree,
+  // so staged changes are also destroyed.
+  const [pendingDiscardIsAll, setPendingDiscardIsAll] = createSignal(false);
 
   // Leaving staging mode whenever the user picks a different commit keeps the
   // inspector in sync with the graph selection.
@@ -155,18 +160,42 @@ export function RightPanel() {
     // Surface destructive confirmation through <DiscardDialog/>. WebKit2GTK
     // silently auto-accepts `window.confirm`, which would discard without
     // prompting — discovered the hard way during the first dev pass.
+    setPendingDiscardIsAll(false);
     setPendingDiscard(paths);
+  }
+
+  function handleDiscardAll() {
+    const status = workingTreeStatus();
+    if (!status) return;
+    // Collect both staged and unstaged so the dialog lists everything that
+    // will be destroyed. confirmDiscard calls unstageAll first when this
+    // flag is set, which moves staged changes into the working tree before
+    // discardPaths wipes them.
+    const all = [
+      ...status.unstaged.map((c) => c.path),
+      ...status.staged.map((c) => c.path),
+    ];
+    const unique = [...new Set(all)];
+    if (unique.length === 0) return;
+    setPendingDiscardIsAll(true);
+    setPendingDiscard(unique);
   }
 
   async function confirmDiscard() {
     const paths = pendingDiscard();
+    const isAll = pendingDiscardIsAll();
     const p = repoPath();
     setPendingDiscard(null);
+    setPendingDiscardIsAll(false);
     if (!p || !paths || paths.length === 0) return;
     try {
-      await discardPaths(p, paths);
+      if (isAll) {
+        await discardAll(p);
+      } else {
+        await discardPaths(p, paths);
+      }
       notify.success("Discarded", {
-        message: paths.length === 1 ? paths[0] : `${paths.length} files`,
+        message: isAll ? "all changes" : paths.length === 1 ? paths[0] : `${paths.length} files`,
         category: "commit",
       });
     } catch (err) {
@@ -281,6 +310,7 @@ export function RightPanel() {
             onDiscard={handleDiscard}
             onStageAll={handleStageAll}
             onUnstageAll={handleUnstageAll}
+            onDiscardAll={handleDiscardAll}
             onBack={() => setInspectorMode("details")}
             onCommit={handleCommit}
             onCommitAndPush={handleCommitAndPush}

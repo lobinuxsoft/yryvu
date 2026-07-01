@@ -60,6 +60,7 @@ export interface CommitPanelProps {
   onDiscard: (paths: string[]) => void;
   onStageAll: () => void;
   onUnstageAll: () => void;
+  onDiscardAll: () => void;
   onBack: () => void;
   onCommit: () => void;
   onCommitAndPush: () => void;
@@ -277,9 +278,11 @@ export function CommitPanel(props: CommitPanelProps) {
         side="unstaged"
         title="Unstaged Files"
         bulkLabel="Stage All Changes"
+        secondaryBulkLabel="Discard All Changes"
         collapsed={unstagedFilesCollapsed()}
         onToggleCollapsed={() => setUnstagedFilesCollapsed((v) => !v)}
         onBulk={() => props.onStageAll()}
+        onSecondaryBulk={() => props.onDiscardAll()}
         repoId={repoId()}
         files={unstagedFiles()}
         activeFilePath={activeFor("unstaged")}

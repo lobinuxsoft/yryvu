@@ -146,6 +146,7 @@ pub fn run() {
             yryvu_bridge::commands::stage_all,
             yryvu_bridge::commands::unstage_all,
             yryvu_bridge::commands::discard_paths,
+            yryvu_bridge::commands::discard_all,
             yryvu_bridge::commands::create_commit,
             yryvu_bridge::commands::commit_and_push,
             yryvu_bridge::commands::stage_hunks,

@@ -21,6 +21,9 @@ export interface CommitFileSectionProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onBulk: () => void;
+  /** Optional destructive secondary bulk action (e.g. "Discard All"). */
+  secondaryBulkLabel?: string;
+  onSecondaryBulk?: () => void;
   repoId: string;
   files: FileDiff[];
   activeFilePath: string | undefined;
@@ -61,6 +64,17 @@ export function CommitFileSection(props: CommitFileSectionProps) {
               {props.bulkLabel}
             </button>
           </Tooltip>
+          <Show when={props.secondaryBulkLabel && props.onSecondaryBulk}>
+            <Tooltip text={props.secondaryBulkLabel!}>
+              <button
+                class="commit-panel__bulk commit-panel__bulk--danger"
+                type="button"
+                onClick={props.onSecondaryBulk}
+              >
+                {props.secondaryBulkLabel}
+              </button>
+            </Tooltip>
+          </Show>
         </Show>
       </header>
       <Show when={!props.collapsed && count() > 0}>

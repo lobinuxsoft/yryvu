@@ -153,6 +153,20 @@ pub async fn discard_paths(repo_path: String, paths: Vec<String>) -> Result<(), 
     .map_err(|e| e.to_string())?
 }
 
+/// Discard every local change — staged and unstaged — via `git reset --hard
+/// HEAD` + removal of untracked files. More reliable than per-path
+/// `discard_paths` for binary, LFS, and filter-driven files because it
+/// delegates to git's own reset machinery instead of per-path checkout.
+#[tauri::command]
+pub async fn discard_all(repo_path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::repo::staging::discard_all(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn create_commit(
     app: AppHandle,

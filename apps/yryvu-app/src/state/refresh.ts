@@ -10,10 +10,32 @@ import {
 } from "../ipc";
 import { repoPath } from "./repo-base";
 
+/// Self-echo suppression for the repo file watcher.
+///
+/// The watcher re-observes yryvu's *own* `.git` / working-tree writes about
+/// one debounce after a local op, which would trigger a second, identical
+/// refetch. Every locally-initiated refresh stamps `lastLocalRefreshAt`; the
+/// watcher listeners (`state/repo-live.ts`) ignore events landing inside
+/// `SELF_ECHO_WINDOW_MS`. Genuinely external changes are unaffected: the
+/// watcher fires a full debounce after the *last* filesystem event, so their
+/// event lands past the window. Watcher-driven refreshes bump the nonces
+/// directly (not via these helpers), so they never stamp — otherwise the
+/// three events of one commit would cannibalise each other.
+let lastLocalRefreshAt = 0;
+function markLocalRefresh() {
+  lastLocalRefreshAt = performance.now();
+}
+
+/// True if a local op refreshed within the last `windowMs`.
+export function localRefreshWithin(windowMs: number): boolean {
+  return performance.now() - lastLocalRefreshAt < windowMs;
+}
+
 /// Bumped whenever a staging-mutating op completes, so resources watching
 /// working-tree status re-fetch.
 export const [workingTreeNonce, setWorkingTreeNonce] = createSignal(0);
 export function refreshWorkingTree() {
+  markLocalRefresh();
   setWorkingTreeNonce((n) => n + 1);
 }
 
@@ -29,6 +51,7 @@ export function refreshUndoRedo() {
 /// Bumped after any commit-creating op so CommitGraph re-streams.
 export const [graphNonce, setGraphNonce] = createSignal(0);
 export function refreshGraph() {
+  markLocalRefresh();
   setGraphNonce((n) => n + 1);
 }
 
@@ -36,6 +59,7 @@ export function refreshGraph() {
 /// create, …) so the sidebar branch list and repo-state banner re-fetch.
 export const [branchesNonce, setBranchesNonce] = createSignal(0);
 export function refreshBranches() {
+  markLocalRefresh();
   setBranchesNonce((n) => n + 1);
 }
 

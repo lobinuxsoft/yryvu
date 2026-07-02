@@ -43,6 +43,7 @@ mod stashes;
 pub(crate) mod submodules;
 mod tags;
 pub(crate) mod undo;
+pub(crate) mod watcher;
 mod worktree;
 mod worktrees;
 

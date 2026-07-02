@@ -25,6 +25,7 @@ export * from "./release_notes";
 export * from "./search";
 export * from "./remote";
 export * from "./repo_management";
+export * from "./repoWatch";
 export * from "./smart_branches";
 export * from "./sparse_checkout";
 export * from "./ssh";

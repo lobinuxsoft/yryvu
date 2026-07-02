@@ -215,6 +215,8 @@ pub fn run() {
             yryvu_bridge::commands::get_theme_css,
             yryvu_bridge::commands::create_theme_from_template,
             yryvu_bridge::commands::open_themes_folder,
+            yryvu_bridge::commands::watch_repo,
+            yryvu_bridge::commands::unwatch_repo,
         ])
         .setup(|app| {
             let m = menu::build(app.handle())?;

@@ -266,10 +266,13 @@ export function streamGraph(
   onBatch: (rows: GraphRow[]) => void,
   options: {
     batchSize?: number;
+    /** Cap the newest-first walk; omit to stream the full history. */
+    limit?: number;
     onPinned?: (sha: string | null) => void;
   } = {},
 ): StreamHandle {
   const batchSize = options.batchSize ?? 100;
+  const limit = options.limit;
   const onPinned = options.onPinned;
   let unlisten: UnlistenFn | undefined;
   let resolve!: () => void;
@@ -290,7 +293,7 @@ export function streamGraph(
           resolve();
         }
       });
-      await invoke("stream_graph", { repoPath, batchSize });
+      await invoke("stream_graph", { repoPath, batchSize, limit });
     } catch (err) {
       unlisten?.();
       reject(err);

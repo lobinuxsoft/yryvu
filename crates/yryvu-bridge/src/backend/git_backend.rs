@@ -32,6 +32,7 @@ pub trait GitBackend: Send + Sync {
     fn walk_commits(
         &self,
         repo_path: &Path,
+        limit: Option<usize>,
     ) -> Result<Box<dyn Iterator<Item = Result<Commit, BackendError>> + Send>, BackendError>;
 
     fn list_branches(&self, repo_path: &Path) -> Result<Vec<BranchInfo>, BackendError>;

@@ -23,6 +23,14 @@ import {
 } from "../../state";
 import { createIncrementalEdgeStates } from "./edgeStates";
 
+/// Initial walk depth. A large repo lays out these newest commits fast
+/// instead of paying for the whole history up front; older commits load on
+/// demand (see `loadMore`). Sized to comfortably fill a tall viewport with
+/// headroom so the common case never needs a second fetch.
+const DEFAULT_GRAPH_LIMIT = 1000;
+/// How many more commits each `loadMore` pulls in.
+const LOAD_MORE_STEP = 1000;
+
 /**
  * Stream the commit graph for the active repo and produce the derived
  * resources / signals every zone reads:
@@ -42,6 +50,14 @@ export function useGraphData(repoPath: Accessor<string>) {
   const [rows, setRows] = createSignal<GraphRow[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | undefined>(undefined);
+  /// Newest-first walk cap. Only ever grows (via `loadMore`); never reset on
+  /// repo switch or refresh, so an expanded view survives a commit landing.
+  const [limit, setLimit] = createSignal(DEFAULT_GRAPH_LIMIT);
+  /// True while a `loadMore` re-stream is in flight — gates the button and
+  /// the scroll trigger so we never fire overlapping extends.
+  const [loadingMore, setLoadingMore] = createSignal(false);
+  /// The last stream filled the cap, so older commits probably exist.
+  const [hasMore, setHasMore] = createSignal(false);
   /**
    * Provider tag for the repo's primary remote. Re-queried whenever the
    * repo path changes. Drives avatar URL resolution per row — `"github"`
@@ -51,30 +67,64 @@ export function useGraphData(repoPath: Accessor<string>) {
   const [hostingService, setHostingService] =
     createSignal<HostingService>("unknown");
 
-  // (Re-)stream the commit graph whenever the repo path or graphNonce changes.
+  // (Re-)stream the commit graph. Two triggers, two behaviours:
+  //   - reload (repo path or graphNonce changed): clear and stream
+  //     progressively so the skeleton gives way to rows as they arrive.
+  //   - extend (limit grew via loadMore): keep the current rows on screen and
+  //     buffer the larger walk, swapping it in one shot when it completes — no
+  //     empty flash, no scroll jump, and lanes recompute correctly against the
+  //     full set. `lastReloadKey` tells the two triggers apart.
+  let lastReloadKey = "";
   createEffect(() => {
     const path = repoPath();
-    graphNonce();
-    setRows([]);
-    setLoading(true);
+    const nonce = graphNonce();
+    const lim = limit();
+    const reloadKey = `${path}|${nonce}`;
+    const isReload = reloadKey !== lastReloadKey;
+    lastReloadKey = reloadKey;
+
+    if (isReload) {
+      setRows([]);
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     setError(undefined);
+
+    const buffer: GraphRow[] = [];
     const handle = streamGraph(
       path,
       (batch) => {
-        setRows((prev) => prev.concat(batch));
+        buffer.push(...batch);
+        if (isReload) setRows((prev) => prev.concat(batch));
       },
       {
+        limit: lim,
         onPinned: (sha) => setPinnedSha(sha ?? undefined),
       },
     );
     handle.promise
-      .then(() => setLoading(false))
+      .then(() => {
+        if (!isReload) setRows(buffer);
+        // Filled the cap → older commits probably remain.
+        setHasMore(buffer.length >= lim);
+        setLoading(false);
+        setLoadingMore(false);
+      })
       .catch((e) => {
         setLoading(false);
+        setLoadingMore(false);
         setError(String(e));
       });
     onCleanup(() => handle.stop());
   });
+
+  /// Pull in the next page of older commits. No-op while a stream is in
+  /// flight or when the last walk didn't fill the cap (nothing more to load).
+  const loadMore = () => {
+    if (loading() || loadingMore() || !hasMore()) return;
+    setLimit((l) => l + LOAD_MORE_STEP);
+  };
 
   // Smart Branch Visibility — port of GK's `SmartBranchesService`. The
   // backend computes the deterministic 5-ref allowlist via `smartVisibleRefs`;
@@ -171,6 +221,9 @@ export function useGraphData(repoPath: Accessor<string>) {
   return {
     rows,
     loading,
+    loadingMore,
+    hasMore,
+    loadMore,
     error,
     hostingService,
     edgeStates,

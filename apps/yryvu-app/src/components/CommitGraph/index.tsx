@@ -92,6 +92,21 @@ export function CommitGraph(props: CommitGraphProps) {
 
   const selection = useGraphSelection({ rows: layout.displayRows });
 
+  // Infinite scroll: when the viewport nears the end of the loaded rows, pull
+  // the next page of older commits. Reads the virtualizer's rendered range so
+  // it fires on scroll; `loadMore` self-guards against overlapping or
+  // exhausted fetches, so a plain threshold check is enough here.
+  const LOAD_MORE_THRESHOLD_ROWS = 50;
+  createEffect(() => {
+    if (!data.hasMore() || data.loadingMore()) return;
+    const items = virtualizer.getVirtualItems();
+    const last = items[items.length - 1];
+    if (!last) return;
+    if (last.index >= layout.displayRows().length - LOAD_MORE_THRESHOLD_ROWS) {
+      data.loadMore();
+    }
+  });
+
   // Sidebar ref-click navigation (issue #72). Mirrors GK's `setScrollToSha`:
   // resolve the requested sha to a row index, scroll only when off-screen
   // (`align: "center"`), and update the selection ring. The signal is

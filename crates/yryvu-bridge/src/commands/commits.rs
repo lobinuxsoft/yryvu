@@ -37,13 +37,16 @@ pub async fn stream_graph(
     app: AppHandle,
     repo_path: String,
     batch_size: Option<usize>,
+    limit: Option<usize>,
 ) -> Result<(), String> {
     let batch_size = batch_size.unwrap_or(100).max(1);
     let path = PathBuf::from(&repo_path);
 
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let backend = GixBackend;
-        let walk = backend.walk_commits(&path).map_err(|e| e.to_string())?;
+        let walk = backend
+            .walk_commits(&path, limit)
+            .map_err(|e| e.to_string())?;
         let commits: Vec<Commit> = walk
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| e.to_string())?;

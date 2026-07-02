@@ -11,6 +11,7 @@ import {
   setCommitMessage,
 } from "./commit-draft";
 import { mutateUndoRedoState, mutateWorkingTreeStatus } from "./refresh";
+import { unwatchRepo, watchRepo } from "../ipc";
 
 /// Swap the active repository. Clears every per-repo ephemeral signal
 /// (selection, hovered ref, inspector mode, draft commit message,
@@ -48,4 +49,9 @@ export function setRepoPath(next: string | undefined): void {
   // Filter chips persist per-repo — reload the new repo's saved
   // filter (or fall back to empty when the repo has none).
   reloadCommitFilterForRepo();
+  // Point the backend filesystem watcher at the new repo (or stop it when
+  // the last repo closes). Fire-and-forget — a watcher failure must not
+  // block the switch; live-refresh degrades to manual, nothing breaks.
+  if (next) void watchRepo(next);
+  else void unwatchRepo();
 }

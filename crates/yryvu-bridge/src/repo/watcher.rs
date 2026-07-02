@@ -36,16 +36,22 @@ use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use notify::RecursiveMode;
-use notify_debouncer_full::{new_debouncer, Debouncer, RecommendedCache};
+use notify::{Config, PollWatcher, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{new_debouncer_opt, Debouncer, RecommendedCache};
 use tauri::{AppHandle, Emitter};
 use thiserror::Error;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 /// Longer than the themes watcher's 200 ms: a single `git` operation writes
 /// many files (index, refs, logs) in a burst, and we want them to collapse
 /// into one refresh rather than a stutter of partial ones.
 const DEBOUNCE_MS: u64 = 400;
+
+/// Poll interval used on filesystems where inotify is unreliable (see
+/// [`fs_is_inotify_unreliable`]). The poll watcher stat-diffs snapshots
+/// rather than subscribing to kernel events, so it never fires on reads —
+/// the cost is up to this much latency plus a periodic stat walk.
+const POLL_INTERVAL_SECS: u64 = 3;
 
 /// Emitted when refs moved (HEAD / branches / tags / stash) — graph + branches.
 pub const REFS_CHANGED_EVENT: &str = "repo-refs-changed";
@@ -63,8 +69,24 @@ pub enum RepoWatcherError {
 }
 
 /// RAII handle wrapping the running debouncer. Dropping it stops the watcher.
+/// The backend differs by filesystem: inotify on ones that support it,
+/// polling on FUSE/network mounts where inotify reports phantom events.
 pub struct RepoWatcher {
-    _debouncer: Debouncer<notify::RecommendedWatcher, RecommendedCache>,
+    _handle: WatcherHandle,
+}
+
+enum WatcherHandle {
+    Inotify(Debouncer<RecommendedWatcher, RecommendedCache>),
+    Poll(Debouncer<PollWatcher, RecommendedCache>),
+}
+
+impl WatcherHandle {
+    fn watch(&mut self, path: &Path, mode: RecursiveMode) -> notify::Result<()> {
+        match self {
+            WatcherHandle::Inotify(d) => d.watch(path, mode),
+            WatcherHandle::Poll(d) => d.watch(path, mode),
+        }
+    }
 }
 
 /// The single active-repo watcher, if any.
@@ -118,54 +140,139 @@ fn start(app: AppHandle, repo_path: &Path) -> Result<RepoWatcher, RepoWatcherErr
     let app = Arc::new(app);
     let root_for_handler = root.clone();
 
-    let mut debouncer = new_debouncer(
-        Duration::from_millis(DEBOUNCE_MS),
-        None,
-        move |result: notify_debouncer_full::DebounceEventResult| match result {
-            Ok(events) if !events.is_empty() => {
-                // A `.gitignore` edit changes what counts as noise — rebuild
-                // the matcher before classifying this same batch.
-                let ignore_changed = events
-                    .iter()
-                    .flat_map(|e| e.paths.iter())
-                    .any(|p| p.file_name().and_then(|n| n.to_str()) == Some(".gitignore"));
-                if ignore_changed {
-                    if let Ok(mut g) = gitignore.lock() {
-                        *g = build_gitignore(&root_for_handler);
-                    }
-                }
-
-                let touched = {
-                    let gi = gitignore.lock().unwrap_or_else(|e| e.into_inner());
-                    let mut agg = Touched::default();
-                    for path in events.iter().flat_map(|e| e.paths.iter()) {
-                        agg.merge(classify(path, &git_dir, &gi));
-                        if agg.all() {
-                            break;
-                        }
-                    }
-                    agg
-                };
-
-                if touched.any() {
-                    debug!(
-                        refs = touched.refs,
-                        index = touched.index,
-                        worktree = touched.worktree,
-                        "repo changed, emitting granular events"
-                    );
-                    emit(&app, touched);
+    // The same debounced handler drives both backends — only the watcher and
+    // its config differ. Built once and moved into whichever branch runs
+    // (mutually exclusive, so the borrow checker allows the shared move).
+    let handler = move |result: notify_debouncer_full::DebounceEventResult| match result {
+        Ok(events) if !events.is_empty() => {
+            // A `.gitignore` edit changes what counts as noise — rebuild
+            // the matcher before classifying this same batch.
+            let ignore_changed = events
+                .iter()
+                .flat_map(|e| e.paths.iter())
+                .any(|p| p.file_name().and_then(|n| n.to_str()) == Some(".gitignore"));
+            if ignore_changed {
+                if let Ok(mut g) = gitignore.lock() {
+                    *g = build_gitignore(&root_for_handler);
                 }
             }
-            Ok(_) => {}
-            Err(errors) => warn!(?errors, "repo watcher reported errors"),
-        },
-    )?;
 
-    debouncer.watch(&root, RecursiveMode::Recursive)?;
-    Ok(RepoWatcher {
-        _debouncer: debouncer,
-    })
+            let touched = {
+                let gi = gitignore.lock().unwrap_or_else(|e| e.into_inner());
+                let mut agg = Touched::default();
+                for path in events.iter().flat_map(|e| e.paths.iter()) {
+                    agg.merge(classify(path, &git_dir, &gi));
+                    if agg.all() {
+                        break;
+                    }
+                }
+                agg
+            };
+
+            if touched.any() {
+                debug!(
+                    refs = touched.refs,
+                    index = touched.index,
+                    worktree = touched.worktree,
+                    "repo changed, emitting granular events"
+                );
+                emit(&app, touched);
+            }
+        }
+        Ok(_) => {}
+        Err(errors) => warn!(?errors, "repo watcher reported errors"),
+    };
+
+    let timeout = Duration::from_millis(DEBOUNCE_MS);
+    let (mut handle, watch_root) = if fs_is_inotify_unreliable(&root) {
+        info!(
+            path = %root.display(),
+            "repo is on a FUSE/network filesystem; using poll watcher scoped to \
+             .git (inotify reports phantom events there and would storm the UI; \
+             a full-tree poll is too slow on large working trees)"
+        );
+        let config = Config::default().with_poll_interval(Duration::from_secs(POLL_INTERVAL_SECS));
+        let handle = WatcherHandle::Poll(new_debouncer_opt::<_, PollWatcher, _>(
+            timeout,
+            None,
+            handler,
+            RecommendedCache::new(),
+            config,
+        )?);
+        // Poll only `.git` here: it catches commits, checkouts, branch moves and
+        // staging (the high-value refresh triggers) cheaply. Stat-polling a huge
+        // working tree every few seconds is too slow to be useful, so on these
+        // filesystems unstaged edits made outside yryvu don't auto-refresh WIP.
+        (handle, root.join(".git"))
+    } else {
+        let handle = WatcherHandle::Inotify(new_debouncer_opt::<_, RecommendedWatcher, _>(
+            timeout,
+            None,
+            handler,
+            RecommendedCache::new(),
+            Config::default(),
+        )?);
+        (handle, root.clone())
+    };
+
+    handle.watch(&watch_root, RecursiveMode::Recursive)?;
+    Ok(RepoWatcher { _handle: handle })
+}
+
+/// True when `path` sits on a filesystem whose inotify support is unreliable:
+/// FUSE/fuseblk (ntfs-3g & friends report reads as writes — a read → refresh →
+/// read feedback storm) and network mounts (miss remote changes). On those we
+/// fall back to polling. Best-effort: on any parse failure we assume the
+/// filesystem is fine and keep inotify.
+fn fs_is_inotify_unreliable(path: &Path) -> bool {
+    let canon = match std::fs::canonicalize(path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    let mountinfo = match std::fs::read_to_string("/proc/self/mountinfo") {
+        Ok(m) => m,
+        Err(_) => return false,
+    };
+    match mount_fstype_for(&mountinfo, &canon) {
+        Some(fstype) => fstype_is_unreliable(&fstype),
+        None => false,
+    }
+}
+
+/// Resolve the fstype of the mount that contains `canon` by longest matching
+/// mount point in `/proc/self/mountinfo` content. Each line is
+/// `… <mount-point> … - <fstype> <source> …`; we take the pre-`- ` 5th field
+/// as the mount point and the first post-`- ` field as the fstype.
+fn mount_fstype_for(mountinfo: &str, canon: &Path) -> Option<String> {
+    let mut best: Option<(usize, String)> = None;
+    for line in mountinfo.lines() {
+        let (pre, post) = match line.split_once(" - ") {
+            Some(v) => v,
+            None => continue,
+        };
+        let mount_point = match pre.split(' ').nth(4) {
+            Some(mp) => mp,
+            None => continue,
+        };
+        let fstype = match post.split(' ').next() {
+            Some(f) => f,
+            None => continue,
+        };
+        if canon.starts_with(mount_point)
+            && best.as_ref().is_none_or(|(l, _)| mount_point.len() > *l)
+        {
+            best = Some((mount_point.len(), fstype.to_string()));
+        }
+    }
+    best.map(|(_, fstype)| fstype)
+}
+
+fn fstype_is_unreliable(fstype: &str) -> bool {
+    fstype.starts_with("fuse")
+        || matches!(
+            fstype,
+            "ntfs" | "nfs" | "nfs4" | "cifs" | "smb3" | "smbfs" | "9p"
+        )
 }
 
 fn emit(app: &AppHandle, touched: Touched) {
@@ -313,5 +420,49 @@ mod tests {
     fn gitignore_file_itself_is_a_worktree_change() {
         let gi = gi_with(Path::new("/repo"), &["target/"]);
         assert!(classify_at("/repo", ".gitignore", &gi).worktree);
+    }
+
+    const MOUNTINFO: &str = "\
+22 1 259:4 / / rw,relatime shared:1 - ext4 /dev/nvme0n1p2 rw
+30 22 0:50 / /home rw,relatime shared:2 - btrfs /dev/nvme0n1p3 rw
+40 22 259:5 / /var/mnt/DATA rw,relatime shared:3 - fuseblk /dev/nvme0n1p4 rw
+50 22 0:60 / /mnt/nas rw,relatime shared:4 - nfs4 10.0.0.1:/export rw";
+
+    #[test]
+    fn longest_mount_prefix_wins() {
+        assert_eq!(
+            mount_fstype_for(MOUNTINFO, Path::new("/var/mnt/DATA/Repos/x")).as_deref(),
+            Some("fuseblk")
+        );
+        assert_eq!(
+            mount_fstype_for(MOUNTINFO, Path::new("/home/user/code")).as_deref(),
+            Some("btrfs")
+        );
+        assert_eq!(
+            mount_fstype_for(MOUNTINFO, Path::new("/srv/thing")).as_deref(),
+            Some("ext4")
+        );
+        assert_eq!(
+            mount_fstype_for(MOUNTINFO, Path::new("/mnt/nas/repo")).as_deref(),
+            Some("nfs4")
+        );
+    }
+
+    #[test]
+    fn unreliable_fstypes_classified() {
+        for f in [
+            "fuse",
+            "fuseblk",
+            "fuse.sshfs",
+            "ntfs",
+            "nfs",
+            "nfs4",
+            "cifs",
+        ] {
+            assert!(fstype_is_unreliable(f), "{f} should be unreliable");
+        }
+        for f in ["ext4", "btrfs", "xfs", "zfs", "tmpfs", "overlay"] {
+            assert!(!fstype_is_unreliable(f), "{f} should be reliable");
+        }
     }
 }

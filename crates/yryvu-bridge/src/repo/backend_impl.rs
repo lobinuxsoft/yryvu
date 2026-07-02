@@ -32,8 +32,9 @@ impl GitBackend for GixBackend {
     fn walk_commits(
         &self,
         repo_path: &Path,
+        limit: Option<usize>,
     ) -> Result<Box<dyn Iterator<Item = Result<Commit, BackendError>> + Send>, BackendError> {
-        commits::walk_commits(repo_path)
+        commits::walk_commits(repo_path, limit)
     }
 
     fn list_branches(&self, repo_path: &Path) -> Result<Vec<BranchInfo>, BackendError> {

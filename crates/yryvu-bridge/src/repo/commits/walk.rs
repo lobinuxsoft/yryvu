@@ -13,8 +13,15 @@ use super::super::common::{open_git2, open_repo};
 use super::super::stashes::list_stashes;
 use super::ref_scan::collect_ref_tips;
 
+/// Walk reachable commits newest-first and return them children-first
+/// (topo-sorted). `limit` caps how many of the newest commits are loaded:
+/// the revwalk is lazy, so `Some(n)` stops after `n` commits and never pays
+/// for the tail of a large history. Commits at the boundary keep parent SHAs
+/// that fall outside the window; the topo sort and `layout_commits` tolerate
+/// missing parents (edges terminate at the boundary). `None` walks everything.
 pub fn walk_commits(
     repo_path: &Path,
+    limit: Option<usize>,
 ) -> Result<Box<dyn Iterator<Item = Result<Commit, BackendError>> + Send>, BackendError> {
     let repo = open_repo(repo_path)?;
     // git2 powers upstream resolution + ahead/behind counts for ref pills
@@ -63,7 +70,7 @@ pub fn walk_commits(
 
     let mut refs_by_oid = scan.refs_by_oid;
     let mut commits: HashMap<String, Commit> = HashMap::new();
-    for info in walk {
+    for info in walk.take(limit.unwrap_or(usize::MAX)) {
         let info = info.map_err(|e| BackendError::Revwalk(anyhow::Error::new(e)))?;
         let gix_commit = repo
             .find_commit(info.id)
@@ -257,5 +264,77 @@ impl Ord for TopoEntry {
 impl PartialOrd for TopoEntry {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use git2::{Repository, Signature};
+    use std::fs;
+    use tempfile::TempDir;
+
+    /// Build a linear chain of `n` commits (`c0` .. `c{n-1}`), returning the
+    /// temp dir so it lives for the duration of the test.
+    fn linear_repo(n: usize) -> TempDir {
+        let dir = TempDir::new().unwrap();
+        let repo = Repository::init(dir.path()).unwrap();
+        let sig = Signature::now("t", "t@e").unwrap();
+        let mut parent: Option<git2::Oid> = None;
+        for i in 0..n {
+            fs::write(dir.path().join("f.txt"), format!("v{i}")).unwrap();
+            let mut index = repo.index().unwrap();
+            index
+                .add_all(["*"], git2::IndexAddOption::DEFAULT, None)
+                .unwrap();
+            index.write().unwrap();
+            let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+            let parents: Vec<git2::Commit> = parent
+                .into_iter()
+                .map(|o| repo.find_commit(o).unwrap())
+                .collect();
+            let refs: Vec<&git2::Commit> = parents.iter().collect();
+            parent = Some(
+                repo.commit(Some("HEAD"), &sig, &sig, &format!("c{i}"), &tree, &refs)
+                    .unwrap(),
+            );
+        }
+        dir
+    }
+
+    fn walked(dir: &Path, limit: Option<usize>) -> Vec<Commit> {
+        walk_commits(dir, limit)
+            .unwrap()
+            .filter_map(Result::ok)
+            .collect()
+    }
+
+    #[test]
+    fn limit_caps_to_the_newest_commits() {
+        let dir = linear_repo(10);
+        assert_eq!(walked(dir.path(), Some(3)).len(), 3);
+        assert_eq!(walked(dir.path(), Some(10)).len(), 10);
+    }
+
+    #[test]
+    fn none_or_oversized_limit_returns_all() {
+        let dir = linear_repo(5);
+        assert_eq!(walked(dir.path(), None).len(), 5);
+        assert_eq!(walked(dir.path(), Some(100)).len(), 5);
+    }
+
+    #[test]
+    fn boundary_commit_keeps_its_out_of_window_parent() {
+        // Rows come children-first (newest first); the last one is the oldest
+        // in the window. Its parent is excluded by the cap but the sha must
+        // survive so `layout_commits` can terminate the edge at the boundary.
+        let dir = linear_repo(6);
+        let rows = walked(dir.path(), Some(2));
+        assert_eq!(rows.len(), 2);
+        assert_eq!(
+            rows.last().unwrap().parents.len(),
+            1,
+            "boundary commit retains its parent sha"
+        );
     }
 }

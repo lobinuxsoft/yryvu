@@ -323,26 +323,30 @@ export function CommitPanel(props: CommitPanelProps) {
           </label>
         </header>
 
-        <CommitMessage
-          summary={commitMessage()}
-          description={commitDescription()}
-          onSummaryChange={setCommitMessage}
-          onDescriptionChange={setCommitDescription}
-        />
+        {/* Middle scrolls under pressure; header + Commit button stay
+            pinned (GK parity — button-row is never scrolled away). */}
+        <div class="commit-panel__commit-form__scroll">
+          <CommitMessage
+            summary={commitMessage()}
+            description={commitDescription()}
+            onSummaryChange={setCommitMessage}
+            onDescriptionChange={setCommitDescription}
+          />
 
-        <CoAuthorPicker
-          repoPath={repoPath() ?? ""}
-          description={commitDescription()}
-          onChange={setCommitDescription}
-        />
+          <CoAuthorPicker
+            repoPath={repoPath() ?? ""}
+            description={commitDescription()}
+            onChange={setCommitDescription}
+          />
 
-        <CommitOptionsBlock
-          signConfig={signConfig()}
-          repoPath={repoPath() ?? null}
-          defaultName={signConfig()?.userName ?? ""}
-          defaultEmail={signConfig()?.userEmail ?? ""}
-          onKeyGenerated={() => setSignConfigNonce((n) => n + 1)}
-        />
+          <CommitOptionsBlock
+            signConfig={signConfig()}
+            repoPath={repoPath() ?? null}
+            defaultName={signConfig()?.userName ?? ""}
+            defaultEmail={signConfig()?.userEmail ?? ""}
+            onKeyGenerated={() => setSignConfigNonce((n) => n + 1)}
+          />
+        </div>
 
         <CommitButton
           label={submitLabel()}

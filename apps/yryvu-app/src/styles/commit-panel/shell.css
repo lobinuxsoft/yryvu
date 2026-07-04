@@ -47,15 +47,18 @@
 
 /* -------- Sections wrapper (GK's staging-scroll) ----------------------- */
 /* Owns the space between the toolbar and the commit form so the form
-   stays bottom-pinned even when both sections are collapsed. Does NOT
-   scroll itself — each section's FileList owns its own viewport. */
+   stays bottom-pinned even when both sections are collapsed. Normally
+   each section's FileList owns its own viewport and no scrollbar shows
+   here; `overflow-y: auto` is a last-resort fallback so both section
+   headers stay reachable on windows too short to fit the two 120px
+   floors (e.g. the 800×600 default with files on both sides). */
 .commit-panel__sections {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 /* -------- Section (Unstaged / Staged) ---------------------------------- */
@@ -69,8 +72,10 @@
 
 /* GK's fixed 50/50 split (.stage/.unstage: height:50% + flex-grow:1,
    no draggable splitter). A collapsed or empty section drops to its
-   24px-ish header and the other absorbs the space via flex-grow. The
-   min-height keeps ~3 rows visible when the commit form squeezes. */
+   header and the other absorbs the space via flex-grow (see the
+   empty-section divergence note in CommitFileSection.tsx). The
+   min-height keeps ~3 rows visible; the sections wrapper falls back to
+   its own scroll when two floors can't fit the window. */
 .commit-panel__section[data-expanded="true"] {
   flex: 1 1 50%;
   min-height: 120px;

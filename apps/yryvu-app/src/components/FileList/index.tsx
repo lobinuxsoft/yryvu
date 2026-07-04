@@ -103,10 +103,21 @@ export function FileList(props: FileListProps) {
   // Drop collapsed-dir / forced-visible state whenever the rev or display
   // mode changes — `TreeViewAtShaReset` semantics. Keyed by
   // `(repoId, revKey, isTree)` so opposite-mode state never leaks in.
+  // The viewport scroll is part of that reset: this FileList instance
+  // outlives commit selection (non-keyed Show), and the resource keeps
+  // stale files during refetch so the skeleton never intervenes to
+  // discard scrollTop — without this, a new rev renders windowed around
+  // the previous rev's offset (mid-list, no visual cue).
   createEffect(
     on(
       () => [props.revKey, isTree()] as const,
-      ([rev, tree]) => resetRevState(props.repoId, rev, tree),
+      ([rev, tree]) => {
+        resetRevState(props.repoId, rev, tree);
+        if (itemsEl) itemsEl.scrollTop = 0;
+        // Sync the virtualizer's cached offset in the same tick so the
+        // virtual path doesn't render one frame around the stale offset.
+        virtualizer.scrollToOffset(0);
+      },
       { defer: true },
     ),
   );
@@ -168,10 +179,15 @@ export function FileList(props: FileListProps) {
   });
 
   /// Shared row shell for both render paths. `start` present = virtual
-  /// path (absolute positioning inside the sizer).
-  const Item = (p: { row: FlatRow; start?: number }) => (
+  /// path (absolute positioning inside the sizer). `index` feeds
+  /// aria-setsize/posinset so screen readers announce the true position
+  /// even though windowing keeps only ~viewport rows in the DOM.
+  const Item = (p: { row: FlatRow; start?: number; index?: number }) => (
     <div
       class="file-list__item"
+      role="listitem"
+      aria-setsize={p.start !== undefined ? rows().length : undefined}
+      aria-posinset={p.index !== undefined ? p.index + 1 : undefined}
       classList={{ "file-list__item--virtual": p.start !== undefined }}
       style={
         p.start !== undefined
@@ -247,6 +263,7 @@ export function FileList(props: FileListProps) {
           virtualizer's scroll-element ref survives loading swaps. */}
       <div
         class="file-list__items"
+        role="list"
         classList={{
           "file-list__items--hidden": props.loading && props.files.length === 0,
         }}
@@ -258,10 +275,17 @@ export function FileList(props: FileListProps) {
         >
           <div
             class="file-list__sizer"
+            role="none"
             style={{ height: `${virtualizer.getTotalSize()}px` }}
           >
             <For each={virtualizer.getVirtualItems()}>
-              {(item) => <Item row={rows()[item.index]!} start={item.start} />}
+              {(item) => (
+                <Item
+                  row={rows()[item.index]!}
+                  start={item.start}
+                  index={item.index}
+                />
+              )}
             </For>
           </div>
         </Show>

@@ -14,10 +14,25 @@
   border-top: 1px solid var(--bg-3);
   background: var(--bg-1);
   flex-shrink: 0;
-  /* GK caps the form (maxHeight = panelHeight - 249) and scrolls the
-     message internally; equivalent guard so short windows never push
-     the sections below their min-height. */
-  max-height: calc(100% - 160px);
+  /* Reserve = chrome above the sections (header ~33 + toolbar ~32 +
+     3×10 gaps ≈ 95px) + both section floors (2×120 + 10 gap = 250px) ≈
+     345px, so the staging lists keep their minimum before the form
+     claims space. `max()` floors the form so it can never collapse to
+     zero on a tiny window. GK's equivalent guard is panelHeight − 249.
+     Header + Commit button stay pinned; only the middle scrolls. */
+  max-height: max(180px, calc(100% - 345px));
+  overflow: hidden;
+}
+
+/* Scrollable middle of the form (message + co-authors + options). Keeps
+   the header and the Commit button pinned even when the form is capped
+   — GK pins its button-row (min-height:60px) and scrolls only the
+   message region. */
+.commit-panel__commit-form__scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
   overflow-y: auto;
 }
 

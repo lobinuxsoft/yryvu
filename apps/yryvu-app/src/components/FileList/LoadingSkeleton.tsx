@@ -34,10 +34,14 @@ export function LoadingSkeleton() {
   const rows = Array.from({ length: ROW_COUNT }, (_, i) => i);
 
   return (
-    <div class="file-list__items file-list__items--skeleton" aria-busy="true">
+    <div
+      class="file-list__items file-list__items--skeleton"
+      role="list"
+      aria-busy="true"
+    >
       <For each={rows}>
         {(i) => (
-          <div class="file-list__item">
+          <div class="file-list__item" role="listitem">
             <div
               class="file-list__row file-list__row--skeleton"
               style={{

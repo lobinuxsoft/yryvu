@@ -88,6 +88,8 @@ export {
   branchesNonce,
   setBranchesNonce,
   refreshBranches,
+  markAppActivity,
+  appActiveWithin,
   workingTreeStatus,
   undoRedoState,
   dirtyFileCount,

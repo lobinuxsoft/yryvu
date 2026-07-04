@@ -17,6 +17,7 @@ import {
 } from "../../ipc";
 import {
   graphNonce,
+  markAppActivity,
   setHiddenBySmartFilter,
   setPinnedSha,
   smartBranchesEnabled,
@@ -91,6 +92,10 @@ export function useGraphData(repoPath: Accessor<string>) {
     }
     setError(undefined);
 
+    // The revwalk reads across `.git` — arm the suppression window so its
+    // atime churn doesn't loop back through the watcher.
+    markAppActivity();
+
     const buffer: GraphRow[] = [];
     const handle = streamGraph(
       path,
@@ -110,6 +115,8 @@ export function useGraphData(repoPath: Accessor<string>) {
         setHasMore(buffer.length >= lim);
         setLoading(false);
         setLoadingMore(false);
+        // Re-arm after the reads complete so the trailing echo is covered.
+        markAppActivity();
       })
       .catch((e) => {
         setLoading(false);

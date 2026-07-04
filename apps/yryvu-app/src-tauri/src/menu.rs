@@ -35,6 +35,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 .accelerator("CmdOrCtrl+O")
                 .build(app)?,
         )
+        .item(&MenuItemBuilder::with_id("file_apply_patch", "Apply Patch…").build(app)?)
         .separator()
         .item(
             &MenuItemBuilder::with_id("file_preferences", "Preferences…")
@@ -107,6 +108,7 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: tauri::menu::MenuEven
         "file_new_tab" => Some("menu:new-tab"),
         "file_close_tab" => Some("menu:close-tab"),
         "file_open_repo" => Some("menu:open-repo"),
+        "file_apply_patch" => Some("menu:apply-patch"),
         "file_clone_repo" => Some("menu:clone-repo"),
         "file_init_repo" => Some("menu:init-repo"),
         "file_preferences" => Some("menu:preferences"),

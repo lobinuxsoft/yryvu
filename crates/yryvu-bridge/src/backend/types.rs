@@ -341,3 +341,13 @@ pub struct RepoStateInfo {
     /// Paths with conflict markers. Empty unless the index has conflicts.
     pub conflict_paths: Vec<String>,
 }
+
+/// Result of applying an mbox `.patch` (`git am` equivalent, issue #75).
+/// Serialized field names (`new_sha`, `subject`) are the frontend contract.
+#[derive(Debug, Clone, Serialize)]
+pub struct ApplyPatchOutcome {
+    /// SHA of the commit the patch materialized on HEAD.
+    pub new_sha: String,
+    /// Commit subject (the `Subject:` header, `[PATCH]` prefix stripped).
+    pub subject: String,
+}

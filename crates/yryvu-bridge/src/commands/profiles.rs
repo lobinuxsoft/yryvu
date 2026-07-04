@@ -35,6 +35,17 @@ pub(crate) fn stamp_profile_identity(
     }
 }
 
+/// Resolve the active profile's identity for `repo_path` as `(name,
+/// email)`, or `None` when no profile applies / has a blank identity.
+/// Used by commit-creating commands that don't carry a [`CommitOptions`]
+/// (e.g. `apply_patch`) to stamp the committer.
+pub(crate) fn resolve_identity(config_dir: &Path, repo_path: &Path) -> Option<(String, String)> {
+    let store = profiles::load(config_dir).ok()?;
+    profiles::resolve(&store, repo_path)
+        .and_then(|p| p.identity())
+        .map(|(name, email)| (name.to_string(), email.to_string()))
+}
+
 /// Load the full store (profiles + overrides + default).
 #[tauri::command]
 pub async fn list_profiles(app: AppHandle) -> Result<ProfilesStore, String> {

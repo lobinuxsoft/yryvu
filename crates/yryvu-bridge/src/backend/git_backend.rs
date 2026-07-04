@@ -6,8 +6,8 @@ use graph_core::Commit;
 
 use super::errors::BackendError;
 use super::types::{
-    BranchInfo, CombinedDiff, CommitDiff, FileDiff, MergeResult, MergeStrategy, PushOptions,
-    RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
+    ApplyPatchOutcome, BranchInfo, CombinedDiff, CommitDiff, FileDiff, MergeResult, MergeStrategy,
+    PushOptions, RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
 };
 use crate::repo::commits::AuthorInfo;
 use crate::repo::conflicts::{ConflictDiff3, ConflictListing, ConflictSide, ConflictSource};
@@ -189,6 +189,17 @@ pub trait GitBackend: Send + Sync {
         sha: &str,
         out_dir: &Path,
     ) -> Result<String, BackendError>;
+
+    /// Apply an mbox `.patch` (`git am` equivalent) onto HEAD as a new
+    /// commit. Author identity/date come from the mbox headers; `committer`
+    /// is the current user (profile-stamped by the caller), falling back to
+    /// the repo signature when `None`.
+    fn apply_patch(
+        &self,
+        repo_path: &Path,
+        patch_path: &Path,
+        committer: Option<(&str, &str)>,
+    ) -> Result<ApplyPatchOutcome, BackendError>;
 
     fn stash_push(
         &self,

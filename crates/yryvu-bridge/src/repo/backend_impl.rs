@@ -17,10 +17,10 @@ use std::path::Path;
 use graph_core::Commit;
 
 use crate::backend::{
-    AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff,
-    GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange, MergeResult,
-    MergeStrategy, PushOptions, RepoStateInfo, ResetMode, SignConfig, SignFormat, StashInfo,
-    SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
+    ApplyPatchOutcome, AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff,
+    CommitOptions, FileDiff, GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange,
+    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, SignConfig, SignFormat,
+    StashInfo, SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
 };
 
 use super::{
@@ -387,6 +387,15 @@ impl GitBackend for GixBackend {
         out_dir: &Path,
     ) -> Result<String, BackendError> {
         patches::format_patch(repo_path, sha, out_dir)
+    }
+
+    fn apply_patch(
+        &self,
+        repo_path: &Path,
+        patch_path: &Path,
+        committer: Option<(&str, &str)>,
+    ) -> Result<ApplyPatchOutcome, BackendError> {
+        patches::apply_patch(repo_path, patch_path, committer)
     }
 
     fn stash_push(

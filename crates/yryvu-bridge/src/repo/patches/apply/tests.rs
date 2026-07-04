@@ -214,6 +214,142 @@ fn non_applying_patch_leaves_repo_pristine() {
     );
 }
 
+/// A commit that deletes a line whose content is exactly `- ` emits the
+/// diff line `-- `, which collides with the RFC-3676 signature trailer. The
+/// diff must not be truncated at that deletion.
+#[test]
+fn round_trip_survives_deleted_dash_space_line() {
+    let (_dir, path) = init_repo();
+    let base = commit_with_author(
+        &path,
+        "notes.md",
+        "keep1\n- \nkeep2\n",
+        "base",
+        &git2::Signature::now("C", "c@example.com").unwrap(),
+    );
+    let author =
+        git2::Signature::new("Ada", "ada@example.com", &git2::Time::new(1_700_000_000, 0)).unwrap();
+    // Delete the "- " line (mid-file) AND end the file with a "- " line to
+    // exercise the trailer-adjacent case too.
+    let topic = commit_with_author(&path, "notes.md", "keep1\nkeep2\n- ", "trim", &author);
+    let topic_tree = git2::Repository::open(&path)
+        .unwrap()
+        .find_commit(topic)
+        .unwrap()
+        .tree_id();
+    let out = TempDir::new().unwrap();
+    let patch = format_patch(&path, &topic.to_string(), out.path()).unwrap();
+    reset_hard(&path, base);
+
+    apply_patch(&path, Path::new(&patch), None).unwrap();
+
+    let repo = git2::Repository::open(&path).unwrap();
+    assert_eq!(
+        repo.find_commit(head_oid(&path)).unwrap().tree_id(),
+        topic_tree,
+        "a deleted '- ' line must not truncate the diff",
+    );
+}
+
+/// A commit message body containing a `---` line must round-trip whole; the
+/// separator anchors on the last `---` before the diff, not the first.
+#[test]
+fn round_trip_preserves_message_with_separator_line() {
+    let (_dir, path) = init_repo();
+    let base = commit_with_author(
+        &path,
+        "a.txt",
+        "one\n",
+        "base",
+        &git2::Signature::now("C", "c@example.com").unwrap(),
+    );
+    let author =
+        git2::Signature::new("Ada", "ada@example.com", &git2::Time::new(1_700_000_000, 0)).unwrap();
+    let msg = "Add feature\n\nBefore\n---\nAfter";
+    let topic = commit_with_author(&path, "a.txt", "one\ntwo\n", msg, &author);
+    let out = TempDir::new().unwrap();
+    let patch = format_patch(&path, &topic.to_string(), out.path()).unwrap();
+    reset_hard(&path, base);
+
+    apply_patch(&path, Path::new(&patch), None).unwrap();
+
+    let repo = git2::Repository::open(&path).unwrap();
+    assert_eq!(
+        repo.find_commit(head_oid(&path))
+            .unwrap()
+            .message()
+            .unwrap()
+            .trim(),
+        msg,
+    );
+}
+
+/// CRLF-terminated patch files (email / Windows transport) apply, matching
+/// `git am`'s default CR stripping.
+#[test]
+fn crlf_patch_applies() {
+    let (_dir, path) = init_repo();
+    let base = commit_with_author(
+        &path,
+        "a.txt",
+        "one\n",
+        "base",
+        &git2::Signature::now("C", "c@example.com").unwrap(),
+    );
+    let author =
+        git2::Signature::new("Ada", "ada@example.com", &git2::Time::new(1_700_000_000, 0)).unwrap();
+    let topic = commit_with_author(&path, "a.txt", "one\ntwo\n", "add two", &author);
+    let out = TempDir::new().unwrap();
+    let patch = format_patch(&path, &topic.to_string(), out.path()).unwrap();
+
+    // Rewrite the patch with CRLF line endings.
+    let lf = fs::read_to_string(&patch).unwrap();
+    let crlf = lf.replace('\n', "\r\n");
+    let crlf_patch = out.path().join("crlf.patch");
+    fs::write(&crlf_patch, crlf).unwrap();
+    reset_hard(&path, base);
+
+    let outcome = apply_patch(&path, &crlf_patch, None).unwrap();
+    assert_eq!(outcome.subject, "add two");
+    assert_eq!(
+        fs::read_to_string(path.join("a.txt")).unwrap(),
+        "one\ntwo\n",
+        "content must be LF after CR stripping",
+    );
+}
+
+/// Pre-staged unrelated changes must be refused, not folded into the patch
+/// commit under the mbox author (mirrors `git am`'s dirty-index refusal).
+#[test]
+fn dirty_index_is_rejected() {
+    let (_dir, path) = init_repo();
+    let base = commit_with_author(
+        &path,
+        "widget.rs",
+        "// widget\n",
+        "base",
+        &git2::Signature::now("C", "c@example.com").unwrap(),
+    );
+    let author =
+        git2::Signature::new("Ada", "ada@example.com", &git2::Time::new(1_700_000_000, 0)).unwrap();
+    let topic = commit_with_author(&path, "widget.rs", "// widget\n// added\n", "add", &author);
+    let out = TempDir::new().unwrap();
+    let patch = format_patch(&path, &topic.to_string(), out.path()).unwrap();
+    reset_hard(&path, base);
+
+    // Stage an unrelated file before applying.
+    let repo = git2::Repository::open(&path).unwrap();
+    fs::write(path.join("secret.rs"), "SECRET=1\n").unwrap();
+    let mut idx = repo.index().unwrap();
+    idx.add_path(Path::new("secret.rs")).unwrap();
+    idx.write().unwrap();
+    let before = head_oid(&path);
+
+    let err = apply_patch(&path, Path::new(&patch), None).unwrap_err();
+    assert!(matches!(err, BackendError::WorkingTreeDirty));
+    assert_eq!(head_oid(&path), before, "no commit on a dirty index");
+}
+
 #[test]
 fn strip_patch_prefix_tolerates_versioned_tags() {
     assert_eq!(strip_patch_prefix("[PATCH] feat: x"), "feat: x");

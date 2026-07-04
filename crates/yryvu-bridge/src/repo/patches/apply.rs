@@ -16,11 +16,14 @@ use crate::undo_log::{record_op_best_effort, OpKind};
 /// falling back to the repo signature when `None`). Returns the new commit
 /// SHA and the applied subject.
 ///
-/// libgit2's `apply` is atomic: if any hunk fails to land, the call errors
-/// and the index + working tree are left untouched. A rejected patch
-/// therefore never leaves the repo in a half-applied `git am` state, so
-/// there is nothing to abort — unlike a real `git am`, which we cannot
-/// drive from libgit2 (yryvu never shells out to `git` in production).
+/// The whole operation is pristine-on-failure: the parse, the diff decode,
+/// the parent/author/committer resolution, and the dirty-index check all run
+/// before `repo.apply` (the first mutation), and `apply` itself is atomic —
+/// if any hunk fails to land it writes nothing. So a malformed, non-applying,
+/// or identity-less patch never leaves the repo in a half-applied `git am`
+/// state, and there is nothing to abort (unlike a real `git am`, which we
+/// cannot drive from libgit2 — yryvu never shells out to `git` in production).
+/// A dirty index is refused up front, matching `git am`'s own behavior.
 pub fn apply_patch(
     repo_path: &Path,
     patch_path: &Path,
@@ -31,7 +34,11 @@ pub fn apply_patch(
     let raw = std::fs::read(patch_path).map_err(|e| BackendError::PatchParse {
         detail: format!("cannot read patch file: {e}"),
     })?;
-    let text = String::from_utf8_lossy(&raw);
+    // Strip transport CR (mailbox/Windows line endings) up front, matching
+    // `git am`'s default (`am.keepcr=false`): normalize `\r\n` line
+    // terminators to `\n` so the header split, `---` separator, and diff all
+    // parse. A lone mid-line `\r` (genuine content) is left untouched.
+    let text = String::from_utf8_lossy(&raw).replace("\r\n", "\n");
     let parsed = parse_mbox(&text)?;
 
     // `Diff::from_buffer` parses only the unified-diff portion; feed it just
@@ -41,6 +48,33 @@ pub fn apply_patch(
         git2::Diff::from_buffer(parsed.diff.as_bytes()).map_err(|_| BackendError::PatchParse {
             detail: "no valid diff found in patch".into(),
         })?;
+
+    // Resolve everything fallible BEFORE mutating the tree so a bad
+    // signature, missing committer identity, or unborn HEAD fails while the
+    // repo is still pristine — `repo.apply` below is the first mutation and
+    // the doc-comment's atomicity guarantee only holds if nothing after it
+    // can fail with the tree already changed.
+    let parent = repo
+        .head()
+        .and_then(|h| h.peel_to_commit())
+        .map_err(git2_err)?;
+    let author = parsed.author_signature()?;
+    let committer_sig = match committer {
+        Some((name, email)) => git2::Signature::now(name, email).map_err(git2_err)?,
+        None => repo.signature().map_err(git2_err)?,
+    };
+
+    // Refuse a dirty index. `apply(Both)` mutates the on-disk index in place
+    // and `write_tree()` snapshots the WHOLE index, so any pre-staged
+    // unrelated file would be folded into the patch commit under the mbox
+    // author. `git am` refuses this the same way ("Dirty index").
+    let head_tree = parent.tree().map_err(git2_err)?;
+    let staged = repo
+        .diff_tree_to_index(Some(&head_tree), None, None)
+        .map_err(git2_err)?;
+    if staged.deltas().len() > 0 {
+        return Err(BackendError::WorkingTreeDirty);
+    }
 
     // Atomic: either every hunk applies (index + working tree updated) or
     // the repo is left pristine with this error.
@@ -54,14 +88,6 @@ pub fn apply_patch(
         .write_tree()
         .map_err(git2_err)?;
     let tree = repo.find_tree(tree_oid).map_err(git2_err)?;
-    let head = repo.head().map_err(git2_err)?;
-    let parent = head.peel_to_commit().map_err(git2_err)?;
-
-    let author = parsed.author_signature()?;
-    let committer_sig = match committer {
-        Some((name, email)) => git2::Signature::now(name, email).map_err(git2_err)?,
-        None => repo.signature().map_err(git2_err)?,
-    };
 
     let new_oid = repo
         .commit(
@@ -249,24 +275,39 @@ fn strip_patch_prefix(subject: &str) -> String {
     s.to_string()
 }
 
-/// Split the post-header text at the bare `---` separator line into
-/// `(body, remainder)`. The remainder holds the diffstat + diff + trailer.
+/// Split the post-header text at the `---` separator into `(body,
+/// remainder)`. The remainder holds the diffstat + diff + trailer.
+///
+/// Anchors on the LAST bare `---` line before the diff, not the first: a
+/// commit-message body may itself contain a `---` line, and the real
+/// format-patch separator always sits immediately before the diffstat/diff
+/// (diffstat lines never equal `---`). Without this, a body line `---`
+/// silently truncates the reconstructed message.
 fn split_at_separator(rest: &str) -> Option<(&str, &str)> {
+    let diff_start = rest.find("diff --git").unwrap_or(rest.len());
+    let mut sep: Option<(usize, usize)> = None;
     let mut idx = 0;
     for line in rest.split_inclusive('\n') {
+        if idx >= diff_start {
+            break;
+        }
         if line.trim_end_matches('\n') == "---" {
-            let body = &rest[..idx];
-            let remainder = &rest[idx + line.len()..];
-            return Some((body, remainder));
+            sep = Some((idx, line.len()));
         }
         idx += line.len();
     }
-    None
+    let (idx, len) = sep?;
+    Some((&rest[..idx], &rest[idx + len..]))
 }
 
 /// Pull the unified diff out of the post-separator region: skip the cosmetic
 /// diffstat block up to the first `diff --git`, then drop the RFC-3676
 /// signature trailer (`\n-- \n…`) that would otherwise corrupt the last hunk.
+///
+/// Uses `rfind` for the trailer: a removed line whose content is exactly
+/// `- ` serializes to the diff line `-- `, which also matches `\n-- \n`. The
+/// real trailer is always the file's last such block, so the last match is
+/// the safe cut — the first would truncate the diff at a legitimate deletion.
 fn extract_diff(region: &str) -> Result<String, BackendError> {
     let start = region
         .find("diff --git")
@@ -274,7 +315,7 @@ fn extract_diff(region: &str) -> Result<String, BackendError> {
             detail: "no diff body found".into(),
         })?;
     let mut diff = &region[start..];
-    if let Some(sig) = diff.find("\n-- \n") {
+    if let Some(sig) = diff.rfind("\n-- \n") {
         // Keep the newline that terminates the last diff line.
         diff = &diff[..sig + 1];
     }

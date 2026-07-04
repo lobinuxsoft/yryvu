@@ -3,7 +3,12 @@
 import { open } from "@tauri-apps/plugin-dialog";
 
 import { applyPatch } from "../../ipc";
-import { refreshBranches, refreshGraph, repoPath } from "../../state";
+import {
+  refreshBranches,
+  refreshGraph,
+  refreshWorkingTree,
+  repoPath,
+} from "../../state";
 import { notify } from "../Notifications";
 
 /// `menu:apply-patch` handler (issue #75). Picks an mbox `.patch` / `.mbox`
@@ -14,9 +19,10 @@ import { notify } from "../Notifications";
 export async function applyPatchFlow(): Promise<void> {
   const path = repoPath();
   if (!path) {
+    // No category — this is a precondition/system toast that must surface
+    // even when the user has muted commit notifications.
     notify.error("No repository open", {
       message: "Open a repository before applying a patch.",
-      category: "commit",
     });
     return;
   }
@@ -34,6 +40,9 @@ export async function applyPatchFlow(): Promise<void> {
       message: `${result.new_sha.slice(0, 7)} — ${result.subject}`,
       category: "commit",
     });
+    // apply(Both) touches the index + working tree and moves HEAD, so refresh
+    // all three surfaces (matches doRevert / doCherryPickOnto).
+    refreshWorkingTree();
     refreshGraph();
     refreshBranches();
   } catch (err) {

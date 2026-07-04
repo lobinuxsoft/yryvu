@@ -12,6 +12,8 @@
   gap: 10px;
   margin: -12px;
   padding: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .commit-panel__header {
@@ -43,12 +45,35 @@
   color: var(--fg-1);
 }
 
+/* -------- Sections wrapper (GK's staging-scroll) ----------------------- */
+/* Owns the space between the toolbar and the commit form so the form
+   stays bottom-pinned even when both sections are collapsed. Does NOT
+   scroll itself — each section's FileList owns its own viewport. */
+.commit-panel__sections {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
 /* -------- Section (Unstaged / Staged) ---------------------------------- */
 .commit-panel__section {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 0 6px 6px;
+  flex: 0 0 auto;
+}
+
+/* GK's fixed 50/50 split (.stage/.unstage: height:50% + flex-grow:1,
+   no draggable splitter). A collapsed or empty section drops to its
+   24px-ish header and the other absorbs the space via flex-grow. The
+   min-height keeps ~3 rows visible when the commit form squeezes. */
+.commit-panel__section[data-expanded="true"] {
+  flex: 1 1 50%;
+  min-height: 120px;
 }
 
 .commit-panel__section-header {

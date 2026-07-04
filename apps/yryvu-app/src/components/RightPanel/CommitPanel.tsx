@@ -274,35 +274,41 @@ export function CommitPanel(props: CommitPanelProps) {
         />
       </Show>
 
-      <CommitFileSection
-        side="unstaged"
-        title="Unstaged Files"
-        bulkLabel="Stage All Changes"
-        secondaryBulkLabel="Discard All Changes"
-        collapsed={unstagedFilesCollapsed()}
-        onToggleCollapsed={() => setUnstagedFilesCollapsed((v) => !v)}
-        onBulk={() => props.onStageAll()}
-        onSecondaryBulk={() => props.onDiscardAll()}
-        repoId={repoId()}
-        files={unstagedFiles()}
-        activeFilePath={activeFor("unstaged")}
-        onSelectFile={(p) => openStagingDiffTab("unstaged", p)}
-        rowActions={unstagedActions}
-      />
+      {/* GK's staging-scroll: owns the space between the toolbar and the
+          commit form. Each expanded section takes a fixed 50% share and
+          its FileList scrolls independently — the panel itself never
+          scrolls (#430). */}
+      <div class="commit-panel__sections">
+        <CommitFileSection
+          side="unstaged"
+          title="Unstaged Files"
+          bulkLabel="Stage All Changes"
+          secondaryBulkLabel="Discard All Changes"
+          collapsed={unstagedFilesCollapsed()}
+          onToggleCollapsed={() => setUnstagedFilesCollapsed((v) => !v)}
+          onBulk={() => props.onStageAll()}
+          onSecondaryBulk={() => props.onDiscardAll()}
+          repoId={repoId()}
+          files={unstagedFiles()}
+          activeFilePath={activeFor("unstaged")}
+          onSelectFile={(p) => openStagingDiffTab("unstaged", p)}
+          rowActions={unstagedActions}
+        />
 
-      <CommitFileSection
-        side="staged"
-        title="Staged Files"
-        bulkLabel="Unstage All Changes"
-        collapsed={stagedFilesCollapsed()}
-        onToggleCollapsed={() => setStagedFilesCollapsed((v) => !v)}
-        onBulk={() => props.onUnstageAll()}
-        repoId={repoId()}
-        files={stagedFiles()}
-        activeFilePath={activeFor("staged")}
-        onSelectFile={(p) => openStagingDiffTab("staged", p)}
-        rowActions={stagedActions}
-      />
+        <CommitFileSection
+          side="staged"
+          title="Staged Files"
+          bulkLabel="Unstage All Changes"
+          collapsed={stagedFilesCollapsed()}
+          onToggleCollapsed={() => setStagedFilesCollapsed((v) => !v)}
+          onBulk={() => props.onUnstageAll()}
+          repoId={repoId()}
+          files={stagedFiles()}
+          activeFilePath={activeFor("staged")}
+          onSelectFile={(p) => openStagingDiffTab("staged", p)}
+          rowActions={stagedActions}
+        />
+      </div>
 
       <section class="commit-panel__commit-form">
         <header class="commit-panel__commit-form__header">

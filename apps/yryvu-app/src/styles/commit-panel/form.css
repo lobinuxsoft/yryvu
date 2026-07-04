@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 
-/* Commit form — sticky bottom area: amend toggle row, message
+/* Commit form — bottom-pinned area: amend toggle row, message
    summary + description fields, template selector, and the
-   per-field char counter. Submit button lives in `submit.css`. */
+   per-field char counter. Submit button lives in `submit.css`.
+   Pinned by flex order (last child of the .commit-panel column, GK
+   parity #430) — no sticky needed now that the panel doesn't scroll. */
 
 .commit-panel__commit-form {
   display: flex;
@@ -11,9 +13,12 @@
   padding: 10px 12px 12px;
   border-top: 1px solid var(--bg-3);
   background: var(--bg-1);
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
+  flex-shrink: 0;
+  /* GK caps the form (maxHeight = panelHeight - 249) and scrolls the
+     message internally; equivalent guard so short windows never push
+     the sections below their min-height. */
+  max-height: calc(100% - 160px);
+  overflow-y: auto;
 }
 
 .commit-panel__commit-form__header {

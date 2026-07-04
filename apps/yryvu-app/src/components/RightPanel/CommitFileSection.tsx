@@ -35,7 +35,14 @@ export function CommitFileSection(props: CommitFileSectionProps) {
   const count = () => props.files.length;
 
   return (
-    <section class="commit-panel__section" data-side={props.side}>
+    <section
+      class="commit-panel__section"
+      data-side={props.side}
+      // GK parity (#430): an expanded section with files claims its 50%
+      // flex share; collapsed or empty it drops to header height and the
+      // sibling absorbs the space (GK's .stage/.unstage class toggle).
+      data-expanded={!props.collapsed && count() > 0 ? "true" : "false"}
+    >
       <header class="commit-panel__section-header">
         <Tooltip text={props.collapsed ? "Expand" : "Collapse"}>
           <button

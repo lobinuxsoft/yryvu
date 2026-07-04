@@ -45,10 +45,17 @@
 
 .inspector__banner-action:hover { background: var(--accent-hover); }
 
+/* GK parity (#430): the body no longer scrolls as one column — chrome is
+   pinned and each FileList owns a bounded scroll viewport (GK's
+   staging-scroll is overflow:hidden; only the virtualized Grids scroll).
+   Views lay out as a flex column; the file list takes the remaining
+   height via `flex: 1; min-height: 0`. */
 .inspector__body {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 12px;
   color: var(--fg-1);
 }

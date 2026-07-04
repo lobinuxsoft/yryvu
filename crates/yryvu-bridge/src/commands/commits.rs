@@ -7,7 +7,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::backend::{
-    AuthorInfo, CombinedDiff, CommitDetail, CommitDiff, GitBackend, ResetMode,
+    ApplyPatchOutcome, AuthorInfo, CombinedDiff, CommitDetail, CommitDiff, GitBackend, ResetMode,
     RECENT_AUTHORS_DEFAULT_LIMIT,
 };
 use crate::repo::commits::{commit_details as commit_details_impl, pick_pinned_head_for_path};
@@ -205,6 +205,31 @@ pub async fn format_patch(
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .format_patch(&PathBuf::from(&repo_path), &sha, &PathBuf::from(&out_dir))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Apply an mbox `.patch` (`git am` equivalent) onto HEAD as a new commit.
+/// Needs `AppHandle` — unlike `format_patch` it creates a commit, so the
+/// committer is stamped with the active profile's identity (author comes
+/// from the mbox headers).
+#[tauri::command]
+pub async fn apply_patch(
+    app: AppHandle,
+    repo_path: String,
+    patch_path: String,
+) -> Result<ApplyPatchOutcome, String> {
+    let config_dir = super::profiles::config_dir(&app).ok();
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = PathBuf::from(&repo_path);
+        let committer = config_dir
+            .as_deref()
+            .and_then(|dir| super::profiles::resolve_identity(dir, &path));
+        let committer_ref = committer.as_ref().map(|(n, e)| (n.as_str(), e.as_str()));
+        GixBackend
+            .apply_patch(&path, &PathBuf::from(&patch_path), committer_ref)
             .map_err(|e| e.to_string())
     })
     .await

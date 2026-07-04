@@ -56,6 +56,21 @@ export function formatPatch(
   return invoke<string>("format_patch", { repoPath, sha, outDir });
 }
 
+export interface ApplyPatchResult {
+  new_sha: string;
+  subject: string;
+}
+
+/// Apply an mbox `.patch` file (`git am` equivalent) onto HEAD as a new
+/// commit. Author identity comes from the patch headers; committer is the
+/// active profile / repo signature.
+export function applyPatch(
+  repoPath: string,
+  patchPath: string,
+): Promise<ApplyPatchResult> {
+  return invoke<ApplyPatchResult>("apply_patch", { repoPath, patchPath });
+}
+
 /**
  * Provider tags recognised by the backend's `detect_hosting_service`.
  * Drives provider-native avatar resolution — notably the GitHub CDN

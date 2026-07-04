@@ -102,4 +102,8 @@ pub enum BackendError {
     CloneDestExists { path: String },
     #[error("clone cancelled by user")]
     CloneCancelled,
+    #[error("patch file is malformed: {detail}")]
+    PatchParse { detail: String },
+    #[error("patch does not apply cleanly to HEAD")]
+    PatchDoesNotApply,
 }

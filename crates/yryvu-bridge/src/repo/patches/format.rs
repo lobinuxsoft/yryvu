@@ -6,8 +6,7 @@ use std::path::{Path, PathBuf};
 use chrono::{FixedOffset, TimeZone};
 
 use crate::backend::BackendError;
-
-use super::common::{git2_err, open_git2};
+use crate::repo::common::{git2_err, open_git2};
 
 /// Emit a `git format-patch -1 <sha>` equivalent mbox-style `.patch` file.
 ///

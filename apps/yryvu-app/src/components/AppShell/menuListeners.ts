@@ -11,6 +11,7 @@ import {
   openReleaseNotes,
   openRepoManagementTab,
 } from "../../tabs/ops";
+import { applyPatchFlow } from "./applyPatch";
 import { openRepoPicker } from "./repoActions";
 
 /// Register every native-menu event listener the shell responds to and
@@ -22,6 +23,9 @@ import { openRepoPicker } from "./repoActions";
 export async function registerMenuListeners(): Promise<UnlistenFn[]> {
   const unlisteners: UnlistenFn[] = [];
   unlisteners.push(await listen("menu:open-repo", () => void openRepoPicker()));
+  unlisteners.push(
+    await listen("menu:apply-patch", () => void applyPatchFlow()),
+  );
   unlisteners.push(
     await listen("menu:toggle-left-panel", () => setShowLeftPanel((v) => !v)),
   );

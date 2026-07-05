@@ -36,6 +36,8 @@ For the OAuth integrations panel, copy `.env.local.example` to `.env.local` at t
 
 ## Documentation
 
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — wave plan, milestones, release pace
+- [`docs/PROGRESS.md`](docs/PROGRESS.md) — current state, durable conventions, session hand-off
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — workflow, code standards, dev setup
 - [`SECURITY.md`](SECURITY.md) — vulnerability disclosure policy
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant 3.0

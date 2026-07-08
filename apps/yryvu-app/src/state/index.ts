@@ -88,10 +88,13 @@ export {
   branchesNonce,
   setBranchesNonce,
   refreshBranches,
+  markAppActivity,
+  appActiveWithin,
   workingTreeStatus,
   undoRedoState,
   dirtyFileCount,
 } from "./refresh";
+export { maybeAutoUpdateSubmodules } from "./submoduleAutoUpdate";
 export { hiddenRefs, setHiddenRef, clearHiddenRefs } from "./refs";
 export {
   ALL_SECTION_KEYS,
@@ -103,6 +106,10 @@ export {
   toggleSectionHidden,
   type SectionKey,
 } from "./sections";
+export {
+  collapsedRemoteFolders,
+  toggleRemoteFolderCollapsed,
+} from "./remoteFolders";
 export {
   graphColumns,
   graphContainerWidth,
@@ -158,7 +165,11 @@ export {
   primeAuthEnv,
   handleRemoteAuthError,
   closeCredentialWizard,
+  sshKeyGen,
+  openSshKeyGen,
+  closeSshKeyGen,
   type CredentialWizardState,
+  type SshKeyGenState,
 } from "./credentialWizard";
 export {
   FILE_VIEW_MODES,

@@ -13,6 +13,8 @@ import {
   type IssueTrackerPreferences,
   type NotificationsPreferences,
   type Preferences,
+  type SshPreferences,
+  type SubmodulesPreferences,
   type ToolPreferences,
   type UiPreferences,
 } from "../ipc";
@@ -83,6 +85,8 @@ interface PreferencesPatch {
   editor?: Partial<EditorPreferences>;
   issueTracker?: Partial<IssueTrackerPreferences>;
   gpg?: Partial<GpgPreferences>;
+  ssh?: Partial<SshPreferences>;
+  submodules?: Partial<SubmodulesPreferences>;
 }
 
 /// Apply a partial update to the persisted preferences. Merges per
@@ -110,6 +114,8 @@ export async function updatePreferences(patch: PreferencesPatch): Promise<void> 
       ...(patch.issueTracker ?? {}),
     },
     gpg: { ...current.gpg, ...(patch.gpg ?? {}) },
+    ssh: { ...current.ssh, ...(patch.ssh ?? {}) },
+    submodules: { ...current.submodules, ...(patch.submodules ?? {}) },
   };
   const saved = await ipcSetPreferences(next);
   mutatePreferencesResource(saved);

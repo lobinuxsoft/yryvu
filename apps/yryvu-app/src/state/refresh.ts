@@ -10,10 +10,35 @@ import {
 } from "../ipc";
 import { repoPath } from "./repo-base";
 
+/// Self-echo suppression for the repo file watcher.
+///
+/// yryvu's own reads and writes churn the repo: a commit rewrites refs/index,
+/// and — critically on atime-updating filesystems (e.g. NTFS/fuseblk, where
+/// the user keeps repos) — a `git status` or graph walk stat-walks the whole
+/// tree, which the watcher re-reports as changes. Left unchecked that is an
+/// infinite loop: watcher fires → we refetch → the refetch's reads touch the
+/// tree → watcher fires again.
+///
+/// So every app-initiated repo touch (local mutation refresh, working-tree
+/// status fetch, graph stream) stamps `lastAppActivityAt`; the watcher
+/// listeners (`state/repo-live.ts`) ignore events that land inside a
+/// suppression window. When the app is idle, the window has expired and
+/// genuinely external changes refresh immediately.
+let lastAppActivityAt = 0;
+export function markAppActivity() {
+  lastAppActivityAt = performance.now();
+}
+
+/// True if the app touched the repo within the last `windowMs`.
+export function appActiveWithin(windowMs: number): boolean {
+  return performance.now() - lastAppActivityAt < windowMs;
+}
+
 /// Bumped whenever a staging-mutating op completes, so resources watching
 /// working-tree status re-fetch.
 export const [workingTreeNonce, setWorkingTreeNonce] = createSignal(0);
 export function refreshWorkingTree() {
+  markAppActivity();
   setWorkingTreeNonce((n) => n + 1);
 }
 
@@ -29,6 +54,7 @@ export function refreshUndoRedo() {
 /// Bumped after any commit-creating op so CommitGraph re-streams.
 export const [graphNonce, setGraphNonce] = createSignal(0);
 export function refreshGraph() {
+  markAppActivity();
   setGraphNonce((n) => n + 1);
 }
 
@@ -36,6 +62,7 @@ export function refreshGraph() {
 /// create, …) so the sidebar branch list and repo-state banner re-fetch.
 export const [branchesNonce, setBranchesNonce] = createSignal(0);
 export function refreshBranches() {
+  markAppActivity();
   setBranchesNonce((n) => n + 1);
 }
 
@@ -45,7 +72,14 @@ const [workingTreeStatusInternal, { mutate: mutateWorkingTreeStatus }] =
       const p = repoPath();
       return p ? ([p, workingTreeNonce()] as [string, number]) : undefined;
     },
-    async ([p]) => await getWorkingTreeStatus(p),
+    async ([p]) => {
+      // The status walk stat-touches the whole tree — arm the suppression
+      // window so its own atime churn doesn't loop back through the watcher.
+      markAppActivity();
+      const status = await getWorkingTreeStatus(p);
+      markAppActivity();
+      return status;
+    },
   );
 
 export const workingTreeStatus = workingTreeStatusInternal;

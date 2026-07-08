@@ -43,6 +43,8 @@ pub mod gpg;
 pub mod issue_tracker;
 pub mod layout;
 pub mod notifications;
+pub mod ssh;
+pub mod submodules;
 pub mod tabs;
 pub mod tools;
 pub mod ui;
@@ -54,6 +56,8 @@ pub use gpg::GpgPreferences;
 pub use issue_tracker::IssueTrackerPreferences;
 pub use layout::{DetailPanelLayout, LayoutPreferences, LeftSidebarLayout};
 pub use notifications::NotificationsPreferences;
+pub use ssh::SshPreferences;
+pub use submodules::SubmodulesPreferences;
 pub use tabs::{PermanentTabState, PermanentTabs, Tab, TabsPreferences};
 pub use tools::{
     build_terminal_spawn, ExternalTerminal, TerminalSpawnError, TerminalSpawnSpec, ToolPreferences,
@@ -116,6 +120,10 @@ pub struct Preferences {
     #[serde(default)]
     pub gpg: GpgPreferences,
     #[serde(default)]
+    pub ssh: SshPreferences,
+    #[serde(default)]
+    pub submodules: SubmodulesPreferences,
+    #[serde(default)]
     pub layout: LayoutPreferences,
 }
 
@@ -132,6 +140,8 @@ impl Default for Preferences {
             notifications: NotificationsPreferences::default(),
             issue_tracker: IssueTrackerPreferences::default(),
             gpg: GpgPreferences::default(),
+            ssh: SshPreferences::default(),
+            submodules: SubmodulesPreferences::default(),
             layout: LayoutPreferences::default(),
         }
     }

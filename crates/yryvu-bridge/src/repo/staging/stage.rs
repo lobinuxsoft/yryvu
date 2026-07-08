@@ -31,6 +31,21 @@ pub fn stage_files(repo_path: &Path, paths: &[String]) -> Result<(), BackendErro
     Ok(())
 }
 
+/// Stage only a file-mode change (issue #60). The pane that triggers
+/// this appears exclusively on filemode-only deltas (no content hunks),
+/// so re-adding the path updates just the index entry's mode — the blob
+/// is unchanged. Kept as a distinct action path from content staging so
+/// the UI can surface mode-specific affordances and errors.
+pub fn stage_filemode(repo_path: &Path, path: &str) -> Result<(), BackendError> {
+    stage_files(repo_path, std::slice::from_ref(&path.to_string()))
+}
+
+/// Unstage a file-mode change — resets the index entry back to HEAD,
+/// restoring the committed mode. Complement of [`stage_filemode`].
+pub fn unstage_filemode(repo_path: &Path, path: &str) -> Result<(), BackendError> {
+    unstage_files(repo_path, std::slice::from_ref(&path.to_string()))
+}
+
 pub fn unstage_files(repo_path: &Path, paths: &[String]) -> Result<(), BackendError> {
     let repo = open_git2(repo_path)?;
 
@@ -173,4 +188,121 @@ pub fn discard_paths(repo_path: &Path, paths: &[String]) -> Result<(), BackendEr
     }
 
     Ok(())
+}
+
+/// Discard ALL local changes — staged and unstaged — resetting the repo to
+/// HEAD. Equivalent to `git reset --hard HEAD && git clean -fd` (untracked
+/// files only, ignored files are left alone).
+///
+/// Steps:
+///   1. `repo.reset(HEAD, Hard)` — atomically resets index + working tree for
+///      every tracked file. This is what git itself does internally; per-path
+///      `checkout_head` can silently skip files with filters or open handles.
+///   2. Scan for remaining `WT_NEW` entries (untracked files not removed by
+///      the hard reset) and delete them from disk.
+///
+/// Unborn branch: clears the index (no HEAD to reset to) and removes all
+/// WT_NEW files.
+///
+/// BACKEND: git2 — `reset` with `ResetType::Hard` has no gix equivalent yet.
+pub fn discard_all(repo_path: &Path) -> Result<(), BackendError> {
+    let repo = open_git2(repo_path)?;
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| BackendError::Git(anyhow::anyhow!("bare repo: no working tree")))?
+        .to_path_buf();
+
+    match repo.head() {
+        Ok(head) => {
+            let head_obj = head.peel(git2::ObjectType::Any).map_err(git2_err)?;
+            repo.reset(&head_obj, git2::ResetType::Hard, None)
+                .map_err(git2_err)?;
+        }
+        Err(e) if e.code() == git2::ErrorCode::UnbornBranch => {
+            let mut index = repo.index().map_err(git2_err)?;
+            index.clear().map_err(git2_err)?;
+            index.write().map_err(git2_err)?;
+        }
+        Err(e) => return Err(git2_err(e)),
+    }
+
+    // `reset --hard` only touches tracked files; untracked ones remain.
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(true).recurse_untracked_dirs(true);
+    let statuses = repo.statuses(Some(&mut opts)).map_err(git2_err)?;
+
+    for entry in statuses.iter() {
+        if !entry.status().contains(git2::Status::WT_NEW) {
+            continue;
+        }
+        let Some(rel) = entry.path() else { continue };
+        let abs = workdir.join(rel);
+        let result = if abs.is_dir() {
+            std::fs::remove_dir_all(&abs)
+        } else {
+            std::fs::remove_file(&abs)
+        };
+        match result {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => {
+                return Err(BackendError::Git(anyhow::anyhow!(
+                    "remove untracked '{rel}': {e}"
+                )))
+            }
+        }
+    }
+
+    Ok(())
+}
+
+// Filemode staging needs a real executable bit, which only exists on unix
+// filesystems with core.filemode tracking — gate the test accordingly.
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    fn git(repo: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(repo)
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@t")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@t")
+            .status()
+            .expect("git");
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    fn index_mode(repo: &Path, path: &str) -> u32 {
+        let repo = git2::Repository::open(repo).unwrap();
+        let index = repo.index().unwrap();
+        index.get_path(Path::new(path), 0).unwrap().mode
+    }
+
+    #[test]
+    fn stage_and_unstage_filemode_touches_only_the_mode() {
+        let dir = tempfile::tempdir().unwrap();
+        git(dir.path(), &["init", "-q", "-b", "main"]);
+        git(dir.path(), &["config", "core.filemode", "true"]);
+        let file = dir.path().join("s.sh");
+        std::fs::write(&file, "#!/bin/sh\necho hi\n").unwrap();
+        git(dir.path(), &["add", "s.sh"]);
+        git(dir.path(), &["commit", "-qm", "init"]);
+        assert_eq!(index_mode(dir.path(), "s.sh"), 0o100644);
+
+        // Flip the executable bit in the working tree, stage only the mode.
+        let mut perms = std::fs::metadata(&file).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&file, perms).unwrap();
+        stage_filemode(dir.path(), "s.sh").unwrap();
+        assert_eq!(index_mode(dir.path(), "s.sh"), 0o100755);
+
+        // Unstage restores the committed mode.
+        unstage_filemode(dir.path(), "s.sh").unwrap();
+        assert_eq!(index_mode(dir.path(), "s.sh"), 0o100644);
+    }
 }

@@ -34,10 +34,14 @@ export function LoadingSkeleton() {
   const rows = Array.from({ length: ROW_COUNT }, (_, i) => i);
 
   return (
-    <ul class="file-list__items file-list__items--skeleton" aria-busy="true">
+    <div
+      class="file-list__items file-list__items--skeleton"
+      role="list"
+      aria-busy="true"
+    >
       <For each={rows}>
         {(i) => (
-          <li>
+          <div class="file-list__item" role="listitem">
             <div
               class="file-list__row file-list__row--skeleton"
               style={{
@@ -52,9 +56,9 @@ export function LoadingSkeleton() {
                 style={{ width: WIDTH_PATTERN[i] }}
               />
             </div>
-          </li>
+          </div>
         )}
       </For>
-    </ul>
+    </div>
   );
 }

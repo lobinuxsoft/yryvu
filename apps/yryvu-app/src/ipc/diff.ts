@@ -12,6 +12,19 @@ export type FileStatus =
   | "unmodified"
   | "other";
 
+/// How the diff pane should render a file, mirroring the Rust
+/// `FileDataType` enum (kebab-case via `serde(rename_all)`) and
+/// GitKraken's `fileDataTypes` (research doc 06). The `DiffView`
+/// dispatcher routes on this before the text fallback. `directory` only
+/// exists for enum parity — file diffs never carry it.
+export type FileDataType =
+  | "text"
+  | "image"
+  | "binary"
+  | "submodule"
+  | "deleted"
+  | "directory";
+
 export type LineKind = "context" | "added" | "removed";
 
 export interface DiffLine {
@@ -34,6 +47,7 @@ export interface FileDiff {
   path: string;
   old_path: string | null;
   status: FileStatus;
+  file_data_type: FileDataType;
   is_binary: boolean;
   truncated: boolean;
   old_size: number;
@@ -41,6 +55,16 @@ export interface FileDiff {
   additions: number;
   deletions: number;
   hunks: DiffHunk[];
+  /// For submodule gitlinks: the pinned commit OIDs before/after the
+  /// change. `null` when the side doesn't exist or the file isn't a
+  /// submodule. The pointer pane resolves each summary on demand.
+  submodule_old_sha: string | null;
+  submodule_new_sha: string | null;
+  /// Octal file modes ("100644" / "100755" / …) before/after. `null` for
+  /// the missing side of an add/delete. Both present + different + no
+  /// hunks → the "File Mode Changes" pane.
+  old_mode: string | null;
+  new_mode: string | null;
 }
 
 export interface CommitDiff {
@@ -84,7 +108,10 @@ export type FileContentSource =
   | { kind: "working-tree" }
   | { kind: "index" }
   | { kind: "head" }
-  | { kind: "commit"; sha: string };
+  | { kind: "commit"; sha: string }
+  /// First parent of `sha` — the "before" side of a commit diff. A root
+  /// commit resolves to missing, so an added file shows no old side.
+  | { kind: "commit-parent"; sha: string };
 
 export interface FileContent {
   content: string;
@@ -100,6 +127,23 @@ export function readFileContent(
   source: FileContentSource
 ): Promise<FileContent> {
   return invoke<FileContent>("read_file_content", { repoPath, path, source });
+}
+
+/// Raw blob bytes (base64 + MIME) for the image diff viewer (issue #60).
+/// `dataBase64` is empty when `missing`.
+export interface FileBytes {
+  dataBase64: string;
+  mime: string;
+  size: number;
+  missing: boolean;
+}
+
+export function readFileBytes(
+  repoPath: string,
+  path: string,
+  source: FileContentSource
+): Promise<FileBytes> {
+  return invoke<FileBytes>("read_file_bytes", { repoPath, path, source });
 }
 
 /// Per-file commit history with rename-following (issue #7).

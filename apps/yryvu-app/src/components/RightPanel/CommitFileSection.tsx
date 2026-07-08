@@ -21,6 +21,9 @@ export interface CommitFileSectionProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onBulk: () => void;
+  /** Optional destructive secondary bulk action (e.g. "Discard All"). */
+  secondaryBulkLabel?: string;
+  onSecondaryBulk?: () => void;
   repoId: string;
   files: FileDiff[];
   activeFilePath: string | undefined;
@@ -32,7 +35,18 @@ export function CommitFileSection(props: CommitFileSectionProps) {
   const count = () => props.files.length;
 
   return (
-    <section class="commit-panel__section" data-side={props.side}>
+    <section
+      class="commit-panel__section"
+      data-side={props.side}
+      // A section with files claims its 50% flex share; collapsed or
+      // empty it drops to header height and the sibling absorbs the
+      // space. NOTE: GK keys its .stage/.unstage class on isCollapsed
+      // alone and keeps an empty-but-expanded half at 50% as a drop
+      // target — yryvu has no drag-to-stage, so we collapse empty
+      // sections instead (deliberate divergence #430): the populated
+      // side gets the room and there's no dead half.
+      data-expanded={!props.collapsed && count() > 0 ? "true" : "false"}
+    >
       <header class="commit-panel__section-header">
         <Tooltip text={props.collapsed ? "Expand" : "Collapse"}>
           <button
@@ -61,6 +75,17 @@ export function CommitFileSection(props: CommitFileSectionProps) {
               {props.bulkLabel}
             </button>
           </Tooltip>
+          <Show when={props.secondaryBulkLabel && props.onSecondaryBulk}>
+            <Tooltip text={props.secondaryBulkLabel!}>
+              <button
+                class="commit-panel__bulk commit-panel__bulk--danger"
+                type="button"
+                onClick={props.onSecondaryBulk}
+              >
+                {props.secondaryBulkLabel}
+              </button>
+            </Tooltip>
+          </Show>
         </Show>
       </header>
       <Show when={!props.collapsed && count() > 0}>

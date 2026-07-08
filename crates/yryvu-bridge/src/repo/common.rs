@@ -3,8 +3,55 @@
 use std::path::Path;
 
 use crate::backend::{
-    BackendError, DiffHunk, DiffLine, FileDiff, FileStatus, LineKind, DIFF_MAX_FILE_BYTES,
+    BackendError, DiffHunk, DiffLine, FileDataType, FileDiff, FileStatus, LineKind,
+    DIFF_MAX_FILE_BYTES,
 };
+
+/// Extensions GitKraken routes to the image viewer (research doc 09).
+/// SVG is included even though it is technically text — GK renders it as
+/// an image, not a text diff. Matched case-insensitively.
+const IMAGE_EXTENSIONS: &[&str] = &[
+    "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "tiff", "tif", "ico",
+];
+
+/// Route a delta to a `FileDataType` for the UI dispatcher. Priority is
+/// submodule → oversized → image → binary → deleted → text. Oversized
+/// outranks image so a huge image falls back to the binary placeholder
+/// (doc 07) instead of being base64-shipped to the viewer; a deleted
+/// image still reaches the viewer (missing-new pane) and a deleted
+/// binary the binary placeholder. `Directory` is never produced here —
+/// file diffs are always leaf files.
+fn classify_file_data_type(
+    path: &str,
+    status: FileStatus,
+    new_mode: git2::FileMode,
+    old_mode: git2::FileMode,
+    is_binary: bool,
+    too_large: bool,
+) -> FileDataType {
+    if new_mode == git2::FileMode::Commit || old_mode == git2::FileMode::Commit {
+        return FileDataType::Submodule;
+    }
+    if too_large {
+        return FileDataType::Binary;
+    }
+    let is_image = path
+        .rsplit('.')
+        .next()
+        .filter(|ext| !ext.is_empty() && *ext != path)
+        .map(|ext| ext.to_ascii_lowercase())
+        .is_some_and(|ext| IMAGE_EXTENSIONS.contains(&ext.as_str()));
+    if is_image {
+        return FileDataType::Image;
+    }
+    if is_binary {
+        return FileDataType::Binary;
+    }
+    if status == FileStatus::Deleted {
+        return FileDataType::Deleted;
+    }
+    FileDataType::Text
+}
 
 pub(super) fn open_git2(path: &Path) -> Result<git2::Repository, BackendError> {
     git2::Repository::open(path).map_err(|e| BackendError::Open {
@@ -19,6 +66,20 @@ pub(super) fn git2_err(e: git2::Error) -> BackendError {
 
 pub(super) fn short_sha(oid: &git2::Oid) -> String {
     oid.to_string().chars().take(7).collect()
+}
+
+/// Octal string for the file modes git tracks. Returns `None` for the
+/// empty/unreadable mode (the missing side of an add/delete) and tree
+/// modes (never appear in file diffs).
+fn mode_to_octal(mode: git2::FileMode) -> Option<String> {
+    match mode {
+        git2::FileMode::Blob => Some("100644".into()),
+        git2::FileMode::BlobGroupWritable => Some("100664".into()),
+        git2::FileMode::BlobExecutable => Some("100755".into()),
+        git2::FileMode::Link => Some("120000".into()),
+        git2::FileMode::Commit => Some("160000".into()),
+        _ => None,
+    }
 }
 
 pub(crate) fn open_repo(path: &Path) -> Result<gix::Repository, BackendError> {
@@ -77,10 +138,29 @@ pub(super) fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, Bac
                 || new_file.is_binary()
                 || old_file.is_binary());
 
+        let file_data_type = classify_file_data_type(
+            &path,
+            status,
+            new_file.mode(),
+            old_file.mode(),
+            is_binary,
+            too_large,
+        );
+
+        // Submodule gitlinks carry the pinned commit OIDs in the delta
+        // file ids; a zero oid means that side doesn't exist.
+        let (submodule_old_sha, submodule_new_sha) = if file_data_type == FileDataType::Submodule {
+            let to_opt = |oid: git2::Oid| (!oid.is_zero()).then(|| oid.to_string());
+            (to_opt(old_file.id()), to_opt(new_file.id()))
+        } else {
+            (None, None)
+        };
+
         let mut file_diff = FileDiff {
             path,
             old_path,
             status,
+            file_data_type,
             is_binary,
             truncated: too_large,
             old_size,
@@ -88,6 +168,10 @@ pub(super) fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, Bac
             additions: 0,
             deletions: 0,
             hunks: Vec::new(),
+            submodule_old_sha,
+            submodule_new_sha,
+            old_mode: mode_to_octal(old_file.mode()),
+            new_mode: mode_to_octal(new_file.mode()),
         };
 
         if !is_binary && !too_large {
@@ -172,4 +256,86 @@ fn is_invalid_ref_name(name: &str) -> bool {
         || name.contains('\\')
         || name.ends_with('/')
         || name.ends_with(".lock")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use git2::FileMode;
+
+    fn classify(path: &str, status: FileStatus, binary: bool, large: bool) -> FileDataType {
+        classify_file_data_type(path, status, FileMode::Blob, FileMode::Blob, binary, large)
+    }
+
+    #[test]
+    fn submodule_wins_over_everything() {
+        let dt = classify_file_data_type(
+            "vendor/lib",
+            FileStatus::Modified,
+            FileMode::Commit,
+            FileMode::Blob,
+            false,
+            false,
+        );
+        assert_eq!(dt, FileDataType::Submodule);
+    }
+
+    #[test]
+    fn images_route_to_image_even_when_binary_or_deleted() {
+        // Binary content (PNG) still classifies as image, not binary.
+        assert_eq!(
+            classify("ui/logo.png", FileStatus::Modified, true, false),
+            FileDataType::Image
+        );
+        // A deleted image goes to the viewer (missing-new pane), not Deleted.
+        assert_eq!(
+            classify("ui/icon.svg", FileStatus::Deleted, false, false),
+            FileDataType::Image
+        );
+        // Extension match is case-insensitive.
+        assert_eq!(
+            classify("UI/Logo.PNG", FileStatus::Added, true, false),
+            FileDataType::Image
+        );
+        // An oversized image falls back to the binary placeholder (doc 07)
+        // rather than being base64-shipped to the viewer.
+        assert_eq!(
+            classify("ui/huge.png", FileStatus::Modified, false, true),
+            FileDataType::Binary
+        );
+    }
+
+    #[test]
+    fn binary_and_oversized_route_to_binary() {
+        assert_eq!(
+            classify("bin/app", FileStatus::Modified, true, false),
+            FileDataType::Binary
+        );
+        // Oversized text is reported binary (truncated) by the dispatcher.
+        assert_eq!(
+            classify("data/huge.txt", FileStatus::Modified, false, true),
+            FileDataType::Binary
+        );
+    }
+
+    #[test]
+    fn deleted_text_routes_to_deleted_others_to_text() {
+        assert_eq!(
+            classify("src/main.rs", FileStatus::Deleted, false, false),
+            FileDataType::Deleted
+        );
+        assert_eq!(
+            classify("src/main.rs", FileStatus::Modified, false, false),
+            FileDataType::Text
+        );
+        // Extensionless and dotfiles are plain text unless flagged binary.
+        assert_eq!(
+            classify("Makefile", FileStatus::Modified, false, false),
+            FileDataType::Text
+        );
+        assert_eq!(
+            classify(".gitignore", FileStatus::Added, false, false),
+            FileDataType::Text
+        );
+    }
 }

@@ -34,6 +34,8 @@ export interface MenuDeps {
   openDeleteDialog: (name: string) => void;
   openDeleteRemoteDialog: (remote: string, name: string) => void;
   openSubmoduleRemoveDialog: (name: string, path: string) => void;
+  openSubmoduleResetDialog: (name: string, dirty: boolean) => void;
+  openSubmoduleDeinitDialog: (name: string, path: string, dirty: boolean) => void;
   openSetUpstreamDialog: (
     branchName: string,
     currentUpstream: string | null,

@@ -19,6 +19,7 @@ import { createHandlers } from "./handlers";
 import { openBranchContextMenu } from "./menus/branch";
 import { openGitflowMenu } from "./menus/gitflow";
 import { openRemoteContextMenu } from "./menus/remote";
+import { openRemoteFolderContextMenu } from "./menus/remote-folder";
 import { openRemoteHeaderContextMenu } from "./menus/remote-header";
 import { openRefContextMenu } from "./menus/ref";
 import { openSectionContextMenu } from "./menus/section";
@@ -90,6 +91,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openDeleteDialog: openers.openDeleteDialog,
     openDeleteRemoteDialog: openers.openDeleteRemoteDialog,
     openSubmoduleRemoveDialog: openers.openSubmoduleRemoveDialog,
+    openSubmoduleResetDialog: openers.openSubmoduleResetDialog,
+    openSubmoduleDeinitDialog: openers.openSubmoduleDeinitDialog,
     openSetUpstreamDialog: openers.openSetUpstreamDialog,
     branchSource: () => branchSource?.(),
     tagSource: () => tagSource?.(),
@@ -136,6 +139,10 @@ export function createBranchOps(deps: BranchOpsDeps) {
     setWorktreeCreateBranch: state.setWorktreeCreateBranch,
     worktreeBase: state.worktreeBase,
     setWorktreeBase: state.setWorktreeBase,
+    submoduleBranch: state.submoduleBranch,
+    setSubmoduleBranch: state.setSubmoduleBranch,
+    submoduleName: state.submoduleName,
+    setSubmoduleName: state.setSubmoduleName,
 
     // dialog openers / closers
     openCreateDialog: openers.openCreateDialog,
@@ -145,6 +152,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     openDeleteRemoteDialog: openers.openDeleteRemoteDialog,
     openSubmoduleAddDialog: openers.openSubmoduleAddDialog,
     openSubmoduleRemoveDialog: openers.openSubmoduleRemoveDialog,
+    openSubmoduleResetDialog: openers.openSubmoduleResetDialog,
+    openSubmoduleDeinitDialog: openers.openSubmoduleDeinitDialog,
     openSetUpstreamDialog: openers.openSetUpstreamDialog,
     openDeleteTagDialog: openers.openDeleteTagDialog,
     openAnnotateTagDialog: openers.openAnnotateTagDialog,
@@ -164,6 +173,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
       openRemoteContextMenu(menuDeps, e, b),
     openRemoteHeaderContextMenu: (e: MouseEvent) =>
       openRemoteHeaderContextMenu(menuDeps, e),
+    openRemoteFolderContextMenu: (e: MouseEvent, remote: string) =>
+      openRemoteFolderContextMenu(menuDeps, e, remote),
     openRefContextMenu: (e: MouseEvent, tag: RefTag, sha: string) =>
       openRefContextMenu(menuDeps, e, tag, sha),
     openSectionContextMenu: (e: MouseEvent, key: SectionKey) =>
@@ -196,6 +207,8 @@ export function createBranchOps(deps: BranchOpsDeps) {
     submitDeleteRemote: handlers.submitDeleteRemote,
     submitSubmoduleAdd: handlers.submitSubmoduleAdd,
     submitSubmoduleRemove: handlers.submitSubmoduleRemove,
+    submitSubmoduleReset: handlers.submitSubmoduleReset,
+    submitSubmoduleDeinit: handlers.submitSubmoduleDeinit,
     submitSetUpstream: handlers.submitSetUpstream,
     submitDeleteTag: handlers.submitDeleteTag,
     submitAnnotateTag: handlers.submitAnnotateTag,

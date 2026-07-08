@@ -69,6 +69,15 @@ interface Props {
  * focused on the toolbar / banner / wiring.
  */
 export function AuxSections(props: Props) {
+  // Warning copy for the SUBMODULES section banner (#98). Reads the
+  // unfiltered list so the warning survives an active filter query.
+  const dirtySubmoduleNotice = () => {
+    const dirty = props.data.submoduleList().filter((s) => s.is_dirty);
+    return dirty.length === 1
+      ? `Submodule '${dirty[0].name}' has uncommitted changes`
+      : `${dirty.length} submodules have uncommitted changes`;
+  };
+
   return (
     <>
       <Show when={!hiddenSections().has("WORKTREES")}>
@@ -336,6 +345,9 @@ export function AuxSections(props: Props) {
               <p class="sidebar__empty">Open a repo to list submodules</p>
             }
           >
+            <Show when={props.data.submoduleList().some((s) => s.is_dirty)}>
+              <p class="sidebar__warning-banner">{dirtySubmoduleNotice()}</p>
+            </Show>
             <Show
               when={props.data.filteredSubmodules().length > 0}
               fallback={

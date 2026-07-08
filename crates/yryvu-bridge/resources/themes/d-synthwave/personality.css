@@ -1,37 +1,18 @@
 /* ========================================================================
    PERSONALITY — D · Synthwave
-   Cyberpunk neon vibe: scrolling scanlines, sun-glow horizon, pulsing
-   neon underglows on every chrome boundary, breathing accents on
-   active state. Targets the deployed chajá chrome (toolbar, sidebar,
-   cold-start, statusbar, tabs) so effects are visible without a repo
-   open. Honors `prefers-reduced-motion: reduce`.
+   Cyberpunk neon vibe: pulsing neon underglows on every chrome
+   boundary, RGB-glitch ref pills, breathing accents on active state.
+   Targets the deployed chajá chrome (toolbar, sidebar, cold-start,
+   statusbar, tabs) so effects are visible without a repo open. Honors
+   `prefers-reduced-motion: reduce`.
    ======================================================================== */
 
 /* --- Global overlays ------------------------------------------------- */
 
-/* CRT scanlines, scrolling slowly downward. 7% opacity at the source —
-   amplified by mix-blend-mode: overlay against the dark background. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(255, 0, 255, 0.07) 0,
-    rgba(255, 0, 255, 0.07) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  z-index: 9999;
-  mix-blend-mode: overlay;
-  animation: synthwave-scanlines 8s linear infinite;
-}
-
-@keyframes synthwave-scanlines {
-  0%   { background-position: 0 0; }
-  100% { background-position: 0 6px; }
-}
+/* (none) — the CRT scanline overlay shipped originally was dropped by
+   design decision 2026-06-11: any full-screen line mask reads as
+   visual noise over real work surfaces (diff text, graph rows). The
+   synthwave identity is carried by the neon glows below instead. */
 
 /* --- Toolbar --------------------------------------------------------- */
 
@@ -260,7 +241,6 @@ body::before {
 /* --- Reduced motion -------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  body::before,
   .toolbar,
   .toolbar__btn,
   .toolbar__btn-badge,

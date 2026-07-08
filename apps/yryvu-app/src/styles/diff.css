@@ -94,6 +94,365 @@
   font-style: italic;
 }
 
+/* Per-filetype special panes (issue #60): centered placeholder for the
+   binary/image fallback, mirroring GitKraken's FileContentsPanel-Binary. */
+.diff-file__special {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 48px 12px;
+  text-align: center;
+}
+
+.diff-file__special-title {
+  font-size: 13px;
+  color: var(--fg-2);
+}
+
+.diff-file__special-meta {
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.diff-file__special-btn {
+  margin-top: 8px;
+  font-size: 12px;
+  padding: 4px 14px;
+  color: var(--fg-1);
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.diff-file__special-btn:hover:not(:disabled) {
+  border-color: var(--accent, var(--info));
+}
+
+.diff-file__special-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Image diff viewer (issue #60): always-visible old/new pair plus a
+   single overlay toggle, matching GitKraken's two-control layout. */
+.image-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.image-diff__toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.image-diff__overlay-toggle {
+  font-size: 12px;
+  padding: 3px 10px;
+  color: var(--fg-2);
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.image-diff__overlay-toggle[aria-pressed="true"] {
+  color: var(--accent-fg, var(--fg-0));
+  border-color: var(--accent, var(--info));
+  background: color-mix(in srgb, var(--accent, var(--info)) 18%, var(--bg-1));
+}
+
+.image-diff__overlay-toggle:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.image-diff__panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.image-diff__pane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+}
+
+.image-diff__label {
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.image-diff__img {
+  max-width: 100%;
+  height: auto;
+  /* Checkerboard so transparent PNGs read against the theme background. */
+  background-image:
+    linear-gradient(45deg, var(--bg-2) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--bg-2) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--bg-2) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--bg-2) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.image-diff__overlay-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.image-diff__overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.image-diff__no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  padding: 24px;
+  font-size: 12px;
+  color: var(--fg-3);
+  border: 1px dashed var(--bg-3);
+  border-radius: 4px;
+}
+
+/* Markdown File View (issue #60): Code/Preview toggle + rendered body. */
+.markdown-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-view__toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.markdown-view__toggle {
+  font-size: 12px;
+  padding: 3px 12px;
+  color: var(--fg-2);
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  cursor: pointer;
+}
+
+.markdown-view__toggle:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.markdown-view__toggle:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+}
+
+.markdown-view__toggle[aria-pressed="true"] {
+  color: var(--accent-fg, var(--fg-0));
+  background: color-mix(in srgb, var(--accent, var(--info)) 18%, var(--bg-1));
+  border-color: var(--accent, var(--info));
+}
+
+.markdown-view__preview {
+  padding: 16px 20px;
+  overflow-x: auto;
+}
+
+/* Rendered Markdown typography. Intentionally minimal — matches the
+   theme tokens rather than shipping a heavyweight prose stylesheet. */
+.markdown-body {
+  font-family: var(--font-sans, sans-serif);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fg-1);
+  max-width: 920px;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  margin: 1.2em 0 0.5em;
+  line-height: 1.25;
+  color: var(--fg-0);
+}
+
+.markdown-body h1 {
+  font-size: 1.7em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.markdown-body h2 {
+  font-size: 1.4em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.markdown-body h3 {
+  font-size: 1.2em;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote,
+.markdown-body table {
+  margin: 0 0 1em;
+}
+
+.markdown-body a {
+  color: var(--accent, var(--info));
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  padding: 0.15em 0.4em;
+  background: var(--bg-2);
+  border-radius: 3px;
+}
+
+.markdown-body pre {
+  margin: 0 0 1em;
+  padding: 12px 14px;
+  overflow-x: auto;
+  background: var(--bg-0);
+  border: 1px solid var(--bg-3);
+  border-radius: 4px;
+}
+
+.markdown-body pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.85em;
+}
+
+.markdown-body blockquote {
+  padding: 0.2em 1em;
+  color: var(--fg-2);
+  border-left: 3px solid var(--bg-3);
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 6px 12px;
+  border: 1px solid var(--bg-3);
+}
+
+.markdown-body th {
+  background: var(--bg-1);
+}
+
+.markdown-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.6em;
+}
+
+/* Submodule pointer pane (issue #60, doc 11): old/new pinned commits
+   plus actions to open the submodule as its own repo tab. */
+.submodule-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px;
+  padding: 16px 18px;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: 6px;
+}
+
+.submodule-pane__title {
+  font-size: 13px;
+  color: var(--fg-2);
+}
+
+.submodule-pane__name {
+  font-family: var(--font-mono);
+  color: var(--fg-0);
+}
+
+.submodule-pane__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.submodule-pane__row-label {
+  color: var(--fg-3);
+  min-width: 84px;
+}
+
+.submodule-pane__oid {
+  font-family: var(--font-mono);
+  color: var(--accent, var(--info));
+}
+
+.submodule-pane__summary {
+  color: var(--fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submodule-pane__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.submodule-pane__btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  color: var(--fg-1);
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submodule-pane__btn:hover {
+  border-color: var(--accent, var(--info));
+}
+
+/* Banner above a deleted text file's original-only content. */
+.diff-file__deleted-banner {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--fg-2);
+  background: color-mix(in srgb, var(--danger) 12%, var(--bg-1));
+  border-bottom: 1px solid var(--bg-3);
+}
+
 .diff-file__hunks {
   font-family: var(--font-mono);
   font-size: 12px;

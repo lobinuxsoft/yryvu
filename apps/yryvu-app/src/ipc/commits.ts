@@ -56,6 +56,21 @@ export function formatPatch(
   return invoke<string>("format_patch", { repoPath, sha, outDir });
 }
 
+export interface ApplyPatchResult {
+  new_sha: string;
+  subject: string;
+}
+
+/// Apply an mbox `.patch` file (`git am` equivalent) onto HEAD as a new
+/// commit. Author identity comes from the patch headers; committer is the
+/// active profile / repo signature.
+export function applyPatch(
+  repoPath: string,
+  patchPath: string,
+): Promise<ApplyPatchResult> {
+  return invoke<ApplyPatchResult>("apply_patch", { repoPath, patchPath });
+}
+
 /**
  * Provider tags recognised by the backend's `detect_hosting_service`.
  * Drives provider-native avatar resolution — notably the GitHub CDN
@@ -266,10 +281,13 @@ export function streamGraph(
   onBatch: (rows: GraphRow[]) => void,
   options: {
     batchSize?: number;
+    /** Cap the newest-first walk; omit to stream the full history. */
+    limit?: number;
     onPinned?: (sha: string | null) => void;
   } = {},
 ): StreamHandle {
   const batchSize = options.batchSize ?? 100;
+  const limit = options.limit;
   const onPinned = options.onPinned;
   let unlisten: UnlistenFn | undefined;
   let resolve!: () => void;
@@ -290,7 +308,7 @@ export function streamGraph(
           resolve();
         }
       });
-      await invoke("stream_graph", { repoPath, batchSize });
+      await invoke("stream_graph", { repoPath, batchSize, limit });
     } catch (err) {
       unlisten?.();
       reject(err);

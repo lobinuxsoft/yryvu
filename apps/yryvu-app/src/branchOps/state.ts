@@ -47,6 +47,13 @@ export function createBranchOpsState() {
   const [worktreeCreateBranch, setWorktreeCreateBranch] = createSignal(true);
   const [worktreeBase, setWorktreeBase] = createSignal("");
 
+  /// Add-submodule dialog optional fields (issue #98): tracking branch
+  /// (`submodule.<name>.branch` in .gitmodules) + custom name override.
+  /// Dedicated signals like the gitflow block — URL / target path keep
+  /// the generic dialogNameInput / dialogPathInput.
+  const [submoduleBranch, setSubmoduleBranch] = createSignal("");
+  const [submoduleName, setSubmoduleName] = createSignal("");
+
   function closeDialog() {
     setDialog(null);
     setDialogError(null);
@@ -68,6 +75,10 @@ export function createBranchOpsState() {
     setMergeStrategy,
     refreshingRemote,
     setRefreshingRemote,
+    submoduleBranch,
+    setSubmoduleBranch,
+    submoduleName,
+    setSubmoduleName,
     gitflowName,
     setGitflowName,
     gitflowTagMessage,

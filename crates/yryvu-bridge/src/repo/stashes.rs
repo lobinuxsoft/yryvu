@@ -213,7 +213,10 @@ mod tests {
         commit_file(&path, "a.txt", "base\n", "base");
         make_stash(&path);
 
-        let rows: Vec<_> = walk_commits(&path).unwrap().map(|r| r.unwrap()).collect();
+        let rows: Vec<_> = walk_commits(&path, None)
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
         let stash_rows: Vec<_> = rows
             .iter()
             .filter(|c| c.node_type == NodeType::Stash)

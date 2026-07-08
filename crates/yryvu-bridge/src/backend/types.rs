@@ -105,6 +105,11 @@ pub struct SubmoduleInfo {
     pub is_deleted: bool,
     pub ahead: u32,
     pub behind: u32,
+    /// Whether the submodule's working tree has uncommitted changes
+    /// (tracked or untracked). Always `false` for uninitialized
+    /// submodules — there's no working tree to inspect. Drives the
+    /// dirty badge + the sidebar warning banner (issue #98).
+    pub is_dirty: bool,
 }
 
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
@@ -168,6 +173,32 @@ pub enum FileStatus {
     Other,
 }
 
+/// How the UI should render a file's diff, mirroring GitKraken's
+/// `fileDataTypes` enum (research doc 06). The dispatcher in `DiffView`
+/// routes on this value before falling back to the text path:
+///
+/// - `Text` — Monaco / hunk renderer (the default).
+/// - `Image` — side-by-side image viewer + overlay toggle (doc 09).
+/// - `Binary` — "Binary file" placeholder (doc 10).
+/// - `Submodule` — old/new pointer pane (doc 11).
+/// - `Deleted` — text file removed: original-only content + banner (doc 11).
+/// - `Directory` — list-only tree node, never rendered in the diff pane;
+///   kept for enum parity since file diffs never carry it.
+///
+/// Classification priority is submodule → image → binary → deleted →
+/// text, so a deleted image still routes to the image viewer (with a
+/// missing-new pane) and a deleted binary to the binary placeholder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FileDataType {
+    Text,
+    Image,
+    Binary,
+    Submodule,
+    Deleted,
+    Directory,
+}
+
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineKind {
@@ -199,6 +230,7 @@ pub struct FileDiff {
     pub path: String,
     pub old_path: Option<String>,
     pub status: FileStatus,
+    pub file_data_type: FileDataType,
     pub is_binary: bool,
     pub truncated: bool,
     pub old_size: u64,
@@ -206,6 +238,18 @@ pub struct FileDiff {
     pub additions: u32,
     pub deletions: u32,
     pub hunks: Vec<DiffHunk>,
+    /// For `FileDataType::Submodule`: the gitlink commit OIDs the parent
+    /// pins before/after the change. `None` when the side doesn't exist
+    /// (added → no old, deleted → no new) or the file isn't a submodule.
+    /// The pointer pane resolves each OID's summary on demand.
+    pub submodule_old_sha: Option<String>,
+    pub submodule_new_sha: Option<String>,
+    /// Octal file modes ("100644" / "100755" / "120000" / "160000")
+    /// before/after the change. `None` for the missing side of an
+    /// add/delete. When both are present and differ with no content
+    /// hunks, the UI shows the "File Mode Changes" pane (issue #60).
+    pub old_mode: Option<String>,
+    pub new_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -296,4 +340,14 @@ pub struct RepoStateInfo {
     pub kind: String,
     /// Paths with conflict markers. Empty unless the index has conflicts.
     pub conflict_paths: Vec<String>,
+}
+
+/// Result of applying an mbox `.patch` (`git am` equivalent, issue #75).
+/// Serialized field names (`new_sha`, `subject`) are the frontend contract.
+#[derive(Debug, Clone, Serialize)]
+pub struct ApplyPatchOutcome {
+    /// SHA of the commit the patch materialized on HEAD.
+    pub new_sha: String,
+    /// Commit subject (the `Subject:` header, `[PATCH]` prefix stripped).
+    pub subject: String,
 }

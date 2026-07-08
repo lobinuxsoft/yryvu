@@ -60,6 +60,7 @@ export interface CommitPanelProps {
   onDiscard: (paths: string[]) => void;
   onStageAll: () => void;
   onUnstageAll: () => void;
+  onDiscardAll: () => void;
   onBack: () => void;
   onCommit: () => void;
   onCommitAndPush: () => void;
@@ -78,6 +79,10 @@ function toFileDiff(change: WorkingTreeChange): FileDiff {
     path: change.path,
     old_path: change.old_path,
     status: change.status,
+    // The working-tree change shape carries no type classification; the
+    // FileList row only consumes path/status/stats, so `text` is a safe
+    // default that never reaches the diff-pane dispatcher.
+    file_data_type: "text",
     is_binary: false,
     truncated: false,
     old_size: 0,
@@ -85,6 +90,10 @@ function toFileDiff(change: WorkingTreeChange): FileDiff {
     additions: 0,
     deletions: 0,
     hunks: [],
+    submodule_old_sha: null,
+    submodule_new_sha: null,
+    old_mode: null,
+    new_mode: null,
   };
 }
 
@@ -265,33 +274,41 @@ export function CommitPanel(props: CommitPanelProps) {
         />
       </Show>
 
-      <CommitFileSection
-        side="unstaged"
-        title="Unstaged Files"
-        bulkLabel="Stage All Changes"
-        collapsed={unstagedFilesCollapsed()}
-        onToggleCollapsed={() => setUnstagedFilesCollapsed((v) => !v)}
-        onBulk={() => props.onStageAll()}
-        repoId={repoId()}
-        files={unstagedFiles()}
-        activeFilePath={activeFor("unstaged")}
-        onSelectFile={(p) => openStagingDiffTab("unstaged", p)}
-        rowActions={unstagedActions}
-      />
+      {/* GK's staging-scroll: owns the space between the toolbar and the
+          commit form. Each expanded section takes a fixed 50% share and
+          its FileList scrolls independently — the panel itself never
+          scrolls (#430). */}
+      <div class="commit-panel__sections">
+        <CommitFileSection
+          side="unstaged"
+          title="Unstaged Files"
+          bulkLabel="Stage All Changes"
+          secondaryBulkLabel="Discard All Changes"
+          collapsed={unstagedFilesCollapsed()}
+          onToggleCollapsed={() => setUnstagedFilesCollapsed((v) => !v)}
+          onBulk={() => props.onStageAll()}
+          onSecondaryBulk={() => props.onDiscardAll()}
+          repoId={repoId()}
+          files={unstagedFiles()}
+          activeFilePath={activeFor("unstaged")}
+          onSelectFile={(p) => openStagingDiffTab("unstaged", p)}
+          rowActions={unstagedActions}
+        />
 
-      <CommitFileSection
-        side="staged"
-        title="Staged Files"
-        bulkLabel="Unstage All Changes"
-        collapsed={stagedFilesCollapsed()}
-        onToggleCollapsed={() => setStagedFilesCollapsed((v) => !v)}
-        onBulk={() => props.onUnstageAll()}
-        repoId={repoId()}
-        files={stagedFiles()}
-        activeFilePath={activeFor("staged")}
-        onSelectFile={(p) => openStagingDiffTab("staged", p)}
-        rowActions={stagedActions}
-      />
+        <CommitFileSection
+          side="staged"
+          title="Staged Files"
+          bulkLabel="Unstage All Changes"
+          collapsed={stagedFilesCollapsed()}
+          onToggleCollapsed={() => setStagedFilesCollapsed((v) => !v)}
+          onBulk={() => props.onUnstageAll()}
+          repoId={repoId()}
+          files={stagedFiles()}
+          activeFilePath={activeFor("staged")}
+          onSelectFile={(p) => openStagingDiffTab("staged", p)}
+          rowActions={stagedActions}
+        />
+      </div>
 
       <section class="commit-panel__commit-form">
         <header class="commit-panel__commit-form__header">
@@ -306,26 +323,30 @@ export function CommitPanel(props: CommitPanelProps) {
           </label>
         </header>
 
-        <CommitMessage
-          summary={commitMessage()}
-          description={commitDescription()}
-          onSummaryChange={setCommitMessage}
-          onDescriptionChange={setCommitDescription}
-        />
+        {/* Middle scrolls under pressure; header + Commit button stay
+            pinned (GK parity — button-row is never scrolled away). */}
+        <div class="commit-panel__commit-form__scroll">
+          <CommitMessage
+            summary={commitMessage()}
+            description={commitDescription()}
+            onSummaryChange={setCommitMessage}
+            onDescriptionChange={setCommitDescription}
+          />
 
-        <CoAuthorPicker
-          repoPath={repoPath() ?? ""}
-          description={commitDescription()}
-          onChange={setCommitDescription}
-        />
+          <CoAuthorPicker
+            repoPath={repoPath() ?? ""}
+            description={commitDescription()}
+            onChange={setCommitDescription}
+          />
 
-        <CommitOptionsBlock
-          signConfig={signConfig()}
-          repoPath={repoPath() ?? null}
-          defaultName={signConfig()?.userName ?? ""}
-          defaultEmail={signConfig()?.userEmail ?? ""}
-          onKeyGenerated={() => setSignConfigNonce((n) => n + 1)}
-        />
+          <CommitOptionsBlock
+            signConfig={signConfig()}
+            repoPath={repoPath() ?? null}
+            defaultName={signConfig()?.userName ?? ""}
+            defaultEmail={signConfig()?.userEmail ?? ""}
+            onKeyGenerated={() => setSignConfigNonce((n) => n + 1)}
+          />
+        </div>
 
         <CommitButton
           label={submitLabel()}

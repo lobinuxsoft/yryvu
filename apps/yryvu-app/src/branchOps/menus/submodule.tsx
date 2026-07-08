@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { submoduleInit, submoduleUpdate, type SubmoduleInfo } from "../../ipc";
+import {
+  submoduleInit,
+  submoduleSync,
+  submoduleUpdate,
+  type SubmoduleInfo,
+} from "../../ipc";
 import type { ContextMenuItem } from "../../components/ContextMenu";
 import {
   refreshBranches,
@@ -87,12 +92,32 @@ export function openSubmoduleContextMenu(
       },
     },
     {
+      label: "Sync",
+      disabled: !info.is_initialized,
+      onSelect: async () => {
+        try {
+          await submoduleSync(parent, info.name);
+          refreshBranches();
+          refreshWorkingTree();
+          notify.success("Submodule synced", {
+            message: info.name,
+            category: "repoObject",
+          });
+        } catch (err) {
+          notify.error("Sync failed", {
+            message: String(err),
+            category: "repoObject",
+          });
+        }
+      },
+    },
+    {
       label: "Reset",
-      disabled: true,
-      // Force-checkout to parent-pinned needs more libgit2 surface
-      // than chajá wraps today. Tracked separately if the user
-      // wants this — git CLI gives them an escape hatch.
-      onSelect: () => {},
+      disabled: !info.is_initialized,
+      // Force-checkout to parent-pinned discards local work — the
+      // dialog warns (harder when the row is dirty) before firing.
+      onSelect: () =>
+        deps.openSubmoduleResetDialog(info.name, info.is_dirty),
     },
     {
       label: "Commit",
@@ -144,6 +169,14 @@ export function openSubmoduleContextMenu(
       },
     },
     { type: "separator" },
+    {
+      label: "Deinitialize…",
+      disabled: !info.is_initialized,
+      // Unregisters + clears the working tree but keeps .gitmodules
+      // and the cached gitdir — Initialize undoes it cheaply.
+      onSelect: () =>
+        deps.openSubmoduleDeinitDialog(info.name, info.path, info.is_dirty),
+    },
     {
       label: "Remove submodule…",
       onSelect: () => deps.openSubmoduleRemoveDialog(info.name, info.path),

@@ -17,10 +17,10 @@ use std::path::Path;
 use graph_core::Commit;
 
 use crate::backend::{
-    AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff, CommitOptions, FileDiff,
-    GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange, MergeResult,
-    MergeStrategy, PushOptions, RepoStateInfo, ResetMode, SignConfig, SignFormat, StashInfo,
-    SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
+    ApplyPatchOutcome, AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff,
+    CommitOptions, FileDiff, GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange,
+    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, SignConfig, SignFormat,
+    StashInfo, SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
 };
 
 use super::{
@@ -32,8 +32,9 @@ impl GitBackend for GixBackend {
     fn walk_commits(
         &self,
         repo_path: &Path,
+        limit: Option<usize>,
     ) -> Result<Box<dyn Iterator<Item = Result<Commit, BackendError>> + Send>, BackendError> {
-        commits::walk_commits(repo_path)
+        commits::walk_commits(repo_path, limit)
     }
 
     fn list_branches(&self, repo_path: &Path) -> Result<Vec<BranchInfo>, BackendError> {
@@ -109,12 +110,26 @@ impl GitBackend for GixBackend {
         repo_path: &Path,
         url: &str,
         target_path: &Path,
+        branch: Option<&str>,
+        name: Option<&str>,
     ) -> Result<(), BackendError> {
-        submodules::submodule_add(repo_path, url, target_path)
+        submodules::submodule_add(repo_path, url, target_path, branch, name)
     }
 
     fn submodule_remove(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
         submodules::submodule_remove(repo_path, name)
+    }
+
+    fn submodule_sync(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        submodules::submodule_sync(repo_path, name)
+    }
+
+    fn submodule_reset(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        submodules::submodule_reset(repo_path, name)
+    }
+
+    fn submodule_deinit(&self, repo_path: &Path, name: &str) -> Result<(), BackendError> {
+        submodules::submodule_deinit(repo_path, name)
     }
 
     fn rebase_current_onto(
@@ -372,6 +387,15 @@ impl GitBackend for GixBackend {
         out_dir: &Path,
     ) -> Result<String, BackendError> {
         patches::format_patch(repo_path, sha, out_dir)
+    }
+
+    fn apply_patch(
+        &self,
+        repo_path: &Path,
+        patch_path: &Path,
+        committer: Option<(&str, &str)>,
+    ) -> Result<ApplyPatchOutcome, BackendError> {
+        patches::apply_patch(repo_path, patch_path, committer)
     }
 
     fn stash_push(

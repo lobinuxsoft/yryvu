@@ -6,8 +6,8 @@ use graph_core::Commit;
 
 use super::errors::BackendError;
 use super::types::{
-    BranchInfo, CombinedDiff, CommitDiff, FileDiff, MergeResult, MergeStrategy, PushOptions,
-    RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
+    ApplyPatchOutcome, BranchInfo, CombinedDiff, CommitDiff, FileDiff, MergeResult, MergeStrategy,
+    PushOptions, RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
 };
 use crate::repo::commits::AuthorInfo;
 use crate::repo::conflicts::{ConflictDiff3, ConflictListing, ConflictSide, ConflictSource};
@@ -32,6 +32,7 @@ pub trait GitBackend: Send + Sync {
     fn walk_commits(
         &self,
         repo_path: &Path,
+        limit: Option<usize>,
     ) -> Result<Box<dyn Iterator<Item = Result<Commit, BackendError>> + Send>, BackendError>;
 
     fn list_branches(&self, repo_path: &Path) -> Result<Vec<BranchInfo>, BackendError>;
@@ -189,6 +190,17 @@ pub trait GitBackend: Send + Sync {
         out_dir: &Path,
     ) -> Result<String, BackendError>;
 
+    /// Apply an mbox `.patch` (`git am` equivalent) onto HEAD as a new
+    /// commit. Author identity/date come from the mbox headers; `committer`
+    /// is the current user (profile-stamped by the caller), falling back to
+    /// the repo signature when `None`.
+    fn apply_patch(
+        &self,
+        repo_path: &Path,
+        patch_path: &Path,
+        committer: Option<(&str, &str)>,
+    ) -> Result<ApplyPatchOutcome, BackendError>;
+
     fn stash_push(
         &self,
         repo_path: &Path,
@@ -236,9 +248,25 @@ pub trait GitBackend: Send + Sync {
         repo_path: &Path,
         url: &str,
         target_path: &Path,
+        branch: Option<&str>,
+        name: Option<&str>,
     ) -> Result<(), BackendError>;
 
     fn submodule_remove(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Copy the `.gitmodules` URL into `.git/config` for `name` —
+    /// `git submodule sync <name>`.
+    fn submodule_sync(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Force-checkout the parent-pinned commit in the submodule's
+    /// working tree, discarding local changes — `git submodule update
+    /// --force <name>`.
+    fn submodule_reset(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
+
+    /// Unregister an initialized submodule and clear its working tree
+    /// while keeping the `.gitmodules` entry — `git submodule deinit
+    /// -f <name>`.
+    fn submodule_deinit(&self, repo_path: &Path, name: &str) -> Result<(), BackendError>;
 
     /// Rebase the current branch onto `target_branch`. Aborts on
     /// conflict (chajá doesn't yet expose per-step rebase resolution).

@@ -18,7 +18,9 @@ import { RemoveRemoteDialog } from "./dialogs/RemoveRemoteDialog";
 import { RenameDialog } from "./dialogs/RenameDialog";
 import { SetUpstreamDialog } from "./dialogs/SetUpstreamDialog";
 import { SubmoduleAddDialog } from "./dialogs/SubmoduleAddDialog";
+import { SubmoduleDeinitDialog } from "./dialogs/SubmoduleDeinitDialog";
 import { SubmoduleRemoveDialog } from "./dialogs/SubmoduleRemoveDialog";
+import { SubmoduleResetDialog } from "./dialogs/SubmoduleResetDialog";
 import type { BranchOps } from "../../branchOps";
 
 /**
@@ -38,6 +40,8 @@ export function DialogsHost(props: { ops: BranchOps }) {
       <DeleteRemoteDialog ops={props.ops} />
       <SubmoduleAddDialog ops={props.ops} />
       <SubmoduleRemoveDialog ops={props.ops} />
+      <SubmoduleResetDialog ops={props.ops} />
+      <SubmoduleDeinitDialog ops={props.ops} />
       <SetUpstreamDialog ops={props.ops} />
       <DeleteTagDialog ops={props.ops} />
       <AnnotateTagDialog ops={props.ops} />

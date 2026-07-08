@@ -9,10 +9,15 @@
    inspector, so visual anatomy stays identical across rows.
    ======================================================================== */
 
+/* Fills whatever bounded region its host hands it (staging section,
+   committed inspector column); the scroll itself lives one level down
+   on `.file-list__items`, mirroring GK's file-node-list-wrapper >
+   AutoSizer > Grid nesting (#430). */
 .file-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
   min-height: 0;
 }
 
@@ -22,6 +27,7 @@
   gap: 6px;
   padding: 4px 6px;
   border-bottom: 1px solid var(--bg-2);
+  flex-shrink: 0;
 }
 
 .file-list__toolbar-modes {
@@ -90,20 +96,49 @@
   border-color: var(--info);
 }
 
+/* THE scroll viewport of the widget — each list scrolls independently,
+   1:1 with GK's per-list react-virtualized Grid (#430). */
 .file-list__items {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Hidden (not unmounted) while the loading skeleton shows — the
+   virtualizer keeps its scroll-element ref across loading swaps. */
+.file-list__items--hidden {
+  display: none;
+}
+
+/* Positioning context for the virtualized window. Total list height
+   lives here (inline, from getTotalSize()); flex-shrink 0 stops the
+   scroller's flex column from crushing it to the viewport height. */
+.file-list__sizer {
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 /* Each row is a flex container so file-row + optional actions sit side
-   by side. Hover on the <li> tints the inner button and reveals actions
-   uniformly across both halves. */
-.file-list__items > li {
+   by side. Hover on the row shell tints the inner button and reveals
+   actions uniformly across both halves. */
+.file-list__item {
   display: flex;
   align-items: stretch;
+}
+
+/* Virtual-path rows: absolutely positioned inside the sizer at their
+   translateY offset (house pattern, see FileHistoryPanel). */
+.file-list__item--virtual {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
 }
 
 .file-list__row,
@@ -122,8 +157,8 @@
   padding-right: 6px;
 }
 
-.file-list__items > li:hover .file-list__row,
-.file-list__items > li:hover .file-list__dir { background: var(--bg-2); }
+.file-list__item:hover .file-list__row,
+.file-list__item:hover .file-list__dir { background: var(--bg-2); }
 
 .file-list__row[data-active="true"] {
   background: color-mix(in srgb, var(--info) 22%, var(--bg-0));
@@ -142,8 +177,8 @@
   transition: opacity 100ms;
 }
 
-.file-list__items > li:hover .file-list__row-actions,
-.file-list__items > li:has(.file-list__row[data-active="true"]) .file-list__row-actions {
+.file-list__item:hover .file-list__row-actions,
+.file-list__item:has(.file-list__row[data-active="true"]) .file-list__row-actions {
   opacity: 1;
 }
 

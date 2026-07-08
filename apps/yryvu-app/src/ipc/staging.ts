@@ -29,6 +29,16 @@ export function unstageFiles(repoPath: string, paths: string[]): Promise<void> {
   return invoke<void>("unstage_files", { repoPath, paths });
 }
 
+/// Stage / unstage only a file-mode change (issue #60) — distinct from
+/// content staging so the UI can surface mode-specific errors.
+export function stageFilemode(repoPath: string, path: string): Promise<void> {
+  return invoke<void>("stage_filemode", { repoPath, path });
+}
+
+export function unstageFilemode(repoPath: string, path: string): Promise<void> {
+  return invoke<void>("unstage_filemode", { repoPath, path });
+}
+
 export function getUnstagedDiff(
   repoPath: string,
   path: string
@@ -77,6 +87,13 @@ export function discardPaths(
   paths: string[]
 ): Promise<void> {
   return invoke<void>("discard_paths", { repoPath, paths });
+}
+
+/// Discard ALL local changes — equivalent to `git reset --hard HEAD` plus
+/// removal of untracked files. More reliable than `discardPaths` for binary,
+/// LFS, and filter-driven files. Caller must confirm beforehand — no undo.
+export function discardAll(repoPath: string): Promise<void> {
+  return invoke<void>("discard_all", { repoPath });
 }
 
 /// Options bundle mirroring the backend `CommitOptions` (serde camelCase).

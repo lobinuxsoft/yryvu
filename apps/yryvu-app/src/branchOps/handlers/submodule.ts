@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { submoduleAdd, submoduleRemove } from "../../ipc";
+import {
+  submoduleAdd,
+  submoduleDeinit,
+  submoduleRemove,
+  submoduleReset,
+} from "../../ipc";
 import { refreshWorkingTree, repoPath } from "../../state";
 import { notify } from "../../components/Notifications";
 import type { BranchOpsState } from "../state";
@@ -23,6 +28,8 @@ export function createSubmoduleHandlers(deps: SubmoduleHandlersDeps) {
     setDialogError,
     dialogNameInput,
     dialogPathInput,
+    submoduleBranch,
+    submoduleName,
     closeDialog,
   } = state;
 
@@ -56,8 +63,16 @@ export function createSubmoduleHandlers(deps: SubmoduleHandlersDeps) {
     const url = dialogNameInput().trim();
     const target = dialogPathInput().trim();
     if (!path || !url || !target) return;
+    const branch = submoduleBranch().trim();
+    const name = submoduleName().trim();
     try {
-      await submoduleAdd(path, url, target);
+      await submoduleAdd(
+        path,
+        url,
+        target,
+        branch.length > 0 ? branch : undefined,
+        name.length > 0 ? name : undefined,
+      );
       closeDialog();
       refresh();
       refreshWorkingTree();
@@ -74,5 +89,56 @@ export function createSubmoduleHandlers(deps: SubmoduleHandlersDeps) {
     }
   }
 
-  return { submitSubmoduleAdd, submitSubmoduleRemove };
+  async function submitSubmoduleReset() {
+    const s = dialog();
+    if (s?.kind !== "submodule-reset") return;
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await submoduleReset(path, s.name);
+      closeDialog();
+      refresh();
+      refreshWorkingTree();
+      notify.success("Submodule reset", {
+        message: s.name,
+        category: "repoObject",
+      });
+    } catch (err) {
+      setDialogError(String(err));
+      notify.error("Reset submodule failed", {
+        message: String(err),
+        category: "repoObject",
+      });
+    }
+  }
+
+  async function submitSubmoduleDeinit() {
+    const s = dialog();
+    if (s?.kind !== "submodule-deinit") return;
+    const path = repoPath();
+    if (!path) return;
+    try {
+      await submoduleDeinit(path, s.name);
+      closeDialog();
+      refresh();
+      refreshWorkingTree();
+      notify.success("Submodule deinitialized", {
+        message: s.name,
+        category: "repoObject",
+      });
+    } catch (err) {
+      setDialogError(String(err));
+      notify.error("Deinitialize submodule failed", {
+        message: String(err),
+        category: "repoObject",
+      });
+    }
+  }
+
+  return {
+    submitSubmoduleAdd,
+    submitSubmoduleRemove,
+    submitSubmoduleReset,
+    submitSubmoduleDeinit,
+  };
 }

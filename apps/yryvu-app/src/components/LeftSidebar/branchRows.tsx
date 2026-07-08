@@ -57,12 +57,19 @@ export function LocalBranchRow(props: LocalBranchRowProps) {
 export interface RemoteBranchRowProps {
   branch: BranchInfo;
   onContextMenu: (e: MouseEvent, b: BranchInfo) => void;
+  /// Label override for nested rendering under a remote folder row
+  /// (#239): shows `main` instead of `origin/main`. `branch` keeps the
+  /// full name — menu handlers and hover state stay remote-qualified.
+  displayName?: string;
+  /// Indents the row one level under its folder (#239).
+  nested?: boolean;
 }
 
 export function RemoteBranchRow(props: RemoteBranchRowProps) {
   return (
     <div
       class="sidebar__branch-row"
+      classList={{ "sidebar__branch-row--nested": props.nested }}
       onClick={() => navigateToRef(props.branch.tip_sha)}
       onContextMenu={(e) => props.onContextMenu(e, props.branch)}
       onMouseEnter={() =>
@@ -70,7 +77,9 @@ export function RemoteBranchRow(props: RemoteBranchRowProps) {
       }
       onMouseLeave={clearHoveredRef}
     >
-      <span class="sidebar__branch-name">{props.branch.name}</span>
+      <span class="sidebar__branch-name">
+        {props.displayName ?? props.branch.name}
+      </span>
     </div>
   );
 }

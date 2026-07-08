@@ -20,6 +20,7 @@ import {
   type WorktreeInfo,
 } from "../../ipc";
 import { branchesNonce, repoPath, workingTreeNonce } from "../../state";
+import { groupRemoteBranches, type RemoteGroup } from "./helpers";
 
 const matches = (name: string, q: string) =>
   q === "" || name.toLowerCase().includes(q.toLowerCase());
@@ -175,6 +176,11 @@ export function useSidebarData(filterQuery: Accessor<string>) {
     locals().filter((b) => matches(b.name, filterQuery()));
   const filteredRemotes = () =>
     remotes().filter((b) => matches(b.name, filterQuery()));
+  // Two-level REMOTE section (#239): one folder per configured remote
+  // with its tracking branches nested. Folder-name matches keep all
+  // children; empty folders are visible at rest, hidden mid-filter.
+  const groupedRemotes = (): RemoteGroup[] =>
+    groupRemoteBranches(remoteNames() ?? [], remotes(), filterQuery());
   const filteredTags = () =>
     tagList().filter((t) => matches(t.name, filterQuery()));
   // Filter worktrees by branch name OR path tail — both are searchable signals.
@@ -223,6 +229,7 @@ export function useSidebarData(filterQuery: Accessor<string>) {
     submoduleList,
     filteredLocals,
     filteredRemotes,
+    groupedRemotes,
     filteredTags,
     filteredWorktrees,
     filteredStashes,

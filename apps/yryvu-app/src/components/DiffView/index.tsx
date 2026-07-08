@@ -11,8 +11,22 @@ import {
 } from "./FullFileView";
 import { detectLanguage, highlightLine } from "./highlight";
 import { HunkActions, type HunkStagingActions } from "./HunkActions";
+import { ImageDiffView, type ImageSources } from "./ImageDiffView";
 import { LineActions, type LineStagingApi } from "./LineActions";
+import { MarkdownView } from "./MarkdownView";
+import { SubmodulePointerPane } from "./SubmodulePointerPane";
+import { parseLfsPointer } from "./lfs";
+import {
+  BinaryDiffView,
+  DeletedFileBanner,
+  FilemodeView,
+  type FilemodeStaging,
+  LfsPointerView,
+} from "./SpecialViews";
 import { pairLines, SplitLineRow } from "./SplitView";
+
+export type { ImageSources };
+export type { FilemodeStaging };
 
 export type { HunkStagingActions, LineStagingApi };
 
@@ -39,6 +53,27 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/// Markdown extensions that get the File View Code/Preview toggle
+/// (issue #60, doc 08). Classification stays `text` — the preview is a
+/// sub-mode of File View, not a separate `fileDataType`.
+function isMarkdownPath(path: string): boolean {
+  const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  return ext === "md" || ext === "markdown" || ext === "mdx";
+}
+
+/// A pure file-mode change: both sides present, modes differ, and no
+/// content hunks. Routed to the File Mode Changes pane (issue #60).
+function isFilemodeOnlyChange(file: FileDiff): boolean {
+  return (
+    file.old_mode !== null &&
+    file.new_mode !== null &&
+    file.old_mode !== file.new_mode &&
+    file.hunks.length === 0 &&
+    !file.truncated &&
+    file.file_data_type !== "submodule"
+  );
 }
 
 /// GitKraken parity (issue #59 + #8). `fileDisplayModes` in the bundle
@@ -106,6 +141,18 @@ export interface DiffFileBlockProps {
   /// `stagingActions`: a tab usually passes both, but commit diffs pass
   /// neither.
   lineStagingApi?: LineStagingApi;
+  /// Old/new blob sources for the image viewer (issue #60). Supplied by
+  /// `FileDiffTab` for the focused single-file view; absent in the
+  /// read-only multi-file `DiffView`, where images fall back to the
+  /// binary placeholder.
+  imageSources?: ImageSources;
+  /// Parent repo path, used by the submodule pointer pane to resolve
+  /// commit summaries and open the submodule as a tab (issue #60).
+  repoPath?: string;
+  /// Stage/unstage actions for a file-mode-only change (issue #60).
+  /// Present only in a staging selection; absent in commit diffs makes
+  /// the mode pane read-only.
+  filemodeStaging?: FilemodeStaging;
 }
 
 export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
@@ -146,24 +193,65 @@ export function DiffFileBlock(props: DiffFileBlockProps): JSX.Element {
         </button>
       </Show>
 
-      <Show when={isOpen()}>
-        <Show when={props.file.is_binary}>
-          <div class="diff-file__notice">
-            Binary file — not shown. ({formatBytes(props.file.new_size || props.file.old_size)})
-          </div>
-        </Show>
-        <Show when={!props.file.is_binary && props.file.truncated}>
-          <div class="diff-file__notice">
-            File too large ({formatBytes(Math.max(props.file.new_size, props.file.old_size))})
-            — diff truncated. Open the file externally to inspect.
-          </div>
-        </Show>
-        <Show when={!props.file.is_binary && !props.file.truncated}>
-          {renderBody(props, mode(), lang())}
-        </Show>
-      </Show>
+      <Show when={isOpen()}>{renderByDataType(props, mode(), lang())}</Show>
     </div>
   );
+}
+
+/// Per-filetype dispatcher (issue #60). Routes on the backend's
+/// `file_data_type` before the text path. Each non-text branch is
+/// landing incrementally: the binary placeholder + deleted banner ship
+/// here; `image` and `submodule` reuse interim fallbacks until their
+/// dedicated viewers land (PR2 image, PR4 submodule pane).
+function renderByDataType(
+  props: DiffFileBlockProps,
+  mode: FileViewMode,
+  lang: string | undefined,
+): JSX.Element {
+  const file = props.file;
+  if (file.truncated) {
+    return (
+      <div class="diff-file__notice">
+        File too large ({formatBytes(Math.max(file.new_size, file.old_size))}) —
+        diff truncated. Open the file externally to inspect.
+      </div>
+    );
+  }
+  // File-mode-only changes route to the mode pane before the type switch
+  // — they carry no hunks, so the text path would show "no changes".
+  if (isFilemodeOnlyChange(file)) {
+    return (
+      <FilemodeView
+        oldMode={file.old_mode!}
+        newMode={file.new_mode!}
+        staging={props.filemodeStaging}
+      />
+    );
+  }
+  switch (file.file_data_type) {
+    case "binary":
+      return <BinaryDiffView file={file} />;
+    case "image":
+      // The focused single-file view supplies blob sources; the read-only
+      // multi-file summary doesn't, so images fall back to the placeholder.
+      return props.imageSources ? (
+        <ImageDiffView sources={props.imageSources} />
+      ) : (
+        <BinaryDiffView file={file} />
+      );
+    case "deleted":
+      return (
+        <>
+          <DeletedFileBanner />
+          {renderBody(props, mode, lang)}
+        </>
+      );
+    case "submodule":
+      return <SubmodulePointerPane file={file} repoPath={props.repoPath} />;
+    case "directory":
+    case "text":
+      return renderBody(props, mode, lang);
+  }
 }
 
 function renderBody(
@@ -186,6 +274,19 @@ function renderBody(
   if (mode === "content") {
     if (props.fullContent === undefined) {
       return <FullFileMissing reason="loading" />;
+    }
+    // LFS pointer is a post-load check on content (issue #60, doc 07):
+    // the pane switches to an object-size placeholder regardless of the
+    // file's classification.
+    const lfs = parseLfsPointer(props.fullContent);
+    if (lfs) {
+      return <LfsPointerView size={lfs.size} />;
+    }
+    // File View Code/Preview toggle for Markdown (issue #60, doc 08).
+    // Diff modes (hunk/inline/split) never reach here, so they keep
+    // showing the raw Markdown source as GitKraken does.
+    if (isMarkdownPath(props.file.path)) {
+      return <MarkdownView content={props.fullContent} language={lang} />;
     }
     return <FileContentView content={props.fullContent} language={lang} />;
   }

@@ -76,3 +76,64 @@
   font-size: 11px;
   font-style: italic;
 }
+
+/* Per-remote folder rows (#239) — two-level REMOTE section. Folder row
+   mirrors the branch-row hover surface but carries a rotating caret +
+   host icon + tracking-branch count; nested branch rows indent one
+   level so the hierarchy reads at a glance. */
+.sidebar__remote-folder {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 14px;
+  color: var(--fg-1);
+  font-size: 12px;
+  cursor: default;
+  user-select: none;
+}
+
+.sidebar__remote-folder:hover { background: var(--bg-2); }
+
+.sidebar__remote-folder-caret {
+  display: inline-block;
+  width: 10px;
+  flex-shrink: 0;
+  color: var(--fg-2);
+  font-size: 11px;
+  transform: rotate(90deg);
+  transition: transform 0.12s ease;
+}
+
+.sidebar__remote-folder[data-collapsed="true"] .sidebar__remote-folder-caret {
+  transform: rotate(0deg);
+}
+
+.sidebar__remote-folder-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--fg-2);
+}
+
+.sidebar__remote-folder-count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--fg-3);
+}
+
+.sidebar__branch-row--nested {
+  padding-left: 38px;
+}
+
+/* Warning banner inside a section body (#98) — surfaces dirty
+   submodules above the rows without stealing the StateBanner surface
+   reserved for repo-wide states (merge / rebase / …). */
+.sidebar__warning-banner {
+  margin: 0;
+  padding: 4px 10px 4px 24px;
+  font-size: 11px;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}

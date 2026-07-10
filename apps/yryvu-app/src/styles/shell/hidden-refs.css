@@ -17,7 +17,8 @@
   height: 18px;
   padding: 0 5px;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--btn-radius);
+  clip-path: var(--btn-clip-path);
   background: transparent;
   color: var(--fg-3);
   cursor: pointer;

@@ -51,7 +51,8 @@
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: var(--avatar-radius);
+  clip-path: var(--avatar-clip-path);
   object-fit: cover;
   background: var(--bg-3);
 }
@@ -163,7 +164,8 @@
 .sidebar__pr-avatar-cluster__avatar {
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  border-radius: var(--avatar-radius);
+  clip-path: var(--avatar-clip-path);
   object-fit: cover;
   background: var(--bg-3);
   border: 1px solid var(--bg-1);

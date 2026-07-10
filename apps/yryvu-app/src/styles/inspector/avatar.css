@@ -10,7 +10,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: var(--avatar-radius);
+  clip-path: var(--avatar-clip-path);
   background: var(--accent);
   color: var(--fg-0);
   font-family: var(--font-sans);

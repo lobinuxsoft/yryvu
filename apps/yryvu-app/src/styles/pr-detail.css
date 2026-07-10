@@ -240,7 +240,8 @@
   flex-shrink: 0;
   font-size: 10px;
   padding: 1px 6px;
-  border-radius: 8px;
+  border-radius: var(--pill-radius);
+  clip-path: var(--pill-clip-path);
   background: var(--bg-3);
   color: var(--fg-2);
   font-weight: 500;
@@ -283,7 +284,8 @@
 .pr-detail__sidebar-avatar {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: var(--avatar-radius);
+  clip-path: var(--avatar-clip-path);
   vertical-align: middle;
   margin-right: 6px;
   background: var(--bg-3);
@@ -459,7 +461,8 @@
 .pr-detail__commit-avatar {
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  border-radius: var(--avatar-radius);
+  clip-path: var(--avatar-clip-path);
   background: var(--bg-3);
 }
 .pr-detail__commit-author {

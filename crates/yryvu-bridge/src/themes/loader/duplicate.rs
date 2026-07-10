@@ -45,7 +45,7 @@ pub fn create_from_template(builtin_id: &str, custom_dir: &Path) -> Result<Strin
     let tokens_src = read_built_in_utf8(builtin_id, FILE_TOKENS_CSS)?;
     let tokens_rewritten = tokens_src.replace(
         &format!(":root[data-theme=\"{builtin_id}\"]"),
-        &format!(":root[data-theme=\"{}\"]", &copy.id),
+        &format!(":root[data-theme=\"{}\"]", copy.id),
     );
     std::fs::write(dest.join(FILE_TOKENS_CSS), tokens_rewritten)
         .map_err(|e| io_err(&copy.id, e))?;

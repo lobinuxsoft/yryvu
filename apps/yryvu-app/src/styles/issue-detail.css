@@ -168,7 +168,8 @@
 .issue-detail__sidebar-avatar {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: var(--avatar-radius);
+  clip-path: var(--avatar-clip-path);
   vertical-align: middle;
   margin-right: 6px;
   background: var(--bg-3);

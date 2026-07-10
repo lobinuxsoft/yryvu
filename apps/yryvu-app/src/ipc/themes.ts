@@ -23,10 +23,11 @@ export interface ThemeEntry extends ThemeMetadata {
   builtIn: boolean;
 }
 
-/// Mirrors `yryvu_bridge::themes::loader::ThemeCss`. `personality` is
-/// empty when the theme has no `personality.css`.
+/// Mirrors `yryvu_bridge::themes::loader::ThemeCss`. `icons` and
+/// `personality` are empty when the theme declares no such layer.
 export interface ThemeCss {
   tokens: string;
+  icons: string;
   personality: string;
 }
 

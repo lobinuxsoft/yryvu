@@ -1,0 +1,54 @@
+/* --- Cold start (no-repo screen) ------------------------------------ */
+
+.cold-start__title {
+  text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+  animation: synthwave-title-pulse 3s ease-in-out infinite;
+  letter-spacing: 0.04em;
+}
+@keyframes synthwave-title-pulse {
+  0%, 100% {
+    text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  50% {
+    text-shadow:
+      0 0 18px color-mix(in srgb, var(--accent) 90%, transparent),
+      0 0 36px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+}
+
+/* Idle: 3 s breathe (slightly slower than toolbar, offset phase via
+   negative animation-delay so they don't all pulse in unison).
+   Hover: lift + flare. */
+.cold-start__action {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: transform 240ms ease;
+  animation: synthwave-cta-breathe 3s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+.cold-start__action:hover {
+  animation: none;
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--accent) 75%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+@keyframes synthwave-cta-breathe {
+  0%, 100% {
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 26px color-mix(in srgb, var(--accent) 60%, transparent),
+      inset 0 0 14px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+}
+
+.cold-start__recent-item {
+  transition: box-shadow 180ms ease;
+}
+.cold-start__recent-item:hover {
+  box-shadow:
+    inset 3px 0 0 var(--info),
+    0 0 18px color-mix(in srgb, var(--info) 25%, transparent);
+}

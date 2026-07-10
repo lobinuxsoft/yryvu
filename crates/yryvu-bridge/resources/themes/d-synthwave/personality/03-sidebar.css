@@ -1,0 +1,22 @@
+/* --- Sidebar (left panel) ------------------------------------------- */
+
+.sidebar {
+  box-shadow:
+    inset -1px 0 0 var(--accent),
+    inset -3px 0 24px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.sidebar__branch-row {
+  transition: box-shadow 160ms ease, text-shadow 160ms ease;
+}
+.sidebar__branch-row:hover {
+  box-shadow:
+    inset 3px 0 0 var(--info),
+    inset 0 0 18px color-mix(in srgb, var(--info) 14%, transparent);
+}
+.sidebar__branch-row[data-active="true"] {
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    inset 0 0 24px color-mix(in srgb, var(--accent) 18%, transparent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent);
+}

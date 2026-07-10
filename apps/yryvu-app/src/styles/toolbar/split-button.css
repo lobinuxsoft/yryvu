@@ -7,7 +7,7 @@
   display: inline-flex;
   position: relative;
   align-items: stretch;
-  border-radius: var(--radius-md);
+  border-radius: var(--btn-radius);
 }
 
 .split-button__main,
@@ -16,16 +16,16 @@
 }
 
 .split-button__main {
-  border-top-left-radius: var(--radius-md);
-  border-bottom-left-radius: var(--radius-md);
+  border-top-left-radius: var(--btn-radius);
+  border-bottom-left-radius: var(--btn-radius);
   min-width: 56px;
 }
 
 .split-button__caret {
   min-width: 16px;
   padding: 4px 6px;
-  border-top-right-radius: var(--radius-md);
-  border-bottom-right-radius: var(--radius-md);
+  border-top-right-radius: var(--btn-radius);
+  border-bottom-right-radius: var(--btn-radius);
   flex-direction: row;
   height: 48px;
 }

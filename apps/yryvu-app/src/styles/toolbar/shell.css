@@ -6,10 +6,12 @@
 .toolbar {
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  gap: 12px;
+  padding: var(--padding-toolbar-y) var(--padding-toolbar-x);
+  gap: var(--gap-md);
   background: var(--bg-1);
-  border-bottom: 1px solid var(--bg-3);
+  border-bottom: var(--border-width) var(--border-style) var(--bg-3);
+  font-family: var(--font-toolbar);
+  font-size: var(--font-size-toolbar);
   height: var(--toolbar-height);
   position: relative;
 }

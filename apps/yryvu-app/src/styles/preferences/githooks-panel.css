@@ -64,7 +64,8 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--pill-radius);
+  clip-path: var(--pill-clip-path);
   font-weight: 600;
 }
 

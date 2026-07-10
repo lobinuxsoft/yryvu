@@ -19,7 +19,8 @@
   padding: 4px 8px;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--btn-radius);
+  clip-path: var(--btn-clip-path);
   color: var(--fg-1);
 }
 

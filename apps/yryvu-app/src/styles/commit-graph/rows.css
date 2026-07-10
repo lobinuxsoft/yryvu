@@ -9,6 +9,7 @@
   position: relative;
   min-width: 0;
   width: 100%;
+  font-family: var(--font-graph-message);
   /* RightGutter divider (#128) — 1-px hairline + subtle inward shadow
      marks the GRAPH → MESSAGE boundary, pairing with the per-row
      lane-color streak on the GRAPH side. Applied here (not on
@@ -39,7 +40,7 @@
   right: 0;
   display: flex;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--font-size-row);
   color: var(--fg-1);
   /* Full-row lane tint at 8 % — matches GitKraken's per-row background
      where the lane color washes across every column (BRANCH/TAG +

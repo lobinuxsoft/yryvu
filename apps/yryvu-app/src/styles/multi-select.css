@@ -41,7 +41,8 @@
 .multi-select__chip-avatar {
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  border-radius: var(--avatar-radius);
+  clip-path: var(--avatar-clip-path);
   background: var(--bg-2);
 }
 
@@ -123,7 +124,8 @@
 .multi-select__option-avatar {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: var(--avatar-radius);
+  clip-path: var(--avatar-clip-path);
   background: var(--bg-3);
 }
 

@@ -34,8 +34,8 @@ daily flow, then differentiators, then luxuries. Each wave maps to a release.
 | 5 — Sidebar polish | remotes, submodules, SSH keys | v0.5.0 | ✅ done |
 | 6 — Diff completeness | per-filetype renderer (#60), apply-patch / git am (#75) | v0.4.x | ✅ done |
 | 7 — M3 Pro | gitflow (#19), worktrees (#20), profiles (#22) | v0.5.0 (closes M3) | ✅ done |
-| **8 — Theme power v2** | tokens (#298), manifest (#299), icons (#300), graph vars (#301), rewrite themes (#303), docs (#302) — umbrella #297 | v0.5.x | ⬜ **next** |
-| 9 — Perf + cleanup | lazy hunks (#178), stream layout (#181), RepoMgmt DOD (#217), cols resize (#37), don't-ask (#196), remote mgmt (#132), HEAD-first (#126), deeplinks (#110), commit-panel parity (#151), BYO OAuth (#263), GK audit (#33) | v0.5.x → v0.6.x | ⬜ |
+| 8 — Theme power v2 | tokens (#298), manifest (#299), icons (#300), graph vars (#301), rewrite themes (#303), docs (#302) — umbrella #297 | v0.5.x | ✅ done |
+| **9 — Perf + cleanup** | lazy hunks (#178), stream layout (#181), RepoMgmt DOD (#217), cols resize (#37), don't-ask (#196), remote mgmt (#132), HEAD-first (#126), deeplinks (#110), commit-panel parity (#151), BYO OAuth (#263), GK audit (#33) | v0.5.x → v0.6.x | ⬜ **next** |
 | 10 — M4 Luxuries | timeline (#23), inline-blame (#24), terminal (#25), themes umbrella (#27) | v0.6.0 (closes M4) | ⬜ |
 | 11 — Packaging | Flathub (#361) | v1.0.0 | ⬜ |
 

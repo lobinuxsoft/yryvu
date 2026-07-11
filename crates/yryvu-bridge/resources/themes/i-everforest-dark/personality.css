@@ -1,66 +1,121 @@
 /* ========================================================================
-     PERSONALITY — I · Everforest Dark
-     Botanical organic warm. Serif italic poetic headers, green-bronze
-     gradient avatar, warm undertone on panels. The "cabin in autumn"
-     personality.
-     ======================================================================== */
+   PERSONALITY — I · Everforest Dark
+   Botanical organic warm ("cabin in autumn"): soft radial canopy
+   gradients, slow ambient pulses, green-bronze washes. Real yryvu DOM.
+   Honors prefers-reduced-motion.
+   ======================================================================== */
 
-  /* Headers — serif italic, soft green tint */
-  .sb-section h3,
-  .graph-header > div,
-  .ins-files-title {
-    font-family: "Iowan Old Style", "Apple Garamond", Palatino,
-                 "Noto Serif", Georgia, serif;
-    font-style: italic;
-    text-transform: none;
-    letter-spacing: 0.005em;
-    color: var(--accent);
-    opacity: 0.85;
-    font-size: 11.5px;
-  }
-  .ins-summary {
-    font-family: "Iowan Old Style", "Apple Garamond", Palatino,
-                 "Noto Serif", Georgia, serif;
-    font-weight: 500;
-  }
+/* --- Toolbar — warm organic underlight ------------------------------- */
 
-  /* Subtle warm undertone on the three panels */
-  .sidebar,
-  .inspector,
-  .graph {
-    background-image: linear-gradient(180deg,
-      color-mix(in srgb, var(--warning) 3%, transparent),
-      transparent 50%,
-      color-mix(in srgb, var(--lane-4) 2%, transparent));
-  }
+.toolbar {
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, var(--bg-3));
+  background-image: radial-gradient(
+    120% 140% at 50% -40%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 0%,
+    transparent 70%
+  );
+}
 
-  /* Selected row — warm bronze wash */
-  .row.selected {
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--accent) 22%, transparent) 0%,
-      color-mix(in srgb, var(--warning) 10%, transparent) 100%
-    );
-    box-shadow: inset 3px 0 0 var(--accent);
-  }
+.toolbar__btn {
+  transition: background 260ms ease, box-shadow 260ms ease;
+}
+.toolbar__btn:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-2));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 30%, transparent);
+}
 
-  /* Pills — soft, organic */
-  .row .pill,
-  .row .pill.head,
-  .row .pill.tag {
-    border-radius: 10px;
-    font-weight: 500;
-  }
+.toolbar__btn-badge {
+  box-shadow: 0 0 0 2px var(--bg-1), 0 0 8px color-mix(in srgb, var(--warning) 45%, transparent);
+}
 
-  /* Avatar — green → bronze gradient (autumn vibe) */
-  .ins-avatar {
-    background: linear-gradient(135deg, var(--accent) 0%, var(--lane-4) 50%, var(--warning) 100%);
-    box-shadow:
-      0 0 0 2px var(--bg-1),
-      0 0 0 3px color-mix(in srgb, var(--accent) 50%, transparent);
-  }
+/* --- Tabs ------------------------------------------------------------ */
 
-  /* Toolbar bottom — subtle warm border */
-  .toolbar {
-    border-bottom-color: color-mix(in srgb, var(--warning) 12%, var(--bg-3));
-  }
+.tab[aria-selected="true"],
+.tab.active,
+.tab--permanent {
+  box-shadow: inset 0 -2px 0 var(--accent);
+  background: radial-gradient(
+    100% 100% at 50% 100%,
+    color-mix(in srgb, var(--accent) 14%, transparent) 0%,
+    transparent 80%
+  );
+}
+
+/* --- Sidebar --------------------------------------------------------- */
+
+.sidebar {
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--accent) 28%, var(--bg-3));
+}
+
+.sidebar__branch-row {
+  transition: background 240ms ease;
+}
+.sidebar__branch-row:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.sidebar__branch-row[data-active="true"] {
+  background: radial-gradient(
+    140% 100% at 0% 50%,
+    color-mix(in srgb, var(--accent) 20%, transparent) 0%,
+    transparent 70%
+  );
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* --- Ref pills ------------------------------------------------------- */
+
+.ref-pill--head {
+  box-shadow: 0 0 11px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.ref-pill--tag {
+  box-shadow: 0 0 9px color-mix(in srgb, var(--warning) 38%, transparent);
+}
+.ref-pill--remote {
+  box-shadow: 0 0 9px color-mix(in srgb, var(--info) 35%, transparent);
+}
+
+/* --- Status bar ------------------------------------------------------ */
+
+.statusbar {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* --- Cold start — canopy glow + slow breathe ------------------------- */
+
+.cold-start {
+  background-image: radial-gradient(
+    80% 60% at 50% 0%,
+    color-mix(in srgb, var(--accent) 10%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+.cold-start__title {
+  animation: everforest-title-breathe 5s ease-in-out infinite;
+}
+@keyframes everforest-title-breathe {
+  0%, 100% { text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent); }
+  50%      { text-shadow: 0 0 15px color-mix(in srgb, var(--accent) 60%, transparent); }
+}
+
+.cold-start__action {
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: box-shadow 260ms ease, transform 260ms ease;
+}
+.cold-start__action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.cold-start__recent-item {
+  transition: background 240ms ease;
+}
+.cold-start__recent-item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* --- Reduced motion -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cold-start__title { animation: none; }
+}

@@ -1,0 +1,50 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* Themeable chrome icons (#300).
+ *
+ * `<Icon name="x">` renders `<span class="icon" data-icon="x">`. The glyph
+ * is a CSS mask painted with `currentColor`, so a theme reshapes any single
+ * icon by overriding `--icon-x` (see tokens.css defaults) — or by dropping
+ * `icons/x.svg` in its folder (the backend inlines it as a data-URI).
+ *
+ * Default 16px; `<Icon>` forwards width/height for the sized callsites.
+ * WebKitGTK (Tauri) needs the `-webkit-mask-*` prefixes alongside the
+ * unprefixed properties.
+ */
+
+.icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.icon[data-icon="arrow-down"] { -webkit-mask-image: var(--icon-arrow-down); mask-image: var(--icon-arrow-down); }
+.icon[data-icon="arrow-up"] { -webkit-mask-image: var(--icon-arrow-up); mask-image: var(--icon-arrow-up); }
+.icon[data-icon="branch"] { -webkit-mask-image: var(--icon-branch); mask-image: var(--icon-branch); }
+.icon[data-icon="check"] { -webkit-mask-image: var(--icon-check); mask-image: var(--icon-check); }
+.icon[data-icon="chevron-down"] { -webkit-mask-image: var(--icon-chevron-down); mask-image: var(--icon-chevron-down); }
+.icon[data-icon="circle-dot"] { -webkit-mask-image: var(--icon-circle-dot); mask-image: var(--icon-circle-dot); }
+.icon[data-icon="cloud"] { -webkit-mask-image: var(--icon-cloud); mask-image: var(--icon-cloud); }
+.icon[data-icon="gear"] { -webkit-mask-image: var(--icon-gear); mask-image: var(--icon-gear); }
+.icon[data-icon="info"] { -webkit-mask-image: var(--icon-info); mask-image: var(--icon-info); }
+.icon[data-icon="open-folder"] { -webkit-mask-image: var(--icon-open-folder); mask-image: var(--icon-open-folder); }
+.icon[data-icon="plus"] { -webkit-mask-image: var(--icon-plus); mask-image: var(--icon-plus); }
+.icon[data-icon="pull-request"] { -webkit-mask-image: var(--icon-pull-request); mask-image: var(--icon-pull-request); }
+.icon[data-icon="redo"] { -webkit-mask-image: var(--icon-redo); mask-image: var(--icon-redo); }
+.icon[data-icon="refresh"] { -webkit-mask-image: var(--icon-refresh); mask-image: var(--icon-refresh); }
+.icon[data-icon="search"] { -webkit-mask-image: var(--icon-search); mask-image: var(--icon-search); }
+.icon[data-icon="stash-in"] { -webkit-mask-image: var(--icon-stash-in); mask-image: var(--icon-stash-in); }
+.icon[data-icon="stash-out"] { -webkit-mask-image: var(--icon-stash-out); mask-image: var(--icon-stash-out); }
+.icon[data-icon="tag"] { -webkit-mask-image: var(--icon-tag); mask-image: var(--icon-tag); }
+.icon[data-icon="tag-annotated"] { -webkit-mask-image: var(--icon-tag-annotated); mask-image: var(--icon-tag-annotated); }
+.icon[data-icon="terminal"] { -webkit-mask-image: var(--icon-terminal); mask-image: var(--icon-terminal); }
+.icon[data-icon="undo"] { -webkit-mask-image: var(--icon-undo); mask-image: var(--icon-undo); }
+.icon[data-icon="users"] { -webkit-mask-image: var(--icon-users); mask-image: var(--icon-users); }

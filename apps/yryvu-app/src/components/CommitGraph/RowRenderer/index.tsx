@@ -55,7 +55,7 @@ import {
 } from "./NodeOverlays";
 
 export { AuthorBadge, resolveAvatarUrl } from "./avatar";
-export { getRenderDims, type RenderDims } from "./dims";
+export { getRenderDims, hydrateGraphDims, type RenderDims } from "./dims";
 export { ROW_HEIGHT };
 
 export interface CommitRowGraphProps {

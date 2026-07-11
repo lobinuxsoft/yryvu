@@ -34,6 +34,13 @@ const [colorScheme, setColorScheme] = createSignal<ColorSchemePreference>(
 );
 export { colorScheme };
 
+/// Bumped after every `applyThemeCss`, i.e. once the active theme's CSS
+/// variables are live on `document.documentElement`. Consumers that read
+/// graph geometry back out of CSS (see CommitGraph `hydrateGraphDims`)
+/// track this to re-hydrate after — not before — the new vars land.
+const [themeAppliedVersion, setThemeAppliedVersion] = createSignal(0);
+export { themeAppliedVersion };
+
 const [themesResource, { refetch: refetchThemes }] =
   createResource<ThemeEntry[]>(() => listThemes(), { initialValue: [] });
 export { themesResource as themes };
@@ -101,6 +108,8 @@ async function injectById(id: string): Promise<void> {
   try {
     const css = await getThemeCss(id);
     untrack(() => applyThemeCss(id, css));
+    // CSS vars are now live — let CSS-hydrated consumers re-read them.
+    setThemeAppliedVersion((v) => v + 1);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`theme '${id}' failed to load:`, msg);

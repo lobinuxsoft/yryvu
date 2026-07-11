@@ -1,0 +1,77 @@
+/* ========================================================================
+   PERSONALITY — D · Synthwave
+   Cyberpunk neon vibe: pulsing neon underglows on every chrome
+   boundary, RGB-glitch ref pills, breathing accents on active state.
+   Targets the deployed yryvu chrome (toolbar, sidebar, cold-start,
+   statusbar, tabs) so effects are visible without a repo open. Honors
+   `prefers-reduced-motion: reduce`.
+
+   Split across personality/*.css (loaded in alphabetical order via the
+   [layers] manifest in theme.toml).
+   ======================================================================== */
+
+/* --- Global overlays ------------------------------------------------- */
+
+/* (none) — the CRT scanline overlay shipped originally was dropped by
+   design decision 2026-06-11: any full-screen line mask reads as
+   visual noise over real work surfaces (diff text, graph rows). The
+   synthwave identity is carried by the neon glows below instead. */
+
+/* --- Toolbar --------------------------------------------------------- */
+
+/* Magenta underglow that breathes with a 3 s cycle. */
+.toolbar {
+  border-bottom: 1px solid var(--accent);
+  animation: synthwave-toolbar-pulse 3s ease-in-out infinite;
+}
+
+@keyframes synthwave-toolbar-pulse {
+  0%, 100% {
+    box-shadow:
+      0 1px 0 var(--accent),
+      0 4px 14px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 1px 0 var(--accent),
+      0 4px 32px color-mix(in srgb, var(--accent) 65%, transparent);
+  }
+}
+
+/* Idle: subtle 4 s breathe so the toolbar feels alive even untouched.
+   Hover: cyan flare lifts above the magenta breathe. */
+.toolbar__btn {
+  transition: box-shadow 200ms ease, text-shadow 200ms ease;
+  animation: synthwave-btn-breathe 4s ease-in-out infinite;
+}
+.toolbar__btn:hover {
+  animation: none;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--info) 70%, transparent);
+  text-shadow: 0 0 4px var(--info);
+}
+@keyframes synthwave-btn-breathe {
+  0%, 100% {
+    box-shadow: 0 0 0 transparent;
+    text-shadow: 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent);
+    text-shadow: 0 0 4px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+}
+
+.toolbar__btn-icon {
+  filter: drop-shadow(0 0 2px currentColor);
+}
+
+/* Notification badge — fast pulsing magenta (1.6 s). */
+.toolbar__btn-badge {
+  box-shadow:
+    0 0 0 2px var(--bg-1),
+    0 0 8px var(--accent);
+  animation: synthwave-badge-pulse 1.6s ease-in-out infinite;
+}
+@keyframes synthwave-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--bg-1), 0 0 6px var(--accent); }
+  50%      { box-shadow: 0 0 0 2px var(--bg-1), 0 0 22px var(--accent); }
+}

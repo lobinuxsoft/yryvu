@@ -1,3 +1,9 @@
 name = "Synthwave"
 id = "d-synthwave"
 scheme = "dark"
+
+# Opt into the layered structure: tokens stays the flat tokens.css, while
+# the decorative rules split across personality/*.css (loaded in
+# alphabetical filename order). Demonstrates #299 multi-file themes.
+[layers]
+personality = "personality/"

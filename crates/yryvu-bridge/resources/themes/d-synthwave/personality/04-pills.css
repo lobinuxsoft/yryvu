@@ -1,0 +1,53 @@
+/* --- Branch / tag pills ---------------------------------------------- */
+
+/* RGB-shift glitch on every ref pill — subtle continuous (4 s steps),
+   amplified on hover for a sharper cyberpunk read. The 3-color
+   drop-shadow chain (magenta / cyan / yellow) jumps via steps() rather
+   than tweens, which is the proper glitch feel. */
+.ref-pill {
+  animation: synthwave-pill-glitch 4s steps(2, end) infinite;
+  position: relative;
+}
+.ref-pill:hover {
+  animation: synthwave-pill-glitch 0.5s steps(2, end) infinite;
+  z-index: 10;
+}
+@keyframes synthwave-pill-glitch {
+  0%, 60%, 100% {
+    filter:
+      drop-shadow(0 0 2px color-mix(in srgb, var(--accent) 40%, transparent));
+  }
+  61% {
+    filter:
+      drop-shadow(-1px 0 0 var(--accent))
+      drop-shadow(1px 0 0 var(--info))
+      drop-shadow(0 1px 0 var(--warning));
+  }
+  62%, 64% {
+    filter:
+      drop-shadow(1px 0 0 var(--accent))
+      drop-shadow(-1px 0 0 var(--info))
+      drop-shadow(0 -1px 0 var(--warning));
+  }
+  63%, 65% {
+    filter:
+      drop-shadow(0 0 2px color-mix(in srgb, var(--accent) 60%, transparent));
+  }
+}
+
+/* HEAD pill — pulsing magenta underglow, additive on top of the glitch. */
+.ref-pill--head {
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* Tag pill — gold glow stack instead of magenta. */
+.ref-pill--tag {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 50%, transparent);
+}
+
+/* Remote pill — cyan glow (info color, distinguishes from local branches). */
+.ref-pill--remote {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--info) 45%, transparent);
+}

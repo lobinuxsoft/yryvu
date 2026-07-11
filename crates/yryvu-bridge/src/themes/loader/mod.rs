@@ -70,12 +70,15 @@ pub struct ThemeEntry {
     pub built_in: bool,
 }
 
-/// CSS payload returned by `get_theme_css`. `personality` is empty
-/// when the theme has no `personality.css` file.
+/// CSS payload returned by `get_theme_css`, one string per injectable
+/// layer. `icons` and `personality` are empty when the theme declares no
+/// such layer (the flat legacy layout never has an icons layer).
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ThemeCss {
     pub tokens: String,
+    #[serde(default)]
+    pub icons: String,
     pub personality: String,
 }
 

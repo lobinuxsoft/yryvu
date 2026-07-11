@@ -1,0 +1,24 @@
+/* --- Tabs ------------------------------------------------------------ */
+
+.tabs {
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+
+.tab {
+  transition: text-shadow 180ms ease, background 180ms ease;
+}
+.tab:hover {
+  text-shadow: 0 0 6px color-mix(in srgb, var(--info) 80%, transparent);
+}
+
+.tab[aria-selected="true"],
+.tab.active,
+.tab--permanent {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 100%
+  );
+  box-shadow: inset 0 -2px 0 var(--accent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent);
+}

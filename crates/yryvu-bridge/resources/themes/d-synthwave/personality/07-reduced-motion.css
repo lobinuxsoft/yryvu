@@ -1,0 +1,13 @@
+/* --- Reduced motion -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar,
+  .toolbar__btn,
+  .toolbar__btn-badge,
+  .ref-pill,
+  .ref-pill:hover,
+  .cold-start__title,
+  .cold-start__action {
+    animation: none;
+  }
+}

@@ -1,62 +1,96 @@
 /* ========================================================================
-     PERSONALITY — E · Rosé Pine Dawn
-     Editorial / typographic. Serif italic in headers, paper-like
-     elevation, refined pill borders. The "morning newspaper" personality.
-     ======================================================================== */
+   PERSONALITY — E · Rosé Pine Dawn  (LIGHT)
+   Editorial "morning newspaper": paper-grain background, soft sumi-ink
+   shadows (no neon — this is a light theme), serif-italic cold-start
+   title, gold-leaf active edges. Real yryvu DOM. Honors reduced-motion.
+   ======================================================================== */
 
-  /* Serif italics in headers */
-  .sb-section h3,
-  .graph-header > div,
-  .ins-files-title,
-  .ins-summary {
-    font-family: "Iowan Old Style", "Apple Garamond", Palatino,
-                 "Noto Serif", Georgia, serif;
-    font-style: italic;
-    letter-spacing: 0.005em;
-    text-transform: none;
-  }
-  .sb-section h3,
-  .graph-header > div,
-  .ins-files-title {
-    color: var(--fg-2);
-    font-size: 11.5px;
-  }
-  .ins-summary {
-    font-style: normal;
-    font-weight: 600;
-    font-size: 15px;
-    color: var(--fg-0);
-  }
+/* --- Toolbar --------------------------------------------------------- */
 
-  /* Paper-fold elevation on panels */
-  .sidebar,
-  .inspector {
-    box-shadow: 1px 0 0 var(--bg-3), 2px 0 4px rgba(0,0,0,0.04);
-  }
-  .inspector { box-shadow: -1px 0 0 var(--bg-3), -2px 0 4px rgba(0,0,0,0.04); }
+.toolbar {
+  border-bottom: 1px solid var(--bg-3);
+  box-shadow: 0 1px 3px rgba(60, 50, 70, 0.06);
+}
 
-  /* Selected row — gold-leaf left edge */
-  .row.selected {
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--warning) 16%, transparent) 0%,
-      color-mix(in srgb, var(--accent) 10%, transparent) 100%
-    );
-    box-shadow: inset 2px 0 0 var(--warning);
-  }
+.toolbar__btn {
+  transition: background 180ms ease;
+}
+.toolbar__btn:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-2));
+}
 
-  /* Pills — refined editorial style */
-  .row .pill,
-  .row .pill.head,
-  .row .pill.tag {
-    border-width: 1px;
-    border-radius: 3px;
-    font-weight: 500;
-    padding: 1px 8px;
-  }
+/* --- Tabs ------------------------------------------------------------ */
 
-  /* Avatar — soft ring, no shadow (paper-like) */
-  .ins-avatar {
-    background: linear-gradient(135deg, var(--accent), var(--lane-3));
-    box-shadow: 0 0 0 2px var(--bg-1), 0 0 0 3px var(--bg-3);
-  }
+.tab[aria-selected="true"],
+.tab.active,
+.tab--permanent {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* --- Sidebar --------------------------------------------------------- */
+
+/* Paper-fold elevation instead of a hard divider. */
+.sidebar {
+  box-shadow: 1px 0 0 var(--bg-3), 2px 0 4px rgba(60, 50, 70, 0.05);
+}
+
+.sidebar__branch-row {
+  transition: background 160ms ease;
+}
+.sidebar__branch-row:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.sidebar__branch-row[data-active="true"] {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--warning) 14%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 8%, transparent) 100%
+  );
+  box-shadow: inset 2px 0 0 var(--warning);
+}
+
+/* --- Ref pills — refined editorial borders, soft ink shadow ---------- */
+
+.ref-pill {
+  box-shadow: 0 1px 2px rgba(60, 50, 70, 0.08);
+}
+.ref-pill--head {
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.ref-pill--tag {
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--warning) 30%, transparent);
+}
+
+/* --- Status bar ------------------------------------------------------ */
+
+.statusbar {
+  box-shadow: inset 0 1px 0 var(--bg-3);
+}
+
+/* --- Cold start — paper grain + serif title -------------------------- */
+
+.cold-start {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+.cold-start__title {
+  font-family: "Iowan Old Style", "Apple Garamond", Palatino, "Noto Serif", Georgia, serif;
+  font-style: italic;
+  letter-spacing: 0.005em;
+}
+
+.cold-start__action {
+  border: 1px solid var(--bg-3);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+.cold-start__action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(60, 50, 70, 0.12);
+}
+
+.cold-start__recent-item {
+  transition: background 160ms ease;
+}
+.cold-start__recent-item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}

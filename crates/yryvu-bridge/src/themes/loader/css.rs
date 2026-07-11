@@ -17,12 +17,14 @@
 
 use std::path::{Path, PathBuf};
 
+use base64::Engine;
+
 use crate::themes::schema::{self, Layers, PathSpec};
 
 use super::metadata::custom_exists;
 use super::{
-    read_built_in_utf8, LoadError, ThemeCss, BUILT_INS, FILE_PERSONALITY_CSS, FILE_THEME_TOML,
-    FILE_TOKENS_CSS,
+    read_built_in_utf8, LoadError, ThemeCss, BUILT_INS, DIR_ICONS, FILE_PERSONALITY_CSS,
+    FILE_THEME_TOML, FILE_TOKENS_CSS,
 };
 
 /// Fetch CSS for a theme by id. Custom shadows built-in.
@@ -55,10 +57,80 @@ impl Source {
             source: e,
         })?;
 
-        match layers {
-            Some(layers) => self.load_layered(id, &layers),
-            None => self.load_flat(id),
+        let mut css = match layers {
+            Some(layers) => self.load_layered(id, &layers)?,
+            None => self.load_flat(id)?,
+        };
+
+        // An `icons/<name>.svg` folder overrides individual icons for both
+        // layouts: each file becomes a `--icon-<name>` data-URI scoped to
+        // the theme. Prepended so any raw `[layers].icons` CSS can still
+        // refine the generated variables afterwards.
+        let generated = self.generate_icon_tokens(id)?;
+        if !generated.is_empty() {
+            css.icons = if css.icons.is_empty() {
+                generated
+            } else {
+                format!("{generated}\n{}", css.icons)
+            };
         }
+        Ok(css)
+    }
+
+    /// Scan `<theme>/icons/*.svg` and emit a `:root[data-theme="<id>"]`
+    /// block mapping each `<name>.svg` to a base64 data-URI `--icon-<name>`.
+    /// Empty string when the theme ships no `icons/` folder. Base64 (not
+    /// percent-encoding) sidesteps every SVG-in-`url()` escaping pitfall.
+    fn generate_icon_tokens(&self, id: &str) -> Result<String, LoadError> {
+        let files = self.icon_svgs(id);
+        if files.is_empty() {
+            return Ok(String::new());
+        }
+        let mut body = String::new();
+        for rel in files {
+            let name = rel
+                .strip_prefix(&format!("{DIR_ICONS}/"))
+                .and_then(|f| f.strip_suffix(".svg"))
+                .unwrap_or(&rel);
+            let svg = self.read_file(id, &rel)?;
+            let encoded = base64::engine::general_purpose::STANDARD.encode(svg.as_bytes());
+            body.push_str(&format!(
+                "  --icon-{name}: url(\"data:image/svg+xml;base64,{encoded}\");\n"
+            ));
+        }
+        Ok(format!(":root[data-theme=\"{id}\"] {{\n{body}}}\n"))
+    }
+
+    /// Sorted `icons/*.svg` relative paths, or empty when there is no
+    /// `icons/` folder (a missing folder is a silent no-op, unlike a
+    /// declared `[layers]` directory which must exist).
+    fn icon_svgs(&self, id: &str) -> Vec<String> {
+        let mut names: Vec<String> = match self {
+            Source::BuiltIn => match BUILT_INS.get_dir(format!("{id}/{DIR_ICONS}")) {
+                Some(dir) => dir
+                    .files()
+                    .filter_map(|f| {
+                        f.path()
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                    })
+                    .filter(|n| n.ends_with(".svg"))
+                    .map(|n| format!("{DIR_ICONS}/{n}"))
+                    .collect(),
+                None => Vec::new(),
+            },
+            Source::Custom { theme_dir } => match std::fs::read_dir(theme_dir.join(DIR_ICONS)) {
+                Ok(entries) => entries
+                    .filter_map(Result::ok)
+                    .filter_map(|e| e.file_name().to_str().map(String::from))
+                    .filter(|n| n.ends_with(".svg"))
+                    .map(|n| format!("{DIR_ICONS}/{n}"))
+                    .collect(),
+                Err(_) => Vec::new(),
+            },
+        };
+        names.sort();
+        names
     }
 
     /// Legacy layout: required `tokens.css`, optional `personality.css`,
@@ -296,6 +368,52 @@ mod tests {
             }
             other => panic!("expected MissingFile, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn icons_folder_generates_scoped_data_uri_tokens() {
+        let tmp = tempfile::tempdir().unwrap();
+        let custom = tmp.path();
+        // Flat theme (no [layers]) + an icons/ folder — the override must
+        // apply regardless of layout.
+        write_theme_fixture(
+            custom,
+            "ic",
+            "dark",
+            ":root[data-theme=\"ic\"]{--bg-0:#000}",
+        );
+        let icons = custom.join("ic").join("icons");
+        std::fs::create_dir_all(&icons).unwrap();
+        std::fs::write(icons.join("close.svg"), "<svg>x</svg>").unwrap();
+        std::fs::write(icons.join("undo.svg"), "<svg>u</svg>").unwrap();
+        std::fs::write(icons.join("note.txt"), "ignored").unwrap();
+
+        let css = get_theme_css("ic", custom).unwrap();
+        assert!(
+            css.icons.contains(":root[data-theme=\"ic\"]"),
+            "generated block must be scoped to the theme: {}",
+            css.icons
+        );
+        assert!(css
+            .icons
+            .contains("--icon-close: url(\"data:image/svg+xml;base64,"));
+        assert!(css
+            .icons
+            .contains("--icon-undo: url(\"data:image/svg+xml;base64,"));
+        // Alphabetical, and non-svg files skipped.
+        let close = css.icons.find("--icon-close").unwrap();
+        let undo = css.icons.find("--icon-undo").unwrap();
+        assert!(close < undo, "sorted by name");
+        assert!(!css.icons.contains("note"), "non-svg skipped");
+    }
+
+    #[test]
+    fn no_icons_folder_leaves_icons_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let custom = tmp.path();
+        write_theme_fixture(custom, "plain", "dark", ":root{}");
+        let css = get_theme_css("plain", custom).unwrap();
+        assert!(css.icons.is_empty(), "no icons/ folder → empty icons layer");
     }
 
     #[test]

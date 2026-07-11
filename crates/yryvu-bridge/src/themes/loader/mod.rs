@@ -37,6 +37,9 @@ pub(super) static BUILT_INS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resourc
 pub(super) const FILE_THEME_TOML: &str = "theme.toml";
 pub(super) const FILE_TOKENS_CSS: &str = "tokens.css";
 pub(super) const FILE_PERSONALITY_CSS: &str = "personality.css";
+/// Optional per-theme folder of `<name>.svg` icons; the loader inlines
+/// each as a `--icon-<name>` data-URI (#300).
+pub(super) const DIR_ICONS: &str = "icons";
 
 #[derive(Debug, Error)]
 pub enum LoadError {

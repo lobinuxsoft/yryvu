@@ -19,21 +19,10 @@ import { RepoSwitcher } from "./RepoSwitcher";
 import { SplitButton } from "./SplitButton";
 import { ToolbarBtn } from "./ToolbarBtn";
 import { UpstreamIndicator } from "./UpstreamIndicator";
-import {
-  IconArrowDown,
-  IconArrowUp,
-  IconBranch,
-  IconGear,
-  IconInfo,
-  IconRedo,
-  IconSearch,
-  IconStashIn,
-  IconStashOut,
-  IconTerminal,
-  IconUndo,
-} from "../Icons";
+
 import { useToolbarData } from "./useToolbarData";
 import { useToolbarHandlers } from "./useToolbarHandlers";
+import { Icon } from "../Icon";
 
 export interface ToolbarProps {
   onOpenRepo: () => void;
@@ -76,7 +65,7 @@ export function Toolbar(props: ToolbarProps) {
 
       <div class="toolbar__actions">
         <ToolbarBtn
-          icon={<IconUndo />}
+          icon={<Icon name="undo" />}
           label="Undo"
           disabled={!undoRedoState()?.can_undo}
           title={
@@ -88,7 +77,7 @@ export function Toolbar(props: ToolbarProps) {
           onClick={runUndo}
         />
         <ToolbarBtn
-          icon={<IconRedo />}
+          icon={<Icon name="redo" />}
           label="Redo"
           disabled={!undoRedoState()?.can_redo}
           title={
@@ -100,7 +89,7 @@ export function Toolbar(props: ToolbarProps) {
           onClick={runRedo}
         />
         <SplitButton
-          icon={<IconArrowDown />}
+          icon={<Icon name="arrow-down" />}
           label={handlers.pullMainLabel()}
           options={handlers.pullOptions()}
           defaultOptionId={pullType()}
@@ -112,7 +101,7 @@ export function Toolbar(props: ToolbarProps) {
           onSetDefault={(id) => setPullType(id as PullType)}
         />
         <SplitButton
-          icon={<IconArrowUp />}
+          icon={<Icon name="arrow-up" />}
           label="Push"
           options={handlers.pushOptions()}
           defaultOptionId="push"
@@ -123,19 +112,19 @@ export function Toolbar(props: ToolbarProps) {
           onSelect={handlers.handlePushSelect}
         />
         <ToolbarBtn
-          icon={<IconBranch />}
+          icon={<Icon name="branch" />}
           label="Branch"
           disabled={!hasRepo()}
           onClick={onBranch}
         />
         <ToolbarBtn
-          icon={<IconStashIn />}
+          icon={<Icon name="stash-in" />}
           label="Stash"
           disabled={stashDisabled() || opInFlight()}
           onClick={handlers.onStash}
         />
         <ToolbarBtn
-          icon={<IconStashOut />}
+          icon={<Icon name="stash-out" />}
           label="Pop"
           disabled={!hasRepo() || opInFlight() || data.stashEntries() === 0}
           title={
@@ -145,27 +134,27 @@ export function Toolbar(props: ToolbarProps) {
           }
           onClick={handlers.onPop}
         />
-        <ToolbarBtn icon={<IconTerminal />} label="Terminal" disabled />
+        <ToolbarBtn icon={<Icon name="terminal" />} label="Terminal" disabled />
       </div>
 
       <div class="toolbar__spacer" />
 
       <div class="toolbar__actions toolbar__actions--trailing">
         <ToolbarBtn
-          icon={<IconInfo />}
+          icon={<Icon name="info" />}
           label="About"
           title="About Yryvu"
           onClick={openAbout}
         />
         <ToolbarBtn
-          icon={<IconGear />}
+          icon={<Icon name="gear" />}
           label="Preferences"
           title="Open preferences"
           onClick={() => openPreferences()}
         />
         <ProfilePicker />
         <Bell />
-        <ToolbarBtn icon={<IconSearch />} label="Search" disabled />
+        <ToolbarBtn icon={<Icon name="search" />} label="Search" disabled />
       </div>
 
       <ConfirmDialog

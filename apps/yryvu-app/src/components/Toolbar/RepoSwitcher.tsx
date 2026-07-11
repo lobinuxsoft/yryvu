@@ -2,7 +2,6 @@
 
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
-import { IconChevronDown, IconOpenFolder } from "../Icons";
 import {
   loadRecentRepos,
   pushRecentRepo,
@@ -11,6 +10,7 @@ import {
   type RecentRepo,
 } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
+import { Icon } from "../Icon";
 
 interface RepoSwitcherProps {
   /** Triggered by the "Open another…" item — opens the file picker. */
@@ -85,7 +85,7 @@ export function RepoSwitcher(props: RepoSwitcherProps) {
           {(name) => <span class="toolbar-switcher__active">{name()}</span>}
         </Show>
         <span class="toolbar-switcher__caret" classList={{ "toolbar-switcher__caret--open": open() }}>
-          <IconChevronDown width="10" height="10" />
+          <Icon name="chevron-down" width="10" height="10" />
         </span>
       </button>
       <Show when={open()}>
@@ -123,7 +123,7 @@ export function RepoSwitcher(props: RepoSwitcherProps) {
             onClick={onOpenAnother}
           >
             <span class="toolbar-switcher__item-icon">
-              <IconOpenFolder width="12" height="12" />
+              <Icon name="open-folder" width="12" height="12" />
             </span>
             <span class="toolbar-switcher__item-name">Open another…</span>
           </button>

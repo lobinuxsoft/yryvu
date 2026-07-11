@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-
-import { IconCloud } from "../Icons";
+import { Icon } from "../Icon";
 
 export interface RemoteFolderRowProps {
   remote: string;
@@ -29,7 +28,7 @@ export function RemoteFolderRow(props: RemoteFolderRowProps) {
     >
       <span class="sidebar__remote-folder-caret">›</span>
       <span class="sidebar__remote-folder-icon">
-        <IconCloud />
+        <Icon name="cloud" />
       </span>
       <span class="sidebar__branch-name">{props.remote}</span>
       <span class="sidebar__remote-folder-count">{props.count}</span>

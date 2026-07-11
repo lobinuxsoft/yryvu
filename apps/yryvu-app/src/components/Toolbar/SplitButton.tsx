@@ -2,8 +2,8 @@
 
 import { createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
 
-import { IconChevronDown } from "../Icons";
 import { Tooltip } from "../Tooltip";
+import { Icon } from "../Icon";
 
 /**
  * Option in the dropdown half of a {@link SplitButton}. `destructive`
@@ -112,7 +112,7 @@ export function SplitButton(props: SplitButtonProps) {
           class="split-button__caret-icon"
           classList={{ "split-button__caret-icon--flipped": open() }}
         >
-          <IconChevronDown width="10" height="10" />
+          <Icon name="chevron-down" width="10" height="10" />
         </span>
       </button>
       <Show when={open()}>

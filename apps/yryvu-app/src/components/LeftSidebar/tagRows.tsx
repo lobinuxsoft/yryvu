@@ -8,8 +8,9 @@ import {
   navigateToRef,
   setHoveredRef,
 } from "../../state";
-import { IconTag, IconTagAnnotated } from "../Icons";
+
 import { Tooltip } from "../Tooltip";
+import { Icon } from "../Icon";
 
 export interface TagRowProps {
   tag: TagInfo;
@@ -38,8 +39,8 @@ export function TagRow(props: TagRowProps) {
       onContextMenu={(e) => props.onContextMenu?.(e, props.tag)}
     >
       <span class="sidebar__tag-icon">
-        <Show when={props.tag.is_annotated} fallback={<IconTag />}>
-          <IconTagAnnotated />
+        <Show when={props.tag.is_annotated} fallback={<Icon name="tag" />}>
+          <Icon name="tag-annotated" />
         </Show>
       </span>
       <span class="sidebar__branch-name">{props.tag.name}</span>

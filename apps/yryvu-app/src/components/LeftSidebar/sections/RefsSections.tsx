@@ -9,12 +9,13 @@ import {
   repoPath,
   toggleRemoteFolderCollapsed,
 } from "../../../state";
-import { IconBranch, IconCloud, IconTag } from "../../Icons";
+
 import { LocalBranchRow, RemoteBranchRow } from "../branchRows";
 import { RemoteFolderRow } from "../remoteFolderRow";
 import { SidebarSection } from "../SidebarSection";
 import { TagRow } from "../tagRows";
 import type { SidebarData } from "../useSidebarData";
+import { Icon } from "../../Icon";
 
 interface Props {
   data: SidebarData;
@@ -35,7 +36,7 @@ export function RefsSections(props: Props) {
         <SidebarSection
           sectionKey="LOCAL"
           title="Local"
-          icon={<IconBranch />}
+          icon={<Icon name="branch" />}
           count={
             props.data.isFiltering()
               ? props.data.filteredLocals().length
@@ -81,7 +82,7 @@ export function RefsSections(props: Props) {
         <SidebarSection
           sectionKey="REMOTE"
           title="Remote"
-          icon={<IconCloud />}
+          icon={<Icon name="cloud" />}
           count={
             props.data.isFiltering()
               ? props.data.filteredRemotes().length
@@ -145,7 +146,7 @@ export function RefsSections(props: Props) {
         <SidebarSection
           sectionKey="TAGS"
           title="Tags"
-          icon={<IconTag />}
+          icon={<Icon name="tag" />}
           count={
             props.data.isFiltering()
               ? props.data.filteredTags().length

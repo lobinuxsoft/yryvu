@@ -2,10 +2,10 @@
 
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
-import { IconChevronDown } from "../Icons";
 import { Tooltip } from "../Tooltip";
 import { type BranchInfo } from "../../ipc";
 import { useBranchOps } from "../../branchOps";
+import { Icon } from "../Icon";
 
 interface BranchSwitcherProps {
   branches: BranchInfo[];
@@ -91,7 +91,7 @@ export function BranchSwitcher(props: BranchSwitcherProps) {
           {(active) => <span class="toolbar-switcher__active">{active().name}</span>}
         </Show>
         <span class="toolbar-switcher__caret" classList={{ "toolbar-switcher__caret--open": open() }}>
-          <IconChevronDown width="10" height="10" />
+          <Icon name="chevron-down" width="10" height="10" />
         </span>
       </button>
       <Show when={open()}>

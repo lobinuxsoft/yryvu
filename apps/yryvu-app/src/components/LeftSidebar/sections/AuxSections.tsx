@@ -15,11 +15,7 @@ import {
   issues,
 } from "../../../state/issues";
 import { InlineConnectCta } from "../../CallToActions/InlineConnectCta";
-import {
-  IconBranch,
-  IconCircleDot,
-  IconPullRequest,
-} from "../../Icons";
+
 import { SidebarSection } from "../SidebarSection";
 import { IssueRow } from "../issueRows";
 import { IssuesToolbar } from "../issuesToolbar";
@@ -32,6 +28,7 @@ import type { SidebarData } from "../useSidebarData";
 import type { IssueSummary, PullRequestSummary } from "../../../ipc";
 import { openCreateIssueDialog } from "../../CreateIssueDialog/state";
 import { openCreatePrDialog } from "../../CreatePrDialog/state";
+import { Icon } from "../../Icon";
 
 /// Apply the toolbar's state + text filter to a row list. Shared
 /// helper used by both the PR and Issue panels.
@@ -84,7 +81,7 @@ export function AuxSections(props: Props) {
         <SidebarSection
           sectionKey="WORKTREES"
           title="Worktrees"
-          icon={<IconBranch />}
+          icon={<Icon name="branch" />}
           count={
             props.data.isFiltering()
               ? props.data.filteredWorktrees().length
@@ -129,7 +126,7 @@ export function AuxSections(props: Props) {
         <SidebarSection
           sectionKey="STASHES"
           title="Stashes"
-          icon={<IconBranch />}
+          icon={<Icon name="branch" />}
           count={
             props.data.isFiltering()
               ? props.data.filteredStashes().length
@@ -183,7 +180,7 @@ export function AuxSections(props: Props) {
         <SidebarSection
           sectionKey="PULL_REQUESTS"
           title="Pull Requests"
-          icon={<IconPullRequest />}
+          icon={<Icon name="pull-request" />}
           count={
             pullRequests()?.kind === "ready"
               ? (pullRequests() as { kind: "ready"; prs: unknown[] }).prs.length
@@ -261,7 +258,7 @@ export function AuxSections(props: Props) {
         <SidebarSection
           sectionKey="ISSUES"
           title="Issues"
-          icon={<IconCircleDot />}
+          icon={<Icon name="circle-dot" />}
           count={
             issues()?.kind === "ready"
               ? (issues() as { kind: "ready"; issues: unknown[] }).issues.length
@@ -329,7 +326,7 @@ export function AuxSections(props: Props) {
         <SidebarSection
           sectionKey="SUBMODULES"
           title="Submodules"
-          icon={<IconBranch />}
+          icon={<Icon name="branch" />}
           count={
             props.data.isFiltering()
               ? props.data.filteredSubmodules().length

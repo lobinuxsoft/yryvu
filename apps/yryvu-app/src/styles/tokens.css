@@ -128,6 +128,12 @@
   --graph-col-date-time: 130px;
   --graph-col-sha: 130px;
 
+  /* Themeable graph visuals (#301) — hydrated into the JS render dims on
+     mount + theme switch. Only node radius + edge width (comfortable
+     density); geometry (row height, lane width) stays JS. */
+  --graph-node-radius: 11px;
+  --graph-edge-width: 2px;
+
   /* Typography */
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'FiraCode Nerd Font Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;

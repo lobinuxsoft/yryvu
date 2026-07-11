@@ -17,7 +17,8 @@ import { ContextMenu } from "../ContextMenu";
 import { CommitDialogs } from "./CommitDialogs";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { createCommitOps } from "./useCommitOps";
-import { ROW_HEIGHT } from "./RowRenderer";
+import { hydrateGraphDims, ROW_HEIGHT } from "./RowRenderer";
+import { themeAppliedVersion } from "../../themes/state";
 import { useGraphData } from "./useGraphData";
 import { useGraphLayout } from "./useGraphLayout";
 import { useGraphSelection } from "./useGraphSelection";
@@ -51,6 +52,12 @@ export function CommitGraph(props: CommitGraphProps) {
   const [hoveredCommit, setHoveredCommit] = createSignal<string | undefined>(
     undefined,
   );
+
+  // Re-read the themeable graph vars (--graph-node-radius / -edge-width)
+  // on mount and after every theme switch — once the new theme's CSS is
+  // live (themeAppliedVersion bumps post-injection). Runs immediately so
+  // the first paint hydrates from the active theme.
+  createEffect(on(themeAppliedVersion, () => hydrateGraphDims()));
 
   const ops = createCommitOps({
     copyText: (text) => navigator.clipboard.writeText(text),

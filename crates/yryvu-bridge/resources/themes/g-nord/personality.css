@@ -1,58 +1,102 @@
 /* ========================================================================
-     PERSONALITY — G · Nord
-     Frost atmospheric quiet. Subtle frost halos, ample whitespace feel,
-     headers in muted blue. The "scandinavian library" personality.
-     ======================================================================== */
+   PERSONALITY — G · Nord
+   Frost atmospheric quiet: cool muted halos, slow fade transitions, no
+   loud pulses. Real yryvu DOM. Honors prefers-reduced-motion.
+   ======================================================================== */
 
-  /* Headers — muted frost, expanded tracking */
-  .sb-section h3,
-  .graph-header > div,
-  .ins-files-title {
-    color: var(--lane-1);
-    letter-spacing: 0.14em;
-    opacity: 0.75;
-    font-weight: 500;
-  }
+/* --- Toolbar --------------------------------------------------------- */
 
-  /* HEAD pill — soft frost halo */
-  .row .pill.head {
-    box-shadow:
-      0 0 0 1px var(--accent),
-      0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
-  }
+.toolbar {
+  border-bottom: 1px solid color-mix(in srgb, var(--info) 30%, var(--bg-3));
+}
 
-  /* Selected row — quiet frost wash */
-  .row.selected {
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--accent) 22%, transparent) 0%,
-      color-mix(in srgb, var(--lane-2) 8%, transparent) 100%
-    );
-    box-shadow: inset 2px 0 0 var(--accent);
-  }
+.toolbar__btn {
+  transition: background 320ms ease, box-shadow 320ms ease, color 320ms ease;
+}
+.toolbar__btn:hover {
+  background: color-mix(in srgb, var(--info) 10%, var(--bg-2));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--info) 30%, transparent);
+}
 
-  /* Pills — extra fine borders, atmosphere */
-  .row .pill,
-  .row .pill.head,
-  .row .pill.tag {
-    border-width: 1px;
-    border-radius: 8px;
-    font-weight: 500;
-  }
+.toolbar__btn-badge {
+  box-shadow: 0 0 0 2px var(--bg-1), 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
 
-  /* Avatar — frost ring */
-  .ins-avatar {
-    background: radial-gradient(circle at 30% 30%, var(--lane-1), var(--lane-2));
-    box-shadow:
-      0 0 0 2px var(--bg-1),
-      0 0 0 3px var(--accent),
-      0 0 20px color-mix(in srgb, var(--accent) 35%, transparent);
-  }
+/* --- Tabs ------------------------------------------------------------ */
 
-  /* Subtle ambient frost on the three main panels */
-  .sidebar,
-  .inspector {
-    background-image: linear-gradient(180deg,
-      color-mix(in srgb, var(--accent) 4%, transparent),
-      transparent 240px);
-  }
+.tab {
+  transition: background 320ms ease, box-shadow 320ms ease;
+}
+.tab[aria-selected="true"],
+.tab.active,
+.tab--permanent {
+  box-shadow: inset 0 -2px 0 var(--accent);
+  background: color-mix(in srgb, var(--info) 8%, transparent);
+}
+
+/* --- Sidebar --------------------------------------------------------- */
+
+.sidebar {
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--info) 25%, var(--bg-3));
+}
+
+.sidebar__branch-row {
+  transition: background 300ms ease, box-shadow 300ms ease;
+}
+.sidebar__branch-row:hover {
+  background: color-mix(in srgb, var(--info) 7%, transparent);
+}
+.sidebar__branch-row[data-active="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* --- Ref pills — soft frost halos ------------------------------------ */
+
+.ref-pill--head {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.ref-pill--tag {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 30%, transparent);
+}
+.ref-pill--remote {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--info) 35%, transparent);
+}
+
+/* --- Status bar ------------------------------------------------------ */
+
+.statusbar {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--info) 25%, transparent);
+}
+
+/* --- Cold start ------------------------------------------------------ */
+
+.cold-start__title {
+  animation: nord-title-breathe 6s ease-in-out infinite;
+}
+@keyframes nord-title-breathe {
+  0%, 100% { text-shadow: 0 0 6px color-mix(in srgb, var(--info) 25%, transparent); }
+  50%      { text-shadow: 0 0 14px color-mix(in srgb, var(--info) 55%, transparent); }
+}
+
+.cold-start__action {
+  border: 1px solid color-mix(in srgb, var(--info) 40%, transparent);
+  transition: box-shadow 320ms ease, transform 320ms ease;
+}
+.cold-start__action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--info) 35%, transparent);
+}
+
+.cold-start__recent-item {
+  transition: background 300ms ease;
+}
+.cold-start__recent-item:hover {
+  background: color-mix(in srgb, var(--info) 8%, transparent);
+}
+
+/* --- Reduced motion -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cold-start__title { animation: none; }
+}

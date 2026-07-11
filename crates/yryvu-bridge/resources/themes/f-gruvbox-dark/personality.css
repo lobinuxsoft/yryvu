@@ -1,123 +1,90 @@
 /* ========================================================================
-     PERSONALITY — F · Gruvbox Dark
-     Retro embossed terminal. Monospace everywhere, inset bottom shadows
-     for "pressed key" buttons, scan-line selected rows. The "old vt100"
-     personality. The most opinionated of all the dark themes.
-     ======================================================================== */
+   PERSONALITY — F · Gruvbox Dark
+   Brutalist retro terminal: hard square corners, heavy borders, embossed
+   inset shadows, ZERO animation. Real yryvu DOM. Nothing to reduce for
+   motion (there is none), so no media query needed.
+   ======================================================================== */
 
-  /* Mono everything — kicks the entire UI into terminal mode */
-  body,
-  .toolbar,
-  .sidebar,
-  .inspector,
-  .row,
-  .ins-summary {
-    font-family: var(--font-mono);
-  }
+/* Square everything (override the #298 shape tokens). */
+:root {
+  --btn-radius: 1px;
+  --pill-radius: 2px;
+  --avatar-radius: 2px;
+}
 
-  /* Headers — bold uppercase with mustard tint */
-  .sb-section h3,
-  .graph-header > div,
-  .ins-files-title {
-    color: var(--accent);
-    font-weight: 700;
-    letter-spacing: 0.1em;
-  }
+/* --- Toolbar — heavy embossed base ----------------------------------- */
 
-  /* Buttons — embossed (highlight top, shadow bottom) */
-  .tb-btn,
-  .tb-repo,
-  .tb-split {
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--fg-0) 8%, transparent),
-      inset 0 -1px 0 rgba(0,0,0,0.3);
-  }
-  .tb-btn:hover {
-    background: var(--bg-3);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--fg-0) 12%, transparent),
-      inset 0 -1px 0 rgba(0,0,0,0.4);
-  }
+.toolbar {
+  border-bottom: 2px solid var(--bg-4);
+  box-shadow: inset 0 -1px 0 var(--bg-3);
+}
 
-  /* Selected row — green scan-line indicator */
-  .row.selected {
-    background: color-mix(in srgb, var(--success) 12%, transparent);
-    box-shadow:
-      inset 4px 0 0 var(--success),
-      inset 0 1px 0 rgba(0,0,0,0.3),
-      inset 0 -1px 0 rgba(0,0,0,0.3);
-  }
+.toolbar__btn {
+  border: 1px solid transparent;
+}
+.toolbar__btn:hover {
+  background: var(--bg-3);
+  border-color: var(--bg-4);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg-3) 40%, transparent);
+}
 
-  /* Pills — sharp, rectangular, embossed */
-  .row .pill,
-  .row .pill.head,
-  .row .pill.tag {
-    border-radius: 2px;
-    padding: 1px 7px;
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--fg-0) 6%, transparent),
-      inset 0 -1px 0 rgba(0,0,0,0.4);
-  }
+.toolbar__btn-badge {
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--bg-0);
+}
 
-  /* Avatar — pixelated square ring (no border-radius) */
-  .ins-avatar {
-    border-radius: 4px;
-    background: linear-gradient(135deg, var(--lane-2), var(--accent));
-    box-shadow:
-      0 0 0 2px var(--bg-1),
-      0 0 0 3px var(--accent);
-  }
+/* --- Tabs — hard underline, no glow ---------------------------------- */
 
-  /* SHA pills — extra terminal feel */
-  .ins-sha,
-  .row .msg-sha {
-    text-transform: uppercase;
-  }
+.tab[aria-selected="true"],
+.tab.active,
+.tab--permanent {
+  background: var(--bg-2);
+  box-shadow: inset 0 -3px 0 var(--accent), inset 0 1px 0 var(--bg-4);
+}
 
-  /* ---- Nerd Font icons (Powerlevel10k / oh-my-posh vibe) -------------- */
-  /* Reuses var(--font-mono) — Fira Code Nerd Font Mono — which already
-     contains all PUA icon glyphs. No separate font needed. */
-  .nf {
-    font-family: var(--font-mono);
-    font-style: normal;
-    font-feature-settings: "liga" 0, "calt" 0;
-    font-variant-ligatures: none;
-    display: inline-block;
-    width: 1.1em;
-    text-align: center;
-    vertical-align: -1px;
-    flex-shrink: 0;
-  }
-  .tb-btn .nf,
-  .tb-repo .nf {
-    color: var(--accent);
-    margin-right: 4px;
-  }
-  .tb-btn.icon .nf { margin-right: 0; font-size: 1.1em; }
-  .tb-repo .nf.pl-sep {
-    color: var(--bg-4);
-    margin: 0 4px;
-    font-size: 1.4em;
-    width: auto;
-  }
-  .sb-section h3 {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .sb-section h3 .nf {
-    color: var(--accent);
-    font-size: 1.1em;
-  }
-  .tb-search-wrap {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-  }
-  .tb-search-icon {
-    position: absolute;
-    left: 8px;
-    color: var(--fg-3);
-    pointer-events: none;
-  }
-  .tb-search { padding-left: 26px; }
+/* --- Sidebar --------------------------------------------------------- */
+
+.sidebar {
+  border-right: 2px solid var(--bg-3);
+}
+.sidebar__branch-row:hover {
+  background: var(--bg-2);
+}
+.sidebar__branch-row[data-active="true"] {
+  background: var(--bg-3);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+/* --- Ref pills — bordered chips, no rounding ------------------------- */
+
+.ref-pill {
+  border: 1px solid var(--bg-4);
+}
+.ref-pill--head {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.ref-pill--tag { border-color: var(--warning); }
+.ref-pill--remote { border-color: var(--info); }
+
+/* --- Status bar ------------------------------------------------------ */
+
+.statusbar {
+  border-top: 2px solid var(--bg-3);
+  box-shadow: inset 0 1px 0 var(--bg-4);
+}
+
+/* --- Cold start ------------------------------------------------------ */
+
+.cold-start__action {
+  border: 2px solid var(--bg-4);
+}
+.cold-start__action:hover {
+  background: var(--bg-2);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cold-start__recent-item:hover {
+  background: var(--bg-2);
+  box-shadow: inset 4px 0 0 var(--fg-3);
+}

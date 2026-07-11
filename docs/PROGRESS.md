@@ -10,19 +10,19 @@ non-obvious conventions.
 
 ## Current status
 
-- **`development` HEAD:** `3a8e53b` (2026-07-04). `main` = v0.5.0.
-- **Just shipped:**
-  - Perf epic **#430** (live file watcher + large-repo responsiveness):
-    granular Tauri watch events, capped graph walk with pagination, file-list
-    virtualization, and a FUSE/NTFS poll-watcher fallback.
-  - **Wave 6** closed: per-filetype diff renderer (#60) and **apply-patch /
-    `git am` equivalent (#75)**.
-- **Next (do not start until picked up):** **Wave 8 — Theme power v2**
-  (umbrella #297; start with tokens #298 or the docs warm-up #302). See
-  [ROADMAP.md](ROADMAP.md).
+- **`development` HEAD:** `08c3187` (2026-07-11). `main` = v0.5.0.
+- **Just shipped — Wave 8 (Theme power v2), umbrella #297 CLOSED** (PRs #440–#445):
+  - **#298** token expansion — shapes/spacing/borders/per-context fonts as `--*`.
+  - **#299** multi-file theme structure — optional `[layers]` in `theme.toml`
+    (file | list | `"dir/"`), 3 injected `<style>` layers (tokens/icons/personality).
+  - **#300** icon system — chrome icons render via `mask-image: var(--icon-<name>)`;
+    a theme overrides one by dropping `icons/<name>.svg` (backend base64-inlines it).
+  - **#301** themeable graph node radius + edge width (geometry deferred — see below).
+  - **#303** rewrote 9 themes' `personality.css` against the real DOM.
+  - **#302** docs: `docs/themes/{CHEATSHEET,EXAMPLES}.md` + a README per built-in.
+- **Next:** **Wave 9 — Perf + cleanup**. See [ROADMAP.md](ROADMAP.md).
 - **Un-smoked debt:** #75 (Apply Patch flow) and Wave 6's submodule pointer
-  pane + LFS placeholder were merged green but not manually smoked. Worth a
-  visual pass before relying on them.
+  pane + LFS placeholder were merged green but not manually smoked.
 
 ## GitKraken-fidelity rule (hard)
 
@@ -87,6 +87,37 @@ everything fallible (parent, author, committer) and refuse a dirty index
 (a deleted `- ` line collides with `\n-- \n`); patch files are CR-normalized
 (`\r\n` → `\n`) to match `git am`'s default.
 
+### Theme system (Wave 8)
+
+- **Three injected layers.** `get_theme_css` returns `{ tokens, icons,
+  personality }`; the frontend injects one `<style>` per layer
+  (`yryvu-theme-{tokens,icons,personality}`), replacing `textContent` on switch.
+  Only the **active** theme's CSS is ever in the DOM — so `personality.css`
+  uses **bare selectors** (`.toolbar { … }`), no `:root[data-theme]` scoping.
+- **Defaults cascade, don't duplicate.** New `--*` tokens live only in the
+  chrome `:root` baseline (`apps/yryvu-app/src/styles/tokens.css`); custom
+  props resolve lazily at the use site, so a theme overriding `--radius-md`
+  moves `--btn-radius` for free. Themes override selectively; the 11
+  `resources/themes/<id>/tokens.css` don't repeat unchanged tokens.
+- **Icons = CSS masks, overridable by a folder.** `<Icon name>` →
+  `.icon[data-icon] { mask-image: var(--icon-<name>) }`. A theme's
+  `icons/<name>.svg` is base64-inlined by the loader into a scoped
+  `--icon-<name>` override — a raw `url("icons/x.svg")` in injected CSS can't
+  resolve to disk under CSP, so **the backend inlines it** (same reason fonts
+  must be `data:` URIs). Names + recipes in [`docs/themes/`](themes/).
+- **Graph visuals hydrate CSS→JS.** `--graph-node-radius` / `--graph-edge-width`
+  feed the numeric render dims (they also drive lane-streak + SVG extent), so
+  `RowRenderer/dims.ts` re-reads them via `getComputedStyle` on graph mount and
+  on `themeAppliedVersion` (bumped **after** injection so the read isn't stale).
+  Row height / lane width / arc geometry stay JS — themeable-ing them would
+  reflow the virtualizer, so they're deliberately **not** exposed.
+- **`create_from_template` clones the whole folder** (recursive, nested layer
+  dirs + `icons/` included) then patches `theme.toml` via a `toml::Table`
+  mutation — a `ThemeMetadata` round-trip silently drops the `[layers]` table.
+- Built-in themes are embedded (`include_dir`), so editing one recompiles the
+  bridge (no HMR); the recursive file-watcher hot-reloads **custom** themes
+  (incl. added/edited `icons/*.svg`) live.
+
 ### Other conventions worth knowing
 
 - **No monolithic files (>400 LOC).** Split into a folder with a `mod.rs`
@@ -124,6 +155,15 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-11:** **Wave 8 (Theme power v2) shipped end-to-end — umbrella #297
+  closed.** Six sub-PRs #440–#445: token expansion (#298), multi-file `[layers]`
+  (#299), icon-mask system with `icons/`-folder override (#300), themeable graph
+  node/edge vars (#301), 9 themes' `personality.css` rewritten vs the real DOM
+  (#303), and `docs/themes/` + per-theme READMEs (#302). #300's approach was
+  reshaped mid-flight (drop-an-svg over hand-encoded data URIs) and #301 was
+  descoped to visual-only after audit; both recorded on their issues. Caught +
+  fixed a latent `create_from_template` bug (layered-theme duplication dropped
+  `[layers]` + `personality/`).
 - **2026-07-04 (bis):** #75 apply-patch (`git am`) shipped (PR #435), Wave 6
   closed. A 4-lens adversarial review of the branch caught 7 real defects
   (trailer-strip `find`→`rfind`, dirty-index fold, non-atomic post-apply

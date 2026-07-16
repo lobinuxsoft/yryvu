@@ -141,6 +141,15 @@ mod tests {
         assert!(status.success(), "git {args:?} failed");
     }
 
+    /// Init a repo with a committed identity. The env vars above only reach
+    /// the git CLI — `merge_branch` builds its signature through libgit2,
+    /// which reads the config, and CI runners have no global user.name.
+    fn init_repo(repo: &Path) {
+        git(repo, &["init", "-q", "-b", "main"]);
+        git(repo, &["config", "user.name", "t"]);
+        git(repo, &["config", "user.email", "t@t"]);
+    }
+
     /// A fast-forward must leave unrelated local work alone — git's own
     /// `merge --ff` only refuses when the incoming changes would clobber a
     /// dirty path.
@@ -148,7 +157,7 @@ mod tests {
     fn fast_forward_preserves_unrelated_local_changes() {
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
+        init_repo(p);
         std::fs::write(p.join("a.txt"), "v1\n").unwrap();
         std::fs::write(p.join("mine.txt"), "v1\n").unwrap();
         git(p, &["add", "."]);
@@ -184,7 +193,7 @@ mod tests {
     fn fast_forward_updates_working_tree_and_index() {
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
+        init_repo(p);
         std::fs::write(p.join("a.txt"), "v1\n").unwrap();
         git(p, &["add", "."]);
         git(p, &["commit", "-qm", "init"]);
@@ -217,7 +226,7 @@ mod tests {
     fn conflict_writes_markers_to_disk() {
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
+        init_repo(p);
         std::fs::write(p.join("a.txt"), "v1\n").unwrap();
         git(p, &["add", "."]);
         git(p, &["commit", "-qm", "init"]);
@@ -244,7 +253,7 @@ mod tests {
     fn merge_commit_updates_working_tree() {
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
+        init_repo(p);
         std::fs::write(p.join("a.txt"), "v1\n").unwrap();
         git(p, &["add", "."]);
         git(p, &["commit", "-qm", "init"]);

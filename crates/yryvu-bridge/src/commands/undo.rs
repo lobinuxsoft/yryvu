@@ -75,7 +75,11 @@ pub async fn get_undo_redo_state(repo_path: String) -> Result<UndoRedoState, Str
 }
 
 #[tauri::command]
-pub async fn undo_last_operation(repo_path: String) -> Result<UndoOutcome, String> {
+pub async fn undo_last_operation(
+    repo_path: String,
+    force: Option<bool>,
+) -> Result<UndoOutcome, String> {
+    let force = force.unwrap_or(false);
     tauri::async_runtime::spawn_blocking(move || {
         let path = PathBuf::from(&repo_path);
         let log = read_log(&path).map_err(|e| e.to_string())?;
@@ -86,7 +90,7 @@ pub async fn undo_last_operation(repo_path: String) -> Result<UndoOutcome, Strin
             .ok_or_else(|| "undo log corrupted: cursor out of range".to_string())?
             .kind
             .clone();
-        let outcome = apply_inverse(&path, &op).map_err(|e| e.to_string())?;
+        let outcome = apply_inverse(&path, &op, force).map_err(|e| e.to_string())?;
         if matches!(outcome, UndoOutcome::Applied { .. }) {
             // Walk the cursor back. Going past index 0 sets cursor to
             // None — the log is logically empty from undo's POV until
@@ -101,7 +105,8 @@ pub async fn undo_last_operation(repo_path: String) -> Result<UndoOutcome, Strin
 }
 
 #[tauri::command]
-pub async fn redo_last_undo(repo_path: String) -> Result<UndoOutcome, String> {
+pub async fn redo_last_undo(repo_path: String, force: Option<bool>) -> Result<UndoOutcome, String> {
+    let force = force.unwrap_or(false);
     tauri::async_runtime::spawn_blocking(move || {
         let path = PathBuf::from(&repo_path);
         let log = read_log(&path).map_err(|e| e.to_string())?;
@@ -118,7 +123,7 @@ pub async fn redo_last_undo(repo_path: String) -> Result<UndoOutcome, String> {
             .ok_or_else(|| "nothing to redo".to_string())?
             .kind
             .clone();
-        let outcome = apply_redo(&path, &op).map_err(|e| e.to_string())?;
+        let outcome = apply_redo(&path, &op, force).map_err(|e| e.to_string())?;
         if matches!(outcome, UndoOutcome::Applied { .. }) {
             set_cursor(&path, Some(target_idx)).map_err(|e| e.to_string())?;
         }

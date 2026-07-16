@@ -22,10 +22,26 @@ export function getUndoRedoState(repoPath: string): Promise<UndoRedoState> {
   return invoke<UndoRedoState>("get_undo_redo_state", { repoPath });
 }
 
-export function undoLastOperation(repoPath: string): Promise<UndoOutcome> {
-  return invoke<UndoOutcome>("undo_last_operation", { repoPath });
+/// `force` confirms the user was asked about — and accepted — discarding
+/// uncommitted work. Without it the backend refuses destructive undos on a
+/// dirty tree.
+export function undoLastOperation(
+  repoPath: string,
+  force = false,
+): Promise<UndoOutcome> {
+  return invoke<UndoOutcome>("undo_last_operation", { repoPath, force });
 }
 
-export function redoLastUndo(repoPath: string): Promise<UndoOutcome> {
-  return invoke<UndoOutcome>("redo_last_undo", { repoPath });
+export function redoLastUndo(
+  repoPath: string,
+  force = false,
+): Promise<UndoOutcome> {
+  return invoke<UndoOutcome>("redo_last_undo", { repoPath, force });
+}
+
+/// The backend refused because the working tree is dirty (BackendError::
+/// WorkingTreeDirty). Tauri flattens typed errors to their Display string,
+/// so matching on the message is the only handle we have.
+export function isWorkingTreeDirtyError(err: unknown): boolean {
+  return String(err).includes("working tree has uncommitted changes");
 }

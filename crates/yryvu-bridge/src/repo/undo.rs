@@ -26,14 +26,16 @@
 //! - Walk the cursor — that's the IPC layer's job (`commands/undo.rs`).
 //! - Record an inverse-of-inverse op — undo moves the cursor; the redo
 //!   path uses the same entries.
-//! - Validate "is this safe right now?" beyond what libgit2 surfaces — a
-//!   `reset --hard` will refuse with a clear error if the working tree
-//!   is dirty in the destructive case; we let that error propagate so
-//!   the UI can show it.
+//! - Reconstruct content that was never committed. A `reset --hard` does
+//!   NOT refuse over a dirty working tree — libgit2's `reset.c` forces
+//!   `GIT_CHECKOUT_FORCE` regardless of caller options, and discarding
+//!   local changes is what the mode is for. Destructive inverses are
+//!   therefore gated on [`guard_dirty`], which refuses unless the caller
+//!   passes `force` to say the user was asked and accepted.
 
 use std::path::Path;
 
-use crate::backend::BackendError;
+use crate::backend::{BackendError, ResetMode};
 use crate::undo_log::{with_record_skipped, OpKind};
 
 use super::common::{git2_err, open_git2};
@@ -52,15 +54,76 @@ pub enum UndoOutcome {
     Untrackable { reason: String },
 }
 
+/// Does undoing `op` reset the working tree, taking uncommitted work with
+/// it? A `--hard` reset is the right call for these inverses — undoing a
+/// cherry-pick has to make the commit's content *disappear*, not leave it
+/// behind unstaged — but it cannot tell the op's content apart from the
+/// user's own uncommitted edits, so it discards both.
+///
+/// Exhaustive on purpose: a new [`OpKind`] must decide here rather than
+/// inherit a permissive default. That omission is how these bugs are born.
+fn undo_discards_uncommitted_work(op: &OpKind) -> bool {
+    match op {
+        // Soft reset: the tree is left exactly as it is.
+        OpKind::Commit { .. } => false,
+        OpKind::Amend { .. } => true,
+        // Safe checkout — refuses on a dirty tree by itself.
+        OpKind::CheckoutBranch { .. } | OpKind::CheckoutCommit { .. } => false,
+        OpKind::Reset { mode, .. } => matches!(mode, ResetMode::Hard),
+        OpKind::CherryPick { .. } | OpKind::Revert { .. } | OpKind::Merge { .. } => true,
+        // Pops the stash back — applies, never resets.
+        OpKind::StashPush { .. } => false,
+        // Reported as untrackable; nothing runs.
+        OpKind::StashPop { .. } => false,
+    }
+}
+
+/// Same question for the redo direction, which reaches forward with a
+/// `--hard` reset to a commit that still exists in the reflog.
+fn redo_discards_uncommitted_work(op: &OpKind) -> bool {
+    match op {
+        OpKind::Commit { .. }
+        | OpKind::Amend { .. }
+        | OpKind::CherryPick { .. }
+        | OpKind::Revert { .. }
+        | OpKind::Merge { .. } => true,
+        OpKind::CheckoutBranch { .. } | OpKind::CheckoutCommit { .. } => false,
+        OpKind::Reset { mode, .. } => matches!(mode, ResetMode::Hard),
+        // Re-stashes whatever is in the tree; captures rather than destroys.
+        OpKind::StashPush { .. } => false,
+        OpKind::StashPop { .. } => false,
+    }
+}
+
+/// Refuse a destructive undo/redo over a dirty tree unless `force` says the
+/// user was asked and accepted. `reset --hard` never refuses on its own
+/// (libgit2 `reset.c` forces `GIT_CHECKOUT_FORCE` regardless of caller
+/// options), so this is the only thing standing between a reflex Ctrl+Z and
+/// the user's uncommitted work.
+fn guard_dirty(repo_path: &Path, destructive: bool, force: bool) -> Result<(), BackendError> {
+    if destructive && !force && worktree::is_working_tree_dirty(repo_path)? {
+        return Err(BackendError::WorkingTreeDirty);
+    }
+    Ok(())
+}
+
 /// Apply the inverse of `op` against `repo_path`. Errors propagate as
 /// `BackendError` so the UI can surface them through its standard
 /// notification channel.
+///
+/// Destructive inverses refuse over a dirty working tree unless `force`;
+/// see [`guard_dirty`].
 ///
 /// The whole match runs inside [`with_record_skipped`] so the public op
 /// wrappers we delegate to (`checkout_branch`, `reset_to_commit`, …)
 /// don't append fresh log entries — undo moves the cursor backwards,
 /// it doesn't synthesise a "undo of X" record.
-pub fn apply_inverse(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
+pub fn apply_inverse(
+    repo_path: &Path,
+    op: &OpKind,
+    force: bool,
+) -> Result<UndoOutcome, BackendError> {
+    guard_dirty(repo_path, undo_discards_uncommitted_work(op), force)?;
     with_record_skipped(|| apply_inverse_inner(repo_path, op))
 }
 
@@ -198,7 +261,8 @@ fn head_minus_one_hard(repo_path: &Path) -> Result<(), BackendError> {
 /// enough to restore HEAD without reconstructing the tree. Checkout /
 /// reset / stash variants delegate to the public worktree helpers,
 /// silenced by `with_record_skipped` so the redo doesn't ghost-record.
-pub fn apply_redo(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
+pub fn apply_redo(repo_path: &Path, op: &OpKind, force: bool) -> Result<UndoOutcome, BackendError> {
+    guard_dirty(repo_path, redo_discards_uncommitted_work(op), force)?;
     with_record_skipped(|| apply_redo_inner(repo_path, op))
 }
 
@@ -269,5 +333,146 @@ fn apply_redo_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Backen
         OpKind::StashPop { .. } => Ok(UndoOutcome::Untrackable {
             reason: "stash pop redo not supported (symmetric with undo)".into(),
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git(repo: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(repo)
+            .status()
+            .expect("git");
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    fn sha(repo: &Path, rev: &str) -> String {
+        String::from_utf8(
+            Command::new("git")
+                .args(["rev-parse", rev])
+                .current_dir(repo)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string()
+    }
+
+    /// Two commits on `main`, then an uncommitted edit to a file the undo
+    /// target never touched — the user's own in-flight work.
+    fn repo_with_dirty_tree() -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().to_path_buf();
+        git(&p, &["init", "-q", "-b", "main"]);
+        git(&p, &["config", "user.name", "t"]);
+        git(&p, &["config", "user.email", "t@t"]);
+        std::fs::write(p.join("a.txt"), "v1\n").unwrap();
+        git(&p, &["add", "."]);
+        git(&p, &["commit", "-qm", "first"]);
+        std::fs::write(p.join("b.txt"), "second\n").unwrap();
+        git(&p, &["add", "."]);
+        git(&p, &["commit", "-qm", "second"]);
+
+        std::fs::write(p.join("mine.txt"), "work in progress\n").unwrap();
+        (dir, p)
+    }
+
+    /// Ctrl+Z is a reflex, not a decision. A destructive undo over a dirty
+    /// tree must refuse rather than silently discard the user's work.
+    #[test]
+    fn destructive_undo_refuses_on_a_dirty_tree() {
+        let (_d, p) = repo_with_dirty_tree();
+        let op = OpKind::CherryPick {
+            applied_sha: sha(&p, "HEAD"),
+            new_sha: sha(&p, "HEAD"),
+        };
+
+        let err = apply_inverse(&p, &op, false).unwrap_err();
+        assert!(
+            matches!(err, BackendError::WorkingTreeDirty),
+            "expected WorkingTreeDirty, got {err:?}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(p.join("mine.txt")).unwrap(),
+            "work in progress\n",
+            "uncommitted work was destroyed"
+        );
+    }
+
+    /// `force` means the user was asked and accepted — it must go through.
+    #[test]
+    fn destructive_undo_proceeds_when_forced() {
+        let (_d, p) = repo_with_dirty_tree();
+        let head = sha(&p, "HEAD");
+        let parent = sha(&p, "HEAD~1");
+        let op = OpKind::CherryPick {
+            applied_sha: head.clone(),
+            new_sha: head,
+        };
+
+        apply_inverse(&p, &op, true).unwrap();
+        assert_eq!(sha(&p, "HEAD"), parent, "the undo did not run");
+    }
+
+    /// Undoing a commit uses a soft reset, which leaves the tree alone.
+    /// It must keep working on a dirty tree — over-refusing would make
+    /// Ctrl+Z useless in the most common case of all.
+    #[test]
+    fn undoing_a_commit_still_works_on_a_dirty_tree() {
+        let (_d, p) = repo_with_dirty_tree();
+        let parent = sha(&p, "HEAD~1");
+        let op = OpKind::Commit {
+            sha: sha(&p, "HEAD"),
+            parent_sha: Some(parent.clone()),
+        };
+
+        apply_inverse(&p, &op, false).unwrap();
+        assert_eq!(sha(&p, "HEAD"), parent);
+        assert_eq!(
+            std::fs::read_to_string(p.join("mine.txt")).unwrap(),
+            "work in progress\n",
+            "a soft reset must not touch the working tree"
+        );
+    }
+
+    /// A clean tree has nothing to lose: no prompt, no refusal.
+    #[test]
+    fn destructive_undo_runs_freely_on_a_clean_tree() {
+        let (_d, p) = repo_with_dirty_tree();
+        std::fs::remove_file(p.join("mine.txt")).unwrap();
+        let parent = sha(&p, "HEAD~1");
+        let op = OpKind::CherryPick {
+            applied_sha: sha(&p, "HEAD"),
+            new_sha: sha(&p, "HEAD"),
+        };
+
+        apply_inverse(&p, &op, false).unwrap();
+        assert_eq!(sha(&p, "HEAD"), parent);
+    }
+
+    /// The redo direction hard-resets forward and is just as destructive.
+    #[test]
+    fn destructive_redo_refuses_on_a_dirty_tree() {
+        let (_d, p) = repo_with_dirty_tree();
+        let op = OpKind::Commit {
+            sha: sha(&p, "HEAD"),
+            parent_sha: Some(sha(&p, "HEAD~1")),
+        };
+
+        let err = apply_redo(&p, &op, false).unwrap_err();
+        assert!(
+            matches!(err, BackendError::WorkingTreeDirty),
+            "expected WorkingTreeDirty, got {err:?}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(p.join("mine.txt")).unwrap(),
+            "work in progress\n"
+        );
     }
 }

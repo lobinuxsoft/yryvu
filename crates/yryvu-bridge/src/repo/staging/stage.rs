@@ -108,15 +108,16 @@ pub fn unstage_all(repo_path: &Path) -> Result<Vec<String>, BackendError> {
 /// index — a partially-staged file keeps its staged hunks, only the
 /// workdir is reverted to match.
 ///
-/// BACKEND: git2 — needs path-scoped force-checkout from HEAD tree.
+/// BACKEND: git2 — needs path-scoped force-checkout from the index.
 /// gix-worktree-state 0.15 has whole-tree checkout but no
 /// `CheckoutBuilder::path()` equivalent. Migrate once gix exposes
 /// per-path checkout.
 ///
 /// Split per-path by status:
 ///
-/// * tracked + modified/deleted → force-checkout from HEAD tree (workdir
-///   snaps back to the committed version).
+/// * tracked + modified/deleted → force-checkout from the index (workdir
+///   snaps back to the staged version, which for a file with nothing
+///   staged is the committed one).
 /// * untracked (WT_NEW) → physically remove from disk.
 ///
 /// Caller MUST confirm destructive intent beforehand; once this returns,
@@ -168,7 +169,14 @@ pub fn discard_paths(repo_path: &Path, paths: &[String]) -> Result<(), BackendEr
         for p in &tracked_to_checkout {
             checkout.path(p);
         }
-        repo.checkout_head(Some(&mut checkout)).map_err(git2_err)?;
+        // Check out the INDEX, not HEAD — `git checkout -- <path>` restores
+        // the staged version, so a partially-staged file keeps its staged
+        // hunks and only the later edits are dropped. `checkout_head` is
+        // `checkout_tree(HEAD)`, which reverts past the staged work and
+        // (having no DONT_UPDATE_INDEX) rewrites the index to HEAD as well —
+        // destroying staged hunks the user never asked to discard.
+        repo.checkout_index(None, Some(&mut checkout))
+            .map_err(git2_err)?;
     }
 
     for rel in untracked_to_remove {
@@ -304,5 +312,111 @@ mod tests {
         // Unstage restores the committed mode.
         unstage_filemode(dir.path(), "s.sh").unwrap();
         assert_eq!(index_mode(dir.path(), "s.sh"), 0o100644);
+    }
+
+    /// `git checkout -- <path>` restores from the INDEX. A file with a
+    /// staged hunk plus later unstaged edits must come back to its staged
+    /// content, with the staged work intact — discarding the unstaged row
+    /// must not take the staged one along.
+    #[test]
+    fn discard_unstaged_keeps_staged_work() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        git(p, &["config", "user.name", "t"]);
+        git(p, &["config", "user.email", "t@t"]);
+        std::fs::write(p.join("a.txt"), "v0-committed\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "init"]);
+
+        std::fs::write(p.join("a.txt"), "v1-staged\n").unwrap();
+        stage_files(p, &["a.txt".to_string()]).unwrap();
+        std::fs::write(p.join("a.txt"), "v2-unstaged-scratch\n").unwrap();
+
+        discard_paths(p, &["a.txt".to_string()]).unwrap();
+
+        let repo = git2::Repository::open(p).unwrap();
+        let index = repo.index().unwrap();
+        let entry = index.get_path(Path::new("a.txt"), 0).unwrap();
+        let staged = repo.find_blob(entry.id).unwrap();
+        assert_eq!(
+            std::str::from_utf8(staged.content()).unwrap(),
+            "v1-staged\n",
+            "staged work was destroyed by discarding UNSTAGED changes"
+        );
+        assert_eq!(
+            std::fs::read_to_string(p.join("a.txt")).unwrap(),
+            "v1-staged\n",
+            "workdir should snap back to the index, not to HEAD"
+        );
+    }
+
+    /// The ordinary case: nothing staged, so the index matches HEAD and the
+    /// file reverts to its committed content. Guards against the fix
+    /// changing behaviour where there is no staged work to protect.
+    #[test]
+    fn discard_fully_unstaged_file_reverts_to_head() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        git(p, &["config", "user.name", "t"]);
+        git(p, &["config", "user.email", "t@t"]);
+        std::fs::write(p.join("a.txt"), "committed\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "init"]);
+
+        std::fs::write(p.join("a.txt"), "scratch\n").unwrap();
+        discard_paths(p, &["a.txt".to_string()]).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(p.join("a.txt")).unwrap(),
+            "committed\n"
+        );
+    }
+
+    /// A file deleted from the workdir but still in the index must come
+    /// back on discard.
+    #[test]
+    fn discard_restores_a_deleted_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        git(p, &["config", "user.name", "t"]);
+        git(p, &["config", "user.email", "t@t"]);
+        std::fs::write(p.join("a.txt"), "committed\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "init"]);
+
+        std::fs::remove_file(p.join("a.txt")).unwrap();
+        discard_paths(p, &["a.txt".to_string()]).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(p.join("a.txt")).unwrap(),
+            "committed\n",
+            "deleted file was not restored"
+        );
+    }
+
+    /// Untracked files are removed from disk, and only the requested ones.
+    #[test]
+    fn discard_removes_only_the_requested_untracked_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        git(p, &["config", "user.name", "t"]);
+        git(p, &["config", "user.email", "t@t"]);
+        std::fs::write(p.join("a.txt"), "committed\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "init"]);
+        std::fs::write(p.join("junk.txt"), "junk\n").unwrap();
+        std::fs::write(p.join("keep.txt"), "keep\n").unwrap();
+
+        discard_paths(p, &["junk.txt".to_string()]).unwrap();
+
+        assert!(!p.join("junk.txt").exists(), "untracked file not removed");
+        assert!(
+            p.join("keep.txt").exists(),
+            "unrelated untracked file removed"
+        );
     }
 }

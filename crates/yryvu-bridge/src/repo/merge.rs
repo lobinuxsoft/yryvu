@@ -42,12 +42,21 @@ pub fn merge_branch(
                 .name()
                 .ok_or_else(|| BackendError::Git(anyhow::anyhow!("HEAD is not symbolic")))?
                 .to_string();
+            // Order matters: libgit2 defaults the checkout baseline to HEAD's
+            // tree. Moving the ref first makes baseline == target, so the
+            // diff comes out empty and the working tree silently keeps the
+            // pre-merge content while HEAD advances — the index then reads as
+            // a full revert of everything the fast-forward brought in.
+            // Checkout first (baseline still the old HEAD), then move the ref.
+            let obj = repo.find_object(source_oid, None).map_err(git2_err)?;
+            let mut checkout = git2::build::CheckoutBuilder::new();
+            checkout.safe();
+            repo.checkout_tree(&obj, Some(&mut checkout))
+                .map_err(git2_err)?;
             let mut head_ref_mut = repo.find_reference(&head_ref_name).map_err(git2_err)?;
             head_ref_mut
                 .set_target(source_oid, "yryvu: fast-forward")
                 .map_err(git2_err)?;
-            let obj = repo.find_object(source_oid, None).map_err(git2_err)?;
-            repo.checkout_tree(&obj, None).map_err(git2_err)?;
             record_op_best_effort(
                 repo_path,
                 OpKind::Merge {
@@ -111,5 +120,154 @@ pub fn merge_branch(
                 new_head: commit_oid.to_string(),
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git(repo: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(repo)
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@t")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@t")
+            .status()
+            .expect("git");
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    /// A fast-forward must leave unrelated local work alone — git's own
+    /// `merge --ff` only refuses when the incoming changes would clobber a
+    /// dirty path.
+    #[test]
+    fn fast_forward_preserves_unrelated_local_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        std::fs::write(p.join("a.txt"), "v1\n").unwrap();
+        std::fs::write(p.join("mine.txt"), "v1\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "init"]);
+        git(p, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(p.join("a.txt"), "v2-from-teammate\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "teammate work"]);
+        git(p, &["checkout", "-q", "main"]);
+
+        // Uncommitted local edit on a file the fast-forward never touches.
+        std::fs::write(p.join("mine.txt"), "work in progress\n").unwrap();
+
+        merge_branch(p, "feature", MergeStrategy::FastForwardOrMerge).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(p.join("a.txt")).unwrap(),
+            "v2-from-teammate\n",
+            "fast-forward did not land the incoming change"
+        );
+        assert_eq!(
+            std::fs::read_to_string(p.join("mine.txt")).unwrap(),
+            "work in progress\n",
+            "fast-forward clobbered unrelated local work"
+        );
+    }
+
+    /// Regression: the fast-forward used to move the ref before checking out,
+    /// which made libgit2's baseline (HEAD's tree) equal the target — the
+    /// diff came out empty, the working tree kept the pre-merge content, and
+    /// the index read as a staged revert of the whole incoming change.
+    #[test]
+    fn fast_forward_updates_working_tree_and_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        std::fs::write(p.join("a.txt"), "v1\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "init"]);
+        git(p, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(p.join("a.txt"), "v2-from-teammate\n").unwrap();
+        std::fs::write(p.join("b.txt"), "new file\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "teammate work"]);
+        git(p, &["checkout", "-q", "main"]);
+
+        let res = merge_branch(p, "feature", MergeStrategy::FastForwardOrMerge).unwrap();
+        println!("merge result: {res:?}");
+
+        let a = std::fs::read_to_string(p.join("a.txt")).unwrap();
+        let b_exists = p.join("b.txt").exists();
+        let status = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(p)
+            .output()
+            .unwrap();
+        println!("a.txt = {a:?}, b.txt exists = {b_exists}");
+        println!("status: {:?}", String::from_utf8_lossy(&status.stdout));
+
+        assert_eq!(a, "v2-from-teammate\n", "working tree kept the OLD content");
+        assert!(b_exists, "new file from teammate never landed on disk");
+        assert!(status.stdout.is_empty(), "working tree dirty after FF");
+    }
+
+    #[test]
+    fn conflict_writes_markers_to_disk() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        std::fs::write(p.join("a.txt"), "v1\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "init"]);
+        git(p, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(p.join("a.txt"), "theirs\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "theirs"]);
+        git(p, &["checkout", "-q", "main"]);
+        std::fs::write(p.join("a.txt"), "ours\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "ours"]);
+
+        let res = merge_branch(p, "feature", MergeStrategy::FastForwardOrMerge);
+        println!("merge result: {res:?}");
+        let a = std::fs::read_to_string(p.join("a.txt")).unwrap();
+        println!("a.txt on disk =\n{a}");
+        assert!(
+            a.contains("<<<<<<<"),
+            "no conflict markers on disk — user resolves blind"
+        );
+    }
+
+    #[test]
+    fn merge_commit_updates_working_tree() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        std::fs::write(p.join("a.txt"), "v1\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "init"]);
+        git(p, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(p.join("b.txt"), "teammate\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "teammate work"]);
+        git(p, &["checkout", "-q", "main"]);
+        std::fs::write(p.join("c.txt"), "mine\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "my work"]);
+
+        let res = merge_branch(p, "feature", MergeStrategy::FastForwardOrMerge).unwrap();
+        println!("merge result: {res:?}");
+        let b_exists = p.join("b.txt").exists();
+        let status = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(p)
+            .output()
+            .unwrap();
+        println!("b.txt exists = {b_exists}");
+        println!("status: {:?}", String::from_utf8_lossy(&status.stdout));
+        assert!(b_exists, "merged file never landed on disk");
+        assert!(status.stdout.is_empty(), "working tree dirty after merge");
     }
 }

@@ -17,6 +17,12 @@ use super::credentials::build_credentials_callbacks;
 /// callback verifies the remote tip still matches the local tracking ref.
 /// Mismatches surface as [`BackendError::LeaseStale`].
 ///
+/// The lease anchor is mandatory: with no remote-tracking ref there is
+/// nothing to lease against, and the refspec is force-prefixed either way,
+/// so the push is refused rather than allowed to degrade into a bare
+/// `--force`. See [`PushOptions::force_with_lease`] for why yryvu never
+/// surfaces an unleased force.
+///
 /// BACKEND: git2 — reuses `build_credentials_callbacks` (SSH agent →
 /// credential helper → default). gix 0.68 has `remote::Connection::push`
 /// but auth plumbing + progress reporting are still pre-stable. Migrate
@@ -72,14 +78,24 @@ pub fn push_current_branch(repo_path: &Path, opts: PushOptions) -> Result<(), Ba
         Err(_) => ("origin".to_string(), branch_full.clone(), None),
     };
 
-    // Capture the remote tip OID we *expect* to overwrite. Used as the
-    // "lease" anchor when force_with_lease is on. Skipped (None) for the
-    // first push — by definition there's nothing to clobber.
+    // Capture the remote tip OID we *expect* to overwrite — the lease
+    // anchor. Without one there is no lease to honour, and since the
+    // refspec below is force-prefixed, continuing would clobber whatever
+    // the remote holds. A missing tracking ref does NOT mean the remote
+    // branch is absent: it only means we have never seen it. Refuse
+    // instead, so `force_with_lease` can never degrade into a bare force.
     let lease_oid = if opts.force_with_lease {
-        tracking_ref_full
+        let anchor = tracking_ref_full
             .as_deref()
             .and_then(|n| repo.find_reference(n).ok())
-            .and_then(|r| r.target())
+            .and_then(|r| r.target());
+        Some(anchor.ok_or_else(|| {
+            BackendError::Git(anyhow::anyhow!(
+                "force-with-lease needs a remote-tracking ref for '{branch_shorthand}' to lease \
+                 against, and none exists. Fetch the branch first so there is a known remote tip \
+                 to compare — force-pushing without one would overwrite work you have never seen."
+            ))
+        })?)
     } else {
         None
     };
@@ -103,16 +119,28 @@ pub fn push_current_branch(repo_path: &Path, opts: PushOptions) -> Result<(), Ba
         let lease_violation = Arc::clone(&lease_violation);
         callbacks.push_negotiation(move |updates: &[git2::PushUpdate<'_>]| {
             for update in updates {
-                let dst = update.dst();
+                // `src` is what the remote currently has, `dst` is the local
+                // OID we are about to push (libgit2 `push.c::add_update`
+                // copies `spec->roid` into src and `spec->loid` into dst).
+                // The lease compares against the remote's current tip, so it
+                // must read `src` — reading `dst` compares our new tip to the
+                // tracking ref and rejects every real force-push.
+                let remote_has = update.src();
                 let dst_name = update.dst_refname().unwrap_or("(unknown)").to_string();
                 match lease_oid {
-                    Some(expected) if dst.is_zero() || dst == expected => {}
+                    Some(expected) if remote_has == expected => {}
+                    // Covers a zero `src` too: we hold a lease on a tip the
+                    // remote no longer has, so the ref was deleted or
+                    // replaced behind our back. That is a stale lease, not a
+                    // free pass.
                     Some(_) => {
                         *lease_violation.lock().unwrap() = Some(dst_name.clone());
                         return Err(git2::Error::from_str(&format!(
                             "force-with-lease: {dst_name} moved on the remote"
                         )));
                     }
+                    // Unreachable: a missing anchor is refused before we get
+                    // here, so force-with-lease is never lease-less.
                     None => {}
                 }
             }
@@ -221,4 +249,210 @@ pub fn delete_tag_remote(repo_path: &Path, remote: &str, name: &str) -> Result<(
         .push(&[&refspec], Some(&mut push_opts))
         .map_err(|e| BackendError::PushFailed(e.to_string()))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git(cwd: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(cwd)
+            .status()
+            .expect("git");
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    fn out(cwd: &Path, args: &[&str]) -> String {
+        String::from_utf8(
+            Command::new("git")
+                .args(args)
+                .current_dir(cwd)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string()
+    }
+
+    fn identity(repo: &Path) {
+        git(repo, &["config", "user.name", "t"]);
+        git(repo, &["config", "user.email", "t@t"]);
+    }
+
+    /// A bare "origin" with one commit on `main`, plus a clone tracking it.
+    fn origin_and_clone() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let origin = dir.path().join("origin.git");
+        let work = dir.path().join("work");
+        git(
+            dir.path(),
+            &[
+                "init",
+                "-q",
+                "--bare",
+                "-b",
+                "main",
+                origin.to_str().unwrap(),
+            ],
+        );
+
+        let seed = dir.path().join("seed");
+        std::fs::create_dir_all(&seed).unwrap();
+        git(&seed, &["init", "-q", "-b", "main"]);
+        identity(&seed);
+        std::fs::write(seed.join("a.txt"), "base\n").unwrap();
+        git(&seed, &["add", "."]);
+        git(&seed, &["commit", "-qm", "base"]);
+        git(
+            &seed,
+            &["remote", "add", "origin", origin.to_str().unwrap()],
+        );
+        git(&seed, &["push", "-q", "origin", "main"]);
+
+        git(
+            dir.path(),
+            &[
+                "clone",
+                "-q",
+                origin.to_str().unwrap(),
+                work.to_str().unwrap(),
+            ],
+        );
+        identity(&work);
+        (dir, origin, work)
+    }
+
+    /// The lease is intact — nobody touched the remote. A force-with-lease
+    /// push after a local rewrite must succeed.
+    #[test]
+    fn lease_allows_push_when_remote_has_not_moved() {
+        let (_d, origin, work) = origin_and_clone();
+
+        // Local history rewrite, the canonical force-with-lease case.
+        std::fs::write(work.join("a.txt"), "amended\n").unwrap();
+        git(&work, &["add", "."]);
+        git(&work, &["commit", "-q", "--amend", "-m", "base amended"]);
+        let local_tip = out(&work, &["rev-parse", "HEAD"]);
+
+        push_current_branch(
+            &work,
+            PushOptions {
+                force_with_lease: true,
+            },
+        )
+        .expect("lease is intact; push must succeed");
+
+        assert_eq!(
+            out(&origin, &["rev-parse", "refs/heads/main"]),
+            local_tip,
+            "remote did not receive the rewritten tip"
+        );
+    }
+
+    /// Someone else pushed to the remote and we never fetched. The lease is
+    /// stale and the push must be refused instead of clobbering their work.
+    #[test]
+    fn lease_refuses_when_remote_moved_behind_our_back() {
+        let (_d, origin, work) = origin_and_clone();
+
+        // A teammate pushes through another clone.
+        let other = _d.path().join("other");
+        git(
+            _d.path(),
+            &[
+                "clone",
+                "-q",
+                origin.to_str().unwrap(),
+                other.to_str().unwrap(),
+            ],
+        );
+        identity(&other);
+        std::fs::write(other.join("teammate.txt"), "their work\n").unwrap();
+        git(&other, &["add", "."]);
+        git(&other, &["commit", "-qm", "teammate work"]);
+        git(&other, &["push", "-q", "origin", "main"]);
+        let their_tip = out(&origin, &["rev-parse", "refs/heads/main"]);
+
+        // We rewrite locally, still unaware. Our tracking ref is stale.
+        std::fs::write(work.join("a.txt"), "mine\n").unwrap();
+        git(&work, &["add", "."]);
+        git(&work, &["commit", "-q", "--amend", "-m", "mine"]);
+
+        let err = push_current_branch(
+            &work,
+            PushOptions {
+                force_with_lease: true,
+            },
+        )
+        .expect_err("remote moved; lease must refuse");
+        println!("error: {err:?}");
+        assert!(
+            matches!(err, BackendError::LeaseStale { .. }),
+            "expected LeaseStale, got {err:?}"
+        );
+        assert_eq!(
+            out(&origin, &["rev-parse", "refs/heads/main"]),
+            their_tip,
+            "teammate's commit was destroyed"
+        );
+    }
+
+    /// No upstream configured does NOT mean the remote branch is absent.
+    /// Without a tracking ref there is no lease to honour, so a
+    /// force-with-lease push must refuse rather than force blindly.
+    #[test]
+    fn lease_refuses_without_a_tracking_ref() {
+        let (_d, origin, work) = origin_and_clone();
+
+        // A teammate's branch exists on the remote.
+        let other = _d.path().join("other2");
+        git(
+            _d.path(),
+            &[
+                "clone",
+                "-q",
+                origin.to_str().unwrap(),
+                other.to_str().unwrap(),
+            ],
+        );
+        identity(&other);
+        git(&other, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(other.join("theirs.txt"), "their work\n").unwrap();
+        git(&other, &["add", "."]);
+        git(&other, &["commit", "-qm", "teammate feature work"]);
+        git(&other, &["push", "-q", "origin", "feature"]);
+        let their_tip = out(&origin, &["rev-parse", "refs/heads/feature"]);
+
+        // We create a local `feature` with no tracking, unaware of theirs.
+        git(&work, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(work.join("mine.txt"), "mine\n").unwrap();
+        git(&work, &["add", "."]);
+        git(&work, &["commit", "-qm", "my unrelated work"]);
+
+        let res = push_current_branch(
+            &work,
+            PushOptions {
+                force_with_lease: true,
+            },
+        );
+        println!("result: {res:?}");
+        println!(
+            "origin/feature after: {}",
+            out(&origin, &["rev-parse", "refs/heads/feature"])
+        );
+        assert!(
+            res.is_err(),
+            "no tracking ref means no lease; must not force-push"
+        );
+        assert_eq!(
+            out(&origin, &["rev-parse", "refs/heads/feature"]),
+            their_tip,
+            "teammate's commits were destroyed by a lease-less force push"
+        );
+    }
 }

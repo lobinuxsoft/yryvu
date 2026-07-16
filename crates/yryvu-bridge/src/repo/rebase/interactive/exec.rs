@@ -15,6 +15,7 @@ use git2::{Commit, Oid, Repository};
 use crate::backend::BackendError;
 
 use super::super::super::common::{git2_err, open_git2};
+use super::super::super::worktree::is_working_tree_dirty;
 use super::plan::{PauseReason, RebaseAction, RebasePlan, RebaseState, RebaseStep};
 
 const STATE_FILE: &str = "yryvu-rebase-state.json";
@@ -132,6 +133,17 @@ pub fn begin_rebase(repo_path: &Path, plan: RebasePlan) -> Result<RebaseState, B
     }
     let branch_full = head.name().unwrap_or("HEAD").to_string();
     let original_head = head.peel_to_commit().map_err(git2_err)?.id().to_string();
+
+    // Pre-flight, mirroring `cherry_pick_commits_onto`: `detach_to` force-
+    // checks-out, which overwrites uncommitted work instead of refusing.
+    // That content was never a git object, so unlike a clobbered commit it
+    // is recoverable from nowhere — not the ODB, not the reflog, not a
+    // stash. Git refuses to rebase a dirty tree for the same reason. The
+    // typed error lets the frontend offer the auto-stash path it already
+    // uses for `Checkout this commit`.
+    if is_working_tree_dirty(repo_path)? {
+        return Err(BackendError::WorkingTreeDirty);
+    }
 
     detach_to(
         &repo,

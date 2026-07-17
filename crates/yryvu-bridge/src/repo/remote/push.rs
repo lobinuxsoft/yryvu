@@ -8,6 +8,47 @@ use crate::repo::common::{git2_err, open_git2};
 
 use super::credentials::build_credentials_callbacks;
 
+/// Register `push_update_reference` on `callbacks`, returning the shared
+/// sink to inspect after the push completes.
+///
+/// libgit2's `remote.push()` returns `Ok` even when the server rejects
+/// individual refs — a non-fast-forward, a protected branch, or a
+/// pre-receive hook produces no return error (verified in vendored
+/// libgit2 1.8.1: `git_push_finish` only errors on `!unpack_ok`). The
+/// rejection is delivered **only** through this callback: `remote.h`
+/// documents that a non-NULL `status` means "the update was rejected by
+/// the remote server". Without it, every rejected push reports success.
+fn track_ref_rejections(
+    callbacks: &mut git2::RemoteCallbacks<'_>,
+) -> Arc<Mutex<Vec<(String, String)>>> {
+    let rejections: Arc<Mutex<Vec<(String, String)>>> = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&rejections);
+    callbacks.push_update_reference(move |refname, status| {
+        if let Some(msg) = status {
+            sink.lock()
+                .unwrap()
+                .push((refname.to_string(), msg.to_string()));
+        }
+        Ok(())
+    });
+    rejections
+}
+
+/// Fold any accumulated per-ref rejection into a typed [`BackendError`].
+/// Returns `None` when every ref landed.
+fn rejection_error(rejections: &Arc<Mutex<Vec<(String, String)>>>) -> Option<BackendError> {
+    let rejected = rejections.lock().unwrap();
+    if rejected.is_empty() {
+        return None;
+    }
+    let detail = rejected
+        .iter()
+        .map(|(refname, status)| format!("{refname}: {status}"))
+        .collect::<Vec<_>>()
+        .join("; ");
+    Some(BackendError::PushFailed(detail))
+}
+
 /// Push HEAD's branch to its configured upstream. When no upstream is
 /// configured, pushes to `origin/<current-branch>` and sets it as the
 /// upstream so the next push doesn't need the same nudge.
@@ -115,6 +156,7 @@ pub fn push_current_branch(repo_path: &Path, opts: PushOptions) -> Result<(), Ba
     let lease_violation: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
 
     let mut callbacks = build_credentials_callbacks();
+    let rejections = track_ref_rejections(&mut callbacks);
     if opts.force_with_lease {
         let lease_violation = Arc::clone(&lease_violation);
         callbacks.push_negotiation(move |updates: &[git2::PushUpdate<'_>]| {
@@ -157,6 +199,14 @@ pub fn push_current_branch(repo_path: &Path, opts: PushOptions) -> Result<(), Ba
         }
         return Err(BackendError::PushFailed(e.to_string()));
     }
+    // `push()` returned Ok, but the server may still have rejected the ref
+    // (non-fast-forward, protected branch, hook). libgit2 does NOT advance
+    // the tracking ref for rejected refs (`push.c` skips them), so local
+    // state is intact — but reporting success would be a lie, and we must
+    // not persist an invented upstream for a push that never landed.
+    if let Some(err) = rejection_error(&rejections) {
+        return Err(err);
+    }
 
     // When we invented the upstream (no tracking previously), persist it.
     if local_branch.upstream().is_err() {
@@ -186,12 +236,21 @@ pub fn delete_remote_branch(
 
     let refspec = format!(":refs/heads/{name}");
 
+    let mut callbacks = build_credentials_callbacks();
+    let rejections = track_ref_rejections(&mut callbacks);
     let mut push_opts = git2::PushOptions::new();
-    push_opts.remote_callbacks(build_credentials_callbacks());
+    push_opts.remote_callbacks(callbacks);
 
     remote_obj
         .push(&[&refspec], Some(&mut push_opts))
         .map_err(|e| BackendError::PushFailed(e.to_string()))?;
+    // A rejected delete (protected branch, server HEAD) arrives here as Ok.
+    // Bail BEFORE dropping the tracking ref — otherwise the branch vanishes
+    // from the sidebar while it still exists on the server and reappears on
+    // the next fetch --prune, silently diverging the local view from reality.
+    if let Some(err) = rejection_error(&rejections) {
+        return Err(err);
+    }
 
     // Remove the local tracking ref so the sidebar reflects the deletion
     // without needing a separate fetch --prune cycle.
@@ -219,12 +278,17 @@ pub fn push_tag(repo_path: &Path, remote: &str, name: &str) -> Result<(), Backen
 
     let refspec = format!("refs/tags/{name}:refs/tags/{name}");
 
+    let mut callbacks = build_credentials_callbacks();
+    let rejections = track_ref_rejections(&mut callbacks);
     let mut push_opts = git2::PushOptions::new();
-    push_opts.remote_callbacks(build_credentials_callbacks());
+    push_opts.remote_callbacks(callbacks);
 
     remote_obj
         .push(&[&refspec], Some(&mut push_opts))
         .map_err(|e| BackendError::PushFailed(e.to_string()))?;
+    if let Some(err) = rejection_error(&rejections) {
+        return Err(err);
+    }
     Ok(())
 }
 
@@ -242,12 +306,17 @@ pub fn delete_tag_remote(repo_path: &Path, remote: &str, name: &str) -> Result<(
 
     let refspec = format!(":refs/tags/{name}");
 
+    let mut callbacks = build_credentials_callbacks();
+    let rejections = track_ref_rejections(&mut callbacks);
     let mut push_opts = git2::PushOptions::new();
-    push_opts.remote_callbacks(build_credentials_callbacks());
+    push_opts.remote_callbacks(callbacks);
 
     remote_obj
         .push(&[&refspec], Some(&mut push_opts))
         .map_err(|e| BackendError::PushFailed(e.to_string()))?;
+    if let Some(err) = rejection_error(&rejections) {
+        return Err(err);
+    }
     Ok(())
 }
 
@@ -326,6 +395,63 @@ mod tests {
         identity(&work);
         (dir, origin, work)
     }
+
+    /// The core of #456: a non-fast-forward push is rejected by the server,
+    /// but libgit2's `remote.push()` returns Ok — the rejection rides only
+    /// the `push_update_reference` callback. It must surface as `PushFailed`,
+    /// never a success toast, and nothing of ours may reach the remote.
+    #[test]
+    fn non_fast_forward_push_is_reported_as_error() {
+        let (_d, origin, work) = origin_and_clone();
+
+        // A teammate advances origin/main behind our back.
+        let other = _d.path().join("other-ff");
+        git(
+            _d.path(),
+            &[
+                "clone",
+                "-q",
+                origin.to_str().unwrap(),
+                other.to_str().unwrap(),
+            ],
+        );
+        identity(&other);
+        std::fs::write(other.join("teammate.txt"), "their work\n").unwrap();
+        git(&other, &["add", "."]);
+        git(&other, &["commit", "-qm", "teammate work"]);
+        git(&other, &["push", "-q", "origin", "main"]);
+        let their_tip = out(&origin, &["rev-parse", "refs/heads/main"]);
+
+        // We commit on the stale base and push without force.
+        std::fs::write(work.join("mine.txt"), "mine\n").unwrap();
+        git(&work, &["add", "."]);
+        git(&work, &["commit", "-qm", "my work"]);
+
+        let err = push_current_branch(
+            &work,
+            PushOptions {
+                force_with_lease: false,
+            },
+        )
+        .expect_err("non-fast-forward must be refused, not reported as success");
+        assert!(
+            matches!(err, BackendError::PushFailed(_)),
+            "expected PushFailed, got {err:?}"
+        );
+        assert_eq!(
+            out(&origin, &["rev-parse", "refs/heads/main"]),
+            their_tip,
+            "the server tip changed — a rejected push still landed something"
+        );
+    }
+
+    // NOTE: the delete-rejection knock-on (delete_remote_branch bailing
+    // before dropping the tracking ref) shares the exact `track_ref_rejections`
+    // / `rejection_error` path this test exercises, but it can't be unit-tested
+    // in isolation: libgit2's local transport reimplements receive-pack, runs
+    // no server hooks, and honours no `receive.deny*` config, so a local delete
+    // is never rejected. Only fast-forward violations surface locally — which
+    // is what the test above covers.
 
     /// The lease is intact — nobody touched the remote. A force-with-lease
     /// push after a local rewrite must succeed.

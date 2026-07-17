@@ -10,19 +10,24 @@ non-obvious conventions.
 
 ## Current status
 
-- **`development` HEAD:** `08c3187` (2026-07-11). `main` = v0.5.0.
-- **Just shipped — Wave 8 (Theme power v2), umbrella #297 CLOSED** (PRs #440–#445):
-  - **#298** token expansion — shapes/spacing/borders/per-context fonts as `--*`.
-  - **#299** multi-file theme structure — optional `[layers]` in `theme.toml`
-    (file | list | `"dir/"`), 3 injected `<style>` layers (tokens/icons/personality).
-  - **#300** icon system — chrome icons render via `mask-image: var(--icon-<name>)`;
-    a theme overrides one by dropping `icons/<name>.svg` (backend base64-inlines it).
-  - **#301** themeable graph node radius + edge width (geometry deferred — see below).
-  - **#303** rewrote 9 themes' `personality.css` against the real DOM.
-  - **#302** docs: `docs/themes/{CHEATSHEET,EXAMPLES}.md` + a README per built-in.
-- **Next:** **Wave 9 — Perf + cleanup**. See [ROADMAP.md](ROADMAP.md).
-- **Un-smoked debt:** #75 (Apply Patch flow) and Wave 6's submodule pointer
-  pane + LFS placeholder were merged green but not manually smoked.
+- **`development` HEAD:** `c5fe178` (2026-07-17). `main` = v0.5.0.
+- **Just shipped — data-safety hardening, umbrella #448.** A user report ("a
+  merge only keeps my side") turned out to be two distinct bugs; auditing the
+  core git ops surfaced a cluster of ~21 silent data-loss defects — none had a
+  test, all passed the suite green. See
+  [Data-safety hardening](#data-safety-hardening-umbrella-448) below and the
+  [ROADMAP](ROADMAP.md#data-safety-hardening-umbrella-448) for the live count.
+  **All `priority:high` closed; 9 `medium`/`low` remain.**
+- **Also shipped — Wave 8 (Theme power v2), umbrella #297 CLOSED** (PRs #440–#445):
+  token expansion (#298), multi-file `[layers]` (#299), `mask-image` icon system
+  with `icons/`-folder override (#300), themeable graph node/edge vars (#301),
+  9 themes' `personality.css` rewritten vs the real DOM (#303), `docs/themes/` (#302).
+- **Next:** finish the **#448 `medium`/`low` tail** (#457, #458, #459, #460, #462,
+  #471, #473, #474, #475), then **Wave 9 — Perf + cleanup**. See [ROADMAP.md](ROADMAP.md).
+- **Un-smoked debt:** the #448 fixes shipped with backend regression tests but no
+  live smoke of the touched flows (undo/redo, rejected push, branch rename,
+  rebase `edit`). #75 (Apply Patch flow) + Wave 6's submodule/LFS panes are also
+  un-smoked.
 
 ## GitKraken-fidelity rule (hard)
 
@@ -62,6 +67,59 @@ These are easy to miss when copying handlers; they're the load-bearing ones.
   `(name, email)` down; the `repo/` functions never touch profiles or
   `AppHandle`. Sidecars/config paths are resolved by the bridge from
   `AppHandle`, never seen by the frontend.
+
+### Data-safety hardening (umbrella #448)
+
+A user report ("a merge only keeps my side") was **two** bugs (a fast-forward
+checkout-order bug #447 + a lost merge-parent #454). Auditing the core git ops
+with that lens surfaced ~21 silent data-loss defects. The two shapes **every**
+defect took — look for both when touching any git op:
+
+1. **A guard that exists in the sibling function and is missing right here.**
+   `cherry_pick` pre-flights a dirty tree, `begin_rebase` didn't (#449).
+   `delete_local_branch` refuses the checked-out branch, `rename_branch` didn't
+   (#455). `record_op_best_effort` gates on the skip-guard, `clear_log_best_effort`
+   didn't (#469).
+2. **Doc-comments that promise a guarantee the code doesn't give.** "perfectly
+   inverts", "never touches", "refuses" — treat every such phrase as a claim to
+   verify, not a fact (#462, #451's Mixed-reset comment).
+
+**Testing rule (bought with a regression):** for undo/redo, stage/unstage,
+stash push/pop — **test the round trip, not each half.** #467 shipped 5 tests,
+each proving one direction, and broke `commit → undo → redo` (hotfix #468).
+
+**Verified libgit2 behaviours (vendored 1.8.1):**
+
+- **The local transport reimplements receive-pack: it runs no server hooks and
+  honours no `receive.deny*` config.** So a rejected *delete* can't be unit-tested
+  against a local bare repo — only a non-fast-forward is refused locally (that's
+  what surfaces server rejections in tests). `remote.push()` returns `Ok` even on
+  a per-ref rejection; the rejection rides **only** the `push_update_reference`
+  callback — register it or every rejected push reports success (#456).
+- **`git_branch_move` (git2 `Branch::rename`) does what `git branch -m` does:**
+  `git_reference_rename` follows HEAD across every worktree, and
+  `git_config_rename_section` migrates the whole `[branch "old"]` section. Prefer
+  it over a hand-rolled gix rename (#455).
+- **`reset.c` forces `GIT_CHECKOUT_FORCE`** and checks out *before* moving the
+  ref, so every `repo.reset()` is safe by construction and `reset --hard` never
+  refuses on a dirty tree — destructive undos need their own dirty guard (#450).
+- **Cherry-pick/revert undo:** reset to the parent of the **recorded** `new_sha`
+  and verify `HEAD == new_sha` first; a blind `HEAD~1` destroys the wrong commit
+  after any out-of-app commit (#461).
+
+**Undo-log invariants** (`crates/yryvu-bridge/src/undo_log/`): the sidecar
+`.git/yryvu-undo.json` is read-modify-write with no lock; `undo_last_operation`
+takes a process-wide mutex so concurrent Ctrl+Z can't double-apply a HEAD-relative
+inverse (#472). Both `record_op_best_effort` **and** `clear_log_best_effort` gate
+on the `SKIP_RECORD` thread-local. Recording after a full undo truncates to 0
+(`cursor.map_or(0, |c| c + 1)`), not skipped when `cursor == None` (#470).
+
+**Interactive rebase `edit`** (`repo/rebase/interactive/`): the step's commit is
+created eagerly (it's already HEAD at the pause), so continue **amends** it with
+the staged tree — `Commit::amend` preserving author + message. Fidelity to git:
+only the index is committed; unstaged changes abort (never discarded); a clean
+index is a no-op. The module is split `exec.rs` (entry points) / `steps.rs`
+(plan walk) / `refs.rs` (ref moves) / `state_io.rs` (sidecar) / `plan.rs` (types).
 
 ### Frontend refresh pattern
 
@@ -155,6 +213,16 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-17:** **Data-safety hardening (umbrella #448) — all `priority:high`
+  closed.** Eight PRs: #469/#470 (undo-log corruption), #472 (concurrent Ctrl+Z
+  drops commits), #461 (cherry-pick undo blind-resets), #456 (rejected push
+  reported as success), #455 (branch rename dangles HEAD + drops upstream), #451
+  (rebase `edit` discarded edits), + #483 (split `exec.rs` under 400 LOC). Each
+  fix carries a regression test — the audit's whole point was that none existed.
+  Full-repo review afterward: gates green, the fixes don't interact, monolith
+  scan clean (only `exec.rs` had production >400, now split). 9 `medium`/`low`
+  #448 issues remain (#457–#460, #462, #471, #473–#475). See
+  [Data-safety hardening](#data-safety-hardening-umbrella-448).
 - **2026-07-11:** **Wave 8 (Theme power v2) shipped end-to-end — umbrella #297
   closed.** Six sub-PRs #440–#445: token expansion (#298), multi-file `[layers]`
   (#299), icon-mask system with `icons/`-folder override (#300), themeable graph

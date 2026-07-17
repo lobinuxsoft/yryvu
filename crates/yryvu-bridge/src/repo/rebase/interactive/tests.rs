@@ -398,3 +398,80 @@ fn begin_rebase_refuses_dirty_tracked_file() {
         "uncommitted edit to a tracked file was destroyed"
     );
 }
+
+/// #451: a staged edit made during an `edit` pause must be amended into the
+/// step's commit, not silently discarded by the finishing force-checkout.
+#[test]
+fn edit_amends_staged_changes_into_the_step_commit() {
+    let (_d, path, base, [a, b, c]) = three_commit_topic();
+    let plan = RebasePlan {
+        onto: base.to_string(),
+        steps: vec![
+            plan_step(a, RebaseAction::Pick),
+            plan_step(b, RebaseAction::Edit),
+            plan_step(c, RebaseAction::Pick),
+        ],
+    };
+    let state = begin_rebase(&path, plan).unwrap();
+    assert_eq!(state.pause_reason, Some(PauseReason::Edit));
+
+    // Edit b.txt during the pause and stage it, as the yryvu staging panel does.
+    fs::write(path.join("b.txt"), "B edited\n").unwrap();
+    let repo = git2::Repository::open(&path).unwrap();
+    let mut index = repo.index().unwrap();
+    index.add_path(Path::new("b.txt")).unwrap();
+    index.write().unwrap();
+
+    let state2 = continue_rebase(&path).unwrap();
+    assert!(state2.pause_reason.is_none());
+    assert_eq!(state2.current_step, 3);
+
+    // The finishing force-checkout rebuilds the tree from the commits, so a
+    // surviving edit proves it landed in history, not just in the worktree.
+    let repo = git2::Repository::open(&path).unwrap();
+    let head_tree = repo.head().unwrap().peel_to_tree().unwrap();
+    let entry = head_tree.get_path(Path::new("b.txt")).unwrap();
+    let blob = repo.find_blob(entry.id()).unwrap();
+    assert_eq!(
+        std::str::from_utf8(blob.content()).unwrap(),
+        "B edited\n",
+        "the staged edit was not amended into the rebased history"
+    );
+    // The later Pick of c still applied on top of the amended commit.
+    assert!(path.join("c.txt").exists());
+}
+
+/// #451 (fidelity to git): unstaged changes during an `edit` pause abort the
+/// continue instead of being silently dropped. The rebase stays paused so the
+/// user can stage them.
+#[test]
+fn edit_continue_aborts_on_unstaged_changes() {
+    let (_d, path, base, [a, b, c]) = three_commit_topic();
+    let plan = RebasePlan {
+        onto: base.to_string(),
+        steps: vec![
+            plan_step(a, RebaseAction::Pick),
+            plan_step(b, RebaseAction::Edit),
+            plan_step(c, RebaseAction::Pick),
+        ],
+    };
+    begin_rebase(&path, plan).unwrap();
+
+    // Edit b.txt but do NOT stage it.
+    fs::write(path.join("b.txt"), "B unstaged\n").unwrap();
+
+    let err = continue_rebase(&path).unwrap_err();
+    assert!(
+        matches!(err, BackendError::Git(_)),
+        "expected a typed error, got {err:?}"
+    );
+    // The edit survives untouched, and the rebase is still paused on the step.
+    assert_eq!(
+        fs::read_to_string(path.join("b.txt")).unwrap(),
+        "B unstaged\n",
+        "the unstaged edit was destroyed"
+    );
+    let state = get_state(&path).unwrap().unwrap();
+    assert_eq!(state.pause_reason, Some(PauseReason::Edit));
+    assert_eq!(state.current_step, 1);
+}

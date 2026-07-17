@@ -188,7 +188,51 @@ pub fn continue_rebase(repo_path: &Path) -> Result<RebaseState, BackendError> {
             let tree = repo.find_tree(tree_oid).map_err(git2_err)?;
             commit_resolved_step(&repo, &step, &tree)?;
         }
-        PauseReason::Edit => { /* commit already exists; just advance */ }
+        PauseReason::Edit => {
+            // The whole point of `edit` is to fold the user's changes into
+            // the step's commit before advancing. The commit already exists
+            // as HEAD (created eagerly in `apply_pick`), so this is an amend,
+            // not a fresh commit — mirroring `git rebase --continue` after an
+            // `edit` stop, which runs `git commit --amend` over the staged
+            // tree.
+            //
+            // Fidelity to git, deliberately chosen over auto-staging: only
+            // the INDEX is committed. Unstaged changes abort (they are never
+            // discarded) so a half-staged edit can't silently lose the rest;
+            // the yryvu staging panel is on screen during the pause. A clean
+            // index (nothing staged) is a no-op — re-amending with a fresh
+            // committer would only churn the SHA.
+            let unstaged = repo
+                .diff_index_to_workdir(None, None)
+                .map_err(git2_err)?
+                .deltas()
+                .len();
+            if unstaged > 0 {
+                state.pause_reason = Some(PauseReason::Edit);
+                save_state(&repo, &state)?;
+                return Err(BackendError::Git(anyhow!(
+                    "you have unstaged changes; stage or discard them before continuing"
+                )));
+            }
+            let mut index = repo.index().map_err(git2_err)?;
+            let tree_oid = index.write_tree().map_err(git2_err)?;
+            let head = head_commit(&repo)?;
+            if tree_oid != head.tree_id() {
+                let tree = repo.find_tree(tree_oid).map_err(git2_err)?;
+                let committer = repo.signature().map_err(git2_err)?;
+                // author = None preserves the step commit's author; message =
+                // None preserves its message; only the tree and committer move.
+                head.amend(
+                    Some("HEAD"),
+                    None,
+                    Some(&committer),
+                    None,
+                    None,
+                    Some(&tree),
+                )
+                .map_err(git2_err)?;
+            }
+        }
     }
     state.current_step += 1;
     run_pending(&repo, &mut state)?;

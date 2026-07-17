@@ -41,6 +41,14 @@ export async function confirmUndoDirtyPrompt(): Promise<void> {
   await runWithToast(prompt.kind, prompt.label, true);
 }
 
+/// In-flight guard: a second undo/redo must not overlap the first. The
+/// backend reads the sidecar cursor before the first call's set_cursor
+/// lands, so two concurrent HEAD-relative inverses (cherry-pick/revert)
+/// would each drop a commit while the cursor steps back once (#472). JS is
+/// single-threaded, so a plain module flag is race-free — this only guards
+/// async re-entry, not true parallelism.
+let inFlight = false;
+
 async function runWithToast(
   kind: "undo" | "redo",
   label: string | undefined,
@@ -48,6 +56,8 @@ async function runWithToast(
 ): Promise<void> {
   const path = repoPath();
   if (!path) return;
+  if (inFlight) return;
+  inFlight = true;
   const human = label ?? "operation";
   try {
     const outcome =
@@ -76,6 +86,8 @@ async function runWithToast(
       `${kind === "undo" ? "Undo" : "Redo"} of ${human} failed`,
       { message: String(err), category: "undoRedo" },
     );
+  } finally {
+    inFlight = false;
   }
   refreshGraph();
   refreshBranches();

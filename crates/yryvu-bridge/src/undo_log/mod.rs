@@ -167,6 +167,29 @@ mod tests {
     }
 
     #[test]
+    fn clear_is_skipped_under_record_guard() {
+        let repo = fresh_repo();
+        record_op(
+            repo.path(),
+            OpKind::StashPush {
+                stash_sha: "deadbeef".into(),
+            },
+        )
+        .unwrap();
+        // An inverse replaying stash_pop clears the log; under the guard
+        // it must be a no-op so the IPC cursor walk stays valid.
+        with_record_skipped(|| clear_log_best_effort(repo.path()));
+        let log = read_log(repo.path()).unwrap();
+        assert_eq!(log.ops.len(), 1, "clear must be suppressed under guard");
+        assert_eq!(log.cursor, Some(0));
+        // Outside the guard it still clears — real invalidating ops rely on it.
+        clear_log_best_effort(repo.path());
+        let cleared = read_log(repo.path()).unwrap();
+        assert!(cleared.ops.is_empty());
+        assert!(cleared.cursor.is_none());
+    }
+
+    #[test]
     fn reflog_tag_format_per_kind() {
         let cases = [
             (

@@ -82,8 +82,9 @@ fn undo_discards_uncommitted_work(op: &OpKind) -> bool {
 /// `--hard` reset to a commit that still exists in the reflog.
 fn redo_discards_uncommitted_work(op: &OpKind) -> bool {
     match op {
-        OpKind::Commit { .. }
-        | OpKind::Amend { .. }
+        // Soft reset: leaves the tree alone, same as its undo.
+        OpKind::Commit { .. } => false,
+        OpKind::Amend { .. }
         | OpKind::CherryPick { .. }
         | OpKind::Revert { .. }
         | OpKind::Merge { .. } => true,
@@ -269,7 +270,14 @@ pub fn apply_redo(repo_path: &Path, op: &OpKind, force: bool) -> Result<UndoOutc
 fn apply_redo_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
     match op {
         OpKind::Commit { sha, .. } => {
-            hard_reset(repo_path, sha)?;
+            // Soft, mirroring the undo. The undo of a commit is a soft
+            // reset that deliberately keeps the content staged, so redoing
+            // it only has to move HEAD back onto the commit that already
+            // holds that content. A hard reset here would destroy work the
+            // undo went out of its way to preserve — and, since the undo
+            // leaves the tree dirty by design, would also trip the dirty
+            // guard and make this redo unreachable.
+            soft_reset(repo_path, sha)?;
             Ok(UndoOutcome::Applied {
                 kind_label: "commit".into(),
             })
@@ -456,13 +464,16 @@ mod tests {
         assert_eq!(sha(&p, "HEAD"), parent);
     }
 
-    /// The redo direction hard-resets forward and is just as destructive.
+    /// The redo of a hard-reset-forward op is just as destructive as its
+    /// undo. (Commit is deliberately absent here: its redo is a soft reset,
+    /// see `commit_undo_redo_round_trips_without_force`.)
     #[test]
     fn destructive_redo_refuses_on_a_dirty_tree() {
         let (_d, p) = repo_with_dirty_tree();
-        let op = OpKind::Commit {
-            sha: sha(&p, "HEAD"),
-            parent_sha: Some(sha(&p, "HEAD~1")),
+        let op = OpKind::Merge {
+            source: "feature".into(),
+            pre_merge_sha: sha(&p, "HEAD~1"),
+            post_merge_sha: sha(&p, "HEAD"),
         };
 
         let err = apply_redo(&p, &op, false).unwrap_err();
@@ -473,6 +484,49 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(p.join("mine.txt")).unwrap(),
             "work in progress\n"
+        );
+    }
+
+    /// The most common round-trip there is: commit, undo, redo. The undo is
+    /// a soft reset, so it leaves the content staged — the redo must not
+    /// read its own undo's leftovers as "uncommitted work at risk" and
+    /// refuse, nor hard-reset over work the undo preserved on purpose.
+    #[test]
+    fn commit_undo_redo_round_trips_without_force() {
+        let (_d, p) = repo_with_dirty_tree();
+        std::fs::remove_file(p.join("mine.txt")).unwrap();
+        let head = sha(&p, "HEAD");
+        let parent = sha(&p, "HEAD~1");
+        let op = OpKind::Commit {
+            sha: head.clone(),
+            parent_sha: Some(parent.clone()),
+        };
+
+        apply_inverse(&p, &op, false).unwrap();
+        assert_eq!(sha(&p, "HEAD"), parent, "undo did not step back");
+
+        apply_redo(&p, &op, false).expect("redo must not need force");
+        assert_eq!(sha(&p, "HEAD"), head, "redo did not restore HEAD");
+    }
+
+    /// Unrelated work in flight survives the whole round-trip.
+    #[test]
+    fn commit_redo_preserves_unrelated_uncommitted_work() {
+        let (_d, p) = repo_with_dirty_tree();
+        let head = sha(&p, "HEAD");
+        let op = OpKind::Commit {
+            sha: head.clone(),
+            parent_sha: Some(sha(&p, "HEAD~1")),
+        };
+
+        apply_inverse(&p, &op, false).unwrap();
+        apply_redo(&p, &op, false).expect("redo must not need force");
+
+        assert_eq!(sha(&p, "HEAD"), head);
+        assert_eq!(
+            std::fs::read_to_string(p.join("mine.txt")).unwrap(),
+            "work in progress\n",
+            "redoing a commit destroyed unrelated uncommitted work"
         );
     }
 }

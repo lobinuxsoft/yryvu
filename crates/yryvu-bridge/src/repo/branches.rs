@@ -149,6 +149,16 @@ pub fn delete_local_branch(repo_path: &Path, name: &str, force: bool) -> Result<
         }
     }
 
+    // Same refusal for a branch checked out in a *linked* worktree. `force`
+    // does not override this: deleting the ref would leave that worktree's
+    // HEAD dangling and the commits reachable only via reflog, with no way
+    // back through the UI. git itself requires the worktree removed first.
+    if let Some(path) = worktree_holding_branch(&repo, reference.name()) {
+        return Err(BackendError::Branch(anyhow!(
+            "cannot delete branch '{name}': it is checked out in the worktree at {path}"
+        )));
+    }
+
     if !force {
         let tip = reference
             .peel_to_id_in_place()
@@ -172,6 +182,31 @@ pub fn delete_local_branch(repo_path: &Path, name: &str, force: bool) -> Result<
         .map_err(|e| BackendError::Branch(anyhow::Error::new(e)))?;
 
     Ok(())
+}
+
+/// The worktree path that has `branch_ref` checked out, if any linked
+/// worktree does. Returns the base directory so the caller can name it in
+/// the refusal. Only linked worktrees are inspected — the main worktree's
+/// HEAD is guarded separately by the caller. Any worktree we can't open is
+/// skipped: an inaccessible worktree can't be holding a live checkout that
+/// a delete would corrupt.
+fn worktree_holding_branch(
+    repo: &gix::Repository,
+    branch_ref: &gix::refs::FullNameRef,
+) -> Option<String> {
+    let main = repo.main_repo().ok()?;
+    for proxy in main.worktrees().ok()? {
+        let base = proxy.base().ok().map(|p| p.display().to_string());
+        let Ok(linked) = proxy.into_repo_with_possibly_inaccessible_worktree() else {
+            continue;
+        };
+        if let Ok(Some(head)) = linked.head_name() {
+            if head.as_bstr() == branch_ref.as_bstr() {
+                return Some(base.unwrap_or_default());
+            }
+        }
+    }
+    None
 }
 
 /// Rename `old_name` to `new_name`, the way `git branch -m` does.
@@ -443,6 +478,40 @@ mod tests {
         assert!(
             matches!(err, BackendError::BranchExists { .. }),
             "expected BranchExists, got {err:?}"
+        );
+    }
+
+    /// A branch checked out in a linked worktree must not be deletable —
+    /// even with force. Deleting the ref would strand the worktree's HEAD
+    /// and the commits would survive only in the reflog (#457).
+    #[test]
+    fn delete_branch_checked_out_in_worktree_is_refused_even_with_force() {
+        let (_d, p) = repo_on_main();
+        git(&p, &["branch", "feature"]);
+        // A dedicated tempdir so the worktree path never collides with a
+        // parallel test run.
+        let wt_dir = tempfile::tempdir().unwrap();
+        let wt = wt_dir.path().join("wt-feature");
+        git(
+            &p,
+            &["worktree", "add", "-q", wt.to_str().unwrap(), "feature"],
+        );
+
+        // Force on: the guard must still refuse.
+        let err = delete_local_branch(&p, "feature", true).unwrap_err();
+        assert!(
+            matches!(err, BackendError::Branch(_)),
+            "expected a Branch refusal, got {err:?}"
+        );
+        assert!(
+            format!("{err}").contains("worktree"),
+            "the refusal should name the worktree, got: {err}"
+        );
+        // The ref must survive so the worktree stays valid.
+        assert_eq!(
+            out(&p, &["rev-parse", "--verify", "refs/heads/feature"]),
+            out(&wt, &["rev-parse", "HEAD"]),
+            "the branch ref was deleted despite the guard"
         );
     }
 }

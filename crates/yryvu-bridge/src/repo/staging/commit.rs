@@ -199,18 +199,39 @@ fn move_head_to(
     oid: git2::Oid,
     reflog_msg: &str,
 ) -> Result<(), BackendError> {
-    let head_ref = repo.head().ok();
-    match head_ref {
-        Some(r) if r.is_branch() => {
+    match repo.head() {
+        // Born branch: HEAD resolves to `refs/heads/<name>` — move it.
+        Ok(r) if r.is_branch() => {
             let mut branch_ref = repo
                 .find_reference(r.name().unwrap_or("HEAD"))
                 .map_err(git2_err)?;
             branch_ref.set_target(oid, reflog_msg).map_err(git2_err)?;
         }
-        _ => {
-            // Detached HEAD or unborn branch — point HEAD directly.
+        // Detached HEAD: HEAD is itself a direct ref — point it at `oid`.
+        Ok(_) => {
             repo.reference("HEAD", oid, true, reflog_msg)
                 .map_err(git2_err)?;
+        }
+        // Unborn branch: `git_repository_head` errors, but HEAD is a symref
+        // to a branch that does not exist yet. Create that branch at `oid`
+        // and leave HEAD symbolic — mirroring the unsigned path's
+        // `repo.commit(Some("HEAD"), ...)`, which resolves the symref and
+        // births the branch. Overwriting HEAD with a direct ref instead
+        // (the old `_` arm) detaches HEAD on the very first signed commit.
+        Err(_) => {
+            let head = repo.find_reference("HEAD").map_err(git2_err)?;
+            match head.symbolic_target() {
+                Some(target) => {
+                    repo.reference(target, oid, true, reflog_msg)
+                        .map_err(git2_err)?;
+                }
+                // HEAD is not symbolic and could not be resolved: nothing
+                // sensible to birth, so fall back to a direct HEAD ref.
+                None => {
+                    repo.reference("HEAD", oid, true, reflog_msg)
+                        .map_err(git2_err)?;
+                }
+            }
         }
     }
     Ok(())
@@ -413,5 +434,46 @@ mod tests {
 
         let parents = out(p, &["rev-list", "--parents", "-n", "1", &sha]);
         assert_eq!(parents.split_whitespace().count() - 1, 1);
+    }
+
+    /// The signed path advances HEAD via `move_head_to` (the unsigned path
+    /// lets `repo.commit(Some("HEAD"), ...)` do it). On an unborn branch the
+    /// old code overwrote HEAD with a direct ref → the first signed commit
+    /// detached HEAD and never created `refs/heads/main`. `move_head_to` is
+    /// GPG-agnostic, so an unsigned commit object exercises the same arm
+    /// without needing a signing key in the fixture.
+    #[test]
+    fn signed_first_commit_on_unborn_head_births_the_branch() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        git(p, &["config", "user.name", "t"]);
+        git(p, &["config", "user.email", "t@t"]);
+        std::fs::write(p.join("a.txt"), "one\n").unwrap();
+
+        // Build a commit object without touching any ref — what the signed
+        // path does via `commit_signed` — then hand it to `move_head_to`.
+        let repo = open_git2(p).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("a.txt")).unwrap();
+        index.write().unwrap();
+        let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+        let sig = repo.signature().unwrap();
+        let oid = repo
+            .commit(None, &sig, &sig, "initial", &tree, &[])
+            .unwrap();
+
+        move_head_to(&repo, oid, "yryvu: commit (signed)").unwrap();
+
+        assert_eq!(
+            out(p, &["rev-parse", "refs/heads/main"]),
+            oid.to_string(),
+            "refs/heads/main was never created — the commit is orphaned"
+        );
+        assert_eq!(
+            std::fs::read_to_string(p.join(".git/HEAD")).unwrap().trim(),
+            "ref: refs/heads/main",
+            "HEAD detached on the first signed commit"
+        );
     }
 }

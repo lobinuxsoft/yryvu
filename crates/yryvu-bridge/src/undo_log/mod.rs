@@ -136,6 +136,37 @@ mod tests {
     }
 
     #[test]
+    fn new_op_after_undoing_everything_truncates_full_tail() {
+        let repo = fresh_repo();
+        record_op(
+            repo.path(),
+            OpKind::Commit {
+                sha: "a".into(),
+                parent_sha: None,
+            },
+        )
+        .unwrap();
+        // Undo everything: cursor steps past index 0 to None.
+        set_cursor(repo.path(), None).unwrap();
+        // A fresh op must drop the whole stale tail, not append behind it.
+        record_op(
+            repo.path(),
+            OpKind::Commit {
+                sha: "b".into(),
+                parent_sha: None,
+            },
+        )
+        .unwrap();
+        let log = read_log(repo.path()).unwrap();
+        assert_eq!(log.ops.len(), 1);
+        assert!(matches!(
+            &log.ops[0].kind,
+            OpKind::Commit { sha, .. } if sha == "b"
+        ));
+        assert_eq!(log.cursor, Some(0));
+    }
+
+    #[test]
     fn reflog_tag_format_per_kind() {
         let cases = [
             (

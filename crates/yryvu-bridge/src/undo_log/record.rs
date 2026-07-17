@@ -73,10 +73,10 @@ pub fn read_log(repo_path: &Path) -> Result<UndoLog, UndoLogError> {
 /// per repo so the only contention is theoretical.
 pub fn record_op(repo_path: &Path, kind: OpKind) -> Result<(), UndoLogError> {
     let mut log = read_log(repo_path)?;
-    if let Some(cursor) = log.cursor {
-        // After an undo, a fresh op clears the redo tail.
-        log.ops.truncate(cursor + 1);
-    }
+    // After an undo, a fresh op clears the redo tail. `cursor == None`
+    // means everything was undone, so the whole tail is stale — truncate
+    // to 0, otherwise the new op is appended behind already-undone ops.
+    log.ops.truncate(log.cursor.map_or(0, |c| c + 1));
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(UndoLogError::Clock)?

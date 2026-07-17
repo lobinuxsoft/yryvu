@@ -41,14 +41,18 @@ export function handleGlobalKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  // Undo / Redo (issue #187, #130 cluster).
+  // Undo / Redo (issue #187, #130 cluster). `e.repeat` bails so holding
+  // the combo can't fire a burst of overlapping undos — each is a fresh
+  // deliberate keypress or nothing (#472).
   if (key === "z" && !e.shiftKey) {
     e.preventDefault();
+    if (e.repeat) return;
     void runUndo();
     return;
   }
   if ((key === "z" && e.shiftKey) || key === "y") {
     e.preventDefault();
+    if (e.repeat) return;
     void runRedo();
     return;
   }

@@ -13,11 +13,34 @@
 //! Sub-PR 3 will add `redo_last_undo` here.
 
 use std::path::PathBuf;
+use std::sync::{LazyLock, Mutex, MutexGuard};
 
 use serde::Serialize;
 
 use crate::repo::undo::{apply_inverse, apply_redo, UndoOutcome};
 use crate::undo_log::{read_log, set_cursor};
+
+/// Serializes the whole read→apply→set_cursor sequence of every undo /
+/// redo invocation. The sidecar is a read-modify-write file with no lock
+/// of its own (`write_log` is last-rename-wins), so two overlapping calls
+/// both read the same `cursor` and each run the inverse of the same op.
+/// For HEAD-relative inverses (cherry-pick / revert reset to `HEAD~1`)
+/// that silently drops one extra commit per overlap while the cursor steps
+/// back once (#472).
+///
+/// A single process-wide mutex is enough: undo / redo is a human-driven
+/// action, never a hot path, and serializing two *different* repos is a
+/// benign non-event. It also closes the multi-window case the frontend
+/// in-flight guard can't see.
+static UNDO_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+/// Acquire [`UNDO_MUTEX`], recovering from poisoning. The guarded value is
+/// `()` and the sidecar writes atomically, so a prior panic left no
+/// half-written invariant — refusing every future undo over a poison flag
+/// would be strictly worse than proceeding.
+fn undo_lock() -> MutexGuard<'static, ()> {
+    UNDO_MUTEX.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 /// Snapshot of the toolbar's undo / redo state. Re-fetched by the
 /// frontend on every `undoRedoNonce` bump and on initial repo open.
@@ -81,6 +104,7 @@ pub async fn undo_last_operation(
 ) -> Result<UndoOutcome, String> {
     let force = force.unwrap_or(false);
     tauri::async_runtime::spawn_blocking(move || {
+        let _guard = undo_lock();
         let path = PathBuf::from(&repo_path);
         let log = read_log(&path).map_err(|e| e.to_string())?;
         let cursor = log.cursor.ok_or_else(|| "nothing to undo".to_string())?;
@@ -108,6 +132,7 @@ pub async fn undo_last_operation(
 pub async fn redo_last_undo(repo_path: String, force: Option<bool>) -> Result<UndoOutcome, String> {
     let force = force.unwrap_or(false);
     tauri::async_runtime::spawn_blocking(move || {
+        let _guard = undo_lock();
         let path = PathBuf::from(&repo_path);
         let log = read_log(&path).map_err(|e| e.to_string())?;
         // Redo target sits at cursor + 1 (or index 0 when the user has
@@ -131,4 +156,22 @@ pub async fn redo_last_undo(repo_path: String, force: Option<bool>) -> Result<Un
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn undo_lock_recovers_from_poison() {
+        // Panic while holding the mutex to poison it.
+        let _ = std::panic::catch_unwind(|| {
+            let _held = UNDO_MUTEX.lock().unwrap();
+            panic!("poison the undo mutex");
+        });
+        assert!(UNDO_MUTEX.is_poisoned());
+        // undo_lock must still hand out the guard — refusing every future
+        // undo over a stale poison flag would be strictly worse.
+        let _guard = undo_lock();
+    }
 }

@@ -32,6 +32,8 @@ pub enum BackendError {
     CommitNotFound { sha: String },
     #[error("working tree has uncommitted changes")]
     WorkingTreeDirty,
+    #[error("HEAD no longer points at the {op} commit this undo targets; refusing to reset the wrong commit")]
+    UndoHeadMismatch { op: String },
     #[error("merge is not a fast-forward")]
     NotFastForward,
     #[error("merge produced conflicts in {paths:?}")]

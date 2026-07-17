@@ -16,7 +16,7 @@
 //! | `CheckoutBranch`            | `checkout_branch(from)`                              |
 //! | `CheckoutCommit`            | `checkout_branch(from)` (or `checkout_commit(from)` if `from` was a SHA) |
 //! | `Reset`                     | `reset_to_commit(from_sha, original_mode)` — same mode reverses the same way |
-//! | `CherryPick` / `Revert`     | `reset --hard HEAD~1` — drops the synthesised commit |
+//! | `CherryPick` / `Revert`     | `reset --hard <parent of recorded new_sha>` — verified against HEAD first |
 //! | `Merge`                     | `reset --hard pre_merge_sha`                         |
 //! | `StashPush`                 | `stash_pop` — re-applies what we just stashed        |
 //! | `StashPop`                  | not supported in sub-PR 2 — re-stashing safely needs a heavier index/worktree snapshot than libgit2's `stash_save2` provides |
@@ -175,8 +175,13 @@ fn apply_inverse_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Bac
         }
         OpKind::Reset { from_sha, mode, .. } => {
             // Reset with the same mode against the original from-sha
-            // perfectly inverts the original reset. Note: we go through
-            // the public `reset_to_commit` helper so the inverse itself
+            // inverts a Soft reset exactly. For Mixed the original reset
+            // re-read the tree into the index (reset.c), discarding the
+            // staging; this inverse restores content but NOT the prior
+            // staging state — files come back unstaged. No content is
+            // lost. (Restoring the index is tracked separately — it needs
+            // OpKind::Reset to record the pre-reset index tree.) Note: we
+            // go through the public `reset_to_commit` helper so the inverse itself
             // appends a new log entry — that means consecutive undos of
             // a reset will keep stepping back through history.
             // Acceptable for sub-PR 2; the cursor logic in commands/undo.rs
@@ -186,15 +191,13 @@ fn apply_inverse_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Bac
                 kind_label: "reset".into(),
             })
         }
-        OpKind::CherryPick { .. } | OpKind::Revert { .. } => {
-            head_minus_one_hard(repo_path)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: if matches!(op, OpKind::CherryPick { .. }) {
-                    "cherry-pick".into()
-                } else {
-                    "revert".into()
-                },
-            })
+        OpKind::CherryPick { new_sha, .. } | OpKind::Revert { new_sha, .. } => {
+            let label = if matches!(op, OpKind::CherryPick { .. }) {
+                "cherry-pick"
+            } else {
+                "revert"
+            };
+            reset_synthesised_commit(repo_path, new_sha, label)
         }
         OpKind::Merge { pre_merge_sha, .. } => {
             hard_reset(repo_path, pre_merge_sha)?;
@@ -244,15 +247,49 @@ fn hard_reset(repo_path: &Path, sha: &str) -> Result<(), BackendError> {
     Ok(())
 }
 
-fn head_minus_one_hard(repo_path: &Path) -> Result<(), BackendError> {
+/// Undo a cherry-pick / revert by hard-resetting to the parent of the
+/// commit it created — but only after confirming HEAD *still is* that
+/// commit. Both ops synthesise a single-parent commit on top of HEAD, so
+/// their inverse is a reset to that parent.
+///
+/// Doing it relative to HEAD (`HEAD~1`) was blind: any commit made outside
+/// the app (or a sidecar write that silently failed) leaves HEAD pointing
+/// at the user's own work, and `reset --hard HEAD~1` would destroy that
+/// instead of the op's commit — the exact opposite of what "undo the
+/// cherry-pick" means. The `Merge` and `Commit` arms already reset by
+/// recorded SHA; this brings cherry-pick / revert in line (#461).
+fn reset_synthesised_commit(
+    repo_path: &Path,
+    new_sha: &str,
+    label: &str,
+) -> Result<UndoOutcome, BackendError> {
     let repo = open_git2(repo_path)?;
-    let head = repo.head().map_err(git2_err)?;
-    let head_commit = head.peel_to_commit().map_err(git2_err)?;
-    let parent = head_commit.parent(0).map_err(git2_err)?;
+    let expected = git2::Oid::from_str(new_sha).map_err(|_| BackendError::CommitNotFound {
+        sha: new_sha.to_string(),
+    })?;
+    let head_oid = repo
+        .head()
+        .map_err(git2_err)?
+        .peel_to_commit()
+        .map_err(git2_err)?
+        .id();
+    if head_oid != expected {
+        return Err(BackendError::UndoHeadMismatch {
+            op: label.to_string(),
+        });
+    }
+    let commit = repo
+        .find_commit(expected)
+        .map_err(|_| BackendError::CommitNotFound {
+            sha: new_sha.to_string(),
+        })?;
+    let parent = commit.parent(0).map_err(git2_err)?;
     let obj = repo.find_object(parent.id(), None).map_err(git2_err)?;
     repo.reset(&obj, git2::ResetType::Hard, None)
         .map_err(git2_err)?;
-    Ok(())
+    Ok(UndoOutcome::Applied {
+        kind_label: label.into(),
+    })
 }
 
 /// Re-apply `op` after an undo (sub-PR 3 of #130). Mirrors `apply_inverse`
@@ -462,6 +499,42 @@ mod tests {
 
         apply_inverse(&p, &op, false).unwrap();
         assert_eq!(sha(&p, "HEAD"), parent);
+    }
+
+    /// The heart of #461: after a commit made outside the app, HEAD no
+    /// longer points at the cherry-pick. A blind `reset --hard HEAD~1`
+    /// would destroy that outside commit; the recorded-SHA check must
+    /// refuse instead, leaving HEAD exactly where it is.
+    #[test]
+    fn cherry_pick_undo_refuses_when_head_moved() {
+        let (_d, p) = repo_with_dirty_tree();
+        std::fs::remove_file(p.join("mine.txt")).unwrap();
+        // The cherry-pick result is the current HEAD.
+        let cherry = sha(&p, "HEAD");
+        // A commit made outside the app: HEAD advances, unrecorded.
+        std::fs::write(p.join("outside.txt"), "my own work\n").unwrap();
+        git(&p, &["add", "."]);
+        git(&p, &["commit", "-qm", "outside work"]);
+        let outside = sha(&p, "HEAD");
+
+        let op = OpKind::CherryPick {
+            applied_sha: cherry.clone(),
+            new_sha: cherry,
+        };
+        let err = apply_inverse(&p, &op, false).unwrap_err();
+        assert!(
+            matches!(err, BackendError::UndoHeadMismatch { .. }),
+            "expected UndoHeadMismatch, got {err:?}"
+        );
+        assert_eq!(
+            sha(&p, "HEAD"),
+            outside,
+            "the outside commit must survive an undo it wasn't the target of"
+        );
+        assert_eq!(
+            std::fs::read_to_string(p.join("outside.txt")).unwrap(),
+            "my own work\n"
+        );
     }
 
     /// The redo of a hard-reset-forward op is just as destructive as its

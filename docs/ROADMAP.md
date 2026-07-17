@@ -35,9 +35,32 @@ daily flow, then differentiators, then luxuries. Each wave maps to a release.
 | 6 — Diff completeness | per-filetype renderer (#60), apply-patch / git am (#75) | v0.4.x | ✅ done |
 | 7 — M3 Pro | gitflow (#19), worktrees (#20), profiles (#22) | v0.5.0 (closes M3) | ✅ done |
 | 8 — Theme power v2 | tokens (#298), manifest (#299), icons (#300), graph vars (#301), rewrite themes (#303), docs (#302) — umbrella #297 | v0.5.x | ✅ done |
-| **9 — Perf + cleanup** | lazy hunks (#178), stream layout (#181), RepoMgmt DOD (#217), cols resize (#37), don't-ask (#196), remote mgmt (#132), HEAD-first (#126), deeplinks (#110), commit-panel parity (#151), BYO OAuth (#263), GK audit (#33) | v0.5.x → v0.6.x | ⬜ **next** |
-| 10 — M4 Luxuries | timeline (#23), inline-blame (#24), terminal (#25), themes umbrella (#27) | v0.6.0 (closes M4) | ⬜ |
-| 11 — Packaging | Flathub (#361) | v1.0.0 | ⬜ |
+| **9 — Data safety** | umbrella **#448** — 21 defects in core git ops, 6 fixed. **Absolute priority, blocks the next release.** | v0.5.x | 🔥 **in progress (6/21)** |
+| 10 — Perf + cleanup | lazy hunks (#178), stream layout (#181), RepoMgmt DOD (#217), cols resize (#37), don't-ask (#196), remote mgmt (#132), HEAD-first (#126), deeplinks (#110), commit-panel parity (#151), BYO OAuth (#263), GK audit (#33) | v0.5.x → v0.6.x | ⬜ |
+| 11 — M4 Luxuries | timeline (#23), inline-blame (#24), terminal (#25), themes umbrella (#27) | v0.6.0 (closes M4) | ⬜ |
+| 12 — Packaging | Flathub (#361) | v1.0.0 | ⬜ |
+
+### Wave 9 — Data safety (umbrella #448)
+
+Started 2026-07-16 from a user report: *"al mergear sólo se queda con lo tuyo"*. That
+turned out to be **two** distinct bugs sharing one symptom (#447 fast-forward, #454
+merge parent). A five-lens audit of the core git operations found 14 more; a second,
+undo/redo-focused round found 7 more.
+
+Every defect was confirmed against the vendored libgit2 1.8.1 source rather than
+recalled, and reproduced with an executable probe before filing. **None of them had a
+test. All of them passed the suite green.**
+
+**Fixed:** #447 (FF checkout order), #449 (rebase over dirty tree), #450 (undo guard,
++ hotfix #468), #452 (discard destroys staged), #453 (force-with-lease), #454 (merge
+parent + MERGE_HEAD).
+
+**Open, most severe first:** #469, #470, #472, #451, #455, #456, #471, #475, #457,
+#458, #459, #460, #461, #473, #474, #462.
+
+**Why it is its own wave:** these are silent data-loss bugs. They do not surface in
+review, and a green suite says nothing about them — only a test that reproduces the
+loss keeps them dead. `main` (v0.5.0) still ships all of them.
 
 ### Blocked (outside waves)
 

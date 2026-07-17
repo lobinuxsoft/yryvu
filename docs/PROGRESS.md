@@ -10,19 +10,72 @@ non-obvious conventions.
 
 ## Current status
 
-- **`development` HEAD:** `08c3187` (2026-07-11). `main` = v0.5.0.
-- **Just shipped — Wave 8 (Theme power v2), umbrella #297 CLOSED** (PRs #440–#445):
-  - **#298** token expansion — shapes/spacing/borders/per-context fonts as `--*`.
-  - **#299** multi-file theme structure — optional `[layers]` in `theme.toml`
-    (file | list | `"dir/"`), 3 injected `<style>` layers (tokens/icons/personality).
-  - **#300** icon system — chrome icons render via `mask-image: var(--icon-<name>)`;
-    a theme overrides one by dropping `icons/<name>.svg` (backend base64-inlines it).
-  - **#301** themeable graph node radius + edge width (geometry deferred — see below).
-  - **#303** rewrote 9 themes' `personality.css` against the real DOM.
-  - **#302** docs: `docs/themes/{CHEATSHEET,EXAMPLES}.md` + a README per built-in.
-- **Next:** **Wave 9 — Perf + cleanup**. See [ROADMAP.md](ROADMAP.md).
-- **Un-smoked debt:** #75 (Apply Patch flow) and Wave 6's submodule pointer
-  pane + LFS placeholder were merged green but not manually smoked.
+- **`development` HEAD:** `50b688c` (2026-07-16). `main` = v0.5.0, **231 commits behind**.
+- **In progress — Wave 9 (Data safety), umbrella #448.** Absolute priority by user
+  decision; blocks the next release. 6 of 21 fixed. See [ROADMAP.md](ROADMAP.md).
+- **Next up:** **#469** and **#470** — both one-line fixes, both `priority:high`,
+  both data-loss.
+- **⚠️ `main` still ships every one of these bugs.** A user on a release binary can
+  still have a pull silently revert their teammate's work (#447). Worth deciding on a
+  release before continuing down the list.
+- **Un-smoked debt:** #75 (Apply Patch flow), Wave 6's submodule pointer pane + LFS
+  placeholder. The Wave 9 fixes are covered by regression tests; #467's dialog was
+  smoked by the user.
+
+## Data safety — durable lessons (Wave 9)
+
+The audit found the same two shapes over and over. Both are invisible to review:
+
+1. **A guard that exists in the sibling function and is missing here.**
+   `cherry_pick_commits_onto` pre-flights a dirty tree; `begin_rebase` did not (#449).
+   `delete_local_branch` refuses the checked-out branch; `rename_branch` does not
+   (#455). `create_tag` signs before mutating; `annotate_tag` does not. The `Merge`
+   and `Commit` undo arms reset by recorded SHA; `CherryPick`/`Revert` reset blind
+   (#461).
+2. **A doc-comment promising a guarantee the code does not provide.** Five so far,
+   including the one written on the #447 fix itself (#462). Treat every "this refuses
+   / never touches / perfectly inverts" comment as a claim to verify, not a fact.
+
+### libgit2: the checkout baseline is HEAD's tree
+
+**Order: `checkout_tree` FIRST, move the ref AFTER.** libgit2 defaults the checkout
+baseline to HEAD's tree. Move the ref first and `baseline == target`; the diff yields
+an `UNMODIFIED` delta per path (`GIT_DIFF_INCLUDE_UNMODIFIED`), and
+`checkout.c:498-503` resolves that to `CHECKOUT_ACTION_IF(FORCE, UPDATE_BLOB, NONE)`.
+
+So the real rule is: **ref-before-checkout is a silent no-op iff the strategy is
+SAFE.** With FORCE the same ordering degenerates into a correct `reset --hard`. This
+is why `merge.rs`'s `.safe()` is load-bearing (with `.force()` a fast-forward would
+clobber local edits) and why `rebase/interactive/exec.rs` is correct despite the
+inverted order.
+
+### Other verified libgit2 behaviours
+
+- `reset.c:150-159` forces `GIT_CHECKOUT_FORCE` and checks out **before** moving the
+  ref, ignoring caller options. So every `repo.reset()` call site is safe by
+  construction — and `reset --hard` **never** refuses over a dirty tree (#450).
+- `checkout_head` is `checkout_tree(HEAD)`: it restores from **HEAD**, not the index,
+  and rewrites the index too unless `DONT_UPDATE_INDEX` is set. `git checkout --
+  <path>` restores from the **index** — use `checkout_index` (#452).
+- `push.c:378-380`: `update.src` is what the **remote** has; `update.dst` is the
+  **local** oid being pushed. A lease compares against `src` (#453).
+- `git_remote_push` does **not** error on a per-ref rejection — only the
+  `push_update_reference` callback surfaces it (#456).
+- Git never infers a merge: the commit object must list the parent, so a commit
+  written while `MERGE_HEAD` exists has to read it (#454).
+
+### Testing rule
+
+**Test the round trip, not each half.** #467 added five tests, each exercising one
+direction, and shipped a regression that made `commit → undo → redo` unreachable
+(fixed in #468). Undo/redo, stage/unstage, and stash push/pop all need both
+directions in one test.
+
+Fixture identity must go through git config, not `GIT_AUTHOR_*` env vars: those reach
+only the git CLI, while libgit2 reads the config. CI runners have no global
+`user.name`. Reproduce CI locally with
+`HOME=$(mktemp -d) CARGO_HOME=~/.cargo RUSTUP_HOME=~/.rustup cargo test` — preserving
+CARGO_HOME/RUSTUP_HOME, or rustup re-downloads the toolchain and the results are junk.
 
 ## GitKraken-fidelity rule (hard)
 

@@ -174,44 +174,47 @@ pub fn delete_local_branch(repo_path: &Path, name: &str, force: bool) -> Result<
     Ok(())
 }
 
+/// Rename `old_name` to `new_name`, the way `git branch -m` does.
+///
+/// Delegates to libgit2's `git_branch_move` (git2 `Branch::rename`), which
+/// does the two things the previous gix implementation did NOT:
+///
+/// - **Follows HEAD.** `git_reference_rename` updates any HEAD (in every
+///   worktree) that symbolically pointed at the renamed branch. The old
+///   code only moved the ref, so renaming the checked-out branch left HEAD
+///   dangling at a deleted ref — git then read the repo as an *unborn*
+///   branch, reported every file as staged, and a commit forked history
+///   into a second root.
+/// - **Migrates the config.** `git_config_rename_section` moves the whole
+///   `[branch "old"]` section (remote / merge / rebase / description), so
+///   the upstream survives instead of being orphaned and reported as
+///   `upstream: None`.
+///
+/// Renaming the current branch is therefore safe; the UI keeps the action
+/// enabled.
+///
+/// BACKEND: git2 — gix has ref-rename primitives but neither the
+/// worktree-aware HEAD follow nor the config-section migration; hand-rolling
+/// both duplicates logic libgit2 already gets right.
 pub fn rename_branch(repo_path: &Path, old_name: &str, new_name: &str) -> Result<(), BackendError> {
     validate_branch_name(new_name)?;
-    let repo = open_repo(repo_path)?;
+    let repo = open_git2(repo_path)?;
 
-    let old_full = format!("refs/heads/{old_name}");
-    let new_full = format!("refs/heads/{new_name}");
+    let mut branch = repo
+        .find_branch(old_name, git2::BranchType::Local)
+        .map_err(|_| BackendError::BranchNotFound {
+            name: old_name.to_string(),
+        })?;
 
-    let mut reference =
-        repo.find_reference(old_full.as_str())
-            .map_err(|_| BackendError::BranchNotFound {
-                name: old_name.to_string(),
-            })?;
-
-    if repo.find_reference(new_full.as_str()).is_ok() {
+    // Surface the typed error rather than libgit2's generic "failed to
+    // rename" — `rename(.., force=false)` would fail too, but less legibly.
+    if repo.find_branch(new_name, git2::BranchType::Local).is_ok() {
         return Err(BackendError::BranchExists {
             name: new_name.to_string(),
         });
     }
 
-    let tip = reference
-        .peel_to_id_in_place()
-        .context("peel branch tip")
-        .map_err(BackendError::Branch)?
-        .detach();
-
-    // Create the new ref, then delete the old one.
-    repo.reference(
-        new_full.as_str(),
-        tip,
-        gix::refs::transaction::PreviousValue::MustNotExist,
-        format!("yryvu: rename {old_name} -> {new_name}"),
-    )
-    .map_err(|e| BackendError::Branch(anyhow::Error::new(e)))?;
-
-    reference
-        .delete()
-        .map_err(|e| BackendError::Branch(anyhow::Error::new(e)))?;
-
+    branch.rename(new_name, false).map_err(git2_err)?;
     Ok(())
 }
 
@@ -322,5 +325,124 @@ impl BranchInfo {
             BranchKind::Local => 0,
             BranchKind::Remote => 1,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git(cwd: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(cwd)
+            .status()
+            .expect("git");
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    fn out(cwd: &Path, args: &[&str]) -> String {
+        String::from_utf8(
+            Command::new("git")
+                .args(args)
+                .current_dir(cwd)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string()
+    }
+
+    fn identity(repo: &Path) {
+        git(repo, &["config", "user.name", "t"]);
+        git(repo, &["config", "user.email", "t@t"]);
+    }
+
+    fn repo_on_main() -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().to_path_buf();
+        git(&p, &["init", "-q", "-b", "main"]);
+        identity(&p);
+        std::fs::write(p.join("a.txt"), "base\n").unwrap();
+        git(&p, &["add", "."]);
+        git(&p, &["commit", "-qm", "base"]);
+        (dir, p)
+    }
+
+    /// Renaming the checked-out branch must move HEAD with it. Otherwise
+    /// HEAD dangles at the deleted ref, the repo reads as an unborn branch,
+    /// and the next commit forks history into a second root (#455).
+    #[test]
+    fn rename_current_branch_keeps_head_attached() {
+        let (_d, p) = repo_on_main();
+        let tip = out(&p, &["rev-parse", "HEAD"]);
+
+        rename_branch(&p, "main", "trunk").unwrap();
+
+        assert_eq!(
+            out(&p, &["symbolic-ref", "HEAD"]),
+            "refs/heads/trunk",
+            "HEAD did not follow the rename"
+        );
+        assert_eq!(out(&p, &["rev-parse", "HEAD"]), tip, "trunk lost the tip");
+        // The clean-tree tell: an attached HEAD reports the branch, a
+        // dangling one reports "No commits yet".
+        assert_eq!(out(&p, &["rev-parse", "--abbrev-ref", "HEAD"]), "trunk");
+        assert!(
+            out(&p, &["status", "--porcelain"]).is_empty(),
+            "a detached HEAD would surface every file as staged"
+        );
+        assert!(
+            repo_on_main_ref_gone(&p),
+            "old ref refs/heads/main still present"
+        );
+    }
+
+    fn repo_on_main_ref_gone(p: &Path) -> bool {
+        Command::new("git")
+            .args(["show-ref", "--verify", "--quiet", "refs/heads/main"])
+            .current_dir(p)
+            .status()
+            .unwrap()
+            .code()
+            != Some(0)
+    }
+
+    /// The `[branch "old"]` config — remote + merge — must ride along, or
+    /// the upstream is orphaned and the branch reports no tracking (#455).
+    #[test]
+    fn rename_branch_keeps_upstream() {
+        let (_d, p) = repo_on_main();
+        // Fake an upstream by writing the tracking config git would set.
+        git(&p, &["config", "branch.main.remote", "origin"]);
+        git(&p, &["config", "branch.main.merge", "refs/heads/main"]);
+
+        rename_branch(&p, "main", "trunk").unwrap();
+
+        assert_eq!(out(&p, &["config", "branch.trunk.remote"]), "origin");
+        assert_eq!(
+            out(&p, &["config", "branch.trunk.merge"]),
+            "refs/heads/main"
+        );
+        // The stale section must be gone, not left orphaned.
+        assert!(
+            !out(&p, &["config", "--get-regexp", "^branch\\.main\\."]).contains("branch.main"),
+            "stale branch.main.* config left behind"
+        );
+    }
+
+    /// Renaming to a name that already exists must surface the typed error.
+    #[test]
+    fn rename_to_existing_branch_is_rejected() {
+        let (_d, p) = repo_on_main();
+        git(&p, &["branch", "other"]);
+        let err = rename_branch(&p, "main", "other").unwrap_err();
+        assert!(
+            matches!(err, BackendError::BranchExists { .. }),
+            "expected BranchExists, got {err:?}"
+        );
     }
 }

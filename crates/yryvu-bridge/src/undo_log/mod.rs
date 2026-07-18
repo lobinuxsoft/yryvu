@@ -173,6 +173,8 @@ mod tests {
             repo.path(),
             OpKind::StashPush {
                 stash_sha: "deadbeef".into(),
+                include_untracked: true,
+                include_ignored: false,
             },
         )
         .unwrap();
@@ -224,6 +226,8 @@ mod tests {
             (
                 OpKind::StashPush {
                     stash_sha: "deadbeef".into(),
+                    include_untracked: true,
+                    include_ignored: false,
                 },
                 "yryvu:op=stash-push|sha=deadbeef",
             ),

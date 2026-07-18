@@ -205,8 +205,10 @@ fn apply_inverse_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Bac
                 kind_label: "merge".into(),
             })
         }
-        OpKind::StashPush { .. } => {
-            worktree::stash_pop(repo_path)?;
+        OpKind::StashPush { stash_sha, .. } => {
+            // Pop the exact stash we pushed, not whatever is on top now —
+            // the user may have stashed again since.
+            worktree::stash_pop_by_sha(repo_path, stash_sha)?;
             Ok(UndoOutcome::Applied {
                 kind_label: "stash push".into(),
             })
@@ -361,16 +363,18 @@ fn apply_redo_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Backen
                 kind_label: "merge".into(),
             })
         }
-        OpKind::StashPush { .. } => {
+        OpKind::StashPush {
+            include_untracked,
+            include_ignored,
+            ..
+        } => {
             // Re-stashing the current working tree captures whatever's
             // there now — assumed identical to the pre-undo state since
             // the user just popped it back. Producing a different stash
             // SHA than the original is fine: the cursor walk doesn't
-            // care about SHA equality.
-            // Undo reversal — keep pre-#12 behavior (untracked
-            // included, ignored excluded). The recorded op didn't
-            // carry per-flag history so reverse uses sane defaults.
-            worktree::stash_push(repo_path, None, true, false)?;
+            // care about SHA equality. Mirror the original op's flags so
+            // the redo captures the same scope it did the first time.
+            worktree::stash_push(repo_path, None, *include_untracked, *include_ignored)?;
             Ok(UndoOutcome::Applied {
                 kind_label: "stash push".into(),
             })

@@ -28,6 +28,8 @@ pub fn stash_push(
         repo_path,
         OpKind::StashPush {
             stash_sha: stash_oid.to_string(),
+            include_untracked,
+            include_ignored,
         },
     );
     Ok(())
@@ -53,6 +55,36 @@ pub fn stash_pop_at(repo_path: &Path, index: usize) -> Result<(), BackendError> 
     repo.stash_pop(index, None).map_err(git2_err)?;
     crate::undo_log::clear_log_best_effort(repo_path);
     Ok(())
+}
+
+/// The queue index of the stash entry whose commit is `sha`, or `None`
+/// if it is no longer queued. `stash@{index}` positions shift as entries
+/// are pushed and popped, so a recorded sha must be re-resolved before use.
+fn stash_index_of(repo: &mut git2::Repository, sha: &str) -> Result<Option<usize>, BackendError> {
+    let mut found = None;
+    repo.stash_foreach(|index, _message, oid| {
+        if oid.to_string() == sha {
+            found = Some(index);
+            false // stop walking
+        } else {
+            true
+        }
+    })
+    .map_err(git2_err)?;
+    Ok(found)
+}
+
+/// Pop the stash entry whose commit is `sha`, wherever it sits in the
+/// queue — not blindly `stash@{0}`. Used by `StashPush` undo so a stash
+/// the user pushed on top afterwards is never popped by mistake. Errors
+/// with `StashEntryGone` if the entry has already left the queue.
+pub fn stash_pop_by_sha(repo_path: &Path, sha: &str) -> Result<(), BackendError> {
+    let mut repo = open_git2(repo_path)?;
+    let index = stash_index_of(&mut repo, sha)?.ok_or_else(|| BackendError::StashEntryGone {
+        sha: sha.to_string(),
+    })?;
+    drop(repo);
+    stash_pop_at(repo_path, index)
 }
 
 /// Apply a stash entry to the working tree WITHOUT removing it from
@@ -97,4 +129,93 @@ pub fn stash_count(repo_path: &Path) -> Result<u32, BackendError> {
     })
     .map_err(git2_err)?;
     Ok(count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git(repo: &Path, args: &[&str]) {
+        let ok = Command::new("git")
+            .args(args)
+            .current_dir(repo)
+            .status()
+            .expect("git")
+            .success();
+        assert!(ok, "git {args:?} failed");
+    }
+
+    /// Repo on `main` with one committed file, so later edits are stashable.
+    fn base_repo() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        git(p, &["init", "-q", "-b", "main"]);
+        git(p, &["config", "user.name", "t"]);
+        git(p, &["config", "user.email", "t@t"]);
+        std::fs::write(p.join("tracked.txt"), "base\n").unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "base"]);
+        dir
+    }
+
+    fn top_stash_sha(p: &Path) -> String {
+        let mut repo = open_git2(p).unwrap();
+        let mut sha = None;
+        repo.stash_foreach(|index, _m, oid| {
+            if index == 0 {
+                sha = Some(oid.to_string());
+            }
+            true
+        })
+        .unwrap();
+        sha.expect("a stash on the queue")
+    }
+
+    /// The undo of a stash push must pop the stash it recorded, even when
+    /// the user stashed again afterwards — not blindly `stash@{0}` (#471).
+    #[test]
+    fn pop_by_sha_targets_the_recorded_stash_not_the_top() {
+        let dir = base_repo();
+        let p = dir.path();
+
+        // Stash A: a distinctive tracked edit.
+        std::fs::write(p.join("tracked.txt"), "from-A\n").unwrap();
+        stash_push(p, Some("A"), true, false).unwrap();
+        let sha_a = top_stash_sha(p);
+
+        // Stash B on top.
+        std::fs::write(p.join("tracked.txt"), "from-B\n").unwrap();
+        stash_push(p, Some("B"), true, false).unwrap();
+        let sha_b = top_stash_sha(p);
+        assert_ne!(sha_a, sha_b);
+
+        // Undo of the A push must restore A's content and leave B queued.
+        stash_pop_by_sha(p, &sha_a).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(p.join("tracked.txt")).unwrap(),
+            "from-A\n",
+            "popped the wrong stash — the top (B) instead of the recorded A"
+        );
+        assert_eq!(stash_count(p).unwrap(), 1, "B should still be queued");
+        assert_eq!(top_stash_sha(p), sha_b, "the surviving stash is not B");
+    }
+
+    /// If the recorded stash is already gone, refuse rather than pop a
+    /// different one.
+    #[test]
+    fn pop_by_sha_errors_when_the_stash_is_gone() {
+        let dir = base_repo();
+        let p = dir.path();
+        std::fs::write(p.join("tracked.txt"), "edit\n").unwrap();
+        stash_push(p, Some("only"), true, false).unwrap();
+        let sha = top_stash_sha(p);
+        stash_pop_at(p, 0).unwrap(); // drain it
+
+        let err = stash_pop_by_sha(p, &sha).unwrap_err();
+        assert!(
+            matches!(err, BackendError::StashEntryGone { .. }),
+            "expected StashEntryGone, got {err:?}"
+        );
+    }
 }

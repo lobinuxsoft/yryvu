@@ -23,7 +23,9 @@ pub use cherry_pick::{cherry_pick_commit, cherry_pick_commits_onto};
 pub use repo_state::{abort_merge, repo_state};
 pub use reset::reset_to_commit;
 pub use revert::revert_commit;
-pub use stash::{stash_apply, stash_count, stash_drop, stash_pop, stash_pop_at, stash_push};
+pub use stash::{
+    stash_apply, stash_count, stash_drop, stash_pop, stash_pop_at, stash_pop_by_sha, stash_push,
+};
 
 /// Snapshot of "where HEAD is right now" for the undo log. Returns the
 /// branch shorthand for an attached HEAD, the commit SHA for a detached

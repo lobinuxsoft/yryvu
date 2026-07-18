@@ -6,6 +6,13 @@ use crate::backend::ResetMode;
 
 use super::errors::REFLOG_TAG_PREFIX;
 
+/// serde default for `StashPush::include_untracked`: the pre-flags stash
+/// path always passed `include_untracked = true`, so old logs decode to
+/// the behaviour they were written under.
+fn default_include_untracked() -> bool {
+    true
+}
+
 /// Operation archetypes yryvu knows how to invert. Each variant carries
 /// the minimum metadata sub-PR 2's inverse builder needs — pre-SHA for
 /// resets, post-SHA for "undo this commit", stash refs, etc. Anything
@@ -60,8 +67,17 @@ pub enum OpKind {
     },
     /// Stash push. `stash_sha` is the new top-of-stash commit so undo
     /// can pop the same stash even if the user pushed others on top
-    /// before undoing.
-    StashPush { stash_sha: String },
+    /// before undoing. `include_untracked` / `include_ignored` record the
+    /// original flags so the redo re-stashes with the same scope. Both
+    /// default (untracked on, ignored off) for logs written before the
+    /// flags were recorded.
+    StashPush {
+        stash_sha: String,
+        #[serde(default = "default_include_untracked")]
+        include_untracked: bool,
+        #[serde(default)]
+        include_ignored: bool,
+    },
     /// Stash pop. `stash_sha` is the popped stash commit so undo can
     /// re-stash to the same state.
     StashPop { stash_sha: String },
@@ -149,7 +165,7 @@ impl OpKind {
                 "{}merge|source={}|pre={}|post={}",
                 REFLOG_TAG_PREFIX, source, pre_merge_sha, post_merge_sha,
             ),
-            OpKind::StashPush { stash_sha } => {
+            OpKind::StashPush { stash_sha, .. } => {
                 format!("{}stash-push|sha={}", REFLOG_TAG_PREFIX, stash_sha)
             }
             OpKind::StashPop { stash_sha } => {

@@ -76,21 +76,26 @@ pub fn list_worktrees(repo_path: &Path) -> Result<Vec<WorktreeInfo>, BackendErro
 
 /// Whether the working tree rooted at `workdir` has uncommitted changes
 /// (tracked or untracked). Opens the path as its own git2 repo — linked
-/// worktrees resolve their `.git` file transparently. Returns `false`
-/// on any error (missing / bare / unreadable path): a worktree we can't
-/// inspect is treated as clean so it never blocks a remove.
+/// worktrees resolve their `.git` file transparently.
+///
+/// The default on error is `true`, not `false`: this flag drives the
+/// remove dialog's "you have uncommitted work" warning, so a worktree we
+/// can't inspect must be assumed dirty. Reporting "clean" when `open` or
+/// `statuses` fails would drop the warning and let the user confirm a
+/// destructive remove believing there was nothing to lose. An empty path
+/// is the one honest "clean": there is no directory to hold work.
 fn is_path_dirty(workdir: &str) -> bool {
     if workdir.is_empty() {
         return false;
     }
     let Ok(repo) = git2::Repository::open(workdir) else {
-        return false;
+        return true;
     };
     let mut opts = git2::StatusOptions::new();
     opts.include_untracked(true).include_ignored(false);
     repo.statuses(Some(&mut opts))
         .map(|st| !st.is_empty())
-        .unwrap_or(false)
+        .unwrap_or(true)
 }
 
 fn worktree_row_from_repo(
@@ -166,25 +171,47 @@ pub fn worktree_remove(repo_path: &Path, target_workdir: &Path) -> Result<(), Ba
     let main_repo = super::common::open_git2(repo_path)?;
     let wt = find_worktree_by_path(&main_repo, target_workdir)?;
 
-    // git2 prune validates by default — pass `valid` + `working_tree`
-    // flags to get the equivalent of `--force`. The user already
-    // confirmed via the menu.
-    let mut opts = git2::WorktreePruneOptions::new();
-    opts.valid(true).working_tree(true).locked(true);
-    wt.prune(Some(&mut opts)).map_err(super::common::git2_err)?;
+    // Honour the lock. It is the user's explicit "do not touch this"; git
+    // itself needs a second `--force` to remove a locked worktree, and
+    // `locked(true)` below would have been exactly that second force. Refuse
+    // instead, naming the reason — an unlock is a deliberate separate step.
+    if let git2::WorktreeLockStatus::Locked(reason) =
+        wt.is_locked().map_err(super::common::git2_err)?
+    {
+        let detail = reason
+            .as_deref()
+            .map(str::trim)
+            .filter(|r| !r.is_empty())
+            .map(|r| format!(" ({r})"))
+            .unwrap_or_default();
+        return Err(BackendError::Git(anyhow!(
+            "worktree at {} is locked{detail} — unlock it before removing",
+            target_workdir.display()
+        )));
+    }
 
-    // Remove the worktree directory itself — git2's prune only touches
-    // the admin dir under .git/worktrees/<name>, not the user's working
-    // copy. `git worktree remove` does both, so match that contract.
+    // Delete the user's working copy FIRST, then prune the admin dir. If we
+    // pruned first (`.git/worktrees/<name>`) and the rmdir then failed, git
+    // would no longer recognise the directory as a worktree while the user's
+    // work still sat on disk — unlistable and unrecoverable through the UI.
+    // This order leaves a still-registered worktree on any failure, which
+    // git can prune again.
     if target_workdir.exists() {
         std::fs::remove_dir_all(target_workdir).map_err(|e| {
             BackendError::Git(anyhow!(
-                "removed worktree admin dir but failed to delete {}: {}",
+                "failed to delete worktree directory {}: {}",
                 target_workdir.display(),
                 e
             ))
         })?;
     }
+
+    // git2 prune validates by default — `valid` + `working_tree` give the
+    // equivalent of a single `--force`. `locked` is intentionally NOT set:
+    // the lock is guarded above. The user confirmed via the menu.
+    let mut opts = git2::WorktreePruneOptions::new();
+    opts.valid(true).working_tree(true);
+    wt.prune(Some(&mut opts)).map_err(super::common::git2_err)?;
 
     crate::undo_log::clear_log_best_effort(repo_path);
     Ok(())
@@ -371,5 +398,51 @@ mod tests {
 
         assert_eq!(worktree_prune(dir.path()).unwrap(), 1);
         assert_eq!(list_worktrees(dir.path()).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn remove_refuses_a_locked_worktree() {
+        let (dir, _repo) = init();
+        let wt_root = TempDir::new().unwrap();
+        let path = wt_root.path().join("locked-wt");
+        worktree_add(dir.path(), &path, "feature/l", None, true).unwrap();
+        std::fs::write(path.join("wip.txt"), "unsaved work").unwrap();
+        worktree_lock(dir.path(), &path, Some("in review")).unwrap();
+
+        let err = worktree_remove(dir.path(), &path).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("locked"),
+            "expected a lock refusal, got: {msg}"
+        );
+        assert!(msg.contains("in review"), "the lock reason should surface");
+        // The lock protected the work: directory and admin entry survive.
+        assert!(path.join("wip.txt").exists(), "removed a locked worktree");
+        assert_eq!(list_worktrees(dir.path()).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn remove_deletes_an_unlocked_worktree() {
+        let (dir, _repo) = init();
+        let wt_root = TempDir::new().unwrap();
+        let path = wt_root.path().join("doomed-wt");
+        worktree_add(dir.path(), &path, "feature/x", None, true).unwrap();
+
+        worktree_remove(dir.path(), &path).unwrap();
+        assert!(!path.exists(), "working directory was not deleted");
+        assert_eq!(list_worktrees(dir.path()).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn is_path_dirty_defaults_to_dirty_when_uninspectable() {
+        // A non-existent / non-repo path could be hiding work — assume dirty
+        // so the remove dialog still warns.
+        let missing = TempDir::new().unwrap();
+        let not_a_repo = missing.path().join("not-a-repo");
+        std::fs::create_dir_all(&not_a_repo).unwrap();
+        std::fs::write(not_a_repo.join("stuff.txt"), "x").unwrap();
+        assert!(is_path_dirty(not_a_repo.to_str().unwrap()));
+        // An empty path is the one honest "clean".
+        assert!(!is_path_dirty(""));
     }
 }

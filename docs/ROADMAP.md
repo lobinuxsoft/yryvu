@@ -51,18 +51,14 @@ Orthogonal to the feature waves: a bug-fix cluster born from a user report
 data-loss defects — none had a test, all passed the suite green. **This is the
 immediate priority before resuming Wave 9.**
 
-- **Closed (all `priority:high`):** #447, #449–#456, #461, #469, #470, #472
-  (fixes) + #483 (refactor). Each shipped with a regression test.
-- **Open (9, `medium`/`low`)** — pick these next:
-  - #457 delete a branch checked out in another worktree orphans it
-  - #458 worktree remove ignores the user's explicit lock
-  - #459 first signed commit in a new repo leaves HEAD detached
-  - #460 a failing rebase step never persists state (dup commits, no abort)
-  - #462 the #447 fix comment states the wrong mechanism (docs)
-  - #471 a stash-push undo pops the wrong stash
+- **Closed (all `high` + the `medium` backend block):** #447, #449–#461,
+  #469–#472 (fixes) + #483 (refactor). Each shipped with a regression test.
+- **Open (4)** — the remaining tail, all UI/docs:
   - #473 the dirty dialog doesn't block the keybind; the parked op can be swapped
   - #474 undo/redo buttons stay enabled for ops that can never apply
   - #475 tell the user that redo does not restore discarded work
+  - #462 the #447 fix comment states the wrong mechanism (docs)
+  - The three `#473`/`#474`/`#475` share the undo cluster and can land as one PR.
 - **How to pick one up:** read the issue (each has a verified repro + file:line
   mechanism), find the sibling function that has the guard this one lacks, add
   the guard, and **test the round trip**. See

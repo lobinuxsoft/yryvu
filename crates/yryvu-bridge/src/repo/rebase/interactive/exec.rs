@@ -92,7 +92,7 @@ pub fn begin_rebase(repo_path: &Path, plan: RebasePlan) -> Result<RebaseState, B
         "yryvu: interactive rebase begin",
     )?;
 
-    let mut state = RebaseState {
+    let state = RebaseState {
         onto: plan.onto,
         steps: plan.steps,
         current_step: 0,
@@ -100,8 +100,7 @@ pub fn begin_rebase(repo_path: &Path, plan: RebasePlan) -> Result<RebaseState, B
         head_branch: Some(branch_full),
         pause_reason: None,
     };
-    run_pending(&repo, &mut state)?;
-    finalise_or_save(&repo, state)
+    run_and_finalise(&repo, state)
 }
 
 /// Continue after a pause. Caller is responsible for ensuring the
@@ -176,8 +175,7 @@ pub fn continue_rebase(repo_path: &Path) -> Result<RebaseState, BackendError> {
         }
     }
     state.current_step += 1;
-    run_pending(&repo, &mut state)?;
-    finalise_or_save(&repo, state)
+    run_and_finalise(&repo, state)
 }
 
 /// Drop the current step and continue. Used to recover from a conflict
@@ -195,8 +193,7 @@ pub fn skip_step(repo_path: &Path) -> Result<RebaseState, BackendError> {
     repo.checkout_head(Some(&mut checkout)).map_err(git2_err)?;
     state.pause_reason = None;
     state.current_step += 1;
-    run_pending(&repo, &mut state)?;
-    finalise_or_save(&repo, state)
+    run_and_finalise(&repo, state)
 }
 
 /// Abort an in-progress rebase. Resets HEAD (and the original branch
@@ -223,6 +220,32 @@ pub fn abort_rebase(repo_path: &Path) -> Result<(), BackendError> {
 pub fn get_state(repo_path: &Path) -> Result<Option<RebaseState>, BackendError> {
     let repo = open_git2(repo_path)?;
     load_state(&repo)
+}
+
+/// Run the plan's pending steps, then finalise. If `run_pending` errors
+/// after doing real work — a commit created, `current_step` advanced, a
+/// pause armed — the in-memory `state` holds that progress but the state
+/// file does not, because `finalise_or_save` (the sole `save_state` caller)
+/// is skipped by the `?`. Persist the partial state before propagating so:
+///
+/// - a later `continue` reloads the advanced cursor instead of re-applying
+///   an already-committed step (a duplicate, empty commit);
+/// - a failure inside `begin_rebase` still leaves a state file, so the
+///   detached HEAD it produced is visible to `get_state` and reachable by
+///   `abort_rebase` — otherwise the UI reports no rebase and offers no way
+///   out.
+///
+/// The original error is what the user sees; the save is best-effort (a
+/// failing save must not mask the real cause).
+fn run_and_finalise(
+    repo: &Repository,
+    mut state: RebaseState,
+) -> Result<RebaseState, BackendError> {
+    if let Err(e) = run_pending(repo, &mut state) {
+        let _ = save_state(repo, &state);
+        return Err(e);
+    }
+    finalise_or_save(repo, state)
 }
 
 /// If the plan completed, restore the original branch ref to point at

@@ -10,20 +10,22 @@ non-obvious conventions.
 
 ## Current status
 
-- **`development` HEAD:** `c5fe178` (2026-07-17). `main` = v0.5.0.
+- **`development` HEAD:** `8952126` (2026-07-17). `main` = v0.5.0.
 - **Just shipped — data-safety hardening, umbrella #448.** A user report ("a
   merge only keeps my side") turned out to be two distinct bugs; auditing the
   core git ops surfaced a cluster of ~21 silent data-loss defects — none had a
   test, all passed the suite green. See
   [Data-safety hardening](#data-safety-hardening-umbrella-448) below and the
   [ROADMAP](ROADMAP.md#data-safety-hardening-umbrella-448) for the live count.
-  **All `priority:high` closed; 9 `medium`/`low` remain.**
+  **All `priority:high` + the whole backend `medium` block closed; 4 UI/docs
+  issues remain.**
 - **Also shipped — Wave 8 (Theme power v2), umbrella #297 CLOSED** (PRs #440–#445):
   token expansion (#298), multi-file `[layers]` (#299), `mask-image` icon system
   with `icons/`-folder override (#300), themeable graph node/edge vars (#301),
   9 themes' `personality.css` rewritten vs the real DOM (#303), `docs/themes/` (#302).
-- **Next:** finish the **#448 `medium`/`low` tail** (#457, #458, #459, #460, #462,
-  #471, #473, #474, #475), then **Wave 9 — Perf + cleanup**. See [ROADMAP.md](ROADMAP.md).
+- **Next:** finish the **#448 tail** — three undo-UX issues (#473, #474, #475,
+  landable as one PR) + one docs fix (#462) — then **Wave 9 — Perf + cleanup**.
+  See [ROADMAP.md](ROADMAP.md).
 - **Un-smoked debt:** the #448 fixes shipped with backend regression tests but no
   live smoke of the touched flows (undo/redo, rejected push, branch rename,
   rebase `edit`). #75 (Apply Patch flow) + Wave 6's submodule/LFS panes are also
@@ -106,6 +108,25 @@ each proving one direction, and broke `commit → undo → redo` (hotfix #468).
 - **Cherry-pick/revert undo:** reset to the parent of the **recorded** `new_sha`
   and verify `HEAD == new_sha` first; a blind `HEAD~1` destroys the wrong commit
   after any out-of-app commit (#461).
+- **On an unborn branch `repo.head()` errors** (not detached), so `commit_signed`
+  → `move_head_to` must resolve HEAD's symbolic target and *create* the branch;
+  overwriting HEAD with a direct ref detaches it on the very first signed commit
+  (#459). The unsigned path is fine — `repo.commit(Some("HEAD"), …)` resolves the
+  symref itself.
+- **A branch checked out in a *linked* worktree** isn't the current repo's HEAD,
+  so a HEAD-only guard misses it; enumerate `main_repo().worktrees()` and refuse
+  the delete force-or-not, as git does (#457).
+- **`WorktreePruneOptions::locked(true)` is git's *second* `--force`** — it prunes
+  through a lock. Guard the lock explicitly and drop the flag; delete the workdir
+  **before** pruning the admin dir so a failed rmdir leaves a still-registered,
+  re-prunable worktree rather than orphaned work (#458).
+- **`stash@{index}` positions shift** as entries are pushed/popped, so a recorded
+  stash must be re-resolved by sha (`stash_foreach`) before popping — never blind
+  `stash@{0}` (#471).
+- **`run_pending` mutates state (commits, cursor) then can error**, and `?` skips
+  the sole `save_state`. Persist the partial state before propagating, or a
+  re-Continue duplicates a committed step and a `begin` failure strands a
+  stateless detached HEAD (#460).
 
 **Undo-log invariants** (`crates/yryvu-bridge/src/undo_log/`): the sidecar
 `.git/yryvu-undo.json` is read-modify-write with no lock; `undo_last_operation`
@@ -213,6 +234,18 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-17 (bis):** **#448 tail — backend `medium` block closed.** Five PRs,
+  each with a regression test and verified against source before touching (none
+  were already fixed): #459/#485 (first *signed* commit on an unborn branch
+  detached HEAD — `move_head_to` now births the branch), #457/#486 (delete of a
+  branch checked out in a linked worktree, force or not, refused), #458/#487
+  (worktree remove now honours the lock, deletes the workdir before pruning the
+  admin dir, and treats an uninspectable path as dirty), #471/#488 (stash-push
+  undo pops the *recorded* stash, not `stash@{0}`; records the stash flags for
+  redo), #460/#489 (a rebase step failing mid-plan now persists the advanced
+  state, so a re-Continue can't duplicate a committed step and `begin` can't
+  strand a stateless detached HEAD). Only #462/#473/#474/#475 (docs + undo UX)
+  remain in the umbrella.
 - **2026-07-17:** **Data-safety hardening (umbrella #448) — all `priority:high`
   closed.** Eight PRs: #469/#470 (undo-log corruption), #472 (concurrent Ctrl+Z
   drops commits), #461 (cherry-pick undo blind-resets), #456 (rejected push

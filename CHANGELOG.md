@@ -5,6 +5,59 @@ format is maintained by [release-please](https://github.com/googleapis/release-p
 each merged `feat:` or `fix:` commit on `main` produces a release PR
 that updates this file.
 
+## [0.5.1](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.5.0...yryvu-v0.5.1) (2026-07-08)
+
+
+### Features
+
+* **auth:** in-app SSH key generation guided flow ([7bf7dbf](https://github.com/lobinuxsoft/yryvu/commit/7bf7dbf8d13de3f53da9ed87576682daf52db7bb))
+* **auth:** in-app SSH key generation guided flow ([de27c14](https://github.com/lobinuxsoft/yryvu/commit/de27c14f080295f89dcb86eacfac90a836b1b119))
+* **diff:** filemode staging + LFS placeholder — completes [#60](https://github.com/lobinuxsoft/yryvu/issues/60) ([ed24776](https://github.com/lobinuxsoft/yryvu/commit/ed247767b715dfbf8706b000d097bfde8e5be75d))
+* **diff:** filemode staging + LFS pointer placeholder ([8363055](https://github.com/lobinuxsoft/yryvu/commit/83630552fd6c26985ca1c570db9f96545d22e74a)), closes [#60](https://github.com/lobinuxsoft/yryvu/issues/60)
+* **diff:** image diff viewer — side-by-side + overlay ([#60](https://github.com/lobinuxsoft/yryvu/issues/60)) ([faa6d32](https://github.com/lobinuxsoft/yryvu/commit/faa6d32f85e178ecee9faa3aa68f9dec49efdb7d))
+* **diff:** image diff viewer with overlay toggle ([95b666f](https://github.com/lobinuxsoft/yryvu/commit/95b666fa7b0a2e66e717158ec51ec40069314dca)), closes [#60](https://github.com/lobinuxsoft/yryvu/issues/60)
+* **diff:** markdown Code/Preview toggle in File View ([f5be6f8](https://github.com/lobinuxsoft/yryvu/commit/f5be6f86f1e6b3ec6f3b6dcdb282cf17e773ed8f)), closes [#60](https://github.com/lobinuxsoft/yryvu/issues/60)
+* **diff:** markdown Code/Preview toggle in File View ([#60](https://github.com/lobinuxsoft/yryvu/issues/60)) ([80bc73b](https://github.com/lobinuxsoft/yryvu/commit/80bc73b0173f26c52652630f749b1f185d362d16))
+* **diff:** per-filetype dispatcher — binary + deleted views ([#60](https://github.com/lobinuxsoft/yryvu/issues/60)) ([3e1805c](https://github.com/lobinuxsoft/yryvu/commit/3e1805ca1c2ac8a787367d1213fc317886030607))
+* **diff:** per-filetype renderer dispatcher with binary + deleted views ([139955e](https://github.com/lobinuxsoft/yryvu/commit/139955ee090ddcf3e384c7d365dd2a44b8fb06ea)), closes [#60](https://github.com/lobinuxsoft/yryvu/issues/60)
+* **diff:** submodule pointer pane ([b240975](https://github.com/lobinuxsoft/yryvu/commit/b240975684b9365408a8b1e417aa80ffd54848e5)), closes [#60](https://github.com/lobinuxsoft/yryvu/issues/60)
+* **diff:** submodule pointer pane ([#60](https://github.com/lobinuxsoft/yryvu/issues/60)) ([cff1c3c](https://github.com/lobinuxsoft/yryvu/commit/cff1c3cc56a7b433f17f70db428ab115afdedabe))
+* **patches:** apply patch file (git am equivalent) ([546eaa5](https://github.com/lobinuxsoft/yryvu/commit/546eaa5811904a3cfe9b37567fae8f81a1161cfe)), closes [#75](https://github.com/lobinuxsoft/yryvu/issues/75)
+* **patches:** apply patch file (git am equivalent) — closes [#75](https://github.com/lobinuxsoft/yryvu/issues/75) ([3a8e53b](https://github.com/lobinuxsoft/yryvu/commit/3a8e53bb5c77243c446089fc7de75b71a3b63ea9))
+* **preferences:** SSH panel — agent status + generated keys management ([9962e9c](https://github.com/lobinuxsoft/yryvu/commit/9962e9ca216f87627b38176a2bf380917106fd88))
+* **preferences:** SSH panel — agent status + generated keys management ([bbdee66](https://github.com/lobinuxsoft/yryvu/commit/bbdee66aba7f31279800b885eeff56dd585a2689))
+* **sidebar:** per-remote folder rows in REMOTE section ([41577b9](https://github.com/lobinuxsoft/yryvu/commit/41577b9aba80fd9de37627ddff76d612fd54601e))
+* **sidebar:** per-remote folder rows in REMOTE section ([96de350](https://github.com/lobinuxsoft/yryvu/commit/96de350390b6132beb41dd8eb27bcb201727d085))
+* **staging:** agregar botón "Discard All Changes" en el panel WIP ([3fc59d0](https://github.com/lobinuxsoft/yryvu/commit/3fc59d0f9579502fd16a677c20788f9c2e36d014))
+* **submodules:** auto-update setting + Preferences panel (GK parity) ([a746911](https://github.com/lobinuxsoft/yryvu/commit/a7469117c0a162c4d4e0e6749a31aeefd17aa9df))
+* **submodules:** auto-update setting + Preferences panel (GK parity) ([caf3a9f](https://github.com/lobinuxsoft/yryvu/commit/caf3a9f659aed56f3f239c6bdf403c7334880a89))
+* **submodules:** dirty status + sync/reset/deinit ops + add dialog knobs ([3e72d02](https://github.com/lobinuxsoft/yryvu/commit/3e72d025c52ae652128c8980f0b9ec0c768e0f64))
+* **submodules:** dirty status + sync/reset/deinit ops + add dialog knobs ([a2a53f4](https://github.com/lobinuxsoft/yryvu/commit/a2a53f4c05634944d678c460cee4246b18475762))
+* **watcher:** live repo file watcher with granular refresh events ([bf2f994](https://github.com/lobinuxsoft/yryvu/commit/bf2f994c0ee60d61069f115009b2613276c45b8b))
+* **watcher:** live repo file watcher with granular refresh events ([8a1a130](https://github.com/lobinuxsoft/yryvu/commit/8a1a13028f51be868736fe782cea2c2b9b965b08))
+
+
+### Bug Fixes
+
+* **diff:** pre-bundle markdown ESM chain for tauri dev ([c344bc1](https://github.com/lobinuxsoft/yryvu/commit/c344bc136a6b8dfbe39e818c933a178d8940a816))
+* **diff:** pre-bundle markdown ESM chain for tauri dev ([8ceb9e2](https://github.com/lobinuxsoft/yryvu/commit/8ceb9e244954a3b28686e1795d73408774b1b591)), closes [#60](https://github.com/lobinuxsoft/yryvu/issues/60)
+* **inspector:** keep staging reachable, reset scroll on rev change, restore list a11y ([0944b49](https://github.com/lobinuxsoft/yryvu/commit/0944b4991d654b72e386f31c14e5630d08f62857)), closes [#430](https://github.com/lobinuxsoft/yryvu/issues/430)
+* **patches:** harden apply-patch against review findings ([f79cda1](https://github.com/lobinuxsoft/yryvu/commit/f79cda10d65d45f0d79dd593f0224a25c3d33c27)), closes [#75](https://github.com/lobinuxsoft/yryvu/issues/75)
+* **ssh:** pin Test connection to the generated key + durable ssh config ([8edb7df](https://github.com/lobinuxsoft/yryvu/commit/8edb7df6afbd5edbcdafb186eb7cb1fbc3914f6a))
+* **ssh:** pin Test connection to the generated key + durable ssh config ([53d70ff](https://github.com/lobinuxsoft/yryvu/commit/53d70ff605cabcb00bdd33af09841587967a302b))
+* **themes:** themed native selects + drop synthwave scanline overlay ([9f0401f](https://github.com/lobinuxsoft/yryvu/commit/9f0401f6877b05c8cba77025946fc179b1cb229e))
+* **themes:** themed native selects + drop synthwave scanline overlay ([93c7b40](https://github.com/lobinuxsoft/yryvu/commit/93c7b405d30505dff056dca7f65a0421b477e45e))
+* **watcher:** stop refresh storm on FUSE/NTFS repos (poll .git) ([714752e](https://github.com/lobinuxsoft/yryvu/commit/714752e9efe4f532dbd5eb908f43fa7d52d3822d))
+* **watcher:** stop refresh storm on FUSE/NTFS repos; poll .git instead ([c322882](https://github.com/lobinuxsoft/yryvu/commit/c322882aeb1b647eeea5e3ff86ea1244574ee0a9))
+
+
+### Performance
+
+* **files:** virtualize file lists + GK-accurate bounded viewports ([#430](https://github.com/lobinuxsoft/yryvu/issues/430) part C) ([6b21de2](https://github.com/lobinuxsoft/yryvu/commit/6b21de2ced5e842edf9ec6e2c781b32dce9a1d28))
+* **files:** virtualize file lists above 100 rows ([53c01bb](https://github.com/lobinuxsoft/yryvu/commit/53c01bb79213a1661d991a787b2443ab39690837)), closes [#430](https://github.com/lobinuxsoft/yryvu/issues/430)
+* **graph:** cap history walk + paginate older commits on scroll ([27e60f6](https://github.com/lobinuxsoft/yryvu/commit/27e60f65c07bc6cb863fb8883082c09bd35d2e18))
+* **graph:** cap the history walk and page in older commits on scroll ([4deb5ed](https://github.com/lobinuxsoft/yryvu/commit/4deb5ed400a7903bd0aefd698580f14028fd86a2))
+
 ## [0.5.0](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.4.0...yryvu-v0.5.0) (2026-06-10)
 
 

@@ -65,8 +65,17 @@ async function runWithToast(
         ? await undoLastOperation(path, force)
         : await redoLastUndo(path, force);
     if (outcome.outcome === "applied") {
+      // The undo log models HEAD movements, not content: the commit on
+      // the other side still exists, so the arrow back works — but the
+      // uncommitted edits the force discarded are gone for good. Say so
+      // once, here, rather than let the round-trip imply otherwise (#475).
+      const message = outcome.discarded_dirty
+        ? `${outcome.kind_label} — uncommitted changes were discarded; ${
+            kind === "undo" ? "Redo" : "Undo"
+          } does not recover them`
+        : outcome.kind_label;
       notify.success(kind === "undo" ? "Undone" : "Redone", {
-        message: outcome.kind_label,
+        message,
         category: "undoRedo",
       });
     } else {

@@ -81,7 +81,11 @@ pub fn record_op(repo_path: &Path, kind: OpKind) -> Result<(), UndoLogError> {
         .duration_since(UNIX_EPOCH)
         .map_err(UndoLogError::Clock)?
         .as_secs();
-    log.ops.push(Op { kind, timestamp });
+    log.ops.push(Op {
+        kind,
+        timestamp,
+        discarded_dirty: false,
+    });
     log.cursor = Some(log.ops.len() - 1);
     write_log(repo_path, &log)
 }
@@ -112,6 +116,26 @@ pub fn set_cursor(repo_path: &Path, cursor: Option<usize>) -> Result<(), UndoLog
     let mut log = read_log(repo_path)?;
     log.cursor = cursor;
     write_log(repo_path, &log)
+}
+
+/// Flag the entry at `idx` as having cost the user uncommitted work.
+///
+/// Best-effort for the same reason as [`record_op_best_effort`]: the git
+/// side already happened, and a sidecar write failure must not turn a
+/// successful undo into an error. The consequence of a miss is a missing
+/// caveat in a tooltip, not a wrong operation.
+pub fn mark_discarded_dirty_best_effort(repo_path: &Path, idx: usize) {
+    let marked = read_log(repo_path).and_then(|mut log| {
+        match log.ops.get_mut(idx) {
+            Some(op) => op.discarded_dirty = true,
+            // Cursor out of range: nothing to annotate, nothing to write.
+            None => return Ok(()),
+        }
+        write_log(repo_path, &log)
+    });
+    if let Err(e) = marked {
+        tracing::warn!(error = %e, "failed to flag discarded work in undo log");
+    }
 }
 
 /// Clear the undo log entirely. Used by ops that can't be undone AND

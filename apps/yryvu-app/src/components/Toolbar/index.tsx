@@ -31,6 +31,22 @@ export interface ToolbarProps {
 const PULL_HEADER = "Choose your pull strategy";
 const PUSH_HEADER = "Push options";
 
+/// Tooltip for the Undo / Redo buttons. `lostWork` marks an entry that was
+/// applied over a dirty tree with force: the button still moves HEAD, but
+/// the uncommitted work discarded back then is unrecoverable, and the
+/// tooltip is the only place that can say so before the click (#475).
+function undoRedoTitle(
+  verb: "Undo" | "Redo",
+  label: string | null | undefined,
+  lostWork: boolean | undefined,
+): string {
+  if (!label) return `Nothing to ${verb.toLowerCase()}`;
+  const base = `${verb} ${label}`;
+  return lostWork
+    ? `${base} — does not restore the uncommitted changes that were discarded`
+    : base;
+}
+
 export function Toolbar(props: ToolbarProps) {
   const ops = useBranchOps();
   const data = useToolbarData();
@@ -68,11 +84,11 @@ export function Toolbar(props: ToolbarProps) {
           icon={<Icon name="undo" />}
           label="Undo"
           disabled={!undoRedoState()?.can_undo}
-          title={
-            undoRedoState()?.undo_label
-              ? `Undo ${undoRedoState()!.undo_label}`
-              : "Nothing to undo"
-          }
+          title={undoRedoTitle(
+            "Undo",
+            undoRedoState()?.undo_label,
+            undoRedoState()?.undo_lost_work,
+          )}
           badge={undoRedoState()?.undo_count}
           onClick={runUndo}
         />
@@ -80,11 +96,11 @@ export function Toolbar(props: ToolbarProps) {
           icon={<Icon name="redo" />}
           label="Redo"
           disabled={!undoRedoState()?.can_redo}
-          title={
-            undoRedoState()?.redo_label
-              ? `Redo ${undoRedoState()!.redo_label}`
-              : "Nothing to redo"
-          }
+          title={undoRedoTitle(
+            "Redo",
+            undoRedoState()?.redo_label,
+            undoRedoState()?.redo_lost_work,
+          )}
           badge={undoRedoState()?.redo_count}
           onClick={runRedo}
         />

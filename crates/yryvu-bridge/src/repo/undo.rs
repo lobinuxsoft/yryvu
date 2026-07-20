@@ -47,11 +47,40 @@ use super::worktree;
 #[serde(tag = "outcome", rename_all = "kebab-case")]
 pub enum UndoOutcome {
     /// Inverse executed; cursor should advance backward.
-    Applied { kind_label: String },
+    ///
+    /// `discarded_dirty` is true when the user answered the dirty dialog
+    /// with "discard" and there really was uncommitted work to lose. The
+    /// UI needs it to stop implying the trip is round (#475).
+    Applied {
+        kind_label: String,
+        discarded_dirty: bool,
+    },
     /// Op exists in the log but cannot be inverted in the current state
     /// (root commit, stash-pop in sub-PR 2, etc). Cursor stays where it
     /// was so the user can move past this entry manually if they want.
     Untrackable { reason: String },
+}
+
+impl UndoOutcome {
+    /// `Applied` with no work lost — the common case. The forced-over-
+    /// dirty path re-stamps the flag once, in [`apply_inverse`] /
+    /// [`apply_redo`], where the answer is actually known.
+    fn applied(kind_label: &str) -> Self {
+        UndoOutcome::Applied {
+            kind_label: kind_label.into(),
+            discarded_dirty: false,
+        }
+    }
+
+    fn with_discarded_dirty(self, discarded: bool) -> Self {
+        match self {
+            UndoOutcome::Applied { kind_label, .. } => UndoOutcome::Applied {
+                kind_label,
+                discarded_dirty: discarded,
+            },
+            other => other,
+        }
+    }
 }
 
 /// Does undoing `op` reset the working tree, taking uncommitted work with
@@ -101,11 +130,27 @@ fn redo_discards_uncommitted_work(op: &OpKind) -> bool {
 /// (libgit2 `reset.c` forces `GIT_CHECKOUT_FORCE` regardless of caller
 /// options), so this is the only thing standing between a reflex Ctrl+Z and
 /// the user's uncommitted work.
-fn guard_dirty(repo_path: &Path, destructive: bool, force: bool) -> Result<(), BackendError> {
-    if destructive && !force && worktree::is_working_tree_dirty(repo_path)? {
+///
+/// Returns whether uncommitted work is about to be destroyed — `force`
+/// over a tree that really was dirty. A forced call on a clean tree costs
+/// nothing and must not be reported as a loss.
+fn guard_dirty(repo_path: &Path, destructive: bool, force: bool) -> Result<bool, BackendError> {
+    if !destructive {
+        return Ok(false);
+    }
+    if force {
+        // The user was already asked and accepted. The scan is now only
+        // asking *how much* it cost, so a failure must not turn a
+        // confirmed undo into an error — before this returned a bool the
+        // `force` case never ran the scan at all, and regressing that
+        // would break "Discard & Undo" over an unrelated status error.
+        // Worst case of the fallback is a missing caveat in a tooltip.
+        return Ok(worktree::is_working_tree_dirty(repo_path).unwrap_or(false));
+    }
+    if worktree::is_working_tree_dirty(repo_path)? {
         return Err(BackendError::WorkingTreeDirty);
     }
-    Ok(())
+    Ok(false)
 }
 
 /// Apply the inverse of `op` against `repo_path`. Errors propagate as
@@ -124,8 +169,9 @@ pub fn apply_inverse(
     op: &OpKind,
     force: bool,
 ) -> Result<UndoOutcome, BackendError> {
-    guard_dirty(repo_path, undo_discards_uncommitted_work(op), force)?;
-    with_record_skipped(|| apply_inverse_inner(repo_path, op))
+    let discarded = guard_dirty(repo_path, undo_discards_uncommitted_work(op), force)?;
+    let outcome = with_record_skipped(|| apply_inverse_inner(repo_path, op))?;
+    Ok(outcome.with_discarded_dirty(discarded))
 }
 
 fn apply_inverse_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
@@ -135,40 +181,25 @@ fn apply_inverse_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Bac
             ..
         } => {
             soft_reset(repo_path, parent_sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "commit".into(),
-            })
+            Ok(UndoOutcome::applied("commit"))
         }
-        OpKind::Commit {
-            parent_sha: None, ..
-        } => Ok(UndoOutcome::Untrackable {
-            reason: "root commit cannot be undone".into(),
-        }),
         OpKind::Amend { old_sha, .. } => {
             hard_reset(repo_path, old_sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "amend".into(),
-            })
+            Ok(UndoOutcome::applied("amend"))
         }
         OpKind::CheckoutBranch { from, .. } => {
             worktree::checkout_branch(repo_path, from)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "checkout".into(),
-            })
+            Ok(UndoOutcome::applied("checkout"))
         }
         OpKind::CheckoutCommit { from, .. } => {
             // `from` may be a branch shorthand or a 40-char SHA — try
             // branch first, fall back to commit checkout. Detached HEADs
             // round-trip as the SHA string.
             match worktree::checkout_branch(repo_path, from) {
-                Ok(()) => Ok(UndoOutcome::Applied {
-                    kind_label: "checkout".into(),
-                }),
+                Ok(()) => Ok(UndoOutcome::applied("checkout")),
                 Err(BackendError::BranchNotFound { .. }) => {
                     worktree::checkout_commit(repo_path, from)?;
-                    Ok(UndoOutcome::Applied {
-                        kind_label: "checkout".into(),
-                    })
+                    Ok(UndoOutcome::applied("checkout"))
                 }
                 Err(e) => Err(e),
             }
@@ -187,9 +218,7 @@ fn apply_inverse_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Bac
             // Acceptable for sub-PR 2; the cursor logic in commands/undo.rs
             // handles the bookkeeping.
             worktree::reset_to_commit(repo_path, from_sha, *mode)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "reset".into(),
-            })
+            Ok(UndoOutcome::applied("reset"))
         }
         OpKind::CherryPick { new_sha, .. } | OpKind::Revert { new_sha, .. } => {
             let label = if matches!(op, OpKind::CherryPick { .. }) {
@@ -201,21 +230,29 @@ fn apply_inverse_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Bac
         }
         OpKind::Merge { pre_merge_sha, .. } => {
             hard_reset(repo_path, pre_merge_sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "merge".into(),
-            })
+            Ok(UndoOutcome::applied("merge"))
         }
         OpKind::StashPush { stash_sha, .. } => {
             // Pop the exact stash we pushed, not whatever is on top now —
             // the user may have stashed again since.
             worktree::stash_pop_by_sha(repo_path, stash_sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "stash push".into(),
-            })
+            Ok(UndoOutcome::applied("stash push"))
         }
-        OpKind::StashPop { .. } => Ok(UndoOutcome::Untrackable {
-            reason: "stash pop undo not supported yet".into(),
-        }),
+        // The ops with no inverse. The reason text lives on `OpKind` so
+        // the toolbar can grey the button out ahead of time instead of
+        // lighting up a control that reports this toast forever (#474).
+        OpKind::Commit {
+            parent_sha: None, ..
+        }
+        | OpKind::StashPop { .. } => Ok(untrackable(op.undo_untrackable_reason())),
+    }
+}
+
+/// Shared fallback so the `Untrackable` arms and their `OpKind` predicate
+/// can never drift into disagreeing about the reason.
+fn untrackable(reason: Option<&'static str>) -> UndoOutcome {
+    UndoOutcome::Untrackable {
+        reason: reason.unwrap_or("operation cannot be reversed").into(),
     }
 }
 
@@ -289,9 +326,7 @@ fn reset_synthesised_commit(
     let obj = repo.find_object(parent.id(), None).map_err(git2_err)?;
     repo.reset(&obj, git2::ResetType::Hard, None)
         .map_err(git2_err)?;
-    Ok(UndoOutcome::Applied {
-        kind_label: label.into(),
-    })
+    Ok(UndoOutcome::applied(label))
 }
 
 /// Re-apply `op` after an undo (sub-PR 3 of #130). Mirrors `apply_inverse`
@@ -302,8 +337,9 @@ fn reset_synthesised_commit(
 /// reset / stash variants delegate to the public worktree helpers,
 /// silenced by `with_record_skipped` so the redo doesn't ghost-record.
 pub fn apply_redo(repo_path: &Path, op: &OpKind, force: bool) -> Result<UndoOutcome, BackendError> {
-    guard_dirty(repo_path, redo_discards_uncommitted_work(op), force)?;
-    with_record_skipped(|| apply_redo_inner(repo_path, op))
+    let discarded = guard_dirty(repo_path, redo_discards_uncommitted_work(op), force)?;
+    let outcome = with_record_skipped(|| apply_redo_inner(repo_path, op))?;
+    Ok(outcome.with_discarded_dirty(discarded))
 }
 
 fn apply_redo_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, BackendError> {
@@ -317,51 +353,35 @@ fn apply_redo_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Backen
             // leaves the tree dirty by design, would also trip the dirty
             // guard and make this redo unreachable.
             soft_reset(repo_path, sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "commit".into(),
-            })
+            Ok(UndoOutcome::applied("commit"))
         }
         OpKind::Amend { new_sha, .. } => {
             hard_reset(repo_path, new_sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "amend".into(),
-            })
+            Ok(UndoOutcome::applied("amend"))
         }
         OpKind::CheckoutBranch { to, .. } => {
             worktree::checkout_branch(repo_path, to)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "checkout".into(),
-            })
+            Ok(UndoOutcome::applied("checkout"))
         }
         OpKind::CheckoutCommit { to_sha, .. } => {
             worktree::checkout_commit(repo_path, to_sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "checkout".into(),
-            })
+            Ok(UndoOutcome::applied("checkout"))
         }
         OpKind::Reset { mode, to_sha, .. } => {
             worktree::reset_to_commit(repo_path, to_sha, *mode)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "reset".into(),
-            })
+            Ok(UndoOutcome::applied("reset"))
         }
         OpKind::CherryPick { new_sha, .. } => {
             hard_reset(repo_path, new_sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "cherry-pick".into(),
-            })
+            Ok(UndoOutcome::applied("cherry-pick"))
         }
         OpKind::Revert { new_sha, .. } => {
             hard_reset(repo_path, new_sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "revert".into(),
-            })
+            Ok(UndoOutcome::applied("revert"))
         }
         OpKind::Merge { post_merge_sha, .. } => {
             hard_reset(repo_path, post_merge_sha)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "merge".into(),
-            })
+            Ok(UndoOutcome::applied("merge"))
         }
         OpKind::StashPush {
             include_untracked,
@@ -375,13 +395,9 @@ fn apply_redo_inner(repo_path: &Path, op: &OpKind) -> Result<UndoOutcome, Backen
             // care about SHA equality. Mirror the original op's flags so
             // the redo captures the same scope it did the first time.
             worktree::stash_push(repo_path, None, *include_untracked, *include_ignored)?;
-            Ok(UndoOutcome::Applied {
-                kind_label: "stash push".into(),
-            })
+            Ok(UndoOutcome::applied("stash push"))
         }
-        OpKind::StashPop { .. } => Ok(UndoOutcome::Untrackable {
-            reason: "stash pop redo not supported (symmetric with undo)".into(),
-        }),
+        OpKind::StashPop { .. } => Ok(untrackable(op.redo_untrackable_reason())),
     }
 }
 
@@ -584,6 +600,86 @@ mod tests {
 
         apply_redo(&p, &op, false).expect("redo must not need force");
         assert_eq!(sha(&p, "HEAD"), head, "redo did not restore HEAD");
+    }
+
+    /// #474: the toolbar greys these out by asking the same predicate the
+    /// inverse builder answers with. If the two ever disagree, the button
+    /// is lit for an op that reports a toast and never moves the cursor.
+    #[test]
+    fn untrackable_ops_agree_with_their_predicate() {
+        let (_d, p) = repo_with_dirty_tree();
+        let cases = [
+            OpKind::Commit {
+                sha: sha(&p, "HEAD"),
+                parent_sha: None,
+            },
+            OpKind::StashPop {
+                stash_sha: "deadbeef".into(),
+            },
+        ];
+        for op in cases {
+            let expected = op.undo_untrackable_reason().expect("must be untrackable");
+            match apply_inverse(&p, &op, false).unwrap() {
+                UndoOutcome::Untrackable { reason } => assert_eq!(reason, expected),
+                other => panic!("expected Untrackable for {op:?}, got {other:?}"),
+            }
+        }
+        // A root commit *is* redoable — the two directions are not mirrors.
+        assert!(OpKind::Commit {
+            sha: sha(&p, "HEAD"),
+            parent_sha: None,
+        }
+        .redo_untrackable_reason()
+        .is_none());
+    }
+
+    /// #475: forcing past the dirty dialog costs the user work that no
+    /// redo brings back. The outcome has to say so, or the UI cannot.
+    #[test]
+    fn forced_undo_reports_the_work_it_discarded() {
+        let (_d, p) = repo_with_dirty_tree();
+        let head = sha(&p, "HEAD");
+        let op = OpKind::CherryPick {
+            applied_sha: head.clone(),
+            new_sha: head,
+        };
+
+        let outcome = apply_inverse(&p, &op, true).unwrap();
+        assert!(
+            matches!(
+                outcome,
+                UndoOutcome::Applied {
+                    discarded_dirty: true,
+                    ..
+                }
+            ),
+            "forced undo over a dirty tree must report the loss, got {outcome:?}"
+        );
+    }
+
+    /// …and forcing over a clean tree costs nothing. Reporting a loss
+    /// there would train the user to ignore the warning that matters.
+    #[test]
+    fn forced_undo_on_a_clean_tree_reports_no_loss() {
+        let (_d, p) = repo_with_dirty_tree();
+        std::fs::remove_file(p.join("mine.txt")).unwrap();
+        let head = sha(&p, "HEAD");
+        let op = OpKind::CherryPick {
+            applied_sha: head.clone(),
+            new_sha: head,
+        };
+
+        let outcome = apply_inverse(&p, &op, true).unwrap();
+        assert!(
+            matches!(
+                outcome,
+                UndoOutcome::Applied {
+                    discarded_dirty: false,
+                    ..
+                }
+            ),
+            "nothing was dirty; nothing was lost, got {outcome:?}"
+        );
     }
 
     /// Unrelated work in flight survives the whole round-trip.

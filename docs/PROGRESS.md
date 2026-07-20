@@ -92,6 +92,22 @@ each proving one direction, and broke `commit → undo → redo` (hotfix #468).
 
 **Verified libgit2 behaviours (vendored 1.8.1):**
 
+- **Ref-then-checkout is a silent no-op iff the checkout is SAFE.** This governs
+  every ref+checkout call site in the crate, so learn it once. Moving the ref
+  first makes the checkout baseline equal the target; the diff is **not** empty
+  (`checkout.c` passes `GIT_DIFF_INCLUDE_UNMODIFIED`), but every delta comes out
+  `GIT_DELTA_UNMODIFIED`, whose arm is `CHECKOUT_ACTION_IF(FORCE, UPDATE_BLOB,
+  NONE)`. Without FORCE nothing is written and the working tree silently keeps
+  the old content while HEAD advances (#447). **With FORCE the same ordering is
+  correct** — it degenerates into a `reset --hard`: `UPDATE_BLOB` on that arm,
+  tracked-but-not-in-target removed, and missing files restored via the
+  `RECREATE_MISSING` that FORCE implies. So `rebase/interactive/refs.rs`
+  (`detach_to`, `move_branch_to`) moving the ref first is *not* this bug, and
+  swapping their `.force()` for `.safe()` would recreate #447 instantly.
+  Conversely the `.safe()` at `repo/merge.rs` is load-bearing in the other
+  direction: a fast-forward must refuse to clobber uncommitted local changes
+  (pinned by `fast_forward_preserves_unrelated_local_changes`). **Read the
+  strategy before judging the ordering** (#462).
 - **The local transport reimplements receive-pack: it runs no server hooks and
   honours no `receive.deny*` config.** So a rejected *delete* can't be unit-tested
   against a local bare repo — only a non-fast-forward is refused locally (that's

@@ -188,6 +188,13 @@
   padding: 8px 0;
 }
 
+/* Full-height spacer the virtualizer sizes to the whole list; the
+   visible rows are absolutely positioned against it via translateY. */
+.repo-management__sizer {
+  position: relative;
+  width: 100%;
+}
+
 .repo-management__row {
   display: flex;
   align-items: center;
@@ -195,6 +202,7 @@
   padding: 8px 16px;
   cursor: pointer;
   border-left: 2px solid transparent;
+  box-sizing: border-box;
 }
 
 .repo-management__row:hover {

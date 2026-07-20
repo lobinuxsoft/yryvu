@@ -12,10 +12,11 @@
  * color tagging.
  */
 
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import { createVirtualizer } from "@tanstack/solid-virtual";
 import { open } from "@tauri-apps/plugin-dialog";
 
-import { type KnownRepoInfo, validateGitRepo } from "../../ipc";
+import { type KnownRepoRow, validateGitRepo } from "../../ipc";
 import { pushRecentRepo, removeRecentRepo, setRepoPath } from "../../state";
 import { openRepoInAnotherTab } from "../../tabs/ops";
 import { NfIcon } from "../NfIcon";
@@ -31,23 +32,50 @@ import {
   repos,
 } from "./store";
 
+/// Fixed row height (px) for the virtualizer — a single-line name over a
+/// single-line breadcrumb, both `nowrap`, plus the row's 8px vertical
+/// padding. Rows never wrap, so a constant is exact; keep it in sync with
+/// `.repo-management__row` in repo-management.css.
+const ROW_PX = 48;
+const OVERSCAN = 8;
+
 export function RepoManagementBody() {
   // The resource lives in store.ts, not here — see that module's header
   // for why (tab unmount / remount otherwise re-fires the IPC).
   ensureInitialized();
   const [query, setQuery] = createSignal("");
   const [selected, setSelected] = createSignal<Set<string>>(new Set());
+  let listRef: HTMLDivElement | undefined;
 
-  const filtered = createMemo<KnownRepoInfo[]>(() => {
+  const filtered = createMemo<KnownRepoRow[]>(() => {
     const list = repos() ?? [];
     const q = query().trim().toLowerCase();
+    // `searchKey` is precomputed at fetch time (name + path + branch,
+    // lowercased) — the per-keystroke filter is a pure substring test,
+    // no re-lowercasing three fields per row on every input event.
     if (q.length === 0) return list;
-    return list.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.path.toLowerCase().includes(q) ||
-        (r.currentBranch?.toLowerCase().includes(q) ?? false),
-    );
+    return list.filter((r) => r.searchKey.includes(q));
+  });
+
+  // Render only the visible rows (+overscan). Below one viewport this is
+  // a no-op; past ~50 repos it keeps the DOM node count flat. The list
+  // container is the scroll element; rows are absolutely positioned via
+  // translateY inside a spacer sized to the full list.
+  const virtualizer = createVirtualizer({
+    get count() {
+      return filtered().length;
+    },
+    getScrollElement: () => listRef ?? null,
+    estimateSize: () => ROW_PX,
+    overscan: OVERSCAN,
+  });
+
+  // A new filter should show its matches from the top. Without this the
+  // old scroll offset survives and, if it's past the shorter list's
+  // height, the viewport sits blank until the user scrolls up.
+  createEffect(() => {
+    query();
+    virtualizer.scrollToOffset(0);
   });
 
   const toggleSelected = (path: string) => {
@@ -59,7 +87,7 @@ export function RepoManagementBody() {
 
   const clearSelection = () => setSelected(new Set<string>());
 
-  const onRowClick = (repo: KnownRepoInfo, e: MouseEvent) => {
+  const onRowClick = (repo: KnownRepoRow, e: MouseEvent) => {
     // Click on the checkbox itself is handled by its own onChange; only
     // body clicks reach here. If something is selected, treat row click
     // as multi-select (toggle this row in the selection). Else open
@@ -205,49 +233,75 @@ export function RepoManagementBody() {
           </div>
         }
       >
-        <div class="repo-management__list" role="list" classList={{ "is-loading": loading() }}>
-          <For each={filtered()}>
-              {(repo) => (
-                <Tooltip text={repo.error ?? repo.path}>
+        <div
+          class="repo-management__list"
+          role="list"
+          classList={{ "is-loading": loading() }}
+          ref={listRef}
+        >
+          <div
+            class="repo-management__sizer"
+            style={{ height: `${virtualizer.getTotalSize()}px` }}
+          >
+            <For each={virtualizer.getVirtualItems()}>
+              {(row) => {
+                // `getVirtualItems()` can hold an index past the current
+                // `filtered()` for one tick after the filter shrinks the
+                // list — guard so `repo()` is never read while undefined.
+                const repo = () => filtered()[row.index] as
+                  | KnownRepoRow
+                  | undefined;
+                return (
+                <Show when={repo()}>
+                  {(r) => (
+                <Tooltip text={r().error ?? r().path}>
                   <div
                     class="repo-management__row"
                     classList={{
-                      "is-selected": selected().has(repo.path),
-                      "is-stale": !!repo.error,
+                      "is-selected": selected().has(r().path),
+                      "is-stale": !!r().error,
                     }}
                     role="listitem"
-                    onClick={(e) => onRowClick(repo, e)}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: `${ROW_PX}px`,
+                      transform: `translateY(${row.start}px)`,
+                    }}
+                    onClick={(e) => onRowClick(r(), e)}
                   >
                     <input
                       type="checkbox"
                       class="repo-management__row-check"
-                      checked={selected().has(repo.path)}
+                      checked={selected().has(r().path)}
                       onClick={(e) => e.stopPropagation()}
-                      onChange={() => toggleSelected(repo.path)}
-                      aria-label={`Select ${repo.name}`}
+                      onChange={() => toggleSelected(r().path)}
+                      aria-label={`Select ${r().name}`}
                     />
                     <div class="repo-management__row-main">
-                      <div class="repo-management__row-name">{repo.name}</div>
+                      <div class="repo-management__row-name">{r().name}</div>
                       <div class="repo-management__row-path">
-                        {breadcrumbOf(repo.path)}
+                        {breadcrumbOf(r().path)}
                       </div>
                     </div>
-                    <Show when={repo.currentBranch}>
+                    <Show when={r().currentBranch}>
                       <div class="repo-management__row-branch">
-                        <NfIcon code="f126" /> {repo.currentBranch}
+                        <NfIcon code="f126" /> {r().currentBranch}
                       </div>
                     </Show>
-                    <Show when={repo.dirtyCount > 0}>
+                    <Show when={r().dirtyCount > 0}>
                       <Tooltip
-                        text={`${repo.dirtyCount} uncommitted change${repo.dirtyCount === 1 ? "" : "s"}`}
+                        text={`${r().dirtyCount} uncommitted change${r().dirtyCount === 1 ? "" : "s"}`}
                       >
                         <div class="repo-management__row-dirty">
-                          ●&nbsp;{repo.dirtyCount}
+                          ●&nbsp;{r().dirtyCount}
                         </div>
                       </Tooltip>
                     </Show>
-                    <Show when={repo.error}>
-                      <Tooltip text={repo.error ?? ""}>
+                    <Show when={r().error}>
+                      <Tooltip text={r().error ?? ""}>
                         <div class="repo-management__row-error">missing</div>
                       </Tooltip>
                     </Show>
@@ -255,16 +309,20 @@ export function RepoManagementBody() {
                       <button
                         class="repo-management__row-remove"
                         type="button"
-                        aria-label={`Remove ${repo.name} from recents`}
-                        onClick={(e) => onRemoveSingle(repo.path, e)}
+                        aria-label={`Remove ${r().name} from recents`}
+                        onClick={(e) => onRemoveSingle(r().path, e)}
                       >
                         <NfIcon code="f00d" />
                       </button>
                     </Tooltip>
                   </div>
                 </Tooltip>
-              )}
+                  )}
+                </Show>
+                );
+              }}
             </For>
+          </div>
         </div>
       </Show>
 

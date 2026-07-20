@@ -5,6 +5,77 @@ format is maintained by [release-please](https://github.com/googleapis/release-p
 each merged `feat:` or `fix:` commit on `main` produces a release PR
 that updates this file.
 
+## [0.5.2](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.5.1...yryvu-v0.5.2) (2026-07-20)
+
+
+### Features
+
+* **theme:** [layers] manifest + multi-file layer resolution ([eed8ee2](https://github.com/lobinuxsoft/yryvu/commit/eed8ee216d9bb42a988bcde42fdf4661b49f29b3)), closes [#299](https://github.com/lobinuxsoft/yryvu/issues/299)
+* **theme:** add shape, spacing, border and per-context font tokens ([7ef208e](https://github.com/lobinuxsoft/yryvu/commit/7ef208e22126142d1771a37d4f7114ea7003e593)), closes [#298](https://github.com/lobinuxsoft/yryvu/issues/298)
+* **theme:** generate --icon-* tokens from a theme icons/ folder ([cd4c6ff](https://github.com/lobinuxsoft/yryvu/commit/cd4c6ffc92f2884e3425dfe6d1dfa7de6e06c8f0)), closes [#300](https://github.com/lobinuxsoft/yryvu/issues/300)
+* **theme:** Icon component + mask-image icon system with themeable defaults ([256bb4d](https://github.com/lobinuxsoft/yryvu/commit/256bb4d40b20d13f8559b2c1294cfb21b380e60e)), closes [#300](https://github.com/lobinuxsoft/yryvu/issues/300)
+* **theme:** icon system — data-icon + mask-image, overridable via theme icons/ folder ([055b220](https://github.com/lobinuxsoft/yryvu/commit/055b2206b09df1b763969d31bff6fff4ec6f9feb))
+* **theme:** inject tokens/icons/personality as separate style layers ([abeccbc](https://github.com/lobinuxsoft/yryvu/commit/abeccbc06f2ac1d5cda891ae5bd46e62e696b54c)), closes [#299](https://github.com/lobinuxsoft/yryvu/issues/299)
+* **theme:** multi-file theme structure — [layers] manifest ([8af3278](https://github.com/lobinuxsoft/yryvu/commit/8af327874fc0173cc5285ee23afe67201072324f))
+* **theme:** route chrome surfaces through the new visual tokens ([8bdbf25](https://github.com/lobinuxsoft/yryvu/commit/8bdbf25a44e16c8365e02168b76990b1f084d493)), closes [#298](https://github.com/lobinuxsoft/yryvu/issues/298)
+* **theme:** route toolbar/sidebar/tabs icons through &lt;Icon&gt; ([519f813](https://github.com/lobinuxsoft/yryvu/commit/519f813635130f7b55e8b8a141659d27007e948d)), closes [#300](https://github.com/lobinuxsoft/yryvu/issues/300)
+* **themes:** rewrite 9 themes' personality.css against the real DOM ([27f47ce](https://github.com/lobinuxsoft/yryvu/commit/27f47ce129c6ecb924c71e65545aab669cd202f0))
+* **themes:** rewrite everforest / kanagawa / default personality vs real DOM ([c33c576](https://github.com/lobinuxsoft/yryvu/commit/c33c5766d1e7c7abb15a0da7bfe014afdbcb984e)), closes [#303](https://github.com/lobinuxsoft/yryvu/issues/303)
+* **themes:** rewrite gruvbox / nord / dracula personality vs real DOM ([ca78f2b](https://github.com/lobinuxsoft/yryvu/commit/ca78f2be91fa84139bc7cd4345c47ac6fcc57adc)), closes [#303](https://github.com/lobinuxsoft/yryvu/issues/303)
+* **themes:** rewrite tokyo-night / catppuccin / rose-pine personality vs real DOM ([2b9aa8a](https://github.com/lobinuxsoft/yryvu/commit/2b9aa8ad7ae277c78f80ac0468f09e5555a37f30)), closes [#303](https://github.com/lobinuxsoft/yryvu/issues/303)
+* **theme:** synthwave demonstrates icon overrides via icons/ folder ([eb8d4e2](https://github.com/lobinuxsoft/yryvu/commit/eb8d4e25be719a593bb3a0fa1ab79a66049c685f)), closes [#300](https://github.com/lobinuxsoft/yryvu/issues/300)
+* **theme:** synthwave overrides graph node radius + edge width ([1a228c0](https://github.com/lobinuxsoft/yryvu/commit/1a228c0d7d7fc0645923c43bbc364fbf59f780f0)), closes [#301](https://github.com/lobinuxsoft/yryvu/issues/301)
+* **theme:** themeable graph node radius + edge width ([2d72fc3](https://github.com/lobinuxsoft/yryvu/commit/2d72fc321bfafbd71809f2c6128d0027f18342b7))
+* **theme:** themeable graph node radius + edge width ([6b9d3ea](https://github.com/lobinuxsoft/yryvu/commit/6b9d3ea097e20b64be7255bc8483710a5f595e46)), closes [#301](https://github.com/lobinuxsoft/yryvu/issues/301)
+* **theme:** token expansion — shapes, spacing, borders, per-context fonts ([b456067](https://github.com/lobinuxsoft/yryvu/commit/b45606704c9e58a75b9d1f0861885a7359daeff0))
+
+
+### Bug Fixes
+
+* **branches:** deleting a branch checked out in another worktree orphans it ([#457](https://github.com/lobinuxsoft/yryvu/issues/457)) ([62a00a5](https://github.com/lobinuxsoft/yryvu/commit/62a00a58896ef0165e8d2b50e0a40fbc9f7bfb0b))
+* **branches:** keep HEAD attached and migrate config on branch rename ([7b2a706](https://github.com/lobinuxsoft/yryvu/commit/7b2a70682858e1481d56f2e68e53c7d2cdb3d9bd)), closes [#455](https://github.com/lobinuxsoft/yryvu/issues/455)
+* **branches:** refuse to delete a branch checked out in a linked worktree ([7e681b9](https://github.com/lobinuxsoft/yryvu/commit/7e681b92b3da9f30237034ad3588432c1757b88f))
+* **branches:** renaming the current branch dangles HEAD and drops the upstream ([#455](https://github.com/lobinuxsoft/yryvu/issues/455)) ([3002a12](https://github.com/lobinuxsoft/yryvu/commit/3002a1276d214ed616bcfcfe7eebb956faef0979))
+* **commit:** birth the branch on an unborn HEAD instead of detaching it ([485044c](https://github.com/lobinuxsoft/yryvu/commit/485044ca240d066149f2ac013da45b9bcbda43e6))
+* **commit:** keep the merge parent and clear merge state ([8adc38b](https://github.com/lobinuxsoft/yryvu/commit/8adc38b9c44e2bfca479a9ebcc1e9aadaa9d090f))
+* **commit:** keep the merge parent and clear merge state ([2d10254](https://github.com/lobinuxsoft/yryvu/commit/2d102549cb097325381efd954451ddeb7ed1ca90))
+* **commit:** the first signed commit in a new repo leaves HEAD detached ([#459](https://github.com/lobinuxsoft/yryvu/issues/459)) ([62bb82e](https://github.com/lobinuxsoft/yryvu/commit/62bb82ec6ac8f54b9cc87bf87638740760b885f5))
+* **merge:** check out before moving the ref on fast-forward ([046dfe2](https://github.com/lobinuxsoft/yryvu/commit/046dfe242efa1ef8923a948307d505b93a5af164))
+* **merge:** check out before moving the ref on fast-forward ([49f5f8b](https://github.com/lobinuxsoft/yryvu/commit/49f5f8bcdf0871d9f6f817713e5271c37c6e7c8a))
+* **push:** a push rejected by the server is reported as success ([#456](https://github.com/lobinuxsoft/yryvu/issues/456)) ([bc62c8a](https://github.com/lobinuxsoft/yryvu/commit/bc62c8a33fc8657e651a4866e5d05d914f211cd9))
+* **push:** compare the lease against the remote tip, and require an anchor ([57e16a1](https://github.com/lobinuxsoft/yryvu/commit/57e16a1c81576d576ce3b486fe8914119b6562ba))
+* **push:** compare the lease against the remote tip, and require an anchor ([3df32dc](https://github.com/lobinuxsoft/yryvu/commit/3df32dc864224396684148ea0721ce55325bff6e))
+* **push:** surface server-side ref rejections instead of reporting success ([c97ac09](https://github.com/lobinuxsoft/yryvu/commit/c97ac09a27cb02ef5676a07bf8749f2cfb795548)), closes [#456](https://github.com/lobinuxsoft/yryvu/issues/456)
+* **rebase:** a failing step never persists state — duplicate commits and no abort path ([#460](https://github.com/lobinuxsoft/yryvu/issues/460)) ([8952126](https://github.com/lobinuxsoft/yryvu/commit/89521263c7e35c58c80b77ba2d3edc2dbf7eb583))
+* **rebase:** amend the edit step's commit instead of discarding the edits ([26ed7c3](https://github.com/lobinuxsoft/yryvu/commit/26ed7c3d7401ca0cabfdb5c5dbed3c2a786a2871)), closes [#451](https://github.com/lobinuxsoft/yryvu/issues/451)
+* **rebase:** persist partial state when a step fails mid-plan ([0579d64](https://github.com/lobinuxsoft/yryvu/commit/0579d641f93149ec4b25d9915d0f5d742d0768f7))
+* **rebase:** refuse to start over a dirty working tree ([e266184](https://github.com/lobinuxsoft/yryvu/commit/e26618433c5cf36772509f4965fa3d16ed96904c))
+* **rebase:** refuse to start over a dirty working tree ([60dbe66](https://github.com/lobinuxsoft/yryvu/commit/60dbe66c1fda091c369db51cb3d14a858fc07851))
+* **rebase:** the Edit action is a no-op that discards the edits it invites ([#451](https://github.com/lobinuxsoft/yryvu/issues/451)) ([c0bc0ac](https://github.com/lobinuxsoft/yryvu/commit/c0bc0ac98988c21c0e91c0abd9329a1e7ae8d182))
+* **staging:** discard from the index so staged hunks survive ([2eb01b2](https://github.com/lobinuxsoft/yryvu/commit/2eb01b248d5e9903a2c9f1ed30c16b93f073a405))
+* **staging:** discard from the index so staged hunks survive ([eb7bb1b](https://github.com/lobinuxsoft/yryvu/commit/eb7bb1bdb993f5e9a3eb0d0b202b3c139a72ebb7))
+* **test:** configure repo identity for merge fixtures ([453283f](https://github.com/lobinuxsoft/yryvu/commit/453283f898940cf247d02aeb14c66611c7a6645c))
+* **theme:** clone full folder + preserve [layers] on duplicate ([edbf23d](https://github.com/lobinuxsoft/yryvu/commit/edbf23deee085bc12f5c9f80a96149c6b562fac0)), closes [#299](https://github.com/lobinuxsoft/yryvu/issues/299)
+* **theme:** drop redundant reference in duplicate.rs format arg ([c148650](https://github.com/lobinuxsoft/yryvu/commit/c1486501a7ddcfab57c2ff5a318b0ee62c819084))
+* **undo:** a stash-push undo pops the wrong stash ([#471](https://github.com/lobinuxsoft/yryvu/issues/471)) ([640cab4](https://github.com/lobinuxsoft/yryvu/commit/640cab4fc53bef05e626ebc6ae9dcb9b9a4d309b))
+* **undo:** block shell keybinds while the dirty dialog is open ([4375b12](https://github.com/lobinuxsoft/yryvu/commit/4375b124867884c351238f95d01b4889470bf923)), closes [#473](https://github.com/lobinuxsoft/yryvu/issues/473)
+* **undo:** cherry-pick/revert undo blind-resets to HEAD~1 ([#461](https://github.com/lobinuxsoft/yryvu/issues/461)) ([3307ae9](https://github.com/lobinuxsoft/yryvu/commit/3307ae9c64236a42da5a73e28be2365ff71aaf24))
+* **undo:** close the [#448](https://github.com/lobinuxsoft/yryvu/issues/448) frontend UX tail — modal guard, invertibility, honest labelling ([be5d969](https://github.com/lobinuxsoft/yryvu/commit/be5d9699213e69831dbe1d3ca5b60ff4b4323538))
+* **undo:** concurrent undo/redo drops extra commits ([#472](https://github.com/lobinuxsoft/yryvu/issues/472)) ([63de984](https://github.com/lobinuxsoft/yryvu/commit/63de984706d6df1cf7fbde753827e558a5267841))
+* **undo:** confirm before an undo discards uncommitted work ([5b00f19](https://github.com/lobinuxsoft/yryvu/commit/5b00f193242420c2605ba7f51ca6b0df0200a2ba))
+* **undo:** confirm before an undo discards uncommitted work ([fe3b819](https://github.com/lobinuxsoft/yryvu/commit/fe3b8192eca5d56809412cc2ce8e9255a7714eb4))
+* **undo:** gate clear_log_best_effort on the record-skip guard ([e7201e3](https://github.com/lobinuxsoft/yryvu/commit/e7201e3c1a1b4b249f3dbe68a27c34ef6c934b70)), closes [#469](https://github.com/lobinuxsoft/yryvu/issues/469)
+* **undo:** gate the buttons on invertibility and admit what force destroyed ([0851ef2](https://github.com/lobinuxsoft/yryvu/commit/0851ef2e71b5ea23c55c148affa2ecac68236528)), closes [#474](https://github.com/lobinuxsoft/yryvu/issues/474) [#475](https://github.com/lobinuxsoft/yryvu/issues/475)
+* **undo:** pop the recorded stash on undo, not whatever is on top ([7eb96d6](https://github.com/lobinuxsoft/yryvu/commit/7eb96d675d24e32a92a84f3a96b5fe61298428ec))
+* **undo:** redo a commit with a soft reset, mirroring its undo ([50b688c](https://github.com/lobinuxsoft/yryvu/commit/50b688cec1fe28a9aa00d326619bb3f3487fec03))
+* **undo:** redo a commit with a soft reset, mirroring its undo ([2c62aa3](https://github.com/lobinuxsoft/yryvu/commit/2c62aa387e103b1f8c0dd3a02bbdf0274808a7c2))
+* **undo:** stop concurrent undo/redo from dropping extra commits ([7a6cda9](https://github.com/lobinuxsoft/yryvu/commit/7a6cda9da7afbddbf92899da31435463359670f4)), closes [#472](https://github.com/lobinuxsoft/yryvu/issues/472)
+* **undo:** truncate the full redo tail when recording after a total undo ([ad66b4e](https://github.com/lobinuxsoft/yryvu/commit/ad66b4e678173eaf668667fb8f539d42f67ae384)), closes [#470](https://github.com/lobinuxsoft/yryvu/issues/470)
+* **undo:** undo-log corruption on total-undo record + stash-push undo ([1b0d56b](https://github.com/lobinuxsoft/yryvu/commit/1b0d56b62972fb986218f2cd87eb97c5e9a1eac9))
+* **undo:** verify HEAD before undoing a cherry-pick/revert ([203a22e](https://github.com/lobinuxsoft/yryvu/commit/203a22e24d772fbeb333ff7965123b4205e87fc1)), closes [#461](https://github.com/lobinuxsoft/yryvu/issues/461)
+* **worktrees:** honour the lock on remove, order deletion recoverably ([1b02118](https://github.com/lobinuxsoft/yryvu/commit/1b02118f531211aba112b9d9a5dc8feff5ba40ae))
+* **worktrees:** remove ignores the user's explicit lock ([#458](https://github.com/lobinuxsoft/yryvu/issues/458)) ([8306107](https://github.com/lobinuxsoft/yryvu/commit/83061078eb9cb9bc60a12a6437d77c2afe6e23ac))
+
 ## [0.5.1](https://github.com/lobinuxsoft/yryvu/compare/yryvu-v0.5.0...yryvu-v0.5.1) (2026-07-08)
 
 

@@ -55,7 +55,8 @@ export function UndoDirtyDialog() {
         }}
       >
         Cancel and commit or stash your work first if you want to keep it —
-        uncommitted changes cannot be recovered afterwards.
+        uncommitted changes cannot be recovered afterwards, not even by{" "}
+        {prompt()?.kind === "undo" ? "Redo" : "Undo"}.
       </p>
     </Dialog>
   );

@@ -18,7 +18,7 @@ use std::sync::{LazyLock, Mutex, MutexGuard};
 use serde::Serialize;
 
 use crate::repo::undo::{apply_inverse, apply_redo, UndoOutcome};
-use crate::undo_log::{read_log, set_cursor};
+use crate::undo_log::{mark_discarded_dirty_best_effort, read_log, set_cursor};
 
 /// Serializes the whole read→apply→set_cursor sequence of every undo /
 /// redo invocation. The sidecar is a read-modify-write file with no lock
@@ -54,9 +54,14 @@ pub struct UndoRedoState {
     pub can_undo: bool,
     pub undo_label: Option<String>,
     pub undo_count: u32,
+    /// The entry Undo would apply cost uncommitted work when it ran, and
+    /// reversing it will not bring that work back (#475).
+    pub undo_lost_work: bool,
     pub can_redo: bool,
     pub redo_label: Option<String>,
     pub redo_count: u32,
+    /// Same, for the entry Redo would apply.
+    pub redo_lost_work: bool,
 }
 
 #[tauri::command]
@@ -65,9 +70,8 @@ pub async fn get_undo_redo_state(repo_path: String) -> Result<UndoRedoState, Str
         let log = read_log(&PathBuf::from(&repo_path)).map_err(|e| e.to_string())?;
         let cursor = log.cursor;
         let total = log.ops.len();
-        let undo_label = cursor
-            .and_then(|c| log.ops.get(c))
-            .map(|op| op.kind.human_label());
+        let undo_entry = cursor.and_then(|c| log.ops.get(c));
+        let undo_label = undo_entry.map(|op| op.kind.human_label());
         // The redo entry sits at cursor + 1 — or at index 0 when the
         // user has fully undone past the start (cursor = None) and the
         // log still has an entry available.
@@ -76,21 +80,29 @@ pub async fn get_undo_redo_state(repo_path: String) -> Result<UndoRedoState, Str
             None if !log.ops.is_empty() => Some(0),
             None => None,
         };
-        let redo_label = redo_idx
-            .and_then(|i| log.ops.get(i))
-            .map(|op| op.kind.human_label());
+        let redo_entry = redo_idx.and_then(|i| log.ops.get(i));
+        let redo_label = redo_entry.map(|op| op.kind.human_label());
         // Counts: cursor = N means the next undo lands at N (N+1 ops
         // are reachable backwards). When cursor is None we've undone
         // past the start, so undo_count = 0 and redo_count = full log.
         let undo_count = cursor.map(|c| c + 1).unwrap_or(0);
         let redo_count = total.saturating_sub(undo_count);
+        // Enablement asks whether the entry can actually be reversed, not
+        // merely whether it exists. A root commit or a stash pop returns
+        // `Untrackable`, which leaves the cursor put — so a presence-only
+        // check lights the button up forever on an op that will never
+        // move (#474).
+        let can_undo = undo_entry.is_some_and(|op| op.kind.undo_untrackable_reason().is_none());
+        let can_redo = redo_entry.is_some_and(|op| op.kind.redo_untrackable_reason().is_none());
         Ok::<_, String>(UndoRedoState {
-            can_undo: undo_label.is_some(),
+            can_undo,
             undo_label,
             undo_count: u32::try_from(undo_count).unwrap_or(u32::MAX),
-            can_redo: redo_label.is_some(),
+            undo_lost_work: undo_entry.is_some_and(|op| op.discarded_dirty),
+            can_redo,
             redo_label,
             redo_count: u32::try_from(redo_count).unwrap_or(u32::MAX),
+            redo_lost_work: redo_entry.is_some_and(|op| op.discarded_dirty),
         })
     })
     .await
@@ -115,6 +127,18 @@ pub async fn undo_last_operation(
             .kind
             .clone();
         let outcome = apply_inverse(&path, &op, force).map_err(|e| e.to_string())?;
+        // Flag the entry the user just paid for, so its redo tooltip can
+        // stop implying the trip is round (#475). Same entry either
+        // direction: the loss belongs to the op, not to the arrow.
+        if matches!(
+            outcome,
+            UndoOutcome::Applied {
+                discarded_dirty: true,
+                ..
+            }
+        ) {
+            mark_discarded_dirty_best_effort(&path, cursor);
+        }
         if matches!(outcome, UndoOutcome::Applied { .. }) {
             // Walk the cursor back. Going past index 0 sets cursor to
             // None — the log is logically empty from undo's POV until
@@ -149,6 +173,15 @@ pub async fn redo_last_undo(repo_path: String, force: Option<bool>) -> Result<Un
             .kind
             .clone();
         let outcome = apply_redo(&path, &op, force).map_err(|e| e.to_string())?;
+        if matches!(
+            outcome,
+            UndoOutcome::Applied {
+                discarded_dirty: true,
+                ..
+            }
+        ) {
+            mark_discarded_dirty_best_effort(&path, target_idx);
+        }
         if matches!(outcome, UndoOutcome::Applied { .. }) {
             set_cursor(&path, Some(target_idx)).map_err(|e| e.to_string())?;
         }

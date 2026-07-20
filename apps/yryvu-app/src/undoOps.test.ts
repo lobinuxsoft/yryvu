@@ -12,9 +12,11 @@ const mocks = vi.hoisted(() => ({
     can_undo: true,
     undo_label: "commit",
     undo_count: 1,
+    undo_lost_work: false,
     can_redo: true,
     redo_label: "commit",
     redo_count: 1,
+    redo_lost_work: false,
   })),
 }));
 
@@ -44,8 +46,13 @@ vi.mock("./state", () => ({
 
 // Imported after the mocks are declared so the module binds to them.
 import { runRedo, runUndo } from "./undoOps";
+import { notify } from "./components/Notifications";
 
-const APPLIED: UndoOutcome = { outcome: "applied", kind_label: "commit" };
+const APPLIED: UndoOutcome = {
+  outcome: "applied",
+  kind_label: "commit",
+  discarded_dirty: false,
+};
 
 /// A promise whose resolution we drive by hand, to hold an op "in flight".
 function deferred(): { promise: Promise<UndoOutcome>; resolve: () => void } {
@@ -91,5 +98,35 @@ describe("undoOps in-flight guard (#472)", () => {
 
     d.resolve();
     await Promise.all([undo, redo]);
+  });
+});
+
+describe("discarded-work toast (#475)", () => {
+  it("says the discarded changes are gone when force destroyed work", async () => {
+    mocks.undoLastOperation.mockResolvedValueOnce({
+      outcome: "applied",
+      kind_label: "merge",
+      discarded_dirty: true,
+    } satisfies UndoOutcome);
+
+    await runUndo();
+
+    expect(notify.success).toHaveBeenCalledWith(
+      "Undone",
+      expect.objectContaining({
+        message: expect.stringContaining("Redo does not recover them"),
+      }),
+    );
+  });
+
+  it("stays quiet when nothing was discarded", async () => {
+    mocks.undoLastOperation.mockResolvedValueOnce(APPLIED);
+
+    await runUndo();
+
+    expect(notify.success).toHaveBeenCalledWith(
+      "Undone",
+      expect.objectContaining({ message: "commit" }),
+    );
   });
 });

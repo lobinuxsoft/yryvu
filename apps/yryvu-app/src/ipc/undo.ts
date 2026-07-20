@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 /// Mirrors `crate::repo::undo::UndoOutcome` (kebab-case via serde tag).
 export type UndoOutcome =
-  | { outcome: "applied"; kind_label: string }
+  | { outcome: "applied"; kind_label: string; discarded_dirty: boolean }
   | { outcome: "untrackable"; reason: string };
 
 /// Mirrors `crate::commands::undo::UndoRedoState`. `null` is serde's
@@ -13,9 +13,14 @@ export interface UndoRedoState {
   can_undo: boolean;
   undo_label: string | null;
   undo_count: number;
+  /// The entry Undo would apply already cost uncommitted work; reversing
+  /// it moves HEAD back but does not restore what was discarded.
+  undo_lost_work: boolean;
   can_redo: boolean;
   redo_label: string | null;
   redo_count: number;
+  /// Same, for the entry Redo would apply.
+  redo_lost_work: boolean;
 }
 
 export function getUndoRedoState(repoPath: string): Promise<UndoRedoState> {

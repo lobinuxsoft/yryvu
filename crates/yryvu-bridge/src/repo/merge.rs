@@ -42,12 +42,33 @@ pub fn merge_branch(
                 .name()
                 .ok_or_else(|| BackendError::Git(anyhow::anyhow!("HEAD is not symbolic")))?
                 .to_string();
-            // Order matters: libgit2 defaults the checkout baseline to HEAD's
-            // tree. Moving the ref first makes baseline == target, so the
-            // diff comes out empty and the working tree silently keeps the
-            // pre-merge content while HEAD advances — the index then reads as
-            // a full revert of everything the fast-forward brought in.
-            // Checkout first (baseline still the old HEAD), then move the ref.
+            // Order matters, but only because this checkout is SAFE.
+            //
+            // libgit2 defaults the checkout baseline to HEAD's tree. Moving
+            // the ref first makes baseline == target — the diff is not empty
+            // (checkout.c carries GIT_DIFF_INCLUDE_UNMODIFIED, so every path
+            // still yields a delta), but each one comes out UNMODIFIED, and
+            // the UNMODIFIED arm is `CHECKOUT_ACTION_IF(FORCE, UPDATE_BLOB,
+            // NONE)`. Without FORCE that resolves to NONE: nothing is
+            // written, the working tree silently keeps the pre-merge content
+            // while HEAD advances, and the index reads as a full revert of
+            // everything the fast-forward brought in (#447).
+            //
+            // The rule is therefore: **ref-first is a silent no-op iff the
+            // checkout is SAFE.** With FORCE the same ordering degenerates
+            // into a correct `reset --hard` (UPDATE_BLOB on the UNMODIFIED
+            // arm, tracked-but-not-in-target removed, missing files restored
+            // through the RECREATE_MISSING that FORCE implies). That is why
+            // `rebase/interactive/refs.rs` may move the ref before its
+            // checkout and is not this bug.
+            //
+            // `.safe()` here is load-bearing in the other direction too: a
+            // fast-forward must refuse to clobber uncommitted local changes,
+            // which is exactly what `fast_forward_preserves_unrelated_local_
+            // changes` pins. Do not "fix" it to `.force()`.
+            //
+            // So: checkout first (baseline still the old HEAD), then move
+            // the ref.
             let obj = repo.find_object(source_oid, None).map_err(git2_err)?;
             let mut checkout = git2::build::CheckoutBuilder::new();
             checkout.safe();

@@ -7,6 +7,9 @@
 
 mod exec;
 mod plan;
+mod refs;
+mod state_io;
+mod steps;
 
 #[cfg(test)]
 mod tests;

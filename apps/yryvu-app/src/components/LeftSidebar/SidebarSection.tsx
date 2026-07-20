@@ -7,8 +7,9 @@ import {
   toggleSectionExpanded,
   type SectionKey,
 } from "../../state";
-import { IconRefresh } from "../Icons";
+
 import { Tooltip } from "../Tooltip";
+import { Icon } from "../Icon";
 
 export interface SidebarSectionProps {
   /// Stable identity for this section. Drives shared expand state +
@@ -65,7 +66,7 @@ export function SidebarSection(props: SidebarSectionProps) {
                 if (!props.refreshing) props.onRefresh?.();
               }}
             >
-              <IconRefresh />
+              <Icon name="refresh" />
             </span>
           </Tooltip>
         </Show>

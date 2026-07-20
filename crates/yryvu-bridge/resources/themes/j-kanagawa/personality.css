@@ -1,102 +1,115 @@
 /* ========================================================================
-     PERSONALITY — J · Kanagawa
-     Beyond color tokens: serif headers (poetic), subtle paper grain on
-     panels, gold-accent washes on key surfaces, painterly avatar rings.
-     This block is theme-specific and lives ONLY in this file.
-     ======================================================================== */
+   PERSONALITY — J · Kanagawa
+   Sumi-e "great wave": paper-grain surfaces, soft ink drop-shadows, a
+   misty gradient wash on the toolbar, gold-accent active edges. Real
+   yryvu DOM. Honors prefers-reduced-motion.
+   ======================================================================== */
 
-  /* Serif font cascade — falls back through the OS serif stack */
-  .ins-summary,
-  .graph-header > div,
-  .sb-section h3,
-  .ins-files-title,
-  .tb-repo {
-    font-family: "Iowan Old Style", "Apple Garamond", Palatino,
-                 "Noto Serif", Georgia, serif;
-    letter-spacing: 0.005em;
-  }
-  .ins-summary {
-    font-weight: 500;
-    font-style: italic;
-    font-size: 15px;
-  }
-  .sb-section h3,
-  .graph-header > div,
-  .ins-files-title {
-    text-transform: none;
-    letter-spacing: 0.02em;
-    font-size: 11px;
-    font-style: italic;
-    color: var(--fg-2);
-  }
+/* --- Toolbar — misty wash -------------------------------------------- */
 
-  /* Subtle paper-grain on the three main panels — SVG noise inline */
-  .sidebar,
-  .inspector,
-  .graph {
-    background-image:
-      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-    background-blend-mode: overlay;
-  }
+.toolbar {
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, var(--bg-3));
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-2) 55%, transparent) 0%,
+    transparent 100%
+  );
+}
 
-  /* Gold wash on selected row — like ink soaking into rice paper */
-  .row.selected {
-    background:
-      linear-gradient(
-        90deg,
-        color-mix(in srgb, var(--warning) 14%, transparent) 0%,
-        color-mix(in srgb, var(--warning) 6%, transparent) 60%,
-        transparent 100%
-      ),
-      color-mix(in srgb, var(--accent) 18%, transparent);
-  }
+.toolbar__btn {
+  transition: background 240ms ease, box-shadow 240ms ease;
+}
+.toolbar__btn:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-2));
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
 
-  /* Pills — softer borders, more refined */
-  .row .pill,
-  .row .pill.head,
-  .row .pill.tag {
-    border-width: 1px;
-    border-radius: 12px;
-    padding: 1px 9px;
-    font-weight: 500;
-  }
-  .row .pill.head {
-    background: color-mix(in srgb, var(--accent) 22%, var(--bg-2));
-  }
+.toolbar__btn-badge {
+  box-shadow: 0 0 0 2px var(--bg-1), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
 
-  /* Inspector avatar — wave-like radial gradient (Hokusai-inspired) */
-  .ins-avatar {
-    background:
-      radial-gradient(
-        circle at 30% 30%,
-        var(--lane-3) 0%,
-        var(--accent) 50%,
-        var(--lane-2) 100%
-      );
-    box-shadow:
-      0 0 0 2px var(--bg-1),
-      0 0 0 3px color-mix(in srgb, var(--warning) 50%, transparent);
-  }
+/* --- Tabs ------------------------------------------------------------ */
 
-  /* Toolbar — subtle warm undertone */
-  .toolbar {
-    background:
-      linear-gradient(180deg,
-        color-mix(in srgb, var(--warning) 4%, var(--bg-1)),
-        var(--bg-1));
-  }
+.tab[aria-selected="true"],
+.tab.active,
+.tab--permanent {
+  box-shadow: inset 0 -2px 0 var(--warning);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
 
-  /* Status bar — painterly bottom edge */
-  .statusbar {
-    background:
-      linear-gradient(0deg,
-        color-mix(in srgb, var(--accent) 6%, var(--bg-1)),
-        var(--bg-1));
-  }
+/* --- Sidebar — paper grain + ink fold -------------------------------- */
 
-  /* SHA pills — serif-friendly mono fallback */
-  .ins-sha,
-  .row .msg-sha {
-    font-family: "JetBrains Mono", "Courier New", var(--font-mono);
-    letter-spacing: 0;
-  }
+.sidebar {
+  box-shadow: 1px 0 0 var(--bg-3), 2px 0 6px rgba(0, 0, 0, 0.25);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='k'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23k)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+.sidebar__branch-row {
+  transition: background 220ms ease;
+}
+.sidebar__branch-row:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.sidebar__branch-row[data-active="true"] {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--warning) 14%, transparent) 0%,
+    transparent 70%
+  );
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
+/* --- Ref pills — soft ink shadow ------------------------------------- */
+
+.ref-pill {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.ref-pill--head {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.ref-pill--tag {
+  box-shadow: 0 0 9px color-mix(in srgb, var(--warning) 40%, transparent);
+}
+
+/* --- Status bar ------------------------------------------------------ */
+
+.statusbar {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+/* --- Cold start — paper grain + ink title ---------------------------- */
+
+.cold-start {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='k2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23k2)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+.cold-start__title {
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  animation: kanagawa-title-fade 6s ease-in-out infinite;
+}
+@keyframes kanagawa-title-fade {
+  0%, 100% { text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); }
+  50%      { text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 14px color-mix(in srgb, var(--accent) 40%, transparent); }
+}
+
+.cold-start__action {
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  transition: box-shadow 240ms ease, transform 240ms ease;
+}
+.cold-start__action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.cold-start__recent-item {
+  transition: background 220ms ease;
+}
+.cold-start__recent-item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* --- Reduced motion -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cold-start__title { animation: none; }
+}

@@ -40,6 +40,38 @@ pub struct ThemeMetadata {
     pub version: Option<String>,
 }
 
+/// Where a theme layer's CSS comes from, inside the theme folder:
+/// - a single filename (`"tokens.css"`),
+/// - a directory to scan when the string ends in `/` (`"personality/"` —
+///   every `*.css` inside, concatenated in alphabetical filename order),
+/// - or an explicit ordered list (`["01.css", "02.css"]`).
+///
+/// `#[serde(untagged)]` lets a TOML string OR array both deserialize here.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum PathSpec {
+    Single(String),
+    List(Vec<String>),
+}
+
+/// Optional `[layers]` table in `theme.toml`. Opt-in: when the table is
+/// absent the loader falls back to the flat `tokens.css` + `personality.css`
+/// layout. When present, `tokens` still defaults to `tokens.css`, while
+/// `icons` and `personality` are only loaded if explicitly declared.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Layers {
+    #[serde(default = "default_tokens_spec")]
+    pub tokens: PathSpec,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icons: Option<PathSpec>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub personality: Option<PathSpec>,
+}
+
+fn default_tokens_spec() -> PathSpec {
+    PathSpec::Single("tokens.css".to_string())
+}
+
 /// Parse a `theme.toml` source and validate that `id` matches the
 /// containing folder name.
 pub fn parse(src: &str, expected_folder: &str) -> Result<ThemeMetadata, SchemaError> {
@@ -51,6 +83,19 @@ pub fn parse(src: &str, expected_folder: &str) -> Result<ThemeMetadata, SchemaEr
         });
     }
     Ok(meta)
+}
+
+/// Parse the optional `[layers]` table from a `theme.toml` source.
+/// Returns `None` when the table is absent (legacy flat layout). The
+/// metadata fields are ignored here — [`parse`] owns their validation.
+pub fn parse_layers(src: &str) -> Result<Option<Layers>, SchemaError> {
+    #[derive(Deserialize)]
+    struct ManifestDoc {
+        #[serde(default)]
+        layers: Option<Layers>,
+    }
+    let doc: ManifestDoc = toml::from_str(src)?;
+    Ok(doc.layers)
 }
 
 #[cfg(test)]
@@ -131,5 +176,56 @@ mod tests {
             scheme = "dark"
         "#;
         assert!(parse(src, "x").is_err());
+    }
+
+    #[test]
+    fn parse_layers_absent_is_none() {
+        let src = r#"
+            name = "X"
+            id = "x"
+            scheme = "dark"
+        "#;
+        assert_eq!(parse_layers(src).unwrap(), None);
+    }
+
+    #[test]
+    fn parse_layers_dir_and_single_and_list() {
+        let src = r#"
+            name = "X"
+            id = "x"
+            scheme = "dark"
+
+            [layers]
+            icons = "icons.css"
+            personality = "personality/"
+        "#;
+        let layers = parse_layers(src).unwrap().expect("layers present");
+        // tokens defaults even when the field is omitted from [layers].
+        assert_eq!(layers.tokens, PathSpec::Single("tokens.css".to_string()));
+        assert_eq!(
+            layers.icons,
+            Some(PathSpec::Single("icons.css".to_string()))
+        );
+        assert_eq!(
+            layers.personality,
+            Some(PathSpec::Single("personality/".to_string()))
+        );
+
+        let with_list = r#"
+            name = "X"
+            id = "x"
+            scheme = "dark"
+
+            [layers]
+            personality = ["01-a.css", "02-b.css"]
+        "#;
+        let layers = parse_layers(with_list).unwrap().unwrap();
+        assert_eq!(
+            layers.personality,
+            Some(PathSpec::List(vec![
+                "01-a.css".to_string(),
+                "02-b.css".to_string()
+            ]))
+        );
     }
 }

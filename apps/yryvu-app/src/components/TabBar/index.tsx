@@ -16,7 +16,6 @@
 
 import { createSignal, For, onCleanup, Show } from "solid-js";
 
-import { IconChevronDown, IconPlus } from "../Icons";
 import { Tooltip } from "../Tooltip";
 import {
   isTabDropdownOpen,
@@ -30,6 +29,7 @@ import { NEW_TAB_BUTTON_ID } from "../../tabs/types";
 import { computeTargetIndex, DRAG_THRESHOLD_PX } from "./dragMath";
 import { TabDropdown } from "./TabDropdown";
 import { TabPill } from "./TabPill";
+import { Icon } from "../Icon";
 
 /// Live drag state. `dragging: false` until the cursor moves past the
 /// click/drag threshold — clicks shouldn't be misinterpreted as drags.
@@ -188,7 +188,7 @@ export function TabBar() {
           aria-label="New tab"
           onClick={() => void openNewTab()}
         >
-          <IconPlus />
+          <Icon name="plus" />
         </button>
       </Tooltip>
 
@@ -201,7 +201,7 @@ export function TabBar() {
           aria-expanded={isTabDropdownOpen()}
           onClick={onChevronClick}
         >
-          <IconChevronDown />
+          <Icon name="chevron-down" />
         </button>
       </Tooltip>
 

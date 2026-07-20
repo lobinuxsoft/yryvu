@@ -6,24 +6,28 @@
 
 use std::path::Path;
 
+use include_dir::{Dir, File};
+
 use crate::themes::schema::{SchemaError, ThemeMetadata};
 
-use super::{
-    io_err, read_built_in_utf8, LoadError, BUILT_INS, FILE_PERSONALITY_CSS, FILE_THEME_TOML,
-    FILE_TOKENS_CSS,
-};
+use super::{io_err, read_built_in_utf8, LoadError, BUILT_INS, FILE_THEME_TOML, FILE_TOKENS_CSS};
 
 /// Copy a built-in theme to `<custom_dir>/<new_id>/`, rewriting `id` +
 /// `name` in `theme.toml` and the `:root[data-theme="…"]` selector in
 /// `tokens.css`. The new name mirrors the source ("Synthwave" → "Synthwave
 /// Copy", second copy "Synthwave Copy 2") so the dropdown shows the
 /// origin of every fork. Returns the generated `new_id`.
+///
+/// The copy is layout-agnostic: every file in the source folder is cloned
+/// recursively (so a layered theme's `personality/` directory + its
+/// `[layers]` manifest survive intact), then `theme.toml` and `tokens.css`
+/// are patched in place.
 pub fn create_from_template(builtin_id: &str, custom_dir: &Path) -> Result<String, LoadError> {
-    if BUILT_INS.get_dir(builtin_id).is_none() {
-        return Err(LoadError::NotFound {
+    let src_dir = BUILT_INS
+        .get_dir(builtin_id)
+        .ok_or_else(|| LoadError::NotFound {
             id: builtin_id.to_string(),
-        });
-    }
+        })?;
 
     let toml_src = read_built_in_utf8(builtin_id, FILE_THEME_TOML)?;
     let source_meta: ThemeMetadata = toml::from_str(toml_src).map_err(|e| LoadError::Schema {
@@ -35,6 +39,22 @@ pub fn create_from_template(builtin_id: &str, custom_dir: &Path) -> Result<Strin
     let dest = custom_dir.join(&copy.id);
     std::fs::create_dir_all(&dest).map_err(|e| io_err(&copy.id, e))?;
 
+    // 1. Clone every file verbatim, preserving the folder layout.
+    let mut files = Vec::new();
+    collect_files(src_dir, &mut files);
+    for file in files {
+        let rel = file
+            .path()
+            .strip_prefix(builtin_id)
+            .unwrap_or_else(|_| file.path());
+        let out_path = dest.join(rel);
+        if let Some(parent) = out_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| io_err(&copy.id, e))?;
+        }
+        std::fs::write(&out_path, file.contents()).map_err(|e| io_err(&copy.id, e))?;
+    }
+
+    // 2. Patch theme.toml (id + name, [layers] and everything else kept).
     let toml_rewritten =
         rewrite_toml_metadata(toml_src, &copy.id, &copy.name).map_err(|e| LoadError::Schema {
             id: copy.id.clone(),
@@ -42,22 +62,25 @@ pub fn create_from_template(builtin_id: &str, custom_dir: &Path) -> Result<Strin
         })?;
     std::fs::write(dest.join(FILE_THEME_TOML), toml_rewritten).map_err(|e| io_err(&copy.id, e))?;
 
+    // 3. Re-scope the tokens selector to the new id.
     let tokens_src = read_built_in_utf8(builtin_id, FILE_TOKENS_CSS)?;
     let tokens_rewritten = tokens_src.replace(
         &format!(":root[data-theme=\"{builtin_id}\"]"),
-        &format!(":root[data-theme=\"{}\"]", &copy.id),
+        &format!(":root[data-theme=\"{}\"]", copy.id),
     );
     std::fs::write(dest.join(FILE_TOKENS_CSS), tokens_rewritten)
         .map_err(|e| io_err(&copy.id, e))?;
 
-    if let Some(p) = BUILT_INS
-        .get_file(format!("{builtin_id}/{FILE_PERSONALITY_CSS}"))
-        .and_then(|f| f.contents_utf8())
-    {
-        std::fs::write(dest.join(FILE_PERSONALITY_CSS), p).map_err(|e| io_err(&copy.id, e))?;
-    }
-
     Ok(copy.id)
+}
+
+/// Depth-first collect of every embedded file under `dir`, so a theme's
+/// nested layer directories (e.g. `personality/`) are copied too.
+fn collect_files<'a>(dir: &'a Dir<'a>, out: &mut Vec<&'a File<'a>>) {
+    out.extend(dir.files());
+    for sub in dir.dirs() {
+        collect_files(sub, out);
+    }
 }
 
 struct CopyName {
@@ -105,11 +128,17 @@ fn unique_copy(custom_dir: &Path, base_id: &str, base_name: &str) -> CopyName {
     }
 }
 
+/// Rewrite only `id` + `name`, preserving every other table (`[layers]`
+/// especially) verbatim. A `ThemeMetadata` round-trip would silently drop
+/// unknown tables, so mutate the parsed document instead.
 fn rewrite_toml_metadata(src: &str, new_id: &str, new_name: &str) -> Result<String, SchemaError> {
-    let mut meta: ThemeMetadata = toml::from_str(src)?;
-    meta.id = new_id.to_string();
-    meta.name = new_name.to_string();
-    Ok(toml::to_string(&meta).unwrap_or_default())
+    let mut doc: toml::Table = toml::from_str(src)?;
+    doc.insert("id".to_string(), toml::Value::String(new_id.to_string()));
+    doc.insert(
+        "name".to_string(),
+        toml::Value::String(new_name.to_string()),
+    );
+    Ok(toml::to_string(&doc).unwrap_or_default())
 }
 
 #[cfg(test)]
@@ -183,6 +212,32 @@ mod tests {
         assert!(
             !tokens.contains("[data-theme=\"d-synthwave\"]"),
             "old selector lingered: {tokens}"
+        );
+    }
+
+    #[test]
+    fn create_from_template_preserves_layered_structure() {
+        // d-synthwave is layered ([layers] + personality/ directory).
+        // The copy must carry the manifest and the split files, and load
+        // back through the same layered path with its personality intact.
+        let tmp = tempfile::tempdir().unwrap();
+        let new_id = create_from_template("d-synthwave", tmp.path()).unwrap();
+        let copied_dir = tmp.path().join(&new_id);
+
+        let toml_src = std::fs::read_to_string(copied_dir.join("theme.toml")).unwrap();
+        assert!(
+            toml_src.contains("[layers]"),
+            "[layers] table dropped in copy: {toml_src}"
+        );
+        assert!(
+            copied_dir.join("personality").is_dir(),
+            "personality/ directory not cloned"
+        );
+
+        let css = super::super::get_theme_css(&new_id, tmp.path()).unwrap();
+        assert!(
+            css.personality.contains("synthwave-toolbar-pulse"),
+            "layered personality not resolved for the copy"
         );
     }
 }

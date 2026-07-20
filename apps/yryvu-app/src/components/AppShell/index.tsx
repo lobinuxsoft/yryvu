@@ -15,6 +15,7 @@ import { RebaseInteractiveDialog } from "../RebaseInteractiveDialog";
 import { CommitFilterBar } from "../CommitFilterBar";
 import { DropActionMenu } from "../DropActionMenu";
 import { StashCreateDialog } from "../StashCreateDialog";
+import { UndoDirtyDialog } from "../UndoDirtyDialog";
 import { FileDiffTab } from "../FileDiffTab";
 import { FileHistoryPanel } from "../FileHistoryPanel";
 import { IssueDetailPanel } from "../IssueDetail";
@@ -336,6 +337,7 @@ export function AppShell() {
       <PreferencesWindow />
       <DropActionMenu />
       <StashCreateDialog />
+      <UndoDirtyDialog />
       <CredentialSetupDialog />
       <SshKeyGenDialog />
       <About />

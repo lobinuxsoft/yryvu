@@ -1,46 +1,96 @@
 /* ========================================================================
-     PERSONALITY — C · Catppuccin Mocha
-     Pastel rounded soft. Generous radii, fluffy shadows, mauve glows.
-     The "hygge" personality — cozy without being childish.
-     ======================================================================== */
+   PERSONALITY — C · Catppuccin Mocha
+   Pastel + cozy ("hygge"). Fluffy inner shadows, mauve glows, warm
+   gradient washes, generously rounded pills/buttons. Real yryvu DOM.
+   Honors prefers-reduced-motion.
+   ======================================================================== */
 
-  /* Generous radii everywhere */
-  .row .pill,
-  .row .pill.head,
-  .row .pill.tag {
-    border-radius: 14px;
-    padding: 2px 10px;
-  }
-  .tb-btn { border-radius: 8px; }
-  .tb-split { border-radius: 8px; }
-  .tb-repo { border-radius: 8px; }
-  .tb-search { border-radius: 8px; }
+/* Softer, rounder chrome shapes (override the #298 shape tokens). */
+:root {
+  --btn-radius: 8px;
+  --pill-radius: 999px;
+}
 
-  /* HEAD pill — mauve glow */
-  .row .pill.head {
-    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
-  }
+/* --- Toolbar --------------------------------------------------------- */
 
-  /* Pastel shadows on toolbar buttons hover */
-  .tb-btn:hover {
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 20%, transparent);
-  }
+.toolbar {
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, var(--bg-3));
+}
 
-  /* Selected row — peach + mauve gradient wash */
-  .row.selected {
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--lane-6) 18%, transparent) 0%,
-      color-mix(in srgb, var(--accent) 14%, transparent) 100%
-    );
-    box-shadow: inset 3px 0 0 var(--accent);
-  }
+.toolbar__btn {
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+.toolbar__btn:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-2));
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 22%, transparent);
+}
 
-  /* Avatar — pastel gradient ring */
-  .ins-avatar {
-    background: radial-gradient(circle at 30% 30%, var(--lane-3), var(--accent));
-    box-shadow:
-      0 0 0 2px var(--bg-1),
-      0 0 0 3px color-mix(in srgb, var(--lane-3) 50%, transparent),
-      0 4px 12px color-mix(in srgb, var(--lane-3) 30%, transparent);
-  }
+.toolbar__btn-badge {
+  box-shadow: 0 0 0 2px var(--bg-1), 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* --- Tabs ------------------------------------------------------------ */
+
+.tab[aria-selected="true"],
+.tab.active,
+.tab--permanent {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 14%, transparent) 100%
+  );
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* --- Sidebar --------------------------------------------------------- */
+
+.sidebar__branch-row {
+  transition: background 180ms ease;
+}
+.sidebar__branch-row:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.sidebar__branch-row[data-active="true"] {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--lane-6) 16%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 100%
+  );
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* --- Ref pills ------------------------------------------------------- */
+
+.ref-pill--head {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.ref-pill--tag {
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--warning) 35%, transparent);
+}
+.ref-pill--remote {
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--info) 35%, transparent);
+}
+
+/* --- Status bar ------------------------------------------------------ */
+
+.statusbar {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* --- Cold start ------------------------------------------------------ */
+
+.cold-start__action {
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+.cold-start__action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.cold-start__recent-item {
+  transition: background 180ms ease;
+}
+.cold-start__recent-item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}

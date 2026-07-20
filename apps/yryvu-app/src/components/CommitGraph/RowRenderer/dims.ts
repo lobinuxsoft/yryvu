@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { createSignal } from "solid-js";
+
 /**
  * Render dimensions — 1:1 with the GK bundle's `graphZoneModeConstants`
  * factory (module 21792). The arc constants (`edgeArcApproach`,
@@ -52,6 +54,41 @@ const COMPACT_DIMS: RenderDims = {
   lineWidth: 1,
 };
 
+// Themeable visual params (#301). Only the commit-node radius and the
+// edge stroke width are exposed — they flow through `dims` numerically so
+// the circle, lane-streak height and SVG extent stay consistent, without
+// touching ROW_HEIGHT / lane X / arc geometry (which would reflow the
+// virtualizer). Compact density keeps its own smaller constants.
+let hydratedCommitRadius = DEFAULT_DIMS.commitRadius;
+let hydratedLineWidth = DEFAULT_DIMS.lineWidth;
+
+const [dimsVersion, bumpDimsVersion] = createSignal(0);
+
+function readVar(name: string, fallback: number): number {
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
+  const n = Number.parseFloat(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/// Re-read the graph's themeable CSS variables from the document root.
+/// Call on graph mount and whenever the active theme changes (its vars
+/// must already be injected — see `themeAppliedVersion`). Bumps a version
+/// signal so the reactive `getRenderDims` callers re-render.
+export function hydrateGraphDims(): void {
+  hydratedCommitRadius = readVar("--graph-node-radius", DEFAULT_DIMS.commitRadius);
+  hydratedLineWidth = readVar("--graph-edge-width", DEFAULT_DIMS.lineWidth);
+  bumpDimsVersion((v) => v + 1);
+}
+
 export function getRenderDims(compact: boolean): RenderDims {
-  return compact ? COMPACT_DIMS : DEFAULT_DIMS;
+  // Establish a reactive dependency so a theme switch re-renders the graph.
+  dimsVersion();
+  if (compact) return COMPACT_DIMS;
+  return {
+    ...DEFAULT_DIMS,
+    commitRadius: hydratedCommitRadius,
+    lineWidth: hydratedLineWidth,
+  };
 }

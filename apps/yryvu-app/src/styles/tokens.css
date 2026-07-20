@@ -58,6 +58,62 @@
   --radius-md: 4px;
   --radius-lg: 6px;
 
+  /* Shapes — themes override to reshape chrome without touching TSX.
+     Radii default to the geometry scale above; `var(--radius-md)` is
+     resolved lazily at each use site, so a theme redefining --radius-md
+     propagates here for free. clip-path defaults to `none` (no cut). */
+  --btn-radius: var(--radius-md);
+  --btn-clip-path: none;
+  --pill-radius: 999px;
+  --pill-clip-path: none;
+  --avatar-radius: 50%;
+  --avatar-clip-path: none;
+
+  /* Spacing — representative gaps + per-surface container padding.
+     Chrome consumes these on primary containers; incidental element
+     padding stays literal (a theme reshapes the frame, not every chip). */
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 12px;
+  --gap-lg: 16px;
+  --padding-toolbar-x: 12px;
+  --padding-toolbar-y: 0px;
+  --padding-row-x: 10px;
+  --padding-row-y: 4px;
+  --padding-sidebar-x: 10px;
+  --padding-sidebar-y: 6px;
+
+  /* Borders — width/style knobs; colour stays in the --border shim. */
+  --border-width: 1px;
+  --border-style: solid;
+
+  /* Chrome icons — one data-URI per icon so a theme can reshape any
+     single icon via `--icon-<name>` (or by dropping `icons/<name>.svg`
+     in its folder, #300). Generated from components/Icons geometry;
+     consumed through `.icon[data-icon]` mask rules in icons.css. */
+  --icon-arrow-down: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOCAydjExIi8+PHBhdGggZD0iTTMuNSA4LjVMOCAxM2w0LjUtNC41Ii8+PC9zdmc+");
+  --icon-arrow-up: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOCAxNFYzIi8+PHBhdGggZD0iTTMuNSA3LjVMOCAzbDQuNSA0LjUiLz48L3N2Zz4=");
+  --icon-branch: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI0IiBjeT0iMyIgcj0iMS41Ii8+PGNpcmNsZSBjeD0iNCIgY3k9IjEzIiByPSIxLjUiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjYiIHI9IjEuNSIvPjxwYXRoIGQ9Ik00IDQuNXY3Ii8+PHBhdGggZD0iTTQgOWMwLTIgMi0yLjUgNC0yLjVoMi41Ii8+PC9zdmc+");
+  --icon-check: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMy41IDguNUw3IDEybDUuNS03Ii8+PC9zdmc+");
+  --icon-chevron-down: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNCA2bDQgNCA0LTQiLz48L3N2Zz4=");
+  --icon-circle-dot: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI4IiBjeT0iOCIgcj0iNiIvPjxjaXJjbGUgY3g9IjgiIGN5PSI4IiByPSIyIiBmaWxsPSIjMDAwIiBzdHJva2U9Im5vbmUiLz48L3N2Zz4=");
+  --icon-cloud: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNC41IDEyYTMgMyAwIDAgMSAuMy01Ljk4IDQgNCAwIDAgMSA3LjcgMS41QTIuNSAyLjUgMCAwIDEgMTIgMTJ6Ii8+PC9zdmc+");
+  --icon-gear: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOCAxLjVsMS4xIDEuNiAyLS40LjQgMiAxLjYgMS4xLTEgMS43IDEgMS43LTEuNiAxLjEtLjQgMi0yLS40TDggMTQuNWwtMS4xLTEuNi0yIC40LS40LTItMS42LTEuMSAxLTEuNy0xLTEuNyAxLjYtMS4xLjQtMiAyIC40eiIvPjxjaXJjbGUgY3g9IjgiIGN5PSI4IiByPSIyLjUiLz48L3N2Zz4=");
+  --icon-info: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI4IiBjeT0iOCIgcj0iNiIvPjxwYXRoIGQ9Ik04IDd2NCIvPjxwYXRoIGQ9Ik04IDV2LjUiLz48L3N2Zz4=");
+  --icon-open-folder: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMS41IDQuNWExIDEgMCAwIDEgMS0xaDNsMS41IDEuNWg2YTEgMSAwIDAgMSAxIDF2NmExIDEgMCAwIDEtMSAxaC0xMGExIDEgMCAwIDEtMS0xeiIvPjwvc3ZnPg==");
+  --icon-plus: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOCAzdjEwIi8+PHBhdGggZD0iTTMgOGgxMCIvPjwvc3ZnPg==");
+  --icon-pull-request: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI0IiBjeT0iMy41IiByPSIxLjUiLz48Y2lyY2xlIGN4PSI0IiBjeT0iMTIuNSIgcj0iMS41Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMi41IiByPSIxLjUiLz48cGF0aCBkPSJNNCA1djYiLz48cGF0aCBkPSJNMTIgNS41djUuNSIvPjxwYXRoIGQ9Ik0xMiA1LjVoLTEuNWEyIDIgMCAwIDEtMi0yVjIuNSIvPjwvc3ZnPg==");
+  --icon-redo: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIgNkg2YTMuNSAzLjUgMCAwIDAgMCA3aDQiLz48cGF0aCBkPSJNMTIgNmwtMi41LTIuNSIvPjxwYXRoIGQ9Ik0xMiA2bC0yLjUgMi41Ii8+PC9zdmc+");
+  --icon-refresh: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTMgNGE1IDUgMCAxIDAgMS4zIDUiLz48cGF0aCBkPSJNMTMgMnYzaC0zIi8+PC9zdmc+");
+  --icon-search: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI3IiBjeT0iNyIgcj0iNC41Ii8+PHBhdGggZD0iTTEwLjUgMTAuNWwzIDMiLz48L3N2Zz4=");
+  --icon-stash-in: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIyLjUiIHk9IjguNSIgd2lkdGg9IjExIiBoZWlnaHQ9IjUiIHJ4PSIwLjgiLz48cGF0aCBkPSJNOCAydjUiLz48cGF0aCBkPSJNNS41IDQuNUw4IDdsMi41LTIuNSIvPjwvc3ZnPg==");
+  --icon-stash-out: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIyLjUiIHk9IjguNSIgd2lkdGg9IjExIiBoZWlnaHQ9IjUiIHJ4PSIwLjgiLz48cGF0aCBkPSJNOCA3VjIiLz48cGF0aCBkPSJNNS41IDQuNUw4IDJsMi41IDIuNSIvPjwvc3ZnPg==");
+  --icon-tag: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMiAyLjVoNWw2LjUgNi41YTEgMSAwIDAgMSAwIDEuNGwtMy4xIDMuMWExIDEgMCAwIDEtMS40IDBMMi41IDdWMi41eiIvPjxjaXJjbGUgY3g9IjUiIGN5PSI1IiByPSIwLjgiIGZpbGw9IiMwMDAiIHN0cm9rZT0ibm9uZSIvPjwvc3ZnPg==");
+  --icon-tag-annotated: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMiAyLjVoNWw2LjUgNi41YTEgMSAwIDAgMSAwIDEuNGwtMy4xIDMuMWExIDEgMCAwIDEtMS40IDBMMi41IDdWMi41eiIvPjxjaXJjbGUgY3g9IjUiIGN5PSI1IiByPSIwLjgiIGZpbGw9IiMwMDAiIHN0cm9rZT0ibm9uZSIvPjxsaW5lIHgxPSI2LjUiIHkxPSI4LjIiIHgyPSI5LjgiIHkyPSI4LjIiIHN0cm9rZS13aWR0aD0iMSIvPjxsaW5lIHgxPSI3IiB5MT0iOS44IiB4Mj0iMTAuMyIgeTI9IjkuOCIgc3Ryb2tlLXdpZHRoPSIxIi8+PGxpbmUgeDE9IjcuNSIgeTE9IjExLjQiIHgyPSIxMC44IiB5Mj0iMTEuNCIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9zdmc+");
+  --icon-terminal: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIxLjUiIHk9IjIuNSIgd2lkdGg9IjEzIiBoZWlnaHQ9IjExIiByeD0iMS4yIi8+PHBhdGggZD0iTTQgNmwyLjUgMkw0IDEwIi8+PHBhdGggZD0iTTggMTAuNWg0Ii8+PC9zdmc+");
+  --icon-undo: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNCA2aDZhMy41IDMuNSAwIDAgMSAwIDdINiIvPjxwYXRoIGQ9Ik00IDZsMi41LTIuNSIvPjxwYXRoIGQ9Ik00IDZsMi41IDIuNSIvPjwvc3ZnPg==");
+  --icon-users: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI1LjUiIGN5PSI1LjUiIHI9IjIuMiIvPjxwYXRoIGQ9Ik0xLjUgMTNjMC0yLjMgMS44LTQgNC00czQgMS43IDQgNCIvPjxwYXRoIGQ9Ik0xMC41IDcuNWEyIDIgMCAwIDAgMC0zLjgiLz48cGF0aCBkPSJNMTQuNSAxMi41YzAtMS43LTEtMy4xLTIuNS0zLjciLz48L3N2Zz4=");
+
   --panel-width-left: 240px;
   --panel-width-right: 340px;
   --panel-width-left-collapsed: 44px;
@@ -72,10 +128,31 @@
   --graph-col-date-time: 130px;
   --graph-col-sha: 130px;
 
+  /* Themeable graph visuals (#301) — hydrated into the JS render dims on
+     mount + theme switch. Only node radius + edge width (comfortable
+     density); geometry (row height, lane width) stays JS. */
+  --graph-node-radius: 11px;
+  --graph-edge-width: 2px;
+
   /* Typography */
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'FiraCode Nerd Font Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-sans: var(--font-ui);
+
+  /* Per-context fonts — default to the ui/mono pair, but a theme can
+     give the toolbar, sidebar, graph message, or code surfaces their
+     own family (e.g. a serif graph message over a mono chrome). */
+  --font-toolbar: var(--font-ui);
+  --font-sidebar: var(--font-ui);
+  --font-graph-message: var(--font-ui);
+  --font-code: var(--font-mono);
+
+  /* Per-context font sizes — match the current chrome so default
+     themes render pixel-identical; themes scale a surface in isolation. */
+  --font-size-toolbar: 13px;
+  --font-size-row: 12px;
+  --font-size-sidebar: 12px;
+  --font-size-statusbar: 11px;
 
   /* Chrome shim — derives from theme color tokens so a theme switch
      propagates to all consumers (border outlines, selection highlights). */

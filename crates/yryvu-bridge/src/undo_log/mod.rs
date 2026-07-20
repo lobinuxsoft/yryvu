@@ -50,8 +50,8 @@ mod record;
 pub use errors::{UndoLogError, REFLOG_TAG_PREFIX, UNDO_LOG_FILENAME};
 pub use op_kind::{Op, OpKind, UndoLog};
 pub use record::{
-    clear_log_best_effort, read_log, record_op, record_op_best_effort, set_cursor,
-    with_record_skipped,
+    clear_log_best_effort, mark_discarded_dirty_best_effort, read_log, record_op,
+    record_op_best_effort, set_cursor, with_record_skipped,
 };
 
 #[cfg(test)]
@@ -136,6 +136,102 @@ mod tests {
     }
 
     #[test]
+    fn new_op_after_undoing_everything_truncates_full_tail() {
+        let repo = fresh_repo();
+        record_op(
+            repo.path(),
+            OpKind::Commit {
+                sha: "a".into(),
+                parent_sha: None,
+            },
+        )
+        .unwrap();
+        // Undo everything: cursor steps past index 0 to None.
+        set_cursor(repo.path(), None).unwrap();
+        // A fresh op must drop the whole stale tail, not append behind it.
+        record_op(
+            repo.path(),
+            OpKind::Commit {
+                sha: "b".into(),
+                parent_sha: None,
+            },
+        )
+        .unwrap();
+        let log = read_log(repo.path()).unwrap();
+        assert_eq!(log.ops.len(), 1);
+        assert!(matches!(
+            &log.ops[0].kind,
+            OpKind::Commit { sha, .. } if sha == "b"
+        ));
+        assert_eq!(log.cursor, Some(0));
+    }
+
+    #[test]
+    fn clear_is_skipped_under_record_guard() {
+        let repo = fresh_repo();
+        record_op(
+            repo.path(),
+            OpKind::StashPush {
+                stash_sha: "deadbeef".into(),
+                include_untracked: true,
+                include_ignored: false,
+            },
+        )
+        .unwrap();
+        // An inverse replaying stash_pop clears the log; under the guard
+        // it must be a no-op so the IPC cursor walk stays valid.
+        with_record_skipped(|| clear_log_best_effort(repo.path()));
+        let log = read_log(repo.path()).unwrap();
+        assert_eq!(log.ops.len(), 1, "clear must be suppressed under guard");
+        assert_eq!(log.cursor, Some(0));
+        // Outside the guard it still clears — real invalidating ops rely on it.
+        clear_log_best_effort(repo.path());
+        let cleared = read_log(repo.path()).unwrap();
+        assert!(cleared.ops.is_empty());
+        assert!(cleared.cursor.is_none());
+    }
+
+    /// #475: the flag rides on the entry, survives a round-trip through
+    /// the sidecar, and an out-of-range index is a no-op rather than a
+    /// panic — the cursor can point past the end on a corrupted log.
+    #[test]
+    fn discarded_dirty_flag_round_trips_and_ignores_bad_index() {
+        let repo = fresh_repo();
+        record_op(
+            repo.path(),
+            OpKind::Merge {
+                source: "feat".into(),
+                pre_merge_sha: "a".into(),
+                post_merge_sha: "b".into(),
+            },
+        )
+        .unwrap();
+        assert!(!read_log(repo.path()).unwrap().ops[0].discarded_dirty);
+
+        mark_discarded_dirty_best_effort(repo.path(), 0);
+        assert!(read_log(repo.path()).unwrap().ops[0].discarded_dirty);
+
+        mark_discarded_dirty_best_effort(repo.path(), 99);
+        let log = read_log(repo.path()).unwrap();
+        assert_eq!(log.ops.len(), 1);
+        assert!(log.ops[0].discarded_dirty, "the real entry must survive");
+    }
+
+    /// Logs written before the flag existed must decode as "no known
+    /// loss" — silence is not evidence of destruction.
+    #[test]
+    fn legacy_log_without_the_flag_decodes_as_no_loss() {
+        let repo = fresh_repo();
+        fs::write(
+            repo.path().join(".git").join(UNDO_LOG_FILENAME),
+            r#"{"ops":[{"kind":{"kind":"commit","sha":"a","parent_sha":null},"timestamp":1}],"cursor":0}"#,
+        )
+        .unwrap();
+        let log = read_log(repo.path()).unwrap();
+        assert!(!log.ops[0].discarded_dirty);
+    }
+
+    #[test]
     fn reflog_tag_format_per_kind() {
         let cases = [
             (
@@ -170,6 +266,8 @@ mod tests {
             (
                 OpKind::StashPush {
                     stash_sha: "deadbeef".into(),
+                    include_untracked: true,
+                    include_ignored: false,
                 },
                 "yryvu:op=stash-push|sha=deadbeef",
             ),

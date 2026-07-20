@@ -73,15 +73,19 @@ pub fn read_log(repo_path: &Path) -> Result<UndoLog, UndoLogError> {
 /// per repo so the only contention is theoretical.
 pub fn record_op(repo_path: &Path, kind: OpKind) -> Result<(), UndoLogError> {
     let mut log = read_log(repo_path)?;
-    if let Some(cursor) = log.cursor {
-        // After an undo, a fresh op clears the redo tail.
-        log.ops.truncate(cursor + 1);
-    }
+    // After an undo, a fresh op clears the redo tail. `cursor == None`
+    // means everything was undone, so the whole tail is stale — truncate
+    // to 0, otherwise the new op is appended behind already-undone ops.
+    log.ops.truncate(log.cursor.map_or(0, |c| c + 1));
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(UndoLogError::Clock)?
         .as_secs();
-    log.ops.push(Op { kind, timestamp });
+    log.ops.push(Op {
+        kind,
+        timestamp,
+        discarded_dirty: false,
+    });
     log.cursor = Some(log.ops.len() - 1);
     write_log(repo_path, &log)
 }
@@ -114,6 +118,26 @@ pub fn set_cursor(repo_path: &Path, cursor: Option<usize>) -> Result<(), UndoLog
     write_log(repo_path, &log)
 }
 
+/// Flag the entry at `idx` as having cost the user uncommitted work.
+///
+/// Best-effort for the same reason as [`record_op_best_effort`]: the git
+/// side already happened, and a sidecar write failure must not turn a
+/// successful undo into an error. The consequence of a miss is a missing
+/// caveat in a tooltip, not a wrong operation.
+pub fn mark_discarded_dirty_best_effort(repo_path: &Path, idx: usize) {
+    let marked = read_log(repo_path).and_then(|mut log| {
+        match log.ops.get_mut(idx) {
+            Some(op) => op.discarded_dirty = true,
+            // Cursor out of range: nothing to annotate, nothing to write.
+            None => return Ok(()),
+        }
+        write_log(repo_path, &log)
+    });
+    if let Err(e) = marked {
+        tracing::warn!(error = %e, "failed to flag discarded work in undo log");
+    }
+}
+
 /// Clear the undo log entirely. Used by ops that can't be undone AND
 /// invalidate the previous history (stash apply / pop / drop — they
 /// mutate the working tree in ways that make the prior recorded ops
@@ -125,7 +149,16 @@ pub fn set_cursor(repo_path: &Path, cursor: Option<usize>) -> Result<(), UndoLog
 /// can happen is the user sees "Cannot undo" once instead of the
 /// log-cleared "Nothing to undo" — both honest but the latter is
 /// less surprising.
+///
+/// Short-circuits under the [`SKIP_RECORD`] guard, same as
+/// [`record_op_best_effort`]. An inverse that replays a public op wrapper
+/// (e.g. undoing a StashPush calls `stash_pop`, which clears the log) must
+/// NOT wipe the history the IPC layer is mid-walk on — that leaves the
+/// on-disk cursor out of range and bricks undo/redo across restarts.
 pub fn clear_log_best_effort(repo_path: &Path) {
+    if SKIP_RECORD.with(|c| c.get()) {
+        return;
+    }
     if let Err(e) = write_log(repo_path, &UndoLog::default()) {
         tracing::warn!(error = %e, "failed to clear undo log");
     }

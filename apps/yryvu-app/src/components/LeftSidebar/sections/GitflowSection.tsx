@@ -4,10 +4,11 @@ import { For, Show } from "solid-js";
 
 import type { BranchOps } from "../../../branchOps";
 import { hiddenSections, repoPath } from "../../../state";
-import { IconBranch } from "../../Icons";
+
 import { LocalBranchRow } from "../branchRows";
 import { SidebarSection } from "../SidebarSection";
 import type { SidebarData } from "../useSidebarData";
+import { Icon } from "../../Icon";
 
 interface Props {
   data: SidebarData;
@@ -33,7 +34,7 @@ export function GitflowSection(props: Props) {
       <SidebarSection
         sectionKey="GITFLOW"
         title="Git Flow"
-        icon={<IconBranch />}
+        icon={<Icon name="branch" />}
         count={props.data.filteredGitflowLocals().length}
         addable
         onAdd={(e) => props.ops.openGitflowMenu(e)}

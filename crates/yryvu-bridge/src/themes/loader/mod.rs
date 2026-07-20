@@ -37,6 +37,9 @@ pub(super) static BUILT_INS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resourc
 pub(super) const FILE_THEME_TOML: &str = "theme.toml";
 pub(super) const FILE_TOKENS_CSS: &str = "tokens.css";
 pub(super) const FILE_PERSONALITY_CSS: &str = "personality.css";
+/// Optional per-theme folder of `<name>.svg` icons; the loader inlines
+/// each as a `--icon-<name>` data-URI (#300).
+pub(super) const DIR_ICONS: &str = "icons";
 
 #[derive(Debug, Error)]
 pub enum LoadError {
@@ -70,12 +73,15 @@ pub struct ThemeEntry {
     pub built_in: bool,
 }
 
-/// CSS payload returned by `get_theme_css`. `personality` is empty
-/// when the theme has no `personality.css` file.
+/// CSS payload returned by `get_theme_css`, one string per injectable
+/// layer. `icons` and `personality` are empty when the theme declares no
+/// such layer (the flat legacy layout never has an icons layer).
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ThemeCss {
     pub tokens: String,
+    #[serde(default)]
+    pub icons: String,
     pub personality: String,
 }
 

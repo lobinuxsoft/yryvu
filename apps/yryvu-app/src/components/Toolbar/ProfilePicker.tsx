@@ -9,8 +9,9 @@ import {
   repoPath,
   setActiveRepoOverride,
 } from "../../state";
-import { IconCheck, IconChevronDown, IconPlus, IconUsers } from "../Icons";
+
 import { ProfileAvatar } from "../Profiles/ProfileAvatar";
+import { Icon } from "../Icon";
 
 /**
  * Toolbar profile picker — GitKraken's `ProfileAccountMenu`, trimmed to
@@ -66,14 +67,14 @@ export function ProfilePicker(): JSX.Element {
           when={activeProfile()}
           fallback={
             <span class="profile-picker__placeholder" aria-hidden="true">
-              <IconUsers />
+              <Icon name="users" />
             </span>
           }
         >
           {(p) => <ProfileAvatar profile={p()} size={24} />}
         </Show>
         <span class="profile-picker__caret" aria-hidden="true">
-          <IconChevronDown />
+          <Icon name="chevron-down" />
         </span>
       </button>
 
@@ -117,7 +118,7 @@ export function ProfilePicker(): JSX.Element {
                       </span>
                       <Show when={p.id === activeId()}>
                         <span class="profile-menu__check" aria-hidden="true">
-                          <IconCheck />
+                          <Icon name="check" />
                         </span>
                       </Show>
                     </button>
@@ -133,7 +134,7 @@ export function ProfilePicker(): JSX.Element {
             role="menuitem"
             onClick={addProfile}
           >
-            <IconPlus />
+            <Icon name="plus" />
             <span>Add a Profile</span>
           </button>
         </div>

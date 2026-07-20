@@ -6,6 +6,13 @@ use crate::backend::ResetMode;
 
 use super::errors::REFLOG_TAG_PREFIX;
 
+/// serde default for `StashPush::include_untracked`: the pre-flags stash
+/// path always passed `include_untracked = true`, so old logs decode to
+/// the behaviour they were written under.
+fn default_include_untracked() -> bool {
+    true
+}
+
 /// Operation archetypes yryvu knows how to invert. Each variant carries
 /// the minimum metadata sub-PR 2's inverse builder needs — pre-SHA for
 /// resets, post-SHA for "undo this commit", stash refs, etc. Anything
@@ -60,8 +67,17 @@ pub enum OpKind {
     },
     /// Stash push. `stash_sha` is the new top-of-stash commit so undo
     /// can pop the same stash even if the user pushed others on top
-    /// before undoing.
-    StashPush { stash_sha: String },
+    /// before undoing. `include_untracked` / `include_ignored` record the
+    /// original flags so the redo re-stashes with the same scope. Both
+    /// default (untracked on, ignored off) for logs written before the
+    /// flags were recorded.
+    StashPush {
+        stash_sha: String,
+        #[serde(default = "default_include_untracked")]
+        include_untracked: bool,
+        #[serde(default)]
+        include_ignored: bool,
+    },
     /// Stash pop. `stash_sha` is the popped stash commit so undo can
     /// re-stash to the same state.
     StashPop { stash_sha: String },
@@ -78,9 +94,21 @@ impl OpKind {
             OpKind::Amend { .. } => "amend".into(),
             OpKind::CheckoutBranch { to, .. } => format!("checkout to {to}"),
             OpKind::CheckoutCommit { to_sha, .. } => format!("checkout to {}", short(to_sha)),
-            OpKind::Reset { to_sha, mode, .. } => {
-                format!("{} reset to {}", reset_mode_str(*mode), short(to_sha))
-            }
+            // Both endpoints, because the label is read in both
+            // directions: "Undo hard reset abc→def" walks back to `abc`,
+            // "Redo hard reset abc→def" walks forward to `def`. Naming
+            // only the target read as an instruction ("reset to def")
+            // and mis-described what the undo actually does (#474).
+            OpKind::Reset {
+                mode,
+                from_sha,
+                to_sha,
+            } => format!(
+                "{} reset {}→{}",
+                reset_mode_str(*mode),
+                short(from_sha),
+                short(to_sha)
+            ),
             OpKind::CherryPick { applied_sha, .. } => {
                 format!("cherry-pick of {}", short(applied_sha))
             }
@@ -88,6 +116,34 @@ impl OpKind {
             OpKind::Merge { source, .. } => format!("merge of {source}"),
             OpKind::StashPush { .. } => "stash push".into(),
             OpKind::StashPop { .. } => "stash pop".into(),
+        }
+    }
+
+    /// Why undoing this op can never apply, or `None` when it can.
+    ///
+    /// Single source of truth for the two `Untrackable` arms in
+    /// [`crate::repo::undo::apply_inverse`] *and* for the toolbar's
+    /// enablement: a button wired to "an entry exists" stays lit forever
+    /// on an op whose inverse always bails, because a non-`Applied`
+    /// outcome deliberately leaves the cursor put (#474).
+    pub fn undo_untrackable_reason(&self) -> Option<&'static str> {
+        match self {
+            // No parent to step back to.
+            OpKind::Commit {
+                parent_sha: None, ..
+            } => Some("root commit cannot be undone"),
+            OpKind::StashPop { .. } => Some("stash pop undo not supported yet"),
+            _ => None,
+        }
+    }
+
+    /// Same question for the redo direction. A root commit *is* redoable
+    /// — its redo is a soft reset onto a commit that still exists — so
+    /// the two sides are deliberately not symmetric.
+    pub fn redo_untrackable_reason(&self) -> Option<&'static str> {
+        match self {
+            OpKind::StashPop { .. } => Some("stash pop redo not supported (symmetric with undo)"),
+            _ => None,
         }
     }
 
@@ -149,7 +205,7 @@ impl OpKind {
                 "{}merge|source={}|pre={}|post={}",
                 REFLOG_TAG_PREFIX, source, pre_merge_sha, post_merge_sha,
             ),
-            OpKind::StashPush { stash_sha } => {
+            OpKind::StashPush { stash_sha, .. } => {
                 format!("{}stash-push|sha={}", REFLOG_TAG_PREFIX, stash_sha)
             }
             OpKind::StashPop { stash_sha } => {
@@ -174,6 +230,18 @@ fn reset_mode_str(mode: ResetMode) -> &'static str {
 pub struct Op {
     pub kind: OpKind,
     pub timestamp: u64,
+    /// Set when this entry was applied (in either direction) with
+    /// `force`, over a tree that really was dirty — so uncommitted work
+    /// was discarded to make room for it.
+    ///
+    /// The undo log models HEAD movements, not content: the commit on the
+    /// other side of the cursor still lives in the ODB, so the button does
+    /// restore HEAD — but nothing restores the discarded edits. Without
+    /// this flag the UI promises a round-trip it cannot deliver (#475).
+    /// `serde(default)` so logs written before the flag decode as "no
+    /// known loss", which is the only honest reading of their silence.
+    #[serde(default)]
+    pub discarded_dirty: bool,
 }
 
 /// Full sidecar structure. `cursor` is the index of the most-recently

@@ -3,7 +3,7 @@
 import { openCommandPalette } from "../CommandPalette/state";
 import { toggleDetailPanelOpen } from "../../state/detail-panel-layout";
 import { matchTabKeybind, runTabKeybind } from "../../tabs/keybinds";
-import { runRedo, runUndo } from "../../undoOps";
+import { runRedo, runUndo, undoDirtyPrompt } from "../../undoOps";
 
 /// True when the keyboard event target is a text-editing element. The
 /// global Ctrl/Cmd+Z listener bails on those so the user's typing-level
@@ -22,6 +22,11 @@ function isInsideEditable(target: EventTarget | null): boolean {
 /// Redo alias.
 export function handleGlobalKeyDown(e: KeyboardEvent): void {
   if (isInsideEditable(e.target)) return;
+  // The dirty dialog is modal, and the parked op lives in a single signal
+  // — a second Ctrl+Z / Ctrl+Shift+Z would overwrite it, mutating the
+  // dialog's text under the cursor so "Discard & Undo" runs the op the
+  // user never read (#473). Shell keybinds stay off until it is answered.
+  if (undoDirtyPrompt() !== null) return;
   const mod = e.metaKey || e.ctrlKey;
   if (!mod) return;
   const key = e.key.toLowerCase();
@@ -41,14 +46,18 @@ export function handleGlobalKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  // Undo / Redo (issue #187, #130 cluster).
+  // Undo / Redo (issue #187, #130 cluster). `e.repeat` bails so holding
+  // the combo can't fire a burst of overlapping undos — each is a fresh
+  // deliberate keypress or nothing (#472).
   if (key === "z" && !e.shiftKey) {
     e.preventDefault();
+    if (e.repeat) return;
     void runUndo();
     return;
   }
   if ((key === "z" && e.shiftKey) || key === "y") {
     e.preventDefault();
+    if (e.repeat) return;
     void runRedo();
     return;
   }

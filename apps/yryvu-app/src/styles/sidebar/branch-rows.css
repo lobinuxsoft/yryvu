@@ -9,9 +9,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px 4px 24px;
+  padding: var(--padding-row-y) 10px var(--padding-row-y) 24px;
   color: var(--fg-1);
-  font-size: 12px;
+  font-size: var(--font-size-sidebar);
   cursor: default;
   user-select: none;
 }

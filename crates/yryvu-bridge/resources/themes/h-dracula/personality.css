@@ -1,63 +1,132 @@
 /* ========================================================================
-     PERSONALITY — H · Dracula
-     Purple → pink gradients across all accent surfaces. Bold pills,
-     vampiric saturation. The "designer brand" personality.
-     ======================================================================== */
+   PERSONALITY — H · Dracula
+   "Designer brand": purple→pink gradients on accent surfaces, cut-corner
+   buttons (via the #298 --btn-clip-path token), vampiric box-shadow
+   stacks. Real yryvu DOM. Honors prefers-reduced-motion.
+   ======================================================================== */
 
-  /* Accent buttons (Sync, primary actions) — purple → pink gradient */
-  .tb-split:has(.tb-btn:nth-child(1):hover),
-  .tb-split:has(.tb-btn:nth-child(2):hover) {
-    box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent);
-  }
+/* Cut-corner buttons: clip the top-left + bottom-right. */
+:root {
+  --btn-clip-path: polygon(
+    7px 0, 100% 0, 100% calc(100% - 7px),
+    calc(100% - 7px) 100%, 0 100%, 0 7px
+  );
+}
 
-  /* HEAD pill — gradient + glow */
-  .row .pill.head {
-    background: linear-gradient(135deg, var(--accent), var(--lane-3));
-    border-color: var(--lane-3);
-    box-shadow: 0 0 12px color-mix(in srgb, var(--lane-3) 40%, transparent);
-  }
+/* --- Toolbar --------------------------------------------------------- */
 
-  /* Selected row — purple → pink wash */
-  .row.selected {
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--accent) 28%, transparent) 0%,
-      color-mix(in srgb, var(--lane-3) 18%, transparent) 60%,
-      transparent 100%
-    );
-    box-shadow: inset 3px 0 0 var(--accent);
-  }
+.toolbar {
+  border-bottom: 1px solid var(--lane-3);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 16%, transparent);
+}
 
-  /* Toolbar badge — gradient instead of flat */
-  .tb-badge {
-    background: linear-gradient(135deg, var(--accent), var(--lane-3));
-    box-shadow:
-      0 0 0 1px var(--bg-1),
-      0 0 10px color-mix(in srgb, var(--lane-3) 50%, transparent);
-  }
+.toolbar__btn {
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+.toolbar__btn:hover {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 22%, var(--bg-2)),
+    color-mix(in srgb, var(--lane-3) 18%, var(--bg-2))
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--lane-3) 40%, transparent);
+}
 
-  /* Avatar — full gradient + halo */
-  .ins-avatar {
-    background: linear-gradient(135deg, var(--accent) 0%, var(--lane-3) 100%);
-    box-shadow:
-      0 0 0 2px var(--bg-1),
-      0 0 0 3px color-mix(in srgb, var(--lane-3) 60%, transparent),
-      0 0 20px color-mix(in srgb, var(--lane-3) 35%, transparent);
-  }
+.toolbar__btn-badge {
+  background: linear-gradient(135deg, var(--accent), var(--lane-3));
+  box-shadow:
+    0 0 0 2px var(--bg-1),
+    0 0 10px color-mix(in srgb, var(--lane-3) 50%, transparent);
+}
 
-  /* Pills — slightly bolder, refined gradient on hover */
-  .row .pill { font-weight: 600; }
-  .row .pill.tag {
-    background: linear-gradient(135deg,
-      color-mix(in srgb, var(--warning) 25%, var(--bg-2)),
-      color-mix(in srgb, var(--lane-4) 20%, var(--bg-2)));
-  }
+/* --- Tabs ------------------------------------------------------------ */
 
-  /* Toolbar headers tint */
-  .sb-section h3,
-  .graph-header > div,
-  .ins-files-title {
-    color: var(--accent);
-    opacity: 0.75;
-    letter-spacing: 0.08em;
+.tab[aria-selected="true"],
+.tab.active,
+.tab--permanent {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 16%, transparent) 100%
+  );
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* --- Sidebar --------------------------------------------------------- */
+
+.sidebar__branch-row {
+  transition: background 180ms ease;
+}
+.sidebar__branch-row:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.sidebar__branch-row[data-active="true"] {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 26%, transparent) 0%,
+    color-mix(in srgb, var(--lane-3) 16%, transparent) 60%,
+    transparent 100%
+  );
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* --- Ref pills — gradient HEAD, vampiric glows ----------------------- */
+
+.ref-pill--head {
+  background: linear-gradient(135deg, var(--accent), var(--lane-3));
+  border-color: var(--lane-3);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--lane-3) 45%, transparent);
+}
+.ref-pill--tag {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--warning) 40%, transparent);
+}
+.ref-pill--remote {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--info) 40%, transparent);
+}
+
+/* --- Status bar ------------------------------------------------------ */
+
+.statusbar {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* --- Cold start ------------------------------------------------------ */
+
+.cold-start__title {
+  animation: dracula-title-glow 3.5s ease-in-out infinite;
+}
+@keyframes dracula-title-glow {
+  0%, 100% { text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent); }
+  50% {
+    text-shadow:
+      0 0 18px color-mix(in srgb, var(--accent) 80%, transparent),
+      0 0 30px color-mix(in srgb, var(--lane-3) 45%, transparent);
   }
+}
+
+.cold-start__action {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 18%, var(--bg-2)),
+    color-mix(in srgb, var(--lane-3) 14%, var(--bg-2))
+  );
+  border: 1px solid var(--lane-3);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+.cold-start__action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--lane-3) 45%, transparent);
+}
+
+.cold-start__recent-item {
+  transition: background 180ms ease;
+}
+.cold-start__recent-item:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* --- Reduced motion -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cold-start__title { animation: none; }
+}

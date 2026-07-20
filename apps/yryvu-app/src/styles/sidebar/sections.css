@@ -12,7 +12,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: var(--padding-sidebar-y) var(--padding-sidebar-x);
   background: transparent;
   border: 0;
   width: 100%;
@@ -54,7 +54,8 @@
   background: var(--bg-3);
   color: var(--fg-1);
   padding: 1px 6px;
-  border-radius: 10px;
+  border-radius: var(--pill-radius);
+  clip-path: var(--pill-clip-path);
   flex-shrink: 0;
 }
 

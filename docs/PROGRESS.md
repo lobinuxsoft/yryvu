@@ -10,26 +10,28 @@ non-obvious conventions.
 
 ## Current status
 
-- **`development` HEAD:** `8952126` (2026-07-17). `main` = v0.5.0.
-- **Just shipped — data-safety hardening, umbrella #448.** A user report ("a
-  merge only keeps my side") turned out to be two distinct bugs; auditing the
-  core git ops surfaced a cluster of ~21 silent data-loss defects — none had a
-  test, all passed the suite green. See
-  [Data-safety hardening](#data-safety-hardening-umbrella-448) below and the
-  [ROADMAP](ROADMAP.md#data-safety-hardening-umbrella-448) for the live count.
-  **All `priority:high` + the whole backend `medium` block closed; 4 UI/docs
-  issues remain.**
+- **Released:** **v0.5.2** (2026-07-20, tag `yryvu-v0.5.2`). `main` and
+  `development` are in sync at that version.
+- **Shipped in v0.5.2 — data-safety hardening, umbrella #448 CLOSED.** A user
+  report ("a merge only keeps my side") turned out to be two distinct bugs;
+  auditing the core git ops surfaced a cluster of **21 silent data-loss
+  defects — none had a test, all passed the suite green.** All 21 are fixed
+  (each with a regression test) and the umbrella is closed. See
+  [Data-safety hardening](#data-safety-hardening-umbrella-448) below.
 - **Also shipped — Wave 8 (Theme power v2), umbrella #297 CLOSED** (PRs #440–#445):
   token expansion (#298), multi-file `[layers]` (#299), `mask-image` icon system
   with `icons/`-folder override (#300), themeable graph node/edge vars (#301),
   9 themes' `personality.css` rewritten vs the real DOM (#303), `docs/themes/` (#302).
-- **Next:** finish the **#448 tail** — three undo-UX issues (#473, #474, #475,
-  landable as one PR) + one docs fix (#462) — then **Wave 9 — Perf + cleanup**.
-  See [ROADMAP.md](ROADMAP.md).
-- **Un-smoked debt:** the #448 fixes shipped with backend regression tests but no
-  live smoke of the touched flows (undo/redo, rejected push, branch rename,
-  rebase `edit`). #75 (Apply Patch flow) + Wave 6's submodule/LFS panes are also
-  un-smoked.
+- **Next:** **Wave 9 — Perf + cleanup** (start with #217, RepoManagement DOD —
+  it's `medium`, not `hard` like the two graph items #178/#181, and it fits the
+  Rust DOD paradigm). See [ROADMAP.md](ROADMAP.md).
+- **Backlog hygiene owed:** 7 open issues sit in no wave (#231 Add Worktree,
+  #437, #38, #99, #101, #108, #233) and #27 (theme system) is likely already
+  satisfied by Wave 8 — triage them into a wave or close them.
+- **Un-smoked debt:** the #448 fixes shipped with backend regression tests + the
+  undo-UX ones with vitest, but no live smoke of the touched flows (undo/redo,
+  rejected push, branch rename, rebase `edit`). #75 (Apply Patch flow) + Wave 6's
+  submodule/LFS panes are also un-smoked.
 
 ## GitKraken-fidelity rule (hard)
 
@@ -70,12 +72,12 @@ These are easy to miss when copying handlers; they're the load-bearing ones.
   `AppHandle`. Sidecars/config paths are resolved by the bridge from
   `AppHandle`, never seen by the frontend.
 
-### Data-safety hardening (umbrella #448)
+### Data-safety hardening (umbrella #448 — CLOSED, shipped v0.5.2)
 
 A user report ("a merge only keeps my side") was **two** bugs (a fast-forward
 checkout-order bug #447 + a lost merge-parent #454). Auditing the core git ops
-with that lens surfaced ~21 silent data-loss defects. The two shapes **every**
-defect took — look for both when touching any git op:
+with that lens surfaced 21 silent data-loss defects — all now fixed. The two
+shapes **every** defect took — look for both when touching any git op:
 
 1. **A guard that exists in the sibling function and is missing right here.**
    `cherry_pick` pre-flights a dirty tree, `begin_rebase` didn't (#449).
@@ -250,6 +252,15 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-20:** **Released v0.5.2** — promote `development → main`, then merged
+  release-please's `chore(main): release 0.5.2`. Tagged `yryvu-v0.5.2`;
+  `build-release` produced the Linux AppImage + `.deb` and Windows `.msi`.
+  Ships Wave 8 (themes) + the whole #448 cluster.
+- **2026-07-20:** **#448 tail closed — umbrella done (21/21).** PR #491 (undo UX:
+  #473 modal keybind guard, #474 button enablement tied to invertibility +
+  two-endpoint reset label, #475 `discarded_dirty` flag with honest toast /
+  tooltip / dialog), PR #492 (#462 — the SAFE-vs-FORCE checkout rule, in the
+  comment and in this file's verified-behaviours list).
 - **2026-07-17 (bis):** **#448 tail — backend `medium` block closed.** Five PRs,
   each with a regression test and verified against source before touching (none
   were already fixed): #459/#485 (first *signed* commit on an unborn branch

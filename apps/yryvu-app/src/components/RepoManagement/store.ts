@@ -22,33 +22,45 @@
 
 import { createSignal } from "solid-js";
 
-import { listKnownRepos, type KnownRepoInfo } from "../../ipc";
+import {
+  listKnownRepos,
+  rehydrateBatch,
+  type KnownReposBatch,
+  type KnownRepoRow,
+} from "../../ipc";
 import { loadRecentRepos } from "../../state";
 
-const SNAPSHOT_KEY = "yryvu.knownReposSnapshot";
+// Bumped from the pre-#217 AoS snapshot: the payload is now the SoA
+// `KnownReposBatch`, so a stale key would deserialize into the wrong
+// shape. A fresh key just means the first post-upgrade paint has no
+// stale-render seed — it revalidates within ~100-500 ms anyway.
+const SNAPSHOT_KEY = "yryvu.knownReposBatch";
 
-function loadSnapshot(): KnownRepoInfo[] {
+function loadSnapshot(): KnownRepoRow[] {
   const raw = localStorage.getItem(SNAPSHOT_KEY);
   if (!raw) return [];
   try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as KnownRepoInfo[];
+    const parsed = JSON.parse(raw) as Partial<KnownReposBatch>;
+    if (!Array.isArray(parsed?.paths)) return [];
+    return rehydrateBatch(parsed as KnownReposBatch);
   } catch {
     return [];
   }
 }
 
-function saveSnapshot(snapshot: KnownRepoInfo[]): void {
+function saveSnapshot(batch: KnownReposBatch): void {
   try {
-    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
+    // Persist the SoA batch, not the rehydrated rows — smaller JSON
+    // (no derived `name`, no `searchKey`) and it round-trips through
+    // `loadSnapshot`'s rehydrate on next start.
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(batch));
   } catch {
     // localStorage quota exceeded or disabled — ignore. Worst case
     // the next session loses the stale-render benefit.
   }
 }
 
-const [repos, setRepos] = createSignal<KnownRepoInfo[]>(loadSnapshot());
+const [repos, setRepos] = createSignal<KnownRepoRow[]>(loadSnapshot());
 const [loading, setLoading] = createSignal(false);
 let initialized = false;
 let inFlight: Promise<void> | undefined;
@@ -75,7 +87,19 @@ export function removeFromCache(paths: string[]): void {
   const drop = new Set(paths);
   const next = repos().filter((r) => !drop.has(r.path));
   setRepos(next);
-  saveSnapshot(next);
+  saveSnapshot(rowsToBatch(next));
+}
+
+/// Transpose render rows back to the SoA wire shape for persistence.
+/// Only `removeFromCache` needs it (a refresh already holds the batch);
+/// dropping rows never resizes the columns out of alignment.
+function rowsToBatch(rows: KnownRepoRow[]): KnownReposBatch {
+  return {
+    paths: rows.map((r) => r.path),
+    branches: rows.map((r) => r.currentBranch),
+    dirtyCounts: rows.map((r) => r.dirtyCount),
+    errors: rows.map((r) => r.error),
+  };
 }
 
 /// Force a re-scan. Re-reads recent-repo paths from localStorage (a
@@ -88,9 +112,12 @@ export function refreshKnownRepos(): Promise<void> {
   const paths = loadRecentRepos().map((r) => r.path);
   inFlight = (async () => {
     try {
-      const fresh = paths.length === 0 ? [] : await listKnownRepos(paths);
-      setRepos(fresh);
-      saveSnapshot(fresh);
+      const batch =
+        paths.length === 0
+          ? { paths: [], branches: [], dirtyCounts: [], errors: [] }
+          : await listKnownRepos(paths);
+      setRepos(rehydrateBatch(batch));
+      saveSnapshot(batch);
     } catch {
       // Backend errored — keep the stale snapshot so the user still
       // sees something. Per-row errors come back inside KnownRepoInfo

@@ -43,7 +43,11 @@ export interface DiffHunk {
   lines: DiffLine[];
 }
 
-export interface FileDiff {
+/// One file's diff metadata without the hunk bodies — mirrors Rust
+/// `FileDiffMeta`. This is what the combined-diff summary ships (#178):
+/// the inspector's file list + stat chips read only these fields, so a
+/// huge WIP diff no longer serialises every line across the IPC boundary.
+export interface FileDiffMeta {
   path: string;
   old_path: string | null;
   status: FileStatus;
@@ -54,7 +58,6 @@ export interface FileDiff {
   new_size: number;
   additions: number;
   deletions: number;
-  hunks: DiffHunk[];
   /// For submodule gitlinks: the pinned commit OIDs before/after the
   /// change. `null` when the side doesn't exist or the file isn't a
   /// submodule. The pointer pane resolves each summary on demand.
@@ -65,6 +68,12 @@ export interface FileDiff {
   /// hunks → the "File Mode Changes" pane.
   old_mode: string | null;
   new_mode: string | null;
+}
+
+/// A file's full diff — metadata plus the hunk bodies. Returned by the
+/// single-commit / staging IPCs the diff view consumes.
+export interface FileDiff extends FileDiffMeta {
+  hunks: DiffHunk[];
 }
 
 export interface CommitDiff {
@@ -86,14 +95,16 @@ export type CombinedDiffKind =
   | "commit-vs-wip"
   | "multi-vs-wip";
 
-/// Multi-revision / WIP-aware diff. `shas` is youngest-first to match the
-/// frontend's selection ordering.
-export interface CombinedDiff {
+/// Multi-revision / WIP-aware diff summary for the inspector — mirrors
+/// Rust `CombinedDiffSummary`. `shas` is youngest-first to match the
+/// frontend's selection ordering. `files` carry no hunks (#178); the diff
+/// view fetches a file's hunks on demand via `getCommitDiff` when opened.
+export interface CombinedDiffSummary {
   kind: CombinedDiffKind;
   n_commits: number;
   include_workdir: boolean;
   shas: string[];
-  files: FileDiff[];
+  files: FileDiffMeta[];
   /// `true` when the backend skipped rename/copy detection because the diff
   /// exceeded its delta threshold (~5000). Header copy can surface a "Rename
   /// detection skipped (large diff)" hint; absent or `false` means renames
@@ -202,12 +213,15 @@ export function checkoutFileAt(
   return invoke<void>("checkout_file_at", { repoPath, path, sha });
 }
 
-export function getCombinedCommitDiff(
+/// Metadata-only combined diff for the inspector's file list + stat chips.
+/// The per-file hunks are fetched on demand (`getCommitDiff`) when the user
+/// opens a file, so this stays cheap even for a 15K-file WIP diff (#178).
+export function getCombinedCommitDiffSummary(
   repoPath: string,
   shas: string[],
   includeWorkdir: boolean,
-): Promise<CombinedDiff> {
-  return invoke<CombinedDiff>("combined_commit_diff", {
+): Promise<CombinedDiffSummary> {
+  return invoke<CombinedDiffSummary>("combined_commit_diff_summary", {
     repoPath,
     shas,
     includeWorkdir,

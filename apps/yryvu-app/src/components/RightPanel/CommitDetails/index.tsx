@@ -4,10 +4,10 @@ import { createMemo, createResource, Show } from "solid-js";
 
 import { FileList } from "../../FileList";
 import {
-  getCombinedCommitDiff,
+  getCombinedCommitDiffSummary,
   getCommitDetails,
   getHostingService,
-  type CombinedDiff,
+  type CombinedDiffSummary,
   type CombinedDiffKind,
   type CommitDetail,
   type HostingService,
@@ -40,9 +40,10 @@ import { MultiSelectHeader } from "./MultiSelectHeader";
  * pattern.
  *
  * Single-commit metadata (`getCommitDetails`) is a small IPC; we still
- * gate the HeaderBlock/MessageBlock/AuthorBlock on it. The expensive
- * round-trip is `getCombinedCommitDiff` — that's the one we render
- * around, not through.
+ * gate the HeaderBlock/MessageBlock/AuthorBlock on it. The diff
+ * round-trip is `getCombinedCommitDiffSummary` — metadata only, so it
+ * stays cheap even on a 15K-file WIP selection (#178); we render around
+ * it, not through it.
  */
 export function CommitDetails() {
   /** True iff exactly one committed row is selected without the WIP. */
@@ -98,9 +99,12 @@ export function CommitDetails() {
     },
   );
   const [combined] = createResource<
-    CombinedDiff | undefined,
+    CombinedDiffSummary | undefined,
     [string, string[], boolean]
-  >(combinedRequest, async ([p, s, w]) => await getCombinedCommitDiff(p, s, w));
+  >(
+    combinedRequest,
+    async ([p, s, w]) => await getCombinedCommitDiffSummary(p, s, w),
+  );
 
   const revKey = createMemo<string>(() => {
     const c = combined();

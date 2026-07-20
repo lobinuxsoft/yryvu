@@ -128,6 +128,7 @@ pub fn run() {
             yryvu_bridge::commands::get_remote_url,
             yryvu_bridge::commands::commit_diff,
             yryvu_bridge::commands::combined_commit_diff,
+            yryvu_bridge::commands::combined_commit_diff_summary,
             yryvu_bridge::commands::commit_details,
             yryvu_bridge::commands::working_tree_status,
             yryvu_bridge::commands::stage_files,

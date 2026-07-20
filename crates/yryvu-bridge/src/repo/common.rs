@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use crate::backend::{
-    BackendError, DiffHunk, DiffLine, FileDataType, FileDiff, FileStatus, LineKind,
+    BackendError, DiffHunk, DiffLine, FileDataType, FileDiff, FileDiffMeta, FileStatus, LineKind,
     DIFF_MAX_FILE_BYTES,
 };
 
@@ -89,138 +89,188 @@ pub(crate) fn open_repo(path: &Path) -> Result<gix::Repository, BackendError> {
     })
 }
 
-/// Convert a `git2::Diff` into the UI-facing `Vec<FileDiff>`. Shared by
-/// commit diffs and working-tree diffs. Caller decides whether to call
-/// `find_similar` beforehand (renames only make sense for commit diffs).
+/// Shared per-delta metadata — everything both the summary and the full
+/// diff need except the hunk bodies. Kept in one place so a change to
+/// binary detection, submodule OIDs, or mode reporting can't drift
+/// between [`diff_to_file_metas`] and [`diff_to_file_diffs`] (the exact
+/// "guard in the sibling, missing here" shape the #448 audit chased).
+/// `additions` / `deletions` come back zero — the caller fills them from
+/// either `line_stats` (summary) or the hunk walk (full).
+fn delta_meta(diff: &git2::Diff, idx: usize) -> Result<FileDiffMeta, BackendError> {
+    let delta = diff
+        .get_delta(idx)
+        .ok_or_else(|| BackendError::Git(anyhow::anyhow!("delta at index {idx} missing")))?;
+
+    let status = match delta.status() {
+        git2::Delta::Added | git2::Delta::Untracked => FileStatus::Added,
+        git2::Delta::Modified => FileStatus::Modified,
+        git2::Delta::Deleted => FileStatus::Deleted,
+        git2::Delta::Renamed => FileStatus::Renamed,
+        git2::Delta::Copied => FileStatus::Copied,
+        git2::Delta::Typechange => FileStatus::TypeChange,
+        git2::Delta::Unmodified => FileStatus::Unmodified,
+        _ => FileStatus::Other,
+    };
+
+    let new_file = delta.new_file();
+    let old_file = delta.old_file();
+    let path = new_file
+        .path()
+        .or_else(|| old_file.path())
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let old_path = if matches!(status, FileStatus::Renamed | FileStatus::Copied) {
+        old_file.path().map(|p| p.to_string_lossy().into_owned())
+    } else {
+        None
+    };
+    let new_size = new_file.size();
+    let old_size = old_file.size();
+    let too_large = new_size > DIFF_MAX_FILE_BYTES || old_size > DIFF_MAX_FILE_BYTES;
+    // libgit2 sets `BINARY` (and `DiffFile::is_binary()`) eagerly on
+    // files above its internal patch-cost cutoff even when the
+    // content is plain text. Above our own size cap we can't trust
+    // that signal — the "too large" notice is more accurate copy
+    // and lets the UI show a consistent fallback regardless of
+    // libgit2's heuristic.
+    let is_binary = !too_large
+        && (delta.flags().contains(git2::DiffFlags::BINARY)
+            || new_file.is_binary()
+            || old_file.is_binary());
+
+    let file_data_type = classify_file_data_type(
+        &path,
+        status,
+        new_file.mode(),
+        old_file.mode(),
+        is_binary,
+        too_large,
+    );
+
+    // Submodule gitlinks carry the pinned commit OIDs in the delta
+    // file ids; a zero oid means that side doesn't exist.
+    let (submodule_old_sha, submodule_new_sha) = if file_data_type == FileDataType::Submodule {
+        let to_opt = |oid: git2::Oid| (!oid.is_zero()).then(|| oid.to_string());
+        (to_opt(old_file.id()), to_opt(new_file.id()))
+    } else {
+        (None, None)
+    };
+
+    Ok(FileDiffMeta {
+        path,
+        old_path,
+        status,
+        file_data_type,
+        is_binary,
+        truncated: too_large,
+        old_size,
+        new_size,
+        additions: 0,
+        deletions: 0,
+        submodule_old_sha,
+        submodule_new_sha,
+        old_mode: mode_to_octal(old_file.mode()),
+        new_mode: mode_to_octal(new_file.mode()),
+    })
+}
+
+/// Whether the delta at `idx` carries textual hunks worth parsing.
+fn has_text_hunks(meta: &FileDiffMeta) -> bool {
+    !meta.is_binary && !meta.truncated
+}
+
+/// Parse the hunk bodies for one delta, returning the hunks plus the
+/// added / deleted line counts tallied in the same pass.
+fn hunks_for_index(
+    diff: &git2::Diff,
+    idx: usize,
+) -> Result<(Vec<DiffHunk>, u32, u32), BackendError> {
+    let mut hunks = Vec::new();
+    let (mut additions, mut deletions) = (0u32, 0u32);
+    let Some(patch) = git2::Patch::from_diff(diff, idx).map_err(git2_err)? else {
+        return Ok((hunks, additions, deletions));
+    };
+    for h in 0..patch.num_hunks() {
+        let (hunk, line_count) = patch.hunk(h).map_err(git2_err)?;
+        let header = String::from_utf8_lossy(hunk.header())
+            .trim_end()
+            .to_string();
+        let mut lines = Vec::with_capacity(line_count);
+        for l in 0..line_count {
+            let line = patch.line_in_hunk(h, l).map_err(git2_err)?;
+            let kind = match line.origin() {
+                '+' => LineKind::Added,
+                '-' => LineKind::Removed,
+                _ => LineKind::Context,
+            };
+            match kind {
+                LineKind::Added => additions += 1,
+                LineKind::Removed => deletions += 1,
+                LineKind::Context => {}
+            }
+            let raw = String::from_utf8_lossy(line.content());
+            let content = raw.strip_suffix('\n').unwrap_or(&raw).to_string();
+            lines.push(DiffLine {
+                kind,
+                content,
+                old_line_no: line.old_lineno(),
+                new_line_no: line.new_lineno(),
+            });
+        }
+        hunks.push(DiffHunk {
+            old_start: hunk.old_start(),
+            old_count: hunk.old_lines(),
+            new_start: hunk.new_start(),
+            new_count: hunk.new_lines(),
+            header,
+            lines,
+        });
+    }
+    Ok((hunks, additions, deletions))
+}
+
+/// Convert a `git2::Diff` into the UI-facing `Vec<FileDiff>`, hunks and
+/// all. Shared by commit diffs and working-tree diffs. Caller decides
+/// whether to call `find_similar` beforehand (renames only make sense
+/// for commit diffs).
 pub(super) fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, BackendError> {
     let delta_count = diff.deltas().len();
     let mut files = Vec::with_capacity(delta_count);
-
     for idx in 0..delta_count {
-        let delta = diff
-            .get_delta(idx)
-            .ok_or_else(|| BackendError::Git(anyhow::anyhow!("delta at index {idx} missing")))?;
-
-        let status = match delta.status() {
-            git2::Delta::Added | git2::Delta::Untracked => FileStatus::Added,
-            git2::Delta::Modified => FileStatus::Modified,
-            git2::Delta::Deleted => FileStatus::Deleted,
-            git2::Delta::Renamed => FileStatus::Renamed,
-            git2::Delta::Copied => FileStatus::Copied,
-            git2::Delta::Typechange => FileStatus::TypeChange,
-            git2::Delta::Unmodified => FileStatus::Unmodified,
-            _ => FileStatus::Other,
-        };
-
-        let new_file = delta.new_file();
-        let old_file = delta.old_file();
-        let path = new_file
-            .path()
-            .or_else(|| old_file.path())
-            .map(|p| p.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let old_path = if matches!(status, FileStatus::Renamed | FileStatus::Copied) {
-            old_file.path().map(|p| p.to_string_lossy().into_owned())
+        let meta = delta_meta(diff, idx)?;
+        let (hunks, additions, deletions) = if has_text_hunks(&meta) {
+            hunks_for_index(diff, idx)?
         } else {
-            None
+            (Vec::new(), 0, 0)
         };
-        let new_size = new_file.size();
-        let old_size = old_file.size();
-        let too_large = new_size > DIFF_MAX_FILE_BYTES || old_size > DIFF_MAX_FILE_BYTES;
-        // libgit2 sets `BINARY` (and `DiffFile::is_binary()`) eagerly on
-        // files above its internal patch-cost cutoff even when the
-        // content is plain text. Above our own size cap we can't trust
-        // that signal — the "too large" notice is more accurate copy
-        // and lets the UI show a consistent fallback regardless of
-        // libgit2's heuristic.
-        let is_binary = !too_large
-            && (delta.flags().contains(git2::DiffFlags::BINARY)
-                || new_file.is_binary()
-                || old_file.is_binary());
+        files.push(FileDiff::from_meta(meta, hunks, additions, deletions));
+    }
+    Ok(files)
+}
 
-        let file_data_type = classify_file_data_type(
-            &path,
-            status,
-            new_file.mode(),
-            old_file.mode(),
-            is_binary,
-            too_large,
-        );
-
-        // Submodule gitlinks carry the pinned commit OIDs in the delta
-        // file ids; a zero oid means that side doesn't exist.
-        let (submodule_old_sha, submodule_new_sha) = if file_data_type == FileDataType::Submodule {
-            let to_opt = |oid: git2::Oid| (!oid.is_zero()).then(|| oid.to_string());
-            (to_opt(old_file.id()), to_opt(new_file.id()))
-        } else {
-            (None, None)
-        };
-
-        let mut file_diff = FileDiff {
-            path,
-            old_path,
-            status,
-            file_data_type,
-            is_binary,
-            truncated: too_large,
-            old_size,
-            new_size,
-            additions: 0,
-            deletions: 0,
-            hunks: Vec::new(),
-            submodule_old_sha,
-            submodule_new_sha,
-            old_mode: mode_to_octal(old_file.mode()),
-            new_mode: mode_to_octal(new_file.mode()),
-        };
-
-        if !is_binary && !too_large {
-            let patch = git2::Patch::from_diff(diff, idx).map_err(git2_err)?;
-            if let Some(patch) = patch {
-                let num_hunks = patch.num_hunks();
-                for h in 0..num_hunks {
-                    let (hunk, line_count) = patch.hunk(h).map_err(git2_err)?;
-                    let header = String::from_utf8_lossy(hunk.header())
-                        .trim_end()
-                        .to_string();
-                    let mut lines = Vec::with_capacity(line_count);
-                    for l in 0..line_count {
-                        let line = patch.line_in_hunk(h, l).map_err(git2_err)?;
-                        let kind = match line.origin() {
-                            '+' => LineKind::Added,
-                            '-' => LineKind::Removed,
-                            _ => LineKind::Context,
-                        };
-                        match kind {
-                            LineKind::Added => file_diff.additions += 1,
-                            LineKind::Removed => file_diff.deletions += 1,
-                            LineKind::Context => {}
-                        }
-                        let raw = String::from_utf8_lossy(line.content());
-                        let content = raw.strip_suffix('\n').unwrap_or(&raw).to_string();
-                        lines.push(DiffLine {
-                            kind,
-                            content,
-                            old_line_no: line.old_lineno(),
-                            new_line_no: line.new_lineno(),
-                        });
-                    }
-                    file_diff.hunks.push(DiffHunk {
-                        old_start: hunk.old_start(),
-                        old_count: hunk.old_lines(),
-                        new_start: hunk.new_start(),
-                        new_count: hunk.new_lines(),
-                        header,
-                        lines,
-                    });
-                }
+/// Metadata-only projection of a `git2::Diff` — the same per-file rows as
+/// [`diff_to_file_diffs`] but without the hunk bodies. Used by the
+/// combined-diff summary (#178) so a 15K-file WIP diff doesn't serialise
+/// every line across the IPC boundary for the inspector's file list.
+///
+/// Line counts still come from `Patch::line_stats`, which parses the
+/// patch but allocates no per-line structs and, crucially, ships none —
+/// the payload is the metadata alone.
+pub(super) fn diff_to_file_metas(diff: &git2::Diff) -> Result<Vec<FileDiffMeta>, BackendError> {
+    let delta_count = diff.deltas().len();
+    let mut metas = Vec::with_capacity(delta_count);
+    for idx in 0..delta_count {
+        let mut meta = delta_meta(diff, idx)?;
+        if has_text_hunks(&meta) {
+            if let Some(patch) = git2::Patch::from_diff(diff, idx).map_err(git2_err)? {
+                let (_context, additions, deletions) = patch.line_stats().map_err(git2_err)?;
+                meta.additions = u32::try_from(additions).unwrap_or(u32::MAX);
+                meta.deletions = u32::try_from(deletions).unwrap_or(u32::MAX);
             }
         }
-
-        files.push(file_diff);
+        metas.push(meta);
     }
-
-    Ok(files)
+    Ok(metas)
 }
 
 pub(super) fn validate_branch_name(name: &str) -> Result<(), BackendError> {

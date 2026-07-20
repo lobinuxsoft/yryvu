@@ -3,7 +3,7 @@
 import { createEffect, createMemo, createSignal, For, on, Show } from "solid-js";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 
-import type { FileDiff } from "../../ipc/diff";
+import type { FileDiffMeta } from "../../ipc/diff";
 import {
   openDiffTab,
   openFileHistory,
@@ -56,7 +56,7 @@ export interface FileListProps {
   /// state (collapsed dirs, forced-visible files).
   revKey: string;
   listType: FileListType;
-  files: FileDiff[];
+  files: FileDiffMeta[];
   activeFilePath: string | undefined;
   onSelectFile: (path: string) => void;
   /// Optional per-file action buttons (Stage / Discard / Unstage). Working-

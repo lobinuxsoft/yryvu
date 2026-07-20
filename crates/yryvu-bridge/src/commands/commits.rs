@@ -7,10 +7,13 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::backend::{
-    ApplyPatchOutcome, AuthorInfo, CombinedDiff, CommitDetail, CommitDiff, GitBackend, ResetMode,
-    RECENT_AUTHORS_DEFAULT_LIMIT,
+    ApplyPatchOutcome, AuthorInfo, CombinedDiff, CombinedDiffSummary, CommitDetail, CommitDiff,
+    GitBackend, ResetMode, RECENT_AUTHORS_DEFAULT_LIMIT,
 };
-use crate::repo::commits::{commit_details as commit_details_impl, pick_pinned_head_for_path};
+use crate::repo::commits::{
+    combined_commit_diff_summary as combined_commit_diff_summary_impl,
+    commit_details as commit_details_impl, pick_pinned_head_for_path,
+};
 use crate::repo::hosting::{detect_hosting_service, parse_repo_identifiers};
 use crate::repo::GixBackend;
 
@@ -113,6 +116,26 @@ pub async fn combined_commit_diff(
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .combined_commit_diff(&PathBuf::from(&repo_path), &shas, include_workdir)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Metadata-only combined diff for the inspector's file list + stat chips
+/// (#178). Same selection semantics as [`combined_commit_diff`] but the
+/// rows carry no hunk bodies, so a huge WIP diff no longer serialises
+/// every line across the IPC boundary for a view that never reads them.
+/// The diff view fetches a file's hunks on demand (`commit_diff`) when the
+/// user opens it.
+#[tauri::command]
+pub async fn combined_commit_diff_summary(
+    repo_path: String,
+    shas: Vec<String>,
+    include_workdir: bool,
+) -> Result<CombinedDiffSummary, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        combined_commit_diff_summary_impl(&PathBuf::from(&repo_path), &shas, include_workdir)
             .map_err(|e| e.to_string())
     })
     .await

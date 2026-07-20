@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { FileDiff } from "../../ipc/diff";
+import type { FileDiffMeta } from "../../ipc/diff";
 
-/// A leaf carries the full `FileDiff` so the renderer can show status + stats
+/// A leaf carries the full `FileDiffMeta` so the renderer can show status + stats
 /// without a second lookup. `name` is the basename (used in tree mode);
 /// `path` is the full repo-root-relative path (used in flat mode / tooltips).
 export interface FileNode {
   kind: "file";
   name: string;
   path: string;
-  data: FileDiff;
+  data: FileDiffMeta;
 }
 
 /// Directory node. `path` is the repo-root-relative path of the dir itself
@@ -24,14 +24,14 @@ export interface DirNode {
 
 export type TreeNode = DirNode | FileNode;
 
-/// Builds a sorted tree of `TreeNode`s from a flat list of `FileDiff`s.
+/// Builds a sorted tree of `TreeNode`s from a flat list of `FileDiffMeta`s.
 ///
 /// Insert uses `Map<name, node>` per level for **O(depth)** per path — the
 /// previous `.find()` on arrays was O(depth · siblings) and choked on
 /// working trees with hundreds of files. 1:1 port of GitKraken's
 /// `_insertPathIntoTree`, which uses object-keyed children for the same
 /// reason.
-export function buildTreeFromPaths(files: FileDiff[]): TreeNode[] {
+export function buildTreeFromPaths(files: FileDiffMeta[]): TreeNode[] {
   interface MutDir {
     name: string;
     path: string;
@@ -87,7 +87,7 @@ function freezeDir(dir: {
 /// scroll window — one DOM node per visible row, not per file in the
 /// repo.
 export type FlatRow =
-  | { kind: "file"; path: string; depth: number; label: string; data: FileDiff }
+  | { kind: "file"; path: string; depth: number; label: string; data: FileDiffMeta }
   | { kind: "dir"; path: string; depth: number; name: string };
 
 /// Produces the visible flat row list in tree mode. A dir contributes its
@@ -150,7 +150,7 @@ function anyFileVisible(
 /// Flat-mode rendering helper — produces the same `FlatRow` shape as tree
 /// mode but with `depth=0` for every file, sorted by full path.
 export function flattenFlat(
-  files: FileDiff[],
+  files: FileDiffMeta[],
   isFileVisible: (path: string) => boolean,
 ): FlatRow[] {
   const visible = files.filter((f) => isFileVisible(f.path));
@@ -169,7 +169,7 @@ export function flattenFlat(
 /// auto-expand filter matches — matches the `TreeViewFileForcedVisible`
 /// semantics of GitKraken.
 export function ancestorPathsForMatches(
-  files: FileDiff[],
+  files: FileDiffMeta[],
   query: string,
 ): Set<string> {
   const needle = query.trim().toLowerCase();

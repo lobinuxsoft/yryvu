@@ -2,7 +2,7 @@
 
 import { createMemo, For, Show } from "solid-js";
 
-import type { FileDiff } from "../../../ipc/diff";
+import type { FileDiffMeta } from "../../../ipc/diff";
 import { Tooltip } from "../../Tooltip";
 
 /**
@@ -40,7 +40,7 @@ const CHIP_ORDER: readonly CountKey[] = [
 ];
 
 export function CommitDiffSection(props: {
-  files: FileDiff[];
+  files: FileDiffMeta[];
   loading?: boolean;
 }) {
   const counts = createMemo<Record<CountKey, number>>(() => {

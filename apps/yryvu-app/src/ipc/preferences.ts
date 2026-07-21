@@ -2,10 +2,14 @@
 
 import { invoke } from "@tauri-apps/api/core";
 
-/// Mirrors `yryvu_bridge::preferences::GeneralPreferences`. Empty for
-/// now — extended by #102 (see #195 for why the previous toggle was rip'd).
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface GeneralPreferences {}
+/// Mirrors `yryvu_bridge::preferences::GeneralPreferences`. Only the
+/// fields the frontend actually reads are declared; the backend struct
+/// carries the rest of #102's panel state.
+export interface GeneralPreferences {
+  /// Set once the user ticks "Don't ask again" in the force-push
+  /// confirmation. Port of GK's `forcePushSkipSecondWarning` (#196).
+  forcePushSkipSecondWarning: boolean;
+}
 
 /// Theme identifier — accepts any built-in id (`a-yryvu`,
 /// `b-tokyo-night`, …, `k-default`), a custom theme id from

@@ -188,6 +188,7 @@ export function Toolbar(props: ToolbarProps) {
         body={`This rewrites ${data.upstreamShort() ?? "the upstream"} but only if the remote tip still matches your local tracking ref. Coworkers' new commits will block the push.`}
         confirmLabel="Force push"
         destructive
+        suppressible
         onConfirm={handlers.runForcePushWithLease}
         onCancel={() => handlers.setConfirm(null)}
       />

@@ -11,7 +11,16 @@ non-obvious conventions.
 ## Current status
 
 - **Released:** **v0.5.2** (2026-07-20, tag `yryvu-v0.5.2`). `main` and
-  `development` are in sync at that version.
+  `development` are in sync at that version; unreleased Wave 9 perf work sits
+  on `development` since.
+- **Wave 9 — Perf + cleanup, in progress (3/11).** Closed: **#217** (RepoManagement
+  DOD — SoA `KnownReposBatch` wire + virtualization + pre-indexed search),
+  **#178** (metadata-only combined-diff summary — the inspector stopped
+  serializing hunks), **#181** (graph walk perf — `BreadthFirst` for the full
+  walk + rayon parallel decode; cheat-engine 985ms→417ms). #181 was
+  **re-diagnosed by measurement**: the original "stream the sort/layout" premise
+  was wrong — the walk/decode is ~87% of the cost, the sort/layout ~10%. **Next:
+  #37 (resizable commit list columns).**
 - **Shipped in v0.5.2 — data-safety hardening, umbrella #448 CLOSED.** A user
   report ("a merge only keeps my side") turned out to be two distinct bugs;
   auditing the core git ops surfaced a cluster of **21 silent data-loss
@@ -22,9 +31,6 @@ non-obvious conventions.
   token expansion (#298), multi-file `[layers]` (#299), `mask-image` icon system
   with `icons/`-folder override (#300), themeable graph node/edge vars (#301),
   9 themes' `personality.css` rewritten vs the real DOM (#303), `docs/themes/` (#302).
-- **Next:** **Wave 9 — Perf + cleanup** (start with #217, RepoManagement DOD —
-  it's `medium`, not `hard` like the two graph items #178/#181, and it fits the
-  Rust DOD paradigm). See [ROADMAP.md](ROADMAP.md).
 - **Backlog hygiene owed:** 7 open issues sit in no wave (#231 Add Worktree,
   #437, #38, #99, #101, #108, #233) and #27 (theme system) is likely already
   satisfied by Wave 8 — triage them into a wave or close them.
@@ -252,6 +258,12 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-21:** **Wave 9 perf started (3/11).** #217 (PR #496 — RepoManagement
+  SoA wire + virtualization + pre-indexed search), #178 (PR #497 — metadata-only
+  combined-diff summary), #181 (PR #498 — graph walk: `BreadthFirst` for the
+  full walk drops the discarded time-sort, rayon parallel decode; cheat-engine
+  985→417ms). #181's original streaming premise was refuted by measurement
+  (walk/decode ~87%, sort/layout ~10%) and the issue body rewritten. Next: #37.
 - **2026-07-20:** **Released v0.5.2** — promote `development → main`, then merged
   release-please's `chore(main): release 0.5.2`. Tagged `yryvu-v0.5.2`;
   `build-release` produced the Linux AppImage + `.deb` and Windows `.msi`.

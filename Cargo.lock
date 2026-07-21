@@ -7961,6 +7961,7 @@ dependencies = [
  "notify-debouncer-full",
  "nucleo-matcher",
  "oauth2",
+ "rayon",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

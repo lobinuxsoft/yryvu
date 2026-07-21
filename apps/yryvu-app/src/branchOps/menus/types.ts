@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { BranchInfo, GitflowConfig, ResetMode, TagInfo } from "../../ipc";
+import type {
+  BranchInfo,
+  GitflowConfig,
+  RemoteInfo,
+  ResetMode,
+  TagInfo,
+} from "../../ipc";
 import type {
   GitflowFlow,
   MenuState,
@@ -82,7 +88,7 @@ export interface MenuDeps {
 
   // remote-header-menu specific openers / handlers (#227)
   openAddRemoteDialog: () => void;
-  openEditRemoteDialog: (name: string, currentUrl: string) => void;
+  openEditRemoteDialog: (remote: RemoteInfo) => void;
   openRemoveRemoteDialog: (name: string) => void;
   fetchRemote: (remote: string) => Promise<void>;
   refreshRemote: () => Promise<void>;

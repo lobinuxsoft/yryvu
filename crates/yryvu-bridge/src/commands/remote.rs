@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::backend::{GitBackend, MergeResult, MergeStrategy, PushOptions};
+use crate::backend::{GitBackend, MergeResult, MergeStrategy, PushOptions, RemoteInfo};
 use crate::repo::GixBackend;
 
 #[tauri::command]
@@ -80,6 +80,52 @@ pub async fn set_remote_url(repo_path: String, name: String, url: String) -> Res
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .set_remote_url(&PathBuf::from(&repo_path), &name, &url)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn list_remotes_detailed(repo_path: String) -> Result<Vec<RemoteInfo>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .list_remotes_detailed(&PathBuf::from(&repo_path))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Returns the refspecs libgit2 left pointing at the old name because
+/// they had been customised by hand. Empty in the common case; the UI
+/// warns when it isn't.
+#[tauri::command]
+pub async fn rename_remote(
+    repo_path: String,
+    old_name: String,
+    new_name: String,
+) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .rename_remote(&PathBuf::from(&repo_path), &old_name, &new_name)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// `url: None` clears `remote.<name>.pushurl` so pushes follow the fetch
+/// URL again.
+#[tauri::command]
+pub async fn set_remote_push_url(
+    repo_path: String,
+    name: String,
+    url: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        GixBackend
+            .set_remote_push_url(&PathBuf::from(&repo_path), &name, url.as_deref())
             .map_err(|e| e.to_string())
     })
     .await

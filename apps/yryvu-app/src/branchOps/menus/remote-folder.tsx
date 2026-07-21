@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ContextMenuItem } from "../../components/ContextMenu";
-import { getRemoteUrl } from "../../ipc";
+import { getRemoteUrl, listRemotesDetailed } from "../../ipc";
 import { repoPath } from "../../state";
 import { notify } from "../../components/Notifications";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -51,8 +51,20 @@ export function buildRemoteEntityItems(
         const path = repoPath();
         if (!path) return;
         try {
-          const url = await getRemoteUrl(path, remote);
-          deps.openEditRemoteDialog(remote, url);
+          // The dialog edits name / fetch / push together, so it needs
+          // the whole record — a lone fetch URL can't tell it whether
+          // `pushurl` is set.
+          const info = (await listRemotesDetailed(path)).find(
+            (r) => r.name === remote,
+          );
+          if (!info) {
+            notify.error(`Edit ${remote} failed`, {
+              message: "Remote no longer exists",
+              category: "repoObject",
+            });
+            return;
+          }
+          deps.openEditRemoteDialog(info);
         } catch (err) {
           notify.error(`Edit ${remote} failed`, {
             message: String(err),

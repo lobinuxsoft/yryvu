@@ -105,6 +105,7 @@ export function RefsSections(props: Props) {
                 <>
                   <RemoteFolderRow
                     remote={group.remote}
+                    url={props.data.remoteUrl(group.remote)}
                     count={group.branches.length}
                     collapsed={collapsedRemoteFolders(repoPath() ?? "").has(
                       group.remote,

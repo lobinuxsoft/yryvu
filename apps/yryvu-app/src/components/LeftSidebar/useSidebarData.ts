@@ -5,7 +5,8 @@ import { createResource, type Accessor } from "solid-js";
 import {
   getRepoState,
   listBranches,
-  listRemotes,
+  listRemotesDetailed,
+  type RemoteInfo,
   listStashes,
   listSubmodules,
   listTags,
@@ -117,14 +118,21 @@ export function useSidebarData(filterQuery: Accessor<string>) {
   // adds/removes a remote bumps it through `git remote add/remove`
   // followed by a fetch. Tag context-menu reads this to render
   // per-remote Push / Delete entries.
-  const [remoteNames] = createResource<string[], [string, number]>(
+  const [remoteInfos] = createResource<RemoteInfo[], [string, number]>(
     () => [repoPath() ?? "", branchesNonce()] as [string, number],
     async ([path]) => {
-      if (!path) return [] as string[];
-      return await listRemotes(path);
+      if (!path) return [] as RemoteInfo[];
+      return await listRemotesDetailed(path);
     },
     { initialValue: [] },
   );
+
+  // Names stay available as their own accessor — most consumers (tag
+  // menus, group headers) only ever needed the name, and the detailed
+  // fetch costs the same round trip.
+  const remoteNames = (): string[] => remoteInfos().map((r) => r.name);
+  const remoteUrl = (name: string): string | null =>
+    remoteInfos().find((r) => r.name === name)?.fetchUrl ?? null;
 
   // Gitflow config drives the GITFLOW section's visibility (it only
   // renders once `git flow init` populated `[gitflow]`). Keyed on
@@ -218,6 +226,7 @@ export function useSidebarData(filterQuery: Accessor<string>) {
     repoState,
     tags,
     remoteNames,
+    remoteUrl,
     gitflowConfig,
     gitflowLocals,
     filteredGitflowLocals,

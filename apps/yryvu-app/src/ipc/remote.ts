@@ -74,6 +74,60 @@ export function setRemoteUrl(
 }
 
 /**
+ * One configured remote with its URLs resolved. Mirrors the backend
+ * `RemoteInfo`.
+ *
+ * `pushUrl` is `null` when `remote.<name>.pushurl` is unset — the usual
+ * case, where pushes follow the fetch URL. That is a different state
+ * from a push URL that merely happens to equal the fetch URL: the
+ * former tracks later edits to the fetch URL, the latter is pinned.
+ */
+export interface RemoteInfo {
+  name: string;
+  fetchUrl: string | null;
+  pushUrl: string | null;
+}
+
+/**
+ * Enumerate remotes with their fetch and push URLs. Backs the remote
+ * rows in the sidebar and the edit dialog's initial state.
+ */
+export function listRemotesDetailed(repoPath: string): Promise<RemoteInfo[]> {
+  return invoke<RemoteInfo[]>("list_remotes_detailed", { repoPath });
+}
+
+/**
+ * Rename a remote. libgit2 rewrites the config section, the default
+ * fetch refspec, and moves `refs/remotes/<old>/*` across in one call —
+ * no re-fetch needed.
+ *
+ * Resolves to the refspecs libgit2 left naming the old remote because
+ * they had been customised by hand. Empty in the common case; surface
+ * it when it isn't, since those refspecs are now stale.
+ */
+export function renameRemote(
+  repoPath: string,
+  oldName: string,
+  newName: string,
+): Promise<string[]> {
+  return invoke<string[]>("rename_remote", { repoPath, oldName, newName });
+}
+
+/**
+ * Set or clear `remote.<name>.pushurl`. Passing `null` clears it, so
+ * pushes follow the fetch URL again — deliberately different from
+ * writing the fetch URL into it, which would pin pushes to today's
+ * value and quietly ignore a later fetch-URL edit.
+ */
+export function setRemotePushUrl(
+  repoPath: string,
+  name: string,
+  url: string | null,
+): Promise<void> {
+  return invoke<void>("set_remote_push_url", { repoPath, name, url });
+}
+
+/**
  * Push customisation surface. Mirrors the backend `PushOptions` struct.
  * Bare `--force` is intentionally absent — chajá refuses to expose it
  * from the UI; use {@link push} with `forceWithLease` instead.

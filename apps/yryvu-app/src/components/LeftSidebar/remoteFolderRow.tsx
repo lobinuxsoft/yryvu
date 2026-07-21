@@ -3,6 +3,12 @@ import { Icon } from "../Icon";
 
 export interface RemoteFolderRowProps {
   remote: string;
+  /// Fetch URL, surfaced as the row's tooltip. GitKraken shows a
+  /// remote's URL nowhere in its tree — not even as a tooltip, though
+  /// its submodule rows get one — so reading it means opening the edit
+  /// dialog. A `title` costs nothing and answers "which fork is this?"
+  /// in place.
+  url?: string | null;
   count: number;
   collapsed: boolean;
   onToggle: (remote: string) => void;
@@ -21,6 +27,7 @@ export function RemoteFolderRow(props: RemoteFolderRowProps) {
     <div
       class="sidebar__remote-folder"
       data-collapsed={props.collapsed ? "true" : "false"}
+      title={props.url ? `${props.remote} — ${props.url}` : props.remote}
       role="button"
       tabindex={0}
       onClick={() => props.onToggle(props.remote)}

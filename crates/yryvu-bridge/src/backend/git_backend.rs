@@ -12,6 +12,7 @@ use super::types::{
 use crate::repo::commits::AuthorInfo;
 use crate::repo::conflicts::{ConflictDiff3, ConflictListing, ConflictSide, ConflictSource};
 use crate::repo::rebase::interactive::{CommitSummary, RebasePlan, RebaseState};
+use crate::repo::remote::RemoteInfo;
 use crate::repo::search::{IndexCounts, SearchHit, SearchMode};
 use crate::repo::staging::{
     CommitOptions, GenerateKeyRequest, GeneratedKey, GpgKeyInfo, LineRange, SignConfig, SignFormat,
@@ -148,6 +149,28 @@ pub trait GitBackend: Send + Sync {
 
     /// Update the fetch URL of an existing remote.
     fn set_remote_url(&self, repo_path: &Path, name: &str, url: &str) -> Result<(), BackendError>;
+
+    /// Remotes with their fetch and push URLs resolved. `push_url` is
+    /// `None` when `remote.<name>.pushurl` is unset.
+    fn list_remotes_detailed(&self, repo_path: &Path) -> Result<Vec<RemoteInfo>, BackendError>;
+
+    /// Rename a remote, moving its tracking refs. Returns the refspecs
+    /// libgit2 could not rewrite because they were hand-customised —
+    /// the rename still succeeded, but those still name the old remote.
+    fn rename_remote(
+        &self,
+        repo_path: &Path,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<Vec<String>, BackendError>;
+
+    /// Set (`Some`) or clear (`None`) `remote.<name>.pushurl`.
+    fn set_remote_push_url(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        url: Option<&str>,
+    ) -> Result<(), BackendError>;
 
     /// Reset the current branch tip to the given commit. `Hard` is destructive
     /// — callers MUST confirm with the user before invoking it.

@@ -19,8 +19,8 @@ use graph_core::Commit;
 use crate::backend::{
     ApplyPatchOutcome, AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff,
     CommitOptions, FileDiff, GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange,
-    MergeResult, MergeStrategy, PushOptions, RepoStateInfo, ResetMode, SignConfig, SignFormat,
-    StashInfo, SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
+    MergeResult, MergeStrategy, PushOptions, RemoteInfo, RepoStateInfo, ResetMode, SignConfig,
+    SignFormat, StashInfo, SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
 };
 
 use super::{
@@ -352,6 +352,28 @@ impl GitBackend for GixBackend {
 
     fn set_remote_url(&self, repo_path: &Path, name: &str, url: &str) -> Result<(), BackendError> {
         remote::set_remote_url(repo_path, name, url)
+    }
+
+    fn list_remotes_detailed(&self, repo_path: &Path) -> Result<Vec<RemoteInfo>, BackendError> {
+        remote::list_remotes_detailed(repo_path)
+    }
+
+    fn rename_remote(
+        &self,
+        repo_path: &Path,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<Vec<String>, BackendError> {
+        remote::rename_remote(repo_path, old_name, new_name)
+    }
+
+    fn set_remote_push_url(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        url: Option<&str>,
+    ) -> Result<(), BackendError> {
+        remote::set_remote_push_url(repo_path, name, url)
     }
 
     fn reset_to_commit(

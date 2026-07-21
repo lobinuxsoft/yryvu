@@ -13,7 +13,7 @@ non-obvious conventions.
 - **Released:** **v0.5.2** (2026-07-20, tag `yryvu-v0.5.2`). `main` and
   `development` are in sync at that version; unreleased Wave 9 perf work sits
   on `development` since.
-- **Wave 9 — Perf + cleanup, in progress (4/11).** Closed: **#217** (RepoManagement
+- **Wave 9 — Perf + cleanup, in progress (5/11).** Closed: **#217** (RepoManagement
   DOD — SoA `KnownReposBatch` wire + virtualization + pre-indexed search),
   **#178** (metadata-only combined-diff summary — the inspector stopped
   serializing hunks), **#181** (graph walk perf — `BreadthFirst` for the full
@@ -22,7 +22,9 @@ non-obvious conventions.
   #181 was **re-diagnosed by measurement**: the original "stream the
   sort/layout" premise was wrong — the walk/decode is ~87% of the cost, the
   sort/layout ~10%. #37 turned out to be three parity defects in infrastructure
-  that already existed, not a feature. **Next: #196 (don't-ask-again).**
+  that already existed, not a feature, and **#196** ("don't ask again" on the
+  force-push confirmation — the one git-destructive prompt GitKraken lets you
+  skip). **Next: #132 (remote management UI).**
 - **Shipped in v0.5.2 — data-safety hardening, umbrella #448 CLOSED.** A user
   report ("a merge only keeps my side") turned out to be two distinct bugs;
   auditing the core git ops surfaced a cluster of **21 silent data-loss
@@ -240,6 +242,13 @@ everything fallible (parent, author, committer) and refuse a dirty index
   The graph column collapsed on every reload because an empty `rows()` yields
   a one-lane content width, which was published as the column's ceiling
   (#37). Guard on emptiness, not on the derived number.
+- **A "don't ask again" checkbox is a claim that the operation is
+  recoverable.** `ConfirmDialog`'s `suppressible` is opt-in per call site for
+  that reason, and only force push *with lease* carries it — the lease makes a
+  skipped prompt harmless, since a moved remote rejects the push. Never add it
+  to anything that discards or resets. Force pull in particular is
+  `reset(Hard)` + a forced checkout: it destroys uncommitted work, which is in
+  no reflog, no ODB and no stash (#196).
 - **Never persist a clamp.** When a constraint trims a user's setting, keep
   the trim and the intent apart — clamp on read, leave the stored value
   alone (GitKraken's `min(contentWidth, persistedWidth)`). Writing the
@@ -270,6 +279,19 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-21:** **#196 closed — force-push "don't ask again" (5/11).** PR #502.
+  The issue asked for a generic `dontAskAgain` map across five destructive
+  dialogs; the bundle has no such system — three ad-hoc flags in two stores,
+  and exactly one covering a git-destructive confirmation: force push **with
+  lease**. The lease is what makes skipping it safe (a moved remote rejects
+  the push instead of overwriting a coworker). Everything that can lose work
+  confirms unconditionally there, and most of those prompts are built on a
+  type that structurally cannot hold a checkbox. Our force pull stays
+  unsuppressible for the sharper version of the same reason — it is
+  `reset(Hard)` + a forced checkout, so it discards uncommitted work that no
+  reflog can return. `suppressible` is opt-in per call site on
+  `ConfirmDialog`: the checkbox is a claim that the operation is recoverable.
+  Issue body rewritten with the audit.
 - **2026-07-21:** **#37 closed — commit-list column resize (4/11).** PR #500.
   A fresh bundle audit showed the handles, drag cascade and persistence were
   already in place (#141, #324); what remained were three parity defects. The

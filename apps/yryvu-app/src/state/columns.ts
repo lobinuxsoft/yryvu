@@ -7,7 +7,9 @@ import {
   clampZoneWidth,
   compactColumnLayout,
   defaultColumnLayout,
+  isLastVisibleZone,
   orderedVisibleZones,
+  setGraphContentWidth,
   sumOfWidths,
   ZONE_SPECS,
   type ColumnSettings,
@@ -271,6 +273,32 @@ export function ensureColumnWidthsFitContainer(cw: number): void {
     expandToFit(next, ordered, cw, 0);
   }
   persistLayout(next);
+}
+
+/// Republish the graph zone's fluid ceiling — the natural lane content
+/// width, which grows as history with wider fan-out streams in. Port of
+/// GK's `updateCommitZoneContentWidthFromChange`: assign the new maximum,
+/// pull the current width down if it now overshoots, then re-balance the
+/// row so the freed pixels go somewhere instead of leaving a gap.
+///
+/// No-op when the width is unchanged, so the layout hook can call this on
+/// every row batch without thrashing localStorage.
+export function applyGraphContentWidth(px: number): void {
+  if (!setGraphContentWidth(px)) return;
+
+  const cur = graphColumnsInternal();
+  const ordered = orderedVisibleZones(cur);
+  // As the rightmost zone the graph absorbs slack and ignores its cap
+  // (`isExpandable`), so clamping it there would fight the cascade.
+  if (!isLastVisibleZone("graph", ordered)) {
+    const clamped = clampZoneWidth("graph", cur.graph.width);
+    if (clamped !== cur.graph.width) {
+      persistLayout({ ...cur, graph: { ...cur.graph, width: clamped } });
+    }
+  }
+
+  const cw = containerWidthInternal();
+  if (cw > 0) ensureColumnWidthsFitContainer(cw);
 }
 
 /// Toggle a zone's visibility.

@@ -6,6 +6,7 @@ import {
   isLastVisibleZone,
   sumOfWidths,
   ZONE_SPECS,
+  zoneMaxWidth,
   type ColumnSettings,
   type GraphZoneId,
 } from "../components/CommitGraph/columns";
@@ -27,7 +28,7 @@ export function isExpandable(
   // (mirrors GK's `!isLastZone && ct > preferredWidth ⇒ ct = preferredWidth`
   // skip in `expandZoneWidthsToFitWidth`).
   if (isLastVisibleZone(id, ordered)) return true;
-  return layout[id].width < ZONE_SPECS[id].maximumWidth;
+  return layout[id].width < zoneMaxWidth(id);
 }
 
 /// Walk right from `fromIdx`; if nothing is found, wrap to 0 and continue
@@ -92,7 +93,7 @@ export function expandToFit(
     const others = sumOfWidths(ordered, layout, id);
     let candidate = containerWidth - others;
     if (!isLastVisibleZone(id, ordered)) {
-      candidate = Math.min(candidate, ZONE_SPECS[id].maximumWidth);
+      candidate = Math.min(candidate, zoneMaxWidth(id));
     }
     candidate = isLastVisibleZone(id, ordered)
       ? Math.max(ZONE_SPECS[id].minimumWidth, Math.round(candidate))

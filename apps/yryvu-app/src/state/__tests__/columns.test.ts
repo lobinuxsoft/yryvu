@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   isLastVisibleZone,
   sumOfWidths,
   type GraphZoneId,
   ZONE_SPECS,
+  zoneMaxWidth,
 } from "../../components/CommitGraph/columns";
 import {
   activeColumnSettings,
   activeOrderedZones,
+  applyGraphContentWidth,
   ensureColumnWidthsFitContainer,
   graphColumns,
   graphContainerWidth,
@@ -117,7 +119,7 @@ describe("graph column cascade (issue #324)", () => {
     });
 
     it("clamps the resized zone to its [min, max] bounds", () => {
-      // Try to set commitSha to 10 — below the 60 minimum.
+      // Try to set commitSha to 10 — below its minimum.
       setGraphZoneWidth("commitSha", 10);
       expect(activeColumnSettings("commitSha").width).toBe(
         ZONE_SPECS.commitSha.minimumWidth,
@@ -132,6 +134,67 @@ describe("graph column cascade (issue #324)", () => {
       // after a resize (the cw=0 fallback path is exercised
       // implicitly during the pre-ensure window in production).
       setGraphZoneWidth("commitMessage", 250);
+      expect(totalVisibleWidth()).toBe(CONTAINER);
+    });
+  });
+
+  // The graph is the one zone whose ceiling is not a constant: it tracks
+  // the natural lane content width, so a repo with a wide fan-out can be
+  // dragged wider than the static spec allows, and a narrow one cannot be
+  // dragged past its own empty space. See GK's
+  // `updateCommitZoneContentWidthFromChange`.
+  describe("fluid graph-zone ceiling", () => {
+    afterEach(() => {
+      // Module-level singleton: leave the ceiling back at the spec value
+      // so sibling tests aren't clamped by whatever this block set.
+      applyGraphContentWidth(ZONE_SPECS.graph.maximumWidth);
+    });
+
+    it("reports the published content width as the graph maximum", () => {
+      applyGraphContentWidth(420);
+      expect(zoneMaxWidth("graph")).toBe(420);
+      // Every other zone keeps its constant.
+      expect(zoneMaxWidth("commitSha")).toBe(ZONE_SPECS.commitSha.maximumWidth);
+    });
+
+    it("allows the graph past its static spec max when lanes justify it", () => {
+      applyGraphContentWidth(1000);
+      setGraphZoneWidth("graph", 900);
+      expect(activeColumnSettings("graph").width).toBe(900);
+      expect(900).toBeGreaterThan(ZONE_SPECS.graph.maximumWidth);
+      expect(totalVisibleWidth()).toBe(CONTAINER);
+    });
+
+    it("clamps a too-wide graph down when the content shrinks", () => {
+      applyGraphContentWidth(1000);
+      setGraphZoneWidth("graph", 900);
+      applyGraphContentWidth(300);
+      expect(activeColumnSettings("graph").width).toBe(300);
+      expect(totalVisibleWidth()).toBe(CONTAINER);
+    });
+
+    it("is a no-op when the content width is unchanged", () => {
+      applyGraphContentWidth(500);
+      const before = { ...graphColumns() };
+      applyGraphContentWidth(500);
+      expect(graphColumns()).toEqual(before);
+    });
+
+    it("does not clamp the graph while it is the last visible zone", () => {
+      // As the rightmost zone the graph absorbs leftover slack and ignores
+      // its cap; clamping it here would fight the cascade and reopen a gap.
+      for (const id of [
+        "commitMessage",
+        "commitAuthor",
+        "commitDateTime",
+        "commitSha",
+      ] as GraphZoneId[]) {
+        setGraphZoneVisible(id, false);
+      }
+      expect(lastVisibleZone()).toBe("graph");
+      const before = activeColumnSettings("graph").width;
+      applyGraphContentWidth(100);
+      expect(activeColumnSettings("graph").width).toBe(before);
       expect(totalVisibleWidth()).toBe(CONTAINER);
     });
   });

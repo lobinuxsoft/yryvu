@@ -13,14 +13,16 @@ non-obvious conventions.
 - **Released:** **v0.5.2** (2026-07-20, tag `yryvu-v0.5.2`). `main` and
   `development` are in sync at that version; unreleased Wave 9 perf work sits
   on `development` since.
-- **Wave 9 — Perf + cleanup, in progress (3/11).** Closed: **#217** (RepoManagement
+- **Wave 9 — Perf + cleanup, in progress (4/11).** Closed: **#217** (RepoManagement
   DOD — SoA `KnownReposBatch` wire + virtualization + pre-indexed search),
   **#178** (metadata-only combined-diff summary — the inspector stopped
   serializing hunks), **#181** (graph walk perf — `BreadthFirst` for the full
-  walk + rayon parallel decode; cheat-engine 985ms→417ms). #181 was
-  **re-diagnosed by measurement**: the original "stream the sort/layout" premise
-  was wrong — the walk/decode is ~87% of the cost, the sort/layout ~10%. **Next:
-  #37 (resizable commit list columns).**
+  walk + rayon parallel decode; cheat-engine 985ms→417ms), **#37** (commit-list
+  column resize — the fluid graph ceiling + bundle-accurate constraints).
+  #181 was **re-diagnosed by measurement**: the original "stream the
+  sort/layout" premise was wrong — the walk/decode is ~87% of the cost, the
+  sort/layout ~10%. #37 turned out to be three parity defects in infrastructure
+  that already existed, not a feature. **Next: #196 (don't-ask-again).**
 - **Shipped in v0.5.2 — data-safety hardening, umbrella #448 CLOSED.** A user
   report ("a merge only keeps my side") turned out to be two distinct bugs;
   auditing the core git ops surfaced a cluster of **21 silent data-loss
@@ -233,6 +235,16 @@ everything fallible (parent, author, committer) and refuse a dirty index
 - **Solid gotchas:** don't destructure `props` (breaks reactivity); dynamic
   classes go in `classList`, not `class`; `createResource` keeps its last
   value during refetch.
+- **An unmeasured value is not a small value.** Any effect publishing a metric
+  derived from async data must distinguish "no data yet" from "little data".
+  The graph column collapsed on every reload because an empty `rows()` yields
+  a one-lane content width, which was published as the column's ceiling
+  (#37). Guard on emptiness, not on the derived number.
+- **Never persist a clamp.** When a constraint trims a user's setting, keep
+  the trim and the intent apart — clamp on read, leave the stored value
+  alone (GitKraken's `min(contentWidth, persistedWidth)`). Writing the
+  trimmed value back is indistinguishable from the user choosing it, so the
+  setting is destroyed the first time the constraint is tight.
 - Error variants surface to the frontend as `BackendError` Display strings
   (the command does `.map_err(|e| e.to_string())`); the UI prefix-matches
   them, so keep Display prefixes stable.
@@ -258,6 +270,22 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-21:** **#37 closed — commit-list column resize (4/11).** PR #500.
+  A fresh bundle audit showed the handles, drag cascade and persistence were
+  already in place (#141, #324); what remained were three parity defects. The
+  graph zone's ceiling was pinned at a constant 800 — GitKraken assigns it at
+  runtime from the lane content width, so wide repos couldn't be widened
+  enough to show their own lanes. Constraints realigned with
+  `graphZoneMetaData`, except `COMMIT_SHA_ZONE_MAX_WIDTH = 100`, which sits
+  below GitKraken's own 130 presets and is not worth reproducing. Sibling
+  drag handles were lit during a drag; GitKraken suppresses them.
+  `changesZone` was **not** ported — the bundle has full metadata and a
+  renderer for it behind a hardcoded `getShowCommitChangesInGraph = () =>
+  false`. **Widths stay global, diverging from GitKraken's per-repo scope**
+  (user decision: widths suit a screen, not a repository). **The smoke test
+  earned its keep:** reloading collapsed the column to its minimum — the
+  ceiling was published from a not-yet-loaded (empty) graph *and* the clamp
+  was persisted as if chosen. See the two new conventions above.
 - **2026-07-21:** **Wave 9 perf started (3/11).** #217 (PR #496 — RepoManagement
   SoA wire + virtualization + pre-indexed search), #178 (PR #497 — metadata-only
   combined-diff summary), #181 (PR #498 — graph walk: `BreadthFirst` for the

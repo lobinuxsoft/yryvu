@@ -50,6 +50,16 @@ pub struct GeneralPreferences {
     pub remember_tabs: bool,
     #[serde(default)]
     pub use_extended_logging: bool,
+    /// Suppresses the force-push-with-lease confirmation once the user
+    /// ticks "Don't ask again" in it. Port of GK's app-level
+    /// `forcePushSkipSecondWarning` (bundle:10786343), which is the only
+    /// git-destructive confirmation GitKraken lets you skip — the lease
+    /// is what makes that safe, since a moved remote blocks the push
+    /// instead of overwriting it. Nothing that can actually lose work
+    /// (force pull, discard, reset, ref deletion) is suppressible, here
+    /// or there.
+    #[serde(default)]
+    pub force_push_skip_second_warning: bool,
 }
 
 impl Default for GeneralPreferences {
@@ -69,6 +79,7 @@ impl Default for GeneralPreferences {
             git_config_default: true,
             remember_tabs: true,
             use_extended_logging: false,
+            force_push_skip_second_warning: false,
         }
     }
 }

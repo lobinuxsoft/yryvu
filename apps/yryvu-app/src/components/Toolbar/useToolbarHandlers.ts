@@ -11,11 +11,13 @@ import {
 } from "../../ipc";
 import {
   openStashDialog,
+  preferences,
   pullType,
   refreshBranches,
   refreshGraph,
   refreshWorkingTree,
   repoPath,
+  updatePreferences,
   type PullType,
 } from "../../state";
 import { dismissToast, notify } from "../Notifications";
@@ -154,8 +156,16 @@ export function useToolbarHandlers(opts: HandlersOptions) {
     );
   }
 
-  async function runForcePushWithLease() {
+  /// `dontAskAgain` comes from the confirmation's checkbox; suppressing
+  /// the prompt is persisted before the push so a failed push doesn't
+  /// discard the preference the user just expressed.
+  async function runForcePushWithLease(dontAskAgain = false) {
     setConfirm(null);
+    if (dontAskAgain) {
+      await updatePreferences({
+        general: { forcePushSkipSecondWarning: true },
+      });
+    }
     await withOp(
       "Force push (with lease)",
       "Force-pushed with lease",
@@ -184,7 +194,15 @@ export function useToolbarHandlers(opts: HandlersOptions) {
 
   function handlePushSelect(id: string) {
     if (id === "push") return void runPush();
-    if (id === "force_push_lease") return setConfirm("force-push");
+    // Suppressed by a previous "Don't ask again" — straight to the push.
+    // The lease is what keeps this safe to skip: a moved remote rejects
+    // it rather than overwriting anyone.
+    if (id === "force_push_lease") {
+      if (preferences()?.general.forcePushSkipSecondWarning === true) {
+        return void runForcePushWithLease();
+      }
+      return setConfirm("force-push");
+    }
   }
 
   /// Open the StashCreateDialog instead of one-clicking a stash.

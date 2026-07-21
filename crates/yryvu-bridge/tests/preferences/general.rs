@@ -25,6 +25,8 @@ fn general_defaults_match_documented() {
     assert!(g.git_config_default);
     assert!(g.remember_tabs);
     assert!(!g.use_extended_logging);
+    // Confirmations are on until the user silences them (#196).
+    assert!(!g.force_push_skip_second_warning);
 }
 
 #[test]
@@ -49,6 +51,7 @@ fn general_all_fields_flipped_roundtrip() {
             git_config_default: false,
             remember_tabs: false,
             use_extended_logging: true,
+            force_push_skip_second_warning: true,
         },
         ..Preferences::default()
     };
@@ -79,6 +82,7 @@ fn general_serializes_as_camel_case() {
         "\"gitConfigDefault\"",
         "\"rememberTabs\"",
         "\"useExtendedLogging\"",
+        "\"forcePushSkipSecondWarning\"",
     ] {
         assert!(json.contains(key), "missing wire key {key} in {json}");
     }

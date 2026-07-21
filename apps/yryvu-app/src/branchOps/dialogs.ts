@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { RemoteInfo } from "../ipc";
 import type { GitflowFlow } from "../components/LeftSidebar/types";
 import type { BranchOpsState } from "./state";
 
@@ -112,12 +113,13 @@ export function createDialogOpeners(state: BranchOpsState) {
     setDialog({ kind: "add-remote" });
   }
 
-  function openEditRemoteDialog(name: string, currentUrl: string) {
+  /// The dialog owns its three fields locally (name / fetch / push) —
+  /// there are more of them than the shared `dialogNameInput` +
+  /// `dialogPathInput` pair can carry, and seeding them from the passed
+  /// `RemoteInfo` keeps "what changed?" answerable at submit time.
+  function openEditRemoteDialog(remote: RemoteInfo) {
     setDialogError(null);
-    // Single-input dialog — repurpose dialogNameInput for the URL so we
-    // can reuse the existing input plumbing without a third signal.
-    setDialogNameInput(currentUrl);
-    setDialog({ kind: "edit-remote", name });
+    setDialog({ kind: "edit-remote", remote });
   }
 
   function openRemoveRemoteDialog(name: string) {

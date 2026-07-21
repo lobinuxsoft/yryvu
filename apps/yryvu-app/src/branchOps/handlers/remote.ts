@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { addRemote, fetchPrune, removeRemote, setRemoteUrl } from "../../ipc";
+import {
+  addRemote,
+  fetchPrune,
+  removeRemote,
+  renameRemote,
+  setRemotePushUrl,
+  setRemoteUrl,
+} from "../../ipc";
 import { repoPath } from "../../state";
 import { notify } from "../../components/Notifications";
 import type { BranchOpsState } from "../state";
@@ -20,8 +27,6 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
   const { state, refresh } = deps;
   const {
     dialog,
-    dialogNameInput,
-    dialogPathInput,
     setDialogError,
     closeDialog,
     refreshingRemote,
@@ -63,19 +68,29 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
     }
   }
 
-  async function submitAddRemote() {
+  /// A push URL is applied as a second call because `add_remote` takes
+  /// only the fetch URL — mirroring git, where `remote add` has no
+  /// pushurl flag and `set-url --push` is a separate step.
+  async function submitAddRemote(values: {
+    name: string;
+    fetchUrl: string;
+    pushUrl: string;
+  }) {
     const path = repoPath();
     if (!path) return;
     const d = dialog();
     if (d?.kind !== "add-remote") return;
-    const name = dialogNameInput().trim();
-    const url = dialogPathInput().trim();
+    const { name } = values;
+    const url = values.fetchUrl;
     if (!name || !url) {
       setDialogError("Name and URL are required");
       return;
     }
     try {
       await addRemote(path, name, url);
+      if (values.pushUrl !== "") {
+        await setRemotePushUrl(path, name, values.pushUrl);
+      }
       closeDialog();
       refresh();
       notify.success(`Added remote ${name}`, { category: "repoObject" });
@@ -84,21 +99,59 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
     }
   }
 
-  async function submitEditRemote() {
+  /// Applies only what actually changed, and renames first: every
+  /// other write keys on the remote's name, so renaming last would
+  /// address a remote that no longer exists under that name.
+  ///
+  /// An empty `pushUrl` clears `remote.<name>.pushurl` rather than
+  /// pinning it to the fetch URL — see `setRemotePushUrl`. The clear is
+  /// skipped when it was already unset so an unrelated edit doesn't
+  /// write to config for nothing.
+  async function submitEditRemote(values: {
+    name: string;
+    fetchUrl: string;
+    pushUrl: string;
+  }) {
     const path = repoPath();
     if (!path) return;
     const d = dialog();
     if (d?.kind !== "edit-remote") return;
-    const url = dialogNameInput().trim();
-    if (!url) {
-      setDialogError("URL is required");
+    if (!values.name) {
+      setDialogError("Name is required");
       return;
     }
+    if (!values.fetchUrl) {
+      setDialogError("Fetch URL is required");
+      return;
+    }
+
+    const before = d.remote;
+    const nextPushUrl = values.pushUrl === "" ? null : values.pushUrl;
+
     try {
-      await setRemoteUrl(path, d.name, url);
+      if (values.name !== before.name) {
+        const staleRefspecs = await renameRemote(path, before.name, values.name);
+        if (staleRefspecs.length > 0) {
+          // The rename succeeded; these refspecs were hand-customised so
+          // libgit2 left them naming the old remote. Silence would leave
+          // the user with a remote that fetches nothing.
+          notify.info("Custom refspecs left unchanged", {
+            message: `${staleRefspecs.join(", ")} still reference '${before.name}'`,
+            category: "repoObject",
+          });
+        }
+      }
+      if (values.fetchUrl !== (before.fetchUrl ?? "")) {
+        await setRemoteUrl(path, values.name, values.fetchUrl);
+      }
+      if (nextPushUrl !== before.pushUrl) {
+        await setRemotePushUrl(path, values.name, nextPushUrl);
+      }
       closeDialog();
       refresh();
-      notify.success(`Updated ${d.name} URL`, { category: "repoObject" });
+      notify.success(`Updated remote ${values.name}`, {
+        category: "repoObject",
+      });
     } catch (err) {
       setDialogError(String(err));
     }

@@ -27,6 +27,9 @@ mod push;
 pub mod ssh_keygen;
 mod sync;
 
-pub use management::{add_remote, get_remote_url, list_remotes, remove_remote, set_remote_url};
+pub use management::{
+    add_remote, get_remote_url, list_remotes, list_remotes_detailed, remove_remote, rename_remote,
+    set_remote_push_url, set_remote_url, RemoteInfo,
+};
 pub use push::{delete_remote_branch, delete_tag_remote, push_current_branch, push_tag};
 pub use sync::{fetch_prune, force_pull, pull};

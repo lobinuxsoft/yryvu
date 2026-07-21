@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { MergeResult } from "../../ipc";
+import type { MergeResult, RemoteInfo } from "../../ipc";
 import type { ContextMenuItem } from "../ContextMenu";
 
 export type MenuState = {
@@ -44,11 +44,15 @@ export type DialogState =
   | { kind: "annotate-tag"; name: string }
   | { kind: "add-remote" }
   | {
-      /// Edit a remote's fetch URL. `name` is rendered immutable in the
-      /// dialog body since libgit2 lacks a single-call rename op (would
-      /// need delete+add and that re-fetches local tracking refs).
+      /// Edit a remote: name, fetch URL, push URL. Carries the whole
+      /// `RemoteInfo` because the dialog needs the current values to
+      /// seed its fields and to tell which ones actually changed.
+      ///
+      /// The name used to be immutable here, on the claim that libgit2
+      /// had no single-call rename. It does — `remote_rename`, which
+      /// also moves the tracking refs (#132).
       kind: "edit-remote";
-      name: string;
+      remote: RemoteInfo;
     }
   | { kind: "remove-remote"; name: string }
   | {

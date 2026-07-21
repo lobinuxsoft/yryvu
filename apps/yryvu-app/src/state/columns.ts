@@ -89,6 +89,19 @@ export const graphColumns = graphColumnsInternal;
 export const commitZoneMode = commitZoneModeInternal;
 export const graphContainerWidth = containerWidthInternal;
 
+/// The graph width the user last asked for, held only while a narrower
+/// repo is forcing the column below it. `null` means the live width *is*
+/// their intent. Lets a fan-out repo restore the column the user sized
+/// there after a shallow one trimmed it — the trim is presentation, the
+/// intent is the setting. Cleared whenever they resize the graph by hand,
+/// since that *is* a new intent.
+let desiredGraphWidth: number | null = null;
+
+/// Call from any user-driven resize that touches the graph zone.
+function clearGraphWidthIntent(zones: GraphZoneId[]): void {
+  if (zones.includes("graph")) desiredGraphWidth = null;
+}
+
 function persistLayout(next: Record<GraphZoneId, ColumnSettings>): void {
   localStorage.setItem(COLUMN_LAYOUT_KEY, JSON.stringify(next));
   setGraphColumnsInternal(next);
@@ -182,6 +195,7 @@ function computeResizedLayout(
 /// layouts, etc.). Pointer drag should use the interactive variant + commit
 /// pair so localStorage isn't hammered every frame.
 export function setGraphZoneWidth(id: GraphZoneId, width: number): void {
+  clearGraphWidthIntent([id]);
   const { layout } = computeResizedLayout(id, width);
   persistLayout(layout);
 }
@@ -194,6 +208,7 @@ export function setGraphZoneWidthInteractive(
   id: GraphZoneId,
   width: number,
 ): void {
+  clearGraphWidthIntent([id]);
   const { layout } = computeResizedLayout(id, width);
   applyLayoutEphemeral(layout);
 }
@@ -219,6 +234,7 @@ export function setGraphZonePairInteractive(
   rightZone: GraphZoneId,
   rightWidth: number,
 ): void {
+  clearGraphWidthIntent([leftZone, rightZone]);
   const cur = graphColumnsInternal();
   const totalAvailable = cur[leftZone].width + cur[rightZone].width;
   const minLeft = ZONE_SPECS[leftZone].minimumWidth;
@@ -291,9 +307,24 @@ export function applyGraphContentWidth(px: number): void {
   // As the rightmost zone the graph absorbs slack and ignores its cap
   // (`isExpandable`), so clamping it there would fight the cascade.
   if (!isLastVisibleZone("graph", ordered)) {
-    const clamped = clampZoneWidth("graph", cur.graph.width);
+    // Clamp against what the user *asked for*, not against whatever a
+    // narrower repo already trimmed them to — otherwise every visit to a
+    // shallow repo permanently eats their width. GK keeps the two apart by
+    // clamping only on read (`min(contentWidth, persistedWidth)`); we hold
+    // the same distinction in `desiredGraphWidth`.
+    const intent = desiredGraphWidth ?? cur.graph.width;
+    const clamped = clampZoneWidth("graph", intent);
+    desiredGraphWidth = clamped < intent ? intent : null;
     if (clamped !== cur.graph.width) {
-      persistLayout({ ...cur, graph: { ...cur.graph, width: clamped } });
+      // Route through the resize path rather than a bare write plus a
+      // generic re-balance. The generic one walks right-to-left and would
+      // reach the graph before `ref` — so the pixels `ref` opportunistically
+      // absorbed while the graph was trimmed would never come back, and the
+      // restore would land short. Here the graph is the zone being sized and
+      // its neighbours give way, exactly as when the user drags it.
+      const { layout } = computeResizedLayout("graph", clamped);
+      persistLayout(layout);
+      return;
     }
   }
 
@@ -327,6 +358,7 @@ export function toggleCommitZoneMode(): void {
 /// `Reset columns to default layout` action. Overwrites the layout
 /// with bundle defaults and forces the graph zone back to text mode.
 export function resetColumnsToDefaultLayout(): void {
+  desiredGraphWidth = null;
   persistLayout(defaultColumnLayout());
   setCommitZoneMode("text");
   const cw = containerWidthInternal();
@@ -337,6 +369,7 @@ export function resetColumnsToDefaultLayout(): void {
 /// with the compact preset (author moves left of message; dateTime
 /// is hidden) and switches the graph zone to compact rendering.
 export function resetColumnsToCompactLayout(): void {
+  desiredGraphWidth = null;
   persistLayout(compactColumnLayout());
   setCommitZoneMode("compact");
   const cw = containerWidthInternal();

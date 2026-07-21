@@ -173,6 +173,40 @@ describe("graph column cascade (issue #324)", () => {
       expect(totalVisibleWidth()).toBe(CONTAINER);
     });
 
+    // The reload bug: a narrow (or not-yet-loaded) graph trimmed the column
+    // and persisted the trim as if the user had chosen it, so the width was
+    // gone for good. The trim is presentation; the intent is the setting.
+    it("REGRESSION: restores the user's width when the content grows back", () => {
+      applyGraphContentWidth(1000);
+      setGraphZoneWidth("graph", 900);
+      applyGraphContentWidth(300);
+      expect(activeColumnSettings("graph").width).toBe(300);
+      applyGraphContentWidth(1000);
+      expect(activeColumnSettings("graph").width).toBe(900);
+    });
+
+    it("REGRESSION: survives a round trip through the minimum", () => {
+      applyGraphContentWidth(1000);
+      setGraphZoneWidth("graph", 900);
+      applyGraphContentWidth(ZONE_SPECS.graph.minimumWidth);
+      expect(activeColumnSettings("graph").width).toBe(
+        ZONE_SPECS.graph.minimumWidth,
+      );
+      applyGraphContentWidth(1000);
+      expect(activeColumnSettings("graph").width).toBe(900);
+    });
+
+    it("a hand resize while trimmed becomes the new intent", () => {
+      applyGraphContentWidth(1000);
+      setGraphZoneWidth("graph", 900);
+      applyGraphContentWidth(400);
+      // User deliberately picks 200 while the content is narrow — growing
+      // the content later must not resurrect the stale 900.
+      setGraphZoneWidth("graph", 200);
+      applyGraphContentWidth(1000);
+      expect(activeColumnSettings("graph").width).toBe(200);
+    });
+
     it("is a no-op when the content width is unchanged", () => {
       applyGraphContentWidth(500);
       const before = { ...graphColumns() };

@@ -126,7 +126,14 @@ export function useGraphLayout(opts: LayoutOptions) {
   // effect to its own output: harmless today (a repeat call short-circuits
   // on the unchanged width) but a feedback loop waiting for the first
   // caller that isn't idempotent.
+  //
+  // Skipped while no rows are loaded. On a webview reload the graph mounts
+  // against an empty `rows()` before the backend answers, and an empty
+  // graph's "content width" is one lane — publishing it would clamp the
+  // user's column down to the minimum and persist that as their choice.
+  // An unmeasured graph must not be mistaken for a narrow one.
   createEffect(() => {
+    if (opts.rows().length === 0) return;
     const width = graphContentWidth();
     untrack(() => applyGraphContentWidth(width));
   });

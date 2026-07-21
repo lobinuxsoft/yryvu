@@ -61,16 +61,20 @@ export const ZONE_SPECS: Record<GraphZoneId, ZoneSpec> = {
     label: "Branch / Tag",
   },
   graph: {
-    defaults: { width: 200, visible: true, order: 1 },
+    defaults: { width: 150, visible: true, order: 1 },
     compact: { width: 150, visible: true, order: 1 },
-    minimumWidth: 80,
+    // `COMMIT_ZONE_DEFAULT_VIEWPORT_WIDTH_MIN` = node 22 + padding 3 + 3 +
+    // gutter 28. The maximum is a placeholder: the graph zone is the only
+    // fluid one, so its real cap is the lane content width published at
+    // runtime through `setGraphContentWidth` (see `zoneMaxWidth`).
+    minimumWidth: 56,
     maximumWidth: 800,
     label: "Graph",
   },
   commitMessage: {
     defaults: { width: 300, visible: true, order: 2 },
     compact: { width: 500, visible: true, order: 3 },
-    minimumWidth: 200,
+    minimumWidth: 50,
     maximumWidth: 800,
     label: "Commit Message",
   },
@@ -84,18 +88,48 @@ export const ZONE_SPECS: Record<GraphZoneId, ZoneSpec> = {
   commitDateTime: {
     defaults: { width: 130, visible: true, order: 5 },
     compact: { width: 130, visible: false, order: 5 },
-    minimumWidth: 100,
+    minimumWidth: 50,
     maximumWidth: 175,
     label: "Date / Time",
   },
   commitSha: {
     defaults: { width: 130, visible: true, order: 6 },
     compact: { width: 130, visible: true, order: 6 },
-    minimumWidth: 60,
+    minimumWidth: 50,
+    // DIVERGES from the bundle, deliberately. GK ships
+    // `COMMIT_SHA_ZONE_MAX_WIDTH = 100` while both of its own presets are
+    // 130 — so the very first drag of the SHA column snaps it below its
+    // default and it can never return. We keep the cap above the presets.
     maximumWidth: 200,
     label: "SHA",
   },
 };
+
+/// Runtime cap for the graph zone: the natural width of the lane content
+/// (`gutter + (maxLane + 1) * laneWidth + padding`), republished by the
+/// layout hook whenever the loaded rows fan out to a new maximum lane.
+/// Mirrors GK's `updateCommitZoneContentWidthFromChange`, which assigns
+/// `commitZone.maximumWidth = contentWidth` — the graph is the one zone
+/// whose ceiling floats with the shape of the history rather than being a
+/// constant. Starts at the static spec value until the first measurement.
+let graphContentWidth = ZONE_SPECS.graph.maximumWidth;
+
+/// Publish a new lane content width. Returns `true` when the value
+/// actually changed, so callers can skip a pointless re-balance.
+export function setGraphContentWidth(px: number): boolean {
+  const next = Math.max(ZONE_SPECS.graph.minimumWidth, Math.round(px));
+  if (next === graphContentWidth) return false;
+  graphContentWidth = next;
+  return true;
+}
+
+/// Upper bound for a zone. Constant for every zone except the graph,
+/// whose cap tracks the lane content width. Always read widths through
+/// this rather than `ZONE_SPECS[id].maximumWidth` so the fluid zone can't
+/// be clamped against a stale constant.
+export function zoneMaxWidth(id: GraphZoneId): number {
+  return id === "graph" ? graphContentWidth : ZONE_SPECS[id].maximumWidth;
+}
 
 /** Every zone id, in storage-stable order. */
 export const ALL_ZONES: GraphZoneId[] = [
@@ -121,10 +155,10 @@ export function compactColumnLayout(): Record<GraphZoneId, ColumnSettings> {
   return out;
 }
 
-/** Clamp a width to a zone's [min, max]. */
+/** Clamp a width to a zone's [min, max] — max via `zoneMaxWidth`. */
 export function clampZoneWidth(id: GraphZoneId, width: number): number {
   const spec = ZONE_SPECS[id];
-  return Math.max(spec.minimumWidth, Math.min(spec.maximumWidth, Math.round(width)));
+  return Math.max(spec.minimumWidth, Math.min(zoneMaxWidth(id), Math.round(width)));
 }
 
 /** Visible zones in left-to-right render order. */

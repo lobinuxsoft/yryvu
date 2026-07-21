@@ -126,6 +126,7 @@ export {
   resetColumnsToDefaultLayout,
   resetColumnsToCompactLayout,
   ensureColumnWidthsFitContainer,
+  applyGraphContentWidth,
 } from "./columns";
 export { pullType, setPullType, type PullType } from "./pull";
 export {

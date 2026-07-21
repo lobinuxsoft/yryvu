@@ -16,6 +16,8 @@
  * GTK / VS Code).
  */
 
+import { createSignal } from "solid-js";
+
 import {
   activeColumnSettings,
   commitGraphColumnLayout,
@@ -33,6 +35,10 @@ export function GraphColumnResizer(props: {
   let startLeftWidth = 0;
   let startRightWidth = 0;
   let dirty = false;
+  // Marks *this* handle as the grabbed one. The body class alone can't
+  // say which; the stylesheet dims every handle during a drag and lets
+  // only the one carrying `data-dragging` through.
+  const [dragging, setDragging] = createSignal(false);
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
@@ -44,6 +50,7 @@ export function GraphColumnResizer(props: {
     dirty = false;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     document.body.classList.add(DRAG_BODY_CLASS);
+    setDragging(true);
   };
 
   const onPointerMove = (e: PointerEvent) => {
@@ -69,6 +76,7 @@ export function GraphColumnResizer(props: {
       target.releasePointerCapture(e.pointerId);
     }
     document.body.classList.remove(DRAG_BODY_CLASS);
+    setDragging(false);
     if (dirty) {
       commitGraphColumnLayout();
       dirty = false;
@@ -78,6 +86,7 @@ export function GraphColumnResizer(props: {
   return (
     <span
       class="graph-column-resizer"
+      data-dragging={dragging() ? "" : undefined}
       role="separator"
       aria-orientation="vertical"
       aria-label="Resize column"

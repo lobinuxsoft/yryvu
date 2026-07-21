@@ -5,12 +5,14 @@ import {
   createMemo,
   onCleanup,
   onMount,
+  untrack,
   type Accessor,
 } from "solid-js";
 
 import type { GraphRow } from "../../ipc";
 import {
   activeColumnSettings,
+  applyGraphContentWidth,
   commitZoneMode,
   dirtyFileCount,
   pinnedSha,
@@ -88,12 +90,13 @@ export function useGraphLayout(opts: LayoutOptions) {
 
   /* Graph-column intrinsic width (#141 follow-up) — when the repo fans out
    * beyond the GRAPH cell's viewport width, lanes disappear off the right
-   * edge. GitKraken solves this by letting the commitZone be the only
-   * zone without a `maximumWidth`: the column renders at its natural
-   * `numGraphColumns * columnWidth` and the container scrolls horizontally
-   * when it exceeds the cell. We get the same effect by sizing an inner
-   * wrapper to the natural content width and putting `overflow-x: auto`
-   * on the cell.
+   * edge. GitKraken's commitZone carries no `maximumWidth` constant —
+   * instead it assigns one at runtime from this same natural content
+   * width (`maxColumns * COMMIT_COLUMN_WIDTH + gutters`), and the zone's
+   * list scrolls horizontally when the cell is narrower than that. We get
+   * the same effect by sizing an inner wrapper to the natural content
+   * width with `overflow-x: auto` on the cell, and by publishing the
+   * number as the zone's resize ceiling (see below).
    *
    * `maxLane` walks rows + parent_lanes only (O(n·k)). Pass-through edges
    * never visit a lane that didn't start as a `row.lane` or `parent_lane`
@@ -111,6 +114,28 @@ export function useGraphLayout(opts: LayoutOptions) {
   const graphContentWidth = createMemo(() => {
     const dims = getRenderDims(commitZoneMode() === "compact");
     return dims.gutter + (maxLane() + 1) * dims.laneWidth + 8;
+  });
+
+  // The same number is the graph zone's resize ceiling: dragging it wider
+  // than its own lanes would only buy empty space. Republished on every
+  // change (new rows fanning out, compact-mode swap) so the clamp never
+  // runs against a stale content width.
+  //
+  // `untrack` because the callee reads — and writes — the column layout
+  // and container-width signals. Tracking those would subscribe this
+  // effect to its own output: harmless today (a repeat call short-circuits
+  // on the unchanged width) but a feedback loop waiting for the first
+  // caller that isn't idempotent.
+  //
+  // Skipped while no rows are loaded. On a webview reload the graph mounts
+  // against an empty `rows()` before the backend answers, and an empty
+  // graph's "content width" is one lane — publishing it would clamp the
+  // user's column down to the minimum and persist that as their choice.
+  // An unmeasured graph must not be mistaken for a narrow one.
+  createEffect(() => {
+    if (opts.rows().length === 0) return;
+    const width = graphContentWidth();
+    untrack(() => applyGraphContentWidth(width));
   });
 
   // Push the user-controlled column widths to CSS custom properties on

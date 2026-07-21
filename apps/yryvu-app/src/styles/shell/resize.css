@@ -50,11 +50,26 @@
   opacity: 0.6;
 }
 
-body.is-resizing-column .graph-column-resizer {
+/* While a drag is in flight only the grabbed handle stays lit — the
+   siblings drop out entirely. This is GK's `isResizingElsewhere`, which
+   it threads into every other zone to suppress their hover affordances:
+   the pointer is captured, so a sibling lighting up under the travelling
+   cursor would advertise a handle that cannot be grabbed. The selectors
+   carry the header-strip class purely to outrank the `:hover` rules
+   above, which are otherwise more specific. */
+body.is-resizing-column .main__graph-column-headers .graph-column-resizer {
+  opacity: 0;
+}
+
+body.is-resizing-column
+  .main__graph-column-headers
+  .graph-column-resizer[data-dragging] {
   opacity: 1;
 }
 
-body.is-resizing-column .graph-column-resizer::after {
+body.is-resizing-column
+  .main__graph-column-headers
+  .graph-column-resizer[data-dragging]::after {
   background-color: var(--fg-1);
   opacity: 0.85;
 }

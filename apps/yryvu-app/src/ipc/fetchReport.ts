@@ -2,40 +2,60 @@
 
 import type { FetchReport } from "./remote";
 
-/// Human-readable outcome of a fetch-all, shared by the toolbar button
-/// and the sidebar's REMOTE refresh so the two can't drift into telling
-/// the user different stories about the same run.
-///
-/// Honesty is the whole point of #509: the old code reported "Fetch all
-/// failed" whenever any remote failed, even when the others had already
-/// fetched — and it never named the one at fault.
-export function fetchReportMessage(report: FetchReport): string {
-  const ok = report.succeeded.length;
-  const bad = report.failed;
-
-  if (ok === 0 && bad.length === 0) return "No remotes configured";
-
-  const failures = bad
-    .map((f) => `'${f.remote}': ${f.message}`)
-    .join("; ");
-
-  if (bad.length === 0) {
-    return ok === 1
-      ? `Fetched '${report.succeeded[0]}'`
-      : `Fetched ${ok} remotes`;
-  }
-  if (ok === 0) {
-    return bad.length === 1
-      ? `Fetch failed for ${failures}`
-      : `Fetch failed for all ${bad.length} remotes — ${failures}`;
-  }
-  return `Fetched ${ok} of ${ok + bad.length} remotes. Failed — ${failures}`;
+/// How a fetch-all should be announced. `severity` maps onto the
+/// notification API's tiers.
+export interface FetchOutcome {
+  severity: "success" | "info" | "error";
+  title: string;
+  message: string;
 }
 
-/// A run is a failure only when nothing at all was fetched. A partial
-/// run is reported as a success whose message names the casualties:
-/// the refs that did arrive are real and the user should see them, and
-/// yryvu's toast severities are GK's four with no warning tier.
-export function fetchReportFailed(report: FetchReport): boolean {
-  return report.succeeded.length === 0 && report.failed.length > 0;
+/// Outcome of a fetch-all, shared by the toolbar button and the
+/// sidebar's REMOTE refresh so the two can't drift into telling the
+/// user different stories about the same run.
+///
+/// A partial run is **`info`, not `success`**. There is no warning tier
+/// (yryvu ships GK's four severities), and the first cut of #509 tried
+/// to squeeze partial into `success` with an honest message — which put
+/// a green check above the words "'test' failed" and let the checkmark
+/// win the read. A tier that claims nothing is better than one that
+/// claims the wrong thing.
+///
+/// The title always states the count, so it can never contradict the
+/// body: that contradiction was the whole complaint.
+export function fetchOutcome(report: FetchReport): FetchOutcome {
+  const ok = report.succeeded.length;
+  const bad = report.failed;
+  const total = ok + bad.length;
+
+  if (total === 0) {
+    return {
+      severity: "info",
+      title: "Nothing to fetch",
+      message: "This repository has no remotes configured",
+    };
+  }
+
+  const failures = bad.map((f) => `'${f.remote}': ${f.message}`).join("; ");
+
+  if (bad.length === 0) {
+    return {
+      severity: "success",
+      title: ok === 1 ? `Fetched '${report.succeeded[0]}'` : "Fetched all remotes",
+      message: ok === 1 ? "" : `${ok} remotes up to date`,
+    };
+  }
+  if (ok === 0) {
+    return {
+      severity: "error",
+      title:
+        total === 1 ? "Fetch failed" : `Fetch failed for all ${total} remotes`,
+      message: failures,
+    };
+  }
+  return {
+    severity: "info",
+    title: `Fetched ${ok} of ${total} remotes`,
+    message: `Failed — ${failures}`,
+  };
 }

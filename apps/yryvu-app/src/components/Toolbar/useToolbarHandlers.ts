@@ -2,7 +2,11 @@
 
 import { createSignal, type Accessor } from "solid-js";
 
-import { fetchReportFailed, fetchReportMessage } from "../../ipc/fetchReport";
+import { fetchOutcome, type FetchOutcome } from "../../ipc/fetchReport";
+
+/// Outcome shape `withOp` accepts from ops that are not simply
+/// success-or-throw.
+type OpOutcome = FetchOutcome;
 import {
   fetchPrune,
   forcePull,
@@ -46,10 +50,14 @@ export function useToolbarHandlers(opts: HandlersOptions) {
     refreshBranches();
   }
 
+  /// Ops that can land somewhere between success and failure return a
+  /// full outcome instead of a message string, and it replaces the
+  /// title too — a title that says "all" over a body that names a
+  /// casualty reads as success no matter what the body says.
   async function withOp(
     label: string,
     successTitle: string,
-    fn: () => Promise<string | void>,
+    fn: () => Promise<string | void | OpOutcome>,
     category: NotificationCategory,
   ): Promise<void> {
     const path = repoPath();
@@ -59,14 +67,19 @@ export function useToolbarHandlers(opts: HandlersOptions) {
     // asked for the op and wants progress signal.
     const loadingId = notify.loading(`${label}…`);
     try {
-      const successMessage = await fn();
+      const result = await fn();
       dismissToast(loadingId);
-      notify.success(successTitle, {
-        ...(typeof successMessage === "string"
-          ? { message: successMessage }
-          : {}),
-        category,
-      });
+      if (result && typeof result === "object") {
+        notify[result.severity](result.title, {
+          ...(result.message ? { message: result.message } : {}),
+          category,
+        });
+      } else {
+        notify.success(successTitle, {
+          ...(typeof result === "string" ? { message: result } : {}),
+          category,
+        });
+      }
     } catch (err) {
       dismissToast(loadingId);
       notify.error(`${label} failed`, {
@@ -126,10 +139,7 @@ export function useToolbarHandlers(opts: HandlersOptions) {
       async () => {
         const report = await fetchPrune(repoPath()!);
         refreshAfterRemoteOp();
-        // Every remote broken reads as a failed op; anything less is a
-        // success that says what didn't make it (#509).
-        if (fetchReportFailed(report)) throw new Error(fetchReportMessage(report));
-        return fetchReportMessage(report);
+        return fetchOutcome(report);
       },
       "remoteSync",
     );

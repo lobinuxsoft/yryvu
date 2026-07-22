@@ -8,7 +8,7 @@ import {
   setRemotePushUrl,
   setRemoteUrl,
 } from "../../ipc";
-import { fetchReportFailed, fetchReportMessage } from "../../ipc/fetchReport";
+import { fetchOutcome } from "../../ipc/fetchReport";
 import { repoPath } from "../../state";
 import { notify } from "../../components/Notifications";
 import type { BranchOpsState } from "../state";
@@ -41,16 +41,17 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
     try {
       const report = await fetchPrune(path);
       refresh();
-      const message = fetchReportMessage(report);
-      if (fetchReportFailed(report)) {
-        setDialogError(`Refresh failed: ${message}`);
-        notify.error("Fetch failed", { message, category: "remoteSync" });
-      } else {
-        notify.success("Fetched all remotes", {
-          message,
-          category: "remoteSync",
-        });
+      const outcome = fetchOutcome(report);
+      // The dialog banner only speaks up when nothing was fetched — a
+      // partial run already says so in its toast, and a red banner over
+      // refs that did arrive overstates it.
+      if (outcome.severity === "error") {
+        setDialogError(`Refresh failed: ${outcome.message}`);
       }
+      notify[outcome.severity](outcome.title, {
+        ...(outcome.message ? { message: outcome.message } : {}),
+        category: "remoteSync",
+      });
     } catch (err) {
       const msg = String(err);
       setDialogError(`Refresh failed: ${msg}`);

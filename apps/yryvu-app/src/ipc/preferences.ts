@@ -192,12 +192,20 @@ export interface LeftSidebarLayout {
   open: boolean;
 }
 
+/// Mirrors `yryvu_bridge::preferences::CommitRegionLayout`. Height in
+/// CSS pixels of the WIP panel's commit region — the area below the
+/// splitter holding the message fields and the commit button.
+export interface CommitRegionLayout {
+  height: number;
+}
+
 /// Mirrors `yryvu_bridge::preferences::LayoutPreferences`. Envelope for
-/// resizable-panel state — currently the right-side inspector and the
-/// left sidebar.
+/// resizable-panel state — the right-side inspector, the left sidebar,
+/// and the commit region inside the WIP panel.
 export interface LayoutPreferences {
   detailPanel: DetailPanelLayout;
   leftSidebar: LeftSidebarLayout;
+  commitRegion: CommitRegionLayout;
 }
 
 /// Mirrors `yryvu_bridge::preferences::Preferences`. The `version`

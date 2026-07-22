@@ -30,6 +30,51 @@
   flex-shrink: 0;
 }
 
+/* GK's `div.file-node-list-header`: a bare text button sitting at the top
+   of the tree region, left-aligned with the rows below it. */
+.file-list__inline-header {
+  display: flex;
+  padding: 2px 6px 0;
+  flex-shrink: 0;
+}
+
+.file-list__inline-expand {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 1px 2px;
+  color: var(--fg-3);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.file-list__inline-expand:hover {
+  color: var(--fg-0);
+}
+
+/* Icon-only, like GK's `div.sort-button` — the glyph carries the state,
+   so there is no label to keep in sync with the direction. */
+.file-list__sort {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  color: var(--fg-2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.file-list__sort:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
 .file-list__toolbar-modes {
   display: inline-flex;
   border: 1px solid var(--bg-2);

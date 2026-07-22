@@ -1,39 +1,46 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * Reusable single-edge resize handle (issues #134 + #36). Renders a
- * thin drag stripe on the panel's specified edge; pointer events live
+ * Reusable single-edge resize handle (issues #134 + #36 + #151). Renders
+ * a thin drag stripe on the panel's specified edge; pointer events live
  * at the document level so a fast drag that leaves the handle's hitbox
- * doesn't drop tracking. The drag stream calls `setWidth(..., false)`
+ * doesn't drop tracking. The drag stream calls `setSize(..., false)`
  * per pointermove (ephemeral) and `commit()` once on pointerup so the
  * persist round-trip happens once per drag gesture.
  *
- * `edge: "left"` grows the panel when the cursor moves LEFT — the
- * right inspector's left-edge handle pattern. `edge: "right"` grows
- * the panel when the cursor moves RIGHT — the left sidebar's
- * right-edge handle pattern.
+ * The handle always grows the panel when the cursor moves *away* from
+ * the panel's body:
+ *   - `left`  — cursor LEFT grows it (right inspector's left edge).
+ *   - `right` — cursor RIGHT grows it (left sidebar's right edge).
+ *   - `top`   — cursor UP grows it (the commit region's top edge, which
+ *     GK drives the same way: `<Resizable resizeEdge="top">`).
+ *
+ * `top` is the only Y-axis edge, so `size` means height there and width
+ * on the other two; the component only ever deals in one scalar.
  */
 
 import { type Accessor, onCleanup } from "solid-js";
 
+type Edge = "left" | "right" | "top";
+
 interface Props {
   /// Which edge of the panel the handle sits on.
-  edge: "left" | "right";
-  /// Reactive width accessor — read at drag-start to anchor the
-  /// gesture.
-  width: Accessor<number>;
-  /// Apply a new width to the panel. `persist=false` during drag,
+  edge: Edge;
+  /// Reactive size accessor (width for `left`/`right`, height for
+  /// `top`) — read at drag-start to anchor the gesture.
+  size: Accessor<number>;
+  /// Apply a new size to the panel. `persist=false` during drag,
   /// the wrapper fires `commit()` once on pointerup.
-  setWidth: (next: number, persist?: boolean) => void;
-  /// Clamp a candidate width against the panel's [min, max] for the
-  /// current viewport. Callers compute `max` from `window.innerWidth`
-  /// minus the chrome they need to keep visible.
-  clamp: (width: number, maxWidth: number) => number;
-  /// Viewport-derived upper bound recomputed per-frame. The handle
+  setSize: (next: number, persist?: boolean) => void;
+  /// Clamp a candidate size against the panel's [min, max] for the
+  /// current viewport. Callers compute `max` from the space they need
+  /// to keep visible.
+  clamp: (size: number, maxSize: number) => number;
+  /// Container-derived upper bound recomputed per-frame. The handle
   /// passes this to `clamp` so a viewport shrink mid-drag pins the
   /// panel at its current ceiling instead of overflowing.
-  viewportMaxWidth: () => number;
-  /// Force-persist the live width. Fires once on pointerup so we
+  viewportMaxSize: () => number;
+  /// Force-persist the live size. Fires once on pointerup so we
   /// round-trip one IPC write per drag gesture instead of one per
   /// pixel.
   commit: () => void;
@@ -42,18 +49,20 @@ interface Props {
 }
 
 export function ResizableEdge(props: Props) {
-  let dragStartX = 0;
-  let dragStartWidth = 0;
+  let dragStart = 0;
+  let dragStartSize = 0;
+
+  /// Sign that converts "cursor moved this far along the axis" into
+  /// "the panel grew this much". `right` is the only edge on the same
+  /// side as the growth direction.
+  const growth = (): number => (props.edge === "right" ? 1 : -1);
+
+  const axisPos = (e: PointerEvent): number =>
+    props.edge === "top" ? e.clientY : e.clientX;
 
   const onPointerMove = (e: PointerEvent) => {
-    const delta = e.clientX - dragStartX;
-    // Left-edge handle: cursor LEFT grows the panel (delta<0 → next
-    // > startWidth). Right-edge handle: cursor RIGHT grows the panel
-    // (delta>0 → next > startWidth).
-    const next = props.edge === "left"
-      ? dragStartWidth - delta
-      : dragStartWidth + delta;
-    props.setWidth(props.clamp(next, props.viewportMaxWidth()), false);
+    const next = dragStartSize + growth() * (axisPos(e) - dragStart);
+    props.setSize(props.clamp(next, props.viewportMaxSize()), false);
   };
 
   const onPointerUp = () => {
@@ -65,8 +74,8 @@ export function ResizableEdge(props: Props) {
   const onHandlePointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
-    dragStartX = e.clientX;
-    dragStartWidth = props.width();
+    dragStart = axisPos(e);
+    dragStartSize = props.size();
     document.addEventListener("pointermove", onPointerMove);
     document.addEventListener("pointerup", onPointerUp);
   };
@@ -82,9 +91,12 @@ export function ResizableEdge(props: Props) {
       classList={{
         "resizable-edge--left": props.edge === "left",
         "resizable-edge--right": props.edge === "right",
+        "resizable-edge--top": props.edge === "top",
       }}
       role="separator"
-      aria-orientation="vertical"
+      // A separator between side-by-side regions is a vertical bar
+      // (`vertical`); one between stacked regions is a horizontal bar.
+      aria-orientation={props.edge === "top" ? "horizontal" : "vertical"}
       aria-label={props.ariaLabel}
       onPointerDown={onHandlePointerDown}
     />

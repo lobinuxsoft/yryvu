@@ -41,8 +41,47 @@
   color: var(--fg-0);
 }
 
+/* GK's discard-all: `btn btn-danger btn-small` with a `far/trash-alt`
+   glyph, flush left in the header. Ghosted until hover so a one-click
+   destructive action doesn't sit lit up next to a navigation button. */
+.commit-panel__discard-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--fg-3);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.commit-panel__discard-all:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--fg-0);
+}
+
+/* Centered in the remaining space, GK-style. The left group (Back +
+   discard) has no right-hand counterpart — GK's own header is equally
+   lopsided whenever its AI button is hidden. */
 .commit-panel__heading {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
   color: var(--fg-1);
+}
+
+/* Inline pill inside a line of text: the graph's 22px pill height would
+   push the 36px header around, so this variant sits on the text baseline. */
+.commit-panel__heading-branch {
+  height: auto;
+  padding: 1px 6px;
+  max-width: 160px;
+  vertical-align: baseline;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* -------- Sections wrapper (GK's staging-scroll) ----------------------- */

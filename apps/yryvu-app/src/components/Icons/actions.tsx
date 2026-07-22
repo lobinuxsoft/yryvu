@@ -119,3 +119,42 @@ export const IconClose = (p?: IconProps) =>
 
 export const IconFilter = (p?: IconProps) =>
   base(<path d="M2 3h12l-4.5 5.5v4l-3 1.5v-5.5z" />, p);
+
+export const IconTrash = (p?: IconProps) =>
+  base(
+    <>
+      <path d="M2.5 4h11" />
+      <path d="M6 4V2.5h4V4" />
+      <path d="M3.5 4l.7 9a1 1 0 0 0 1 .95h5.6a1 1 0 0 0 1-.95l.7-9" />
+      <path d="M6.5 6.5v5" />
+      <path d="M9.5 6.5v5" />
+    </>,
+    p,
+  );
+
+/// Filename-sort direction toggle. Mirrors GitKraken's
+/// `far/sort-alpha-up` ↔ `far/sort-alpha-down` pair: the arrow shows the
+/// direction, the bars show that the key is the name.
+export const IconSortAsc = (p?: IconProps) =>
+  base(
+    <>
+      <path d="M4 13V3" />
+      <path d="M1.5 5.5L4 3l2.5 2.5" />
+      <path d="M9 4.5h5" />
+      <path d="M9 8h4" />
+      <path d="M9 11.5h3" />
+    </>,
+    p,
+  );
+
+export const IconSortDesc = (p?: IconProps) =>
+  base(
+    <>
+      <path d="M4 3v10" />
+      <path d="M1.5 10.5L4 13l2.5-2.5" />
+      <path d="M9 4.5h3" />
+      <path d="M9 8h4" />
+      <path d="M9 11.5h5" />
+    </>,
+    p,
+  );

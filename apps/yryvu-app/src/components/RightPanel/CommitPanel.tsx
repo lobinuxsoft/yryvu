@@ -16,12 +16,13 @@ import {
   type WorkingTreeStatus,
 } from "../../ipc";
 import type { FileDiff } from "../../ipc/diff";
-import type { WorkingTreeChange } from "../../ipc/staging";
 import {
   amendEnabled,
   commitDescription,
   commitMessage,
+  headBranchName,
   openStagingDiffTab,
+  pendingCommitOptionsExpanded,
   preferences,
   repoPath,
   selectedDiffFile,
@@ -34,8 +35,15 @@ import {
   stagedFilesCollapsed,
   unstagedFilesCollapsed,
 } from "../../state";
+import {
+  clampCommitRegionHeight,
+  commitDetailPanelLayout,
+  setCommitRegionHeight,
+} from "../../state/detail-panel-layout";
 import { type RowAction } from "../FileList";
 import { FileListToolbar } from "../FileList/FileListToolbar";
+import { IconTrash } from "../Icons";
+import { ResizableEdge } from "../ResizableEdge";
 import { Tooltip } from "../Tooltip";
 import {
   collapseAllDirs,
@@ -51,7 +59,10 @@ import { CommitFileSection } from "./CommitFileSection";
 import { CoAuthorPicker } from "./CoAuthorPicker";
 import { CommitButton } from "./CommitButton";
 import { CommitMessage } from "./CommitMessage";
+import { commitButtonLabel } from "./commitLabels";
 import { CommitOptionsBlock } from "./CommitOptionsBlock";
+import { useCommitRegionHeight } from "./useCommitRegionHeight";
+import { toFileDiff } from "./workingTreeRows";
 
 export interface CommitPanelProps {
   status: WorkingTreeStatus | undefined;
@@ -68,34 +79,6 @@ export interface CommitPanelProps {
 
 const UNSTAGED_REV: string = "unstaged";
 const STAGED_REV: string = "staged";
-
-/// Working-tree changes carry no diffstat (the backend doesn't compute one
-/// for the WorkingTreeChange shape). Synthesizing a zero-stat FileDiff lets
-/// the FileList widget consume the same row contract as the committed view —
-/// the Row's `<Show when={additions>0 || deletions>0}>` guard already hides
-/// stats when zero, so the visual matches GitKraken's working-tree rows.
-function toFileDiff(change: WorkingTreeChange): FileDiff {
-  return {
-    path: change.path,
-    old_path: change.old_path,
-    status: change.status,
-    // The working-tree change shape carries no type classification; the
-    // FileList row only consumes path/status/stats, so `text` is a safe
-    // default that never reaches the diff-pane dispatcher.
-    file_data_type: "text",
-    is_binary: false,
-    truncated: false,
-    old_size: 0,
-    new_size: 0,
-    additions: 0,
-    deletions: 0,
-    hunks: [],
-    submodule_old_sha: null,
-    submodule_new_sha: null,
-    old_mode: null,
-    new_mode: null,
-  };
-}
 
 export function CommitPanel(props: CommitPanelProps) {
   const unstaged = () => props.status?.unstaged ?? [];
@@ -154,6 +137,13 @@ export function CommitPanel(props: CommitPanelProps) {
 
   const isTree = () => displayTree(repoId());
 
+  const {
+    observePanel,
+    height: regionHeight,
+    minHeight: regionMin,
+    maxHeight: regionMax,
+  } = useCommitRegionHeight(pendingCommitOptionsExpanded);
+
   // Toggling Amend on pre-fills summary/description from HEAD; off clears
   // both. User edits in between are preserved — we only fire on the
   // toggle transition.
@@ -182,22 +172,12 @@ export function CommitPanel(props: CommitPanelProps) {
     ),
   );
 
-  const submitLabel = () => {
-    if (amendEnabled()) {
-      return stagedCount() > 0
-        ? `Amend HEAD with ${stagedCount()} File${stagedCount() === 1 ? "" : "s"}`
-        : "Amend HEAD Message";
-    }
-    return `Commit Changes to ${stagedCount()} File${stagedCount() === 1 ? "" : "s"}`;
-  };
-
-  const submitTitle = () => {
-    if (!commitMessage().trim()) return "Enter a commit summary";
-    if (!amendEnabled() && stagedCount() === 0) {
-      return "Stage at least one file before committing";
-    }
-    return submitLabel();
-  };
+  const submitLabel = () =>
+    commitButtonLabel({
+      stagedCount: stagedCount(),
+      amending: amendEnabled(),
+      hasMessage: commitMessage().trim().length > 0,
+    });
 
   const activeFor = (
     side: "unstaged" | "staged",
@@ -241,7 +221,7 @@ export function CommitPanel(props: CommitPanelProps) {
   };
 
   return (
-    <div class="commit-panel">
+    <div class="commit-panel" ref={observePanel}>
       <div class="commit-panel__header">
         <Tooltip text="Back to commit details">
           <button
@@ -252,9 +232,35 @@ export function CommitPanel(props: CommitPanelProps) {
             ← Back
           </button>
         </Tooltip>
+        {/* GK gates its discard-all on `numberOfChanges === 0` (bundle
+            3475350) — a clean tree offers nothing to discard. The
+            per-section "Discard All Changes" text button stays; this is
+            the panel-wide affordance GK puts in the header. */}
+        <Show when={totalChanges() > 0}>
+          <Tooltip text="Discard all changes">
+            <button
+              class="commit-panel__discard-all"
+              type="button"
+              aria-label="Discard all changes"
+              onClick={() => props.onDiscardAll()}
+            >
+              <IconTrash width={13} height={13} />
+            </button>
+          </Tooltip>
+        </Show>
         <span class="commit-panel__heading">
-          {totalChanges()} file change{totalChanges() === 1 ? "" : "s"} in
-          working directory
+          {totalChanges()} file change{totalChanges() === 1 ? "" : "s"}{" "}
+          <Show when={headBranchName()} fallback="in working directory">
+            {/* GK tints this pill with the head ref's graph-column colour
+                (`getClassesForBranchLabels`, bundle 3478440). yryvu already
+                discarded lane tinting for ref pills as a deliberate
+                deviation (see ref-pills.css) — the pill reuses the same
+                HEAD variant the graph uses so the two agree. */}
+            on{" "}
+            <span class="ref-pill ref-pill--head commit-panel__heading-branch">
+              {headBranchName()}
+            </span>
+          </Show>
         </span>
       </div>
 
@@ -310,7 +316,22 @@ export function CommitPanel(props: CommitPanelProps) {
         />
       </div>
 
-      <section class="commit-panel__commit-form">
+      <section
+        class="commit-panel__commit-form"
+        style={{ height: `${regionHeight()}px` }}
+      >
+        {/* GK's `<Resizable resizeEdge="top">` on the commit region
+            (bundle 270020) — the one draggable boundary in this panel.
+            The Unstaged/Staged split above stays fixed at 50/50 (#430). */}
+        <ResizableEdge
+          edge="top"
+          size={regionHeight}
+          setSize={setCommitRegionHeight}
+          clamp={(h, max) => clampCommitRegionHeight(h, max, regionMin())}
+          viewportMaxSize={regionMax}
+          commit={commitDetailPanelLayout}
+          ariaLabel="Resize commit region"
+        />
         <header class="commit-panel__commit-form__header">
           <span>Commit</span>
           <label class="commit-panel__amend">
@@ -351,7 +372,6 @@ export function CommitPanel(props: CommitPanelProps) {
         <CommitButton
           label={submitLabel()}
           disabled={!canCommit()}
-          title={submitTitle()}
           mode={amendEnabled() ? "amend" : "commit"}
           onCommit={() => props.onCommit()}
           onCommitAndPush={() => props.onCommitAndPush()}

@@ -31,7 +31,15 @@ export type TreeNode = DirNode | FileNode;
 /// working trees with hundreds of files. 1:1 port of GitKraken's
 /// `_insertPathIntoTree`, which uses object-keyed children for the same
 /// reason.
-export function buildTreeFromPaths(files: FileDiffMeta[]): TreeNode[] {
+/// Sort direction shared by both render modes. GitKraken's comparator
+/// (`makeGetFileList`, bundle 5537500) is `_.sortBy(f => _.toLower(f.path))`
+/// optionally passed through `_.reverse` — a single key, two directions.
+/// In tree mode the reversal applies to directory order as well as file
+/// order, so a descending list reads bottom-up at every depth.
+export function buildTreeFromPaths(
+  files: FileDiffMeta[],
+  descending = false,
+): TreeNode[] {
   interface MutDir {
     name: string;
     path: string;
@@ -59,25 +67,30 @@ export function buildTreeFromPaths(files: FileDiffMeta[]): TreeNode[] {
     cursor.files.push({ kind: "file", name, path: file.path, data: file });
   }
 
-  return freezeDir(root);
+  return freezeDir(root, descending ? -1 : 1);
 }
 
-function freezeDir(dir: {
-  dirs: Map<string, any>;
-  files: FileNode[];
-}): TreeNode[] {
+function freezeDir(
+  dir: {
+    dirs: Map<string, any>;
+    files: FileNode[];
+  },
+  order: 1 | -1,
+): TreeNode[] {
   const out: TreeNode[] = [];
-  const dirNames = [...dir.dirs.keys()].sort();
+  const dirNames = [...dir.dirs.keys()].sort(
+    (a, b) => order * a.localeCompare(b),
+  );
   for (const name of dirNames) {
     const child = dir.dirs.get(name)!;
     out.push({
       kind: "dir",
       name: child.name,
       path: child.path,
-      children: freezeDir(child),
+      children: freezeDir(child, order),
     });
   }
-  dir.files.sort((a, b) => a.name.localeCompare(b.name));
+  dir.files.sort((a, b) => order * a.name.localeCompare(b.name));
   for (const f of dir.files) out.push(f);
   return out;
 }
@@ -152,9 +165,11 @@ function anyFileVisible(
 export function flattenFlat(
   files: FileDiffMeta[],
   isFileVisible: (path: string) => boolean,
+  descending = false,
 ): FlatRow[] {
+  const order = descending ? -1 : 1;
   const visible = files.filter((f) => isFileVisible(f.path));
-  visible.sort((a, b) => a.path.localeCompare(b.path));
+  visible.sort((a, b) => order * a.path.localeCompare(b.path));
   return visible.map((f) => ({
     kind: "file" as const,
     path: f.path,

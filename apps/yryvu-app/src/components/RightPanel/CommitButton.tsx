@@ -7,12 +7,13 @@ import { Tooltip } from "../Tooltip";
 export type CommitAction = "commit" | "commit-and-push";
 
 export interface CommitButtonProps {
-  /// Primary button label ("Commit Changes to N Files" / "Amend HEAD …").
+  /// Primary button label, GitKraken's verbatim strings — see
+  /// `commitLabels.ts`. It doubles as the tooltip: when the action is
+  /// unavailable the label itself is the explanation
+  /// ("Stage Changes to Commit", "Type a Message to Commit").
   label: string;
   /// Button disabled when no staged changes or empty summary.
   disabled: boolean;
-  /// Title / hover tooltip — explains why the button is disabled when it is.
-  title: string;
   /// "commit" vs "amend" colour theme.
   mode: "commit" | "amend";
   onCommit: () => void;
@@ -44,7 +45,7 @@ export function CommitButton(props: CommitButtonProps) {
       ref={(el) => (rootEl = el)}
       data-mode={props.mode}
     >
-      <Tooltip text={props.title}>
+      <Tooltip text={props.label}>
         <button
           class="commit-panel__submit"
           type="button"

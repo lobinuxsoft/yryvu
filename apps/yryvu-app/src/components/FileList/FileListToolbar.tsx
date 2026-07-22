@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { IconSortAsc, IconSortDesc } from "../Icons";
 import { Tooltip } from "../Tooltip";
 import {
   displayTree,
   filterQuery,
   setDisplayTree,
   setFilterQuery,
+  setSortDescending,
+  sortDescending,
 } from "./store";
 
 export interface FileListToolbarProps {
@@ -24,10 +27,29 @@ export interface FileListToolbarProps {
 /// `gitkraken-right-panel/06-file-list-inspector-specifics.md`).
 export function FileListToolbar(props: FileListToolbarProps) {
   const isTree = () => displayTree(props.repoId);
+  const isDescending = () => sortDescending(props.repoId);
   const expandLabel = () => (props.allExpanded ? "Collapse All" : "Expand All");
 
   return (
     <div class="file-list__toolbar" role="toolbar">
+      {/* GK's `div.sort-button`, flush left of the mode toggle: one key
+          (the path), two directions, glyph shows which (bundle 10546400). */}
+      <Tooltip text="Sort by filename">
+        <button
+          type="button"
+          class="file-list__sort"
+          aria-label="Sort by filename"
+          aria-pressed={isDescending()}
+          onClick={() => setSortDescending(props.repoId, !isDescending())}
+        >
+          {isDescending() ? (
+            <IconSortDesc width={14} height={14} />
+          ) : (
+            <IconSortAsc width={14} height={14} />
+          )}
+        </button>
+      </Tooltip>
+
       <div class="file-list__toolbar-modes" role="group" aria-label="Display mode">
         <Tooltip text="Flat list">
           <button

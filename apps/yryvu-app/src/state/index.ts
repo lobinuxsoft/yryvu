@@ -206,6 +206,7 @@ export {
   setDefaultProfile,
   setActiveRepoOverride,
 } from "./profiles";
+export { headBranch, headBranchName } from "./head-branch";
 export { prsByHeadSha } from "./prs-by-head-sha";
 export { stashes, stashByCommitSha } from "./stashes";
 export {

@@ -24,6 +24,7 @@ import {
   isDirCollapsed,
   isFileForcedVisible,
   resetRevState,
+  sortDescending,
   toggleDirCollapsed,
 } from "./store";
 import {
@@ -98,6 +99,7 @@ const OVERSCAN_ROWS = 10;
 ///     loading skeleton so the virtualizer never observes a dead ref.
 export function FileList(props: FileListProps) {
   const isTree = () => displayTree(props.repoId);
+  const isDescending = () => sortDescending(props.repoId);
   const filter = () => filterQuery(props.repoId);
 
   // Drop collapsed-dir / forced-visible state whenever the rev or display
@@ -146,14 +148,20 @@ export function FileList(props: FileListProps) {
     return !isDirCollapsed(props.repoId, props.revKey, isTree(), dirPath);
   };
 
-  // Tree is memoized on `props.files` — rebuilt once per diff response.
-  const tree = createMemo(() => buildTreeFromPaths(props.files));
+  // Tree is memoized on `props.files` — rebuilt once per diff response,
+  // plus once per sort flip (the direction is baked into sibling order).
+  const tree = createMemo(() => buildTreeFromPaths(props.files, isDescending()));
   const allDirPaths = createMemo(() => collectDirPaths(tree()));
+
+  /// Drives the inline header's label the same way the toolbar's does:
+  /// derived live from the collapsed set, never a stored flag.
+  const sectionCollapsed = () =>
+    hasAnyCollapsed(props.repoId, props.revKey, isTree());
 
   // Flattened visible rows — 1:1 with GK's `makeGetFlattenedViewFromTreeView`.
   const rows = createMemo<FlatRow[]>(() => {
     if (isTree()) return flattenTree(tree(), isDirExpanded, isFileVisible);
-    return flattenFlat(props.files, isFileVisible);
+    return flattenFlat(props.files, isFileVisible, isDescending());
   });
 
   const onClick = (row: FlatRow) => {
@@ -247,14 +255,42 @@ export function FileList(props: FileListProps) {
       <Show when={!props.hideToolbar}>
         <FileListToolbar
           repoId={props.repoId}
-          allExpanded={
-            !hasAnyCollapsed(props.repoId, props.revKey, isTree())
-          }
+          allExpanded={!sectionCollapsed()}
           onExpandAll={() => expandAllDirs(props.repoId, props.revKey, isTree())}
           onCollapseAll={() =>
             collapseAllDirs(props.repoId, props.revKey, isTree(), allDirPaths())
           }
         />
+      </Show>
+      {/* GK's `FileNodeListHeader` (bundle 7270890): a single toggling
+          text button at the top of the tree region, gated on
+          `isTreeView && treeViewHasDirectories`. It is GK's ONLY
+          expand/collapse control — there is none in its toolbar.
+
+          yryvu keeps its toolbar variant, so rendering both would put two
+          identical controls in the committed view. The inline one appears
+          exactly where the toolbar one can't reach: the working-tree
+          sections, whose shared toolbar button fires for Unstaged and
+          Staged at once. `hideToolbar` is that condition. */}
+      <Show when={props.hideToolbar && isTree() && allDirPaths().length > 0}>
+        <div class="file-list__inline-header">
+          <button
+            type="button"
+            class="file-list__inline-expand"
+            onClick={() =>
+              sectionCollapsed()
+                ? expandAllDirs(props.repoId, props.revKey, isTree())
+                : collapseAllDirs(
+                    props.repoId,
+                    props.revKey,
+                    isTree(),
+                    allDirPaths(),
+                  )
+            }
+          >
+            {sectionCollapsed() ? "Expand All" : "Collapse All"}
+          </button>
+        </div>
       </Show>
       <Show when={props.loading && props.files.length === 0}>
         <LoadingSkeleton />

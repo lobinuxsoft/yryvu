@@ -14,13 +14,13 @@
   border-top: 1px solid var(--bg-3);
   background: var(--bg-1);
   flex-shrink: 0;
-  /* Reserve = chrome above the sections (header ~33 + toolbar ~32 +
-     3×10 gaps ≈ 95px) + both section floors (2×120 + 10 gap = 250px) ≈
-     345px, so the staging lists keep their minimum before the form
-     claims space. `max()` floors the form so it can never collapse to
-     zero on a tiny window. GK's equivalent guard is panelHeight − 249.
-     Header + Commit button stay pinned; only the middle scrolls. */
-  max-height: max(180px, calc(100% - 345px));
+  /* Height is driven from `useCommitRegionHeight` — the persisted
+     intention clamped to [275 (+25 with Commit options open),
+     panelHeight − 249], GK's own bounds. It replaced a fixed
+     `max-height: max(180px, calc(100% - 345px))` cap when the region
+     became draggable (#151). Header + Commit button stay pinned; only
+     the middle scrolls. `relative` anchors the top-edge handle. */
+  position: relative;
   overflow: hidden;
 }
 

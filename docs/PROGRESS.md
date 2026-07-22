@@ -291,6 +291,40 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-22:** **SSH remotes — foundation (#508, PR #511, open).** yryvu was
+  built with `git2` minus the `ssh` feature, so every `git@host` remote failed
+  with "unsupported URL protocol". Enabled `ssh` + `ssh_key_from_memory`, added a
+  `~/.ssh/config` reader (globs/HostName/User/IdentityFile/Port, parses *past*
+  `ProxyCommand` — never runs a program from a config file), and resolve keys
+  OpenSSH-style: agent → IdentityFile → default names. Secure by default: with no
+  `certificate_check` registered, libgit2 rejects an unknown/changed host key.
+  **TOFU prompt is the follow-up** — git2-rs drops libgit2's `valid` bit
+  (`remote_callbacks.rs:413`), so telling "new host" from "changed key" needs a
+  vetted known_hosts parser (adopt, don't hand-roll — Cargo's own
+  `known_hosts.rs` is the reference; `ssh-key` crate for primitives). ⚠️ enabling
+  `ssh` links libssh2+openssl — the AppImage needs a clean-box smoke, CI won't
+  prove it.
+- **2026-07-22:** **#509 closed — fetch-all keeps going after a bad remote.** PR
+  #510. It propagated with `?` inside the loop, so one unreachable remote aborted
+  the run and (since `remotes()` is sorted) the alphabet decided whether your
+  work got fetched. Now collects a `FetchReport`; the UI picks severity — partial
+  is `info` with the count in the title (never "all"), only all-failed is an
+  error. Title can't contradict body, which was the actual complaint.
+- **2026-07-22:** **#437 closed — aggregate status badges on collapsed dirs.** PR
+  #507. Per-status *file* counts (not lines — the only diffstat GK renders in a
+  file list; the per-file pills were refuted out of #151). Folded bottom-up in
+  the existing tree build; expanded folders hide their own badges, still-collapsed
+  children keep theirs, no coordination. Letters not GK's icons (yryvu rows
+  already speak in letters), and not filter-aware on purpose.
+- **2026-07-22:** **#151 closed — commit-panel parity (7/11).** PR #506. Five
+  items: header (discard-all icon + `{N} file changes on <pill>`), persisted sort
+  ASC/DESC, inline per-section expand/collapse, draggable commit-region splitter
+  (GK's 275/+25/panelHeight−249 bounds, clamp-on-read only), GK-verbatim button
+  labels. Audit refuted four issue asks that GK doesn't ship (per-file diffstat
+  pills, Pull/Push tab strip, eye icon, dual expand-all). **Also fixed a
+  preexisting envelope-clobber bug**: four modules each cached the whole
+  preferences envelope and wrote it back, so any write reverted another's fields
+  — unified onto one owner (`state/preferences.ts`) with a serialised write chain.
 - **2026-07-21:** **#132 closed — remote rename + split push URLs (6/11).** PR #504.
   The name field was immutable because a comment — repeated in
   `DialogState` — claimed libgit2 had no single-call rename. It does:

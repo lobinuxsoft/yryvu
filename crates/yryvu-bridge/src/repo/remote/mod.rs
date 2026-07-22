@@ -12,7 +12,7 @@
 //!   remote tags. Anything that writes to a remote ref via the push wire.
 //! - [`ssh_keygen`] — in-app SSH keypair generation + `ssh -T`
 //!   connection test for the guided credential flow (#47).
-//! - [`sync`] — fetch_one / fetch_prune / pull / force_pull. Anything
+//! - [`sync`] — fetch_prune / pull / force_pull. Anything
 //!   that reads from the remote.
 //!
 //! `credentials` stays private to the module; the callback is reused by
@@ -32,4 +32,4 @@ pub use management::{
     set_remote_push_url, set_remote_url, RemoteInfo,
 };
 pub use push::{delete_remote_branch, delete_tag_remote, push_current_branch, push_tag};
-pub use sync::{fetch_prune, force_pull, pull};
+pub use sync::{fetch_prune, force_pull, pull, FetchReport, RemoteFetchFailure};

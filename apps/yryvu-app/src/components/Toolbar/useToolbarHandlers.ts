@@ -2,6 +2,7 @@
 
 import { createSignal, type Accessor } from "solid-js";
 
+import { fetchReportFailed, fetchReportMessage } from "../../ipc/fetchReport";
 import {
   fetchPrune,
   forcePull,
@@ -123,8 +124,12 @@ export function useToolbarHandlers(opts: HandlersOptions) {
       "Fetch all",
       "Fetched all remotes",
       async () => {
-        await fetchPrune(repoPath()!);
+        const report = await fetchPrune(repoPath()!);
         refreshAfterRemoteOp();
+        // Every remote broken reads as a failed op; anything less is a
+        // success that says what didn't make it (#509).
+        if (fetchReportFailed(report)) throw new Error(fetchReportMessage(report));
+        return fetchReportMessage(report);
       },
       "remoteSync",
     );

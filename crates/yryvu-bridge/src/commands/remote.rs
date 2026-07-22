@@ -2,7 +2,9 @@
 
 use std::path::PathBuf;
 
-use crate::backend::{GitBackend, MergeResult, MergeStrategy, PushOptions, RemoteInfo};
+use crate::backend::{
+    FetchReport, GitBackend, MergeResult, MergeStrategy, PushOptions, RemoteInfo,
+};
 use crate::repo::GixBackend;
 
 #[tauri::command]
@@ -21,7 +23,7 @@ pub async fn delete_remote_branch(
 }
 
 #[tauri::command]
-pub async fn fetch_prune(repo_path: String, remote: Option<String>) -> Result<(), String> {
+pub async fn fetch_prune(repo_path: String, remote: Option<String>) -> Result<FetchReport, String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend
             .fetch_prune(&PathBuf::from(&repo_path), remote.as_deref())

@@ -12,8 +12,27 @@ export function deleteRemoteBranch(
   return invoke<void>("delete_remote_branch", { repoPath, remote, name });
 }
 
-export function fetchPrune(repoPath: string, remote?: string): Promise<void> {
-  return invoke<void>("fetch_prune", { repoPath, remote });
+/// One remote that didn't fetch. Mirrors
+/// `yryvu_bridge::backend::RemoteFetchFailure`.
+export interface RemoteFetchFailure {
+  remote: string;
+  message: string;
+}
+
+/// Outcome of a fetch. Mirrors `yryvu_bridge::backend::FetchReport`.
+/// A fetch-all never rejects on a single bad remote — it reports which
+/// ones worked and which didn't, and the caller decides how loudly to
+/// say so (#509).
+export interface FetchReport {
+  succeeded: string[];
+  failed: RemoteFetchFailure[];
+}
+
+export function fetchPrune(
+  repoPath: string,
+  remote?: string,
+): Promise<FetchReport> {
+  return invoke<FetchReport>("fetch_prune", { repoPath, remote });
 }
 
 /**

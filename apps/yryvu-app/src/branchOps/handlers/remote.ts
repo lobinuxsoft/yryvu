@@ -8,6 +8,7 @@ import {
   setRemotePushUrl,
   setRemoteUrl,
 } from "../../ipc";
+import { fetchReportFailed, fetchReportMessage } from "../../ipc/fetchReport";
 import { repoPath } from "../../state";
 import { notify } from "../../components/Notifications";
 import type { BranchOpsState } from "../state";
@@ -38,9 +39,18 @@ export function createRemoteHandlers(deps: RemoteHandlersDeps) {
     if (!path || refreshingRemote()) return;
     setRefreshingRemote(true);
     try {
-      await fetchPrune(path);
+      const report = await fetchPrune(path);
       refresh();
-      notify.success("Fetched all remotes", { category: "remoteSync" });
+      const message = fetchReportMessage(report);
+      if (fetchReportFailed(report)) {
+        setDialogError(`Refresh failed: ${message}`);
+        notify.error("Fetch failed", { message, category: "remoteSync" });
+      } else {
+        notify.success("Fetched all remotes", {
+          message,
+          category: "remoteSync",
+        });
+      }
     } catch (err) {
       const msg = String(err);
       setDialogError(`Refresh failed: ${msg}`);

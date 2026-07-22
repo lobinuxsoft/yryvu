@@ -260,6 +260,48 @@
   transform: rotate(90deg);
 }
 
+/* Aggregate status counts on a collapsed folder (#437). Right-aligned in
+   the row, mirroring GK's `<span class="summary">`. Colours come from the
+   same tone palette as the per-file status chips in
+   `inspector/changed-files.css`, so a folder and its contents agree. */
+.file-list__dir-badges {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+  padding-right: 6px;
+  flex-shrink: 0;
+}
+
+.file-list__dir-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 5px;
+  border-radius: var(--pill-radius);
+  clip-path: var(--pill-clip-path);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.file-list__dir-badge[data-tone="added"] {
+  background: color-mix(in srgb, var(--success) 22%, transparent);
+  color: var(--success);
+}
+.file-list__dir-badge[data-tone="modified"] {
+  background: color-mix(in srgb, var(--warning) 22%, transparent);
+  color: var(--warning);
+}
+.file-list__dir-badge[data-tone="deleted"] {
+  background: color-mix(in srgb, var(--danger) 22%, transparent);
+  color: var(--danger);
+}
+.file-list__dir-badge[data-tone="renamed"] {
+  background: color-mix(in srgb, var(--info) 22%, transparent);
+  color: var(--info);
+}
+
 .file-list__dir-name {
   font-family: var(--font-mono);
   color: var(--fg-2);

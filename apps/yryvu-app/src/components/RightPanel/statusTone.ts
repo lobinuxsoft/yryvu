@@ -2,7 +2,16 @@
 
 import type { FileStatus } from "../../ipc";
 
-export function statusTone(status: FileStatus): { label: string; tone: string } {
+/// The four buckets every status collapses into. Same set GitKraken
+/// counts on collapsed directory rows (`DiffStats`, bundle 3698457):
+/// `modified`, `added`, `deleted`, `renamed`. Narrower than `FileStatus`
+/// on purpose — `copied` reads as a rename, `type-change` as a
+/// modification, and the two non-states fall through to `modified`.
+export type StatusTone = "added" | "modified" | "deleted" | "renamed";
+
+export function statusTone(
+  status: FileStatus,
+): { label: string; tone: StatusTone } {
   switch (status) {
     case "added":
       return { label: "A", tone: "added" };

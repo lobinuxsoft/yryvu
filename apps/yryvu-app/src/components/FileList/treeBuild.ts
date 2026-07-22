@@ -1,6 +1,32 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { FileDiffMeta } from "../../ipc/diff";
+import { statusTone, type StatusTone } from "../RightPanel/statusTone";
+
+/// Per-status file counts for a directory's whole subtree — GitKraken's
+/// `DiffStats` (bundle 3698457), which counts **files per status**, not
+/// lines. Rendered only on collapsed directory rows.
+export type DirSummary = Record<StatusTone, number>;
+
+const emptySummary = (): DirSummary => ({
+  added: 0,
+  modified: 0,
+  deleted: 0,
+  renamed: 0,
+});
+
+/// Order GK emits its badges in, so a folder's chips don't reshuffle
+/// between yryvu and the reference client.
+export const SUMMARY_ORDER: readonly StatusTone[] = [
+  "modified",
+  "added",
+  "deleted",
+  "renamed",
+];
+
+export function summaryIsEmpty(summary: DirSummary): boolean {
+  return SUMMARY_ORDER.every((tone) => summary[tone] === 0);
+}
 
 /// A leaf carries the full `FileDiffMeta` so the renderer can show status + stats
 /// without a second lookup. `name` is the basename (used in tree mode);
@@ -20,6 +46,14 @@ export interface DirNode {
   name: string;
   path: string;
   children: TreeNode[];
+  /// Status counts for every file below this directory, at any depth.
+  /// Computed once during the build, bottom-up, so rendering a collapsed
+  /// row costs a lookup rather than a subtree walk.
+  ///
+  /// Deliberately **not** filter-aware: the folder does contain those
+  /// changes whether or not the current query matches them, and a count
+  /// that shrank while typing would read as changes disappearing.
+  summary: DirSummary;
 }
 
 export type TreeNode = DirNode | FileNode;
@@ -76,6 +110,9 @@ function freezeDir(
     files: FileNode[];
   },
   order: 1 | -1,
+  /// Accumulator for the caller's own subtree. Each level folds its
+  /// children into its parent's, so the whole tree costs one pass.
+  parentSummary?: DirSummary,
 ): TreeNode[] {
   const out: TreeNode[] = [];
   const dirNames = [...dir.dirs.keys()].sort(
@@ -83,15 +120,23 @@ function freezeDir(
   );
   for (const name of dirNames) {
     const child = dir.dirs.get(name)!;
+    const summary = emptySummary();
     out.push({
       kind: "dir",
       name: child.name,
       path: child.path,
-      children: freezeDir(child, order),
+      children: freezeDir(child, order, summary),
+      summary,
     });
+    if (parentSummary) {
+      for (const tone of SUMMARY_ORDER) parentSummary[tone] += summary[tone];
+    }
   }
   dir.files.sort((a, b) => order * a.name.localeCompare(b.name));
-  for (const f of dir.files) out.push(f);
+  for (const f of dir.files) {
+    out.push(f);
+    if (parentSummary) parentSummary[statusTone(f.data.status).tone] += 1;
+  }
   return out;
 }
 
@@ -101,7 +146,13 @@ function freezeDir(
 /// repo.
 export type FlatRow =
   | { kind: "file"; path: string; depth: number; label: string; data: FileDiffMeta }
-  | { kind: "dir"; path: string; depth: number; name: string };
+  | {
+      kind: "dir";
+      path: string;
+      depth: number;
+      name: string;
+      summary: DirSummary;
+    };
 
 /// Produces the visible flat row list in tree mode. A dir contributes its
 /// own row plus (when expanded) its descendants' rows. A subtree with no
@@ -128,7 +179,13 @@ export function flattenTree(
         continue;
       }
       const dirStart = out.length;
-      out.push({ kind: "dir", path: node.path, depth, name: node.name });
+      out.push({
+        kind: "dir",
+        path: node.path,
+        depth,
+        name: node.name,
+        summary: node.summary,
+      });
       const expanded = isDirExpanded(node.path);
       if (expanded) {
         walk(node.children, depth + 1);

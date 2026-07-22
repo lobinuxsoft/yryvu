@@ -24,6 +24,7 @@ import {
   isDirCollapsed,
   isFileForcedVisible,
   resetRevState,
+  sortDescending,
   toggleDirCollapsed,
 } from "./store";
 import {
@@ -98,6 +99,7 @@ const OVERSCAN_ROWS = 10;
 ///     loading skeleton so the virtualizer never observes a dead ref.
 export function FileList(props: FileListProps) {
   const isTree = () => displayTree(props.repoId);
+  const isDescending = () => sortDescending(props.repoId);
   const filter = () => filterQuery(props.repoId);
 
   // Drop collapsed-dir / forced-visible state whenever the rev or display
@@ -146,14 +148,15 @@ export function FileList(props: FileListProps) {
     return !isDirCollapsed(props.repoId, props.revKey, isTree(), dirPath);
   };
 
-  // Tree is memoized on `props.files` — rebuilt once per diff response.
-  const tree = createMemo(() => buildTreeFromPaths(props.files));
+  // Tree is memoized on `props.files` — rebuilt once per diff response,
+  // plus once per sort flip (the direction is baked into sibling order).
+  const tree = createMemo(() => buildTreeFromPaths(props.files, isDescending()));
   const allDirPaths = createMemo(() => collectDirPaths(tree()));
 
   // Flattened visible rows — 1:1 with GK's `makeGetFlattenedViewFromTreeView`.
   const rows = createMemo<FlatRow[]>(() => {
     if (isTree()) return flattenTree(tree(), isDirExpanded, isFileVisible);
-    return flattenFlat(props.files, isFileVisible);
+    return flattenFlat(props.files, isFileVisible, isDescending());
   });
 
   const onClick = (row: FlatRow) => {

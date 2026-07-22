@@ -16,6 +16,11 @@ import { repoPath } from "../../state";
 interface PersistedRepoState {
   displayTree: boolean;
   filterQuery: string;
+  /// GitKraken's `SORT_ASCENDING` / `SORT_DESCENDING` (bundle 4817525) —
+  /// one key only, the lowercased path, in either direction. GK persists
+  /// it per profile (`["fileNodeList","sort"]`); yryvu keys it per repo,
+  /// consistent with the two settings above.
+  sortDescending: boolean;
 }
 
 const STORAGE_PREFIX = "yryvu.fileList";
@@ -26,6 +31,7 @@ function loadPersisted(repoId: string): PersistedRepoState {
   return {
     displayTree: read("displayTree", "1") === "1",
     filterQuery: read("filterQuery", ""),
+    sortDescending: read("sortDescending", "0") === "1",
   };
 }
 
@@ -109,6 +115,16 @@ export function setFilterQuery(id: string, value: string): void {
   ensurePersisted(id);
   setPersistedByRepo(id, "filterQuery", value);
   savePersisted(id, "filterQuery", value);
+}
+
+export function sortDescending(id: string): boolean {
+  return ensurePersisted(id).sortDescending;
+}
+
+export function setSortDescending(id: string, value: boolean): void {
+  ensurePersisted(id);
+  setPersistedByRepo(id, "sortDescending", value);
+  savePersisted(id, "sortDescending", value);
 }
 
 // ---------- ephemeral accessors ----------

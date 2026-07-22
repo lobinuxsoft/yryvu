@@ -24,7 +24,46 @@
   right: 0;
 }
 
+/* Horizontal variant (commit region, #151). Unlike the shell edges this
+   one is visible at rest: GK draws an explicit 100×4px grab pill centred
+   on the boundary (`handleStyles.top`, bundle 270020) because a splitter
+   between two stacked regions has no panel border to hint at it. The
+   6px hit area stays — the pill is the ::after. */
+.resizable-edge--top {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: auto;
+  width: auto;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resizable-edge--top::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: calc(50% - 50px);
+  width: 100px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  transition: background 120ms;
+}
+
 .resizable-edge:hover,
 .resizable-edge:active {
   background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* The pill carries the hover feedback for the horizontal handle; tinting
+   the full-width strip as well would read as a moving panel edge. */
+.resizable-edge--top:hover,
+.resizable-edge--top:active {
+  background: transparent;
+}
+
+.resizable-edge--top:hover::after,
+.resizable-edge--top:active::after {
+  background: var(--accent);
 }

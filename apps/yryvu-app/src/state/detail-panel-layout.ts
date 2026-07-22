@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * Right-side inspector panel sizing + visibility (issue #134, PR1).
+ * Right-side inspector panel sizing + visibility (issue #134, PR1) and
+ * the height of the commit region nested inside it (issue #151).
  * Mirrors GK's `layout.DetailPanel.{width, height, open}` per audit
- * doc `01-panel-chrome.md`.
+ * doc `01-panel-chrome.md`, plus the commit region's own persisted
+ * height — GK's `CommitDetailPanel` likewise lives inside the detail
+ * panel and shares its envelope, so both ride one preferences cache
+ * rather than a second one that could clobber this module's writes.
  *
  * Three Solid signals (`width / height / open`) hydrated from
  * `preferences.json` at boot and persisted (debounced) on every
@@ -53,13 +57,40 @@ export function clampHeight(height: number, maxHeight: number): number {
   );
 }
 
+/// Floor of the commit region inside the WIP panel, GK verbatim for its
+/// commit tab (bundle 269620). GK adds 25 px while Commit options is
+/// expanded — the caller folds that into the `min` it asks for, which is
+/// why the clamp takes one.
+export const MIN_COMMIT_REGION_HEIGHT = 275;
+export const COMMIT_OPTIONS_EXTRA_HEIGHT = 25;
+
+/// Clamp the commit region against its floor and the space the staging
+/// lists need above it. Unlike the panel clamps above, the floor is a
+/// parameter: it moves with the Commit-options disclosure.
+///
+/// When the window is too short to honour `min` at all, the floor wins
+/// over `maxHeight` — a commit button pushed off the bottom is worse
+/// than a scrollbar, and the form's own scroller absorbs the overflow.
+export function clampCommitRegionHeight(
+  height: number,
+  maxHeight: number,
+  min: number = MIN_COMMIT_REGION_HEIGHT,
+): number {
+  if (!Number.isFinite(height)) return min;
+  return Math.max(min, Math.min(height, Math.max(min, maxHeight)));
+}
+
 const [widthInternal, _internalSetWidth] = createSignal<number>(MIN_WIDTH);
 const [heightInternal, _internalSetHeight] = createSignal<number>(MIN_HEIGHT);
 const [openInternal, _internalSetOpen] = createSignal<boolean>(true);
+const [commitRegionInternal, _internalSetCommitRegion] = createSignal<number>(
+  MIN_COMMIT_REGION_HEIGHT,
+);
 
 export const detailPanelWidth = widthInternal;
 export const detailPanelHeight = heightInternal;
 export const detailPanelOpen = openInternal;
+export const commitRegionHeight = commitRegionInternal;
 
 let hydrated = false;
 let cachedPreferences: Preferences | undefined;
@@ -71,6 +102,7 @@ export async function hydrateDetailPanelLayout(): Promise<void> {
   _internalSetWidth(prefs.layout.detailPanel.width);
   _internalSetHeight(prefs.layout.detailPanel.height);
   _internalSetOpen(prefs.layout.detailPanel.open);
+  _internalSetCommitRegion(prefs.layout.commitRegion.height);
   hydrated = true;
 }
 
@@ -99,6 +131,7 @@ async function persistImmediate(): Promise<void> {
         height: heightInternal(),
         open: openInternal(),
       } satisfies DetailPanelLayout,
+      commitRegion: { height: Math.round(commitRegionInternal()) },
     },
   };
   cachedPreferences = await setPreferences(next);
@@ -114,6 +147,14 @@ export function setDetailPanelWidth(width: number, persist = true): void {
 
 export function setDetailPanelHeight(height: number, persist = true): void {
   _internalSetHeight(height);
+  if (persist) schedulePersist();
+}
+
+/// Height of the commit region inside the WIP panel. Same drag cadence
+/// as the panel dimensions: `persist=false` per pointermove, one flush
+/// via `commitDetailPanelLayout` on pointerup.
+export function setCommitRegionHeight(height: number, persist = true): void {
+  _internalSetCommitRegion(height);
   if (persist) schedulePersist();
 }
 
@@ -148,6 +189,7 @@ export function _resetForTests(): void {
   _internalSetWidth(MIN_WIDTH);
   _internalSetHeight(MIN_HEIGHT);
   _internalSetOpen(true);
+  _internalSetCommitRegion(MIN_COMMIT_REGION_HEIGHT);
 }
 
 /// Eat a Solid effect dependency on `cachedPreferences` so external
@@ -160,4 +202,5 @@ createEffect(() => {
   void widthInternal();
   void heightInternal();
   void openInternal();
+  void commitRegionInternal();
 });

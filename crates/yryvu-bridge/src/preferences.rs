@@ -54,7 +54,7 @@ pub use editor::{EditorPreferences, EolCharacter};
 pub use general::GeneralPreferences;
 pub use gpg::GpgPreferences;
 pub use issue_tracker::IssueTrackerPreferences;
-pub use layout::{DetailPanelLayout, LayoutPreferences, LeftSidebarLayout};
+pub use layout::{CommitRegionLayout, DetailPanelLayout, LayoutPreferences, LeftSidebarLayout};
 pub use notifications::NotificationsPreferences;
 pub use ssh::SshPreferences;
 pub use submodules::SubmodulesPreferences;

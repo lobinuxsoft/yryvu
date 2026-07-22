@@ -229,10 +229,10 @@ export function AppShell() {
         <LeftSidebar />
         <ResizableEdge
           edge="right"
-          width={leftSidebarWidth}
-          setWidth={setLeftSidebarWidth}
+          size={leftSidebarWidth}
+          setSize={setLeftSidebarWidth}
           clamp={clampLeftSidebarWidth}
-          viewportMaxWidth={() => {
+          viewportMaxSize={() => {
             // Reserve enough viewport for the main area + the right
             // inspector (when shown) so the sidebar can't push them
             // off-screen. 480px main floor matches the right-edge
@@ -300,10 +300,10 @@ export function AppShell() {
       >
         <ResizableEdge
           edge="left"
-          width={detailPanelWidth}
-          setWidth={setDetailPanelWidth}
+          size={detailPanelWidth}
+          setSize={setDetailPanelWidth}
           clamp={clampDetailPanelWidth}
-          viewportMaxWidth={() => {
+          viewportMaxSize={() => {
             const inner =
               typeof window !== "undefined" ? window.innerWidth : 1280;
             return Math.max(0, inner - leftSidebarWidth() - 480);

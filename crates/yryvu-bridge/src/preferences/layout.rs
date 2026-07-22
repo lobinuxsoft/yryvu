@@ -61,6 +61,26 @@ impl Default for LeftSidebarLayout {
     }
 }
 
+/// Height of the commit region at the bottom of the WIP panel — the
+/// area below the draggable splitter that holds the message fields and
+/// the commit button (issue #151). GK persists the same scalar on
+/// drag-end via `onPendingCommitMessageHeightResizeEnd`; its lower bound
+/// is 275 px for the commit tab (bundle offset 269620).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitRegionLayout {
+    #[serde(default = "commit_region_default_height")]
+    pub height: u32,
+}
+
+impl Default for CommitRegionLayout {
+    fn default() -> Self {
+        Self {
+            height: commit_region_default_height(),
+        }
+    }
+}
+
 /// Layout preferences envelope. Wraps every resizable-panel state so
 /// they all hydrate / persist through a single serde round-trip.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -70,6 +90,8 @@ pub struct LayoutPreferences {
     pub detail_panel: DetailPanelLayout,
     #[serde(default)]
     pub left_sidebar: LeftSidebarLayout,
+    #[serde(default)]
+    pub commit_region: CommitRegionLayout,
 }
 
 fn detail_panel_default_width() -> u32 {
@@ -82,6 +104,13 @@ fn detail_panel_default_height() -> u32 {
 
 fn left_sidebar_default_width() -> u32 {
     215
+}
+
+/// Just above GK's 275 px floor, so a fresh install opens with the
+/// message fields fully visible and still leaves the staging lists the
+/// larger share of a default-height window.
+fn commit_region_default_height() -> u32 {
+    300
 }
 
 fn default_open() -> bool {
@@ -137,6 +166,32 @@ mod tests {
         // aligned with the rest of the preferences sections.
         assert!(!json.contains("detail_panel"));
         assert!(!json.contains("left_sidebar"));
+        assert!(!json.contains("commit_region"));
+        assert!(json.contains("commitRegion"));
+    }
+
+    #[test]
+    fn commit_region_defaults_and_roundtrip() {
+        assert_eq!(CommitRegionLayout::default().height, 300);
+
+        let layout = CommitRegionLayout { height: 480 };
+        let json = serde_json::to_string(&layout).unwrap();
+        assert_eq!(
+            serde_json::from_str::<CommitRegionLayout>(&json).unwrap(),
+            layout
+        );
+    }
+
+    #[test]
+    fn envelope_written_before_commit_region_existed_still_loads() {
+        // Preferences files predate this field; a missing key must fall
+        // back to the default instead of failing the whole envelope and
+        // resetting every other layout setting.
+        let prefs: LayoutPreferences =
+            serde_json::from_str(r#"{"detailPanel":{"width":512,"height":720,"open":false}}"#)
+                .unwrap();
+        assert_eq!(prefs.detail_panel.width, 512);
+        assert_eq!(prefs.commit_region, CommitRegionLayout::default());
     }
 
     #[test]

@@ -13,7 +13,7 @@ non-obvious conventions.
 - **Released:** **v0.5.2** (2026-07-20, tag `yryvu-v0.5.2`). `main` and
   `development` are in sync at that version; unreleased Wave 9 perf work sits
   on `development` since.
-- **Wave 9 — Perf + cleanup, in progress (5/11).** Closed: **#217** (RepoManagement
+- **Wave 9 — Perf + cleanup, in progress (6/11).** Closed: **#217** (RepoManagement
   DOD — SoA `KnownReposBatch` wire + virtualization + pre-indexed search),
   **#178** (metadata-only combined-diff summary — the inspector stopped
   serializing hunks), **#181** (graph walk perf — `BreadthFirst` for the full
@@ -24,7 +24,8 @@ non-obvious conventions.
   sort/layout ~10%. #37 turned out to be three parity defects in infrastructure
   that already existed, not a feature, and **#196** ("don't ask again" on the
   force-push confirmation — the one git-destructive prompt GitKraken lets you
-  skip). **Next: #132 (remote management UI).**
+  skip) and **#132** (remote management — rename plus split push URLs).
+  **Next: #151 (commit-panel structural parity).**
 - **Shipped in v0.5.2 — data-safety hardening, umbrella #448 CLOSED.** A user
   report ("a merge only keeps my side") turned out to be two distinct bugs;
   auditing the core git ops surfaced a cluster of **21 silent data-loss
@@ -130,6 +131,17 @@ each proving one direction, and broke `commit → undo → redo` (hotfix #468).
   `git_reference_rename` follows HEAD across every worktree, and
   `git_config_rename_section` migrates the whole `[branch "old"]` section. Prefer
   it over a hand-rolled gix rename (#455).
+- **`git_remote_rename` (git2 `Repository::remote_rename`) likewise does what
+  `git remote rename` does:** renames the config section, rewrites the default
+  fetch refspec, and moves `refs/remotes/<old>/*` — one call, no re-fetch. It
+  returns the refspecs it could *not* rewrite (hand-customised ones); those
+  still name the old remote, so surface them (#132).
+- **Check the API before declaring it missing.** Both renames above were
+  hand-rolled or refused on the belief that libgit2 lacked them. #132's edit
+  dialog kept its name field immutable for months behind a comment asserting
+  "libgit2 lacks a single-call rename" — repeated in `DialogState`, so it read
+  as settled fact. A wrong comment there cost no bug, just a feature nobody
+  wrote. Read the binding's source; it is vendored under `~/.cargo/registry`.
 - **`reset.c` forces `GIT_CHECKOUT_FORCE`** and checks out *before* moving the
   ref, so every `repo.reset()` is safe by construction and `reset --hard` never
   refuses on a dirty tree — destructive undos need their own dirty guard (#450).
@@ -279,6 +291,18 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-21:** **#132 closed — remote rename + split push URLs (6/11).** PR #504.
+  The name field was immutable because a comment — repeated in
+  `DialogState` — claimed libgit2 had no single-call rename. It does:
+  `remote_rename` renames the config section, rewrites the default fetch
+  refspec and moves the tracking refs in one call, which is exactly the
+  re-fetch the comment was avoiding. A wrong comment cost a feature nobody
+  wrote, for months. `remote.<name>.pushurl` is now editable on its own;
+  emptying the field **clears** it rather than pinning it to the fetch URL
+  the way GitKraken does. Dropped from the issue after auditing the bundle,
+  all verified absent there: refspec editor, `mirror` toggle, per-remote
+  prune, removal confirmation, and a remotes list showing URLs (we added a
+  tooltip instead — GitKraken shows a remote's URL nowhere).
 - **2026-07-21:** **#196 closed — force-push "don't ask again" (5/11).** PR #502.
   The issue asked for a generic `dontAskAgain` map across five destructive
   dialogs; the bundle has no such system — three ad-hoc flags in two stores,

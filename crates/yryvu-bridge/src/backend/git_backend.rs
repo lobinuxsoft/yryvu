@@ -12,6 +12,7 @@ use super::types::{
 use crate::repo::commits::AuthorInfo;
 use crate::repo::conflicts::{ConflictDiff3, ConflictListing, ConflictSide, ConflictSource};
 use crate::repo::rebase::interactive::{CommitSummary, RebasePlan, RebaseState};
+use crate::repo::remote::FetchReport;
 use crate::repo::remote::RemoteInfo;
 use crate::repo::search::{IndexCounts, SearchHit, SearchMode};
 use crate::repo::staging::{
@@ -419,7 +420,11 @@ pub trait GitBackend: Send + Sync {
 
     fn repo_state(&self, repo_path: &Path) -> Result<RepoStateInfo, BackendError>;
 
-    fn fetch_prune(&self, repo_path: &Path, remote: Option<&str>) -> Result<(), BackendError>;
+    fn fetch_prune(
+        &self,
+        repo_path: &Path,
+        remote: Option<&str>,
+    ) -> Result<FetchReport, BackendError>;
 
     /// Resolve the fetch URL of a configured remote. Powers the
     /// `Copy URL` action on remote-branch / remote-header context menus.

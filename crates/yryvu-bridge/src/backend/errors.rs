@@ -52,6 +52,12 @@ pub enum BackendError {
     LeaseStale { ref_name: String },
     #[error("fetch failed: {0}")]
     FetchFailed(String),
+    /// Single-remote fetch failure. Carries the remote name so the
+    /// message can say *which* one broke — `FetchFailed` flattens
+    /// libgit2's string and leaves the user guessing when a repo has
+    /// several remotes.
+    #[error("fetch from '{remote}' failed: {message}")]
+    FetchRemoteFailed { remote: String, message: String },
     #[error("git operation failed: {0}")]
     Git(#[source] anyhow::Error),
     #[error("'{name}' CLI not found on PATH")]

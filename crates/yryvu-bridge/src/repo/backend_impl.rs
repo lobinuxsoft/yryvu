@@ -18,9 +18,9 @@ use graph_core::Commit;
 
 use crate::backend::{
     ApplyPatchOutcome, AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff,
-    CommitOptions, FileDiff, GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange,
-    MergeResult, MergeStrategy, PushOptions, RemoteInfo, RepoStateInfo, ResetMode, SignConfig,
-    SignFormat, StashInfo, SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
+    CommitOptions, FetchReport, FileDiff, GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo,
+    LineRange, MergeResult, MergeStrategy, PushOptions, RemoteInfo, RepoStateInfo, ResetMode,
+    SignConfig, SignFormat, StashInfo, SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
 };
 
 use super::{
@@ -472,7 +472,11 @@ impl GitBackend for GixBackend {
         worktree::repo_state(repo_path)
     }
 
-    fn fetch_prune(&self, repo_path: &Path, remote: Option<&str>) -> Result<(), BackendError> {
+    fn fetch_prune(
+        &self,
+        repo_path: &Path,
+        remote: Option<&str>,
+    ) -> Result<FetchReport, BackendError> {
         remote::fetch_prune(repo_path, remote)
     }
 

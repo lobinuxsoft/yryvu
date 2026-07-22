@@ -21,6 +21,7 @@ import {
   amendEnabled,
   commitDescription,
   commitMessage,
+  headBranchName,
   openStagingDiffTab,
   preferences,
   repoPath,
@@ -36,6 +37,7 @@ import {
 } from "../../state";
 import { type RowAction } from "../FileList";
 import { FileListToolbar } from "../FileList/FileListToolbar";
+import { IconTrash } from "../Icons";
 import { Tooltip } from "../Tooltip";
 import {
   collapseAllDirs,
@@ -252,9 +254,35 @@ export function CommitPanel(props: CommitPanelProps) {
             ← Back
           </button>
         </Tooltip>
+        {/* GK gates its discard-all on `numberOfChanges === 0` (bundle
+            3475350) — a clean tree offers nothing to discard. The
+            per-section "Discard All Changes" text button stays; this is
+            the panel-wide affordance GK puts in the header. */}
+        <Show when={totalChanges() > 0}>
+          <Tooltip text="Discard all changes">
+            <button
+              class="commit-panel__discard-all"
+              type="button"
+              aria-label="Discard all changes"
+              onClick={() => props.onDiscardAll()}
+            >
+              <IconTrash width={13} height={13} />
+            </button>
+          </Tooltip>
+        </Show>
         <span class="commit-panel__heading">
-          {totalChanges()} file change{totalChanges() === 1 ? "" : "s"} in
-          working directory
+          {totalChanges()} file change{totalChanges() === 1 ? "" : "s"}{" "}
+          <Show when={headBranchName()} fallback="in working directory">
+            {/* GK tints this pill with the head ref's graph-column colour
+                (`getClassesForBranchLabels`, bundle 3478440). yryvu already
+                discarded lane tinting for ref pills as a deliberate
+                deviation (see ref-pills.css) — the pill reuses the same
+                HEAD variant the graph uses so the two agree. */}
+            on{" "}
+            <span class="ref-pill ref-pill--head commit-panel__heading-branch">
+              {headBranchName()}
+            </span>
+          </Show>
         </span>
       </div>
 

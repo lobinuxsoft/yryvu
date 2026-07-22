@@ -8,19 +8,17 @@
  * Same shape + cadence as `state/detail-panel-layout.ts`: two Solid
  * signals hydrated from `preferences.json` at boot, debounced persist
  * on every mutation, pair of `clampWidth` / pointer-end commit hooks
- * for the drag wrapper. Per-domain persist (not shared with the
- * inspector cycle) so a sidebar drag during a tab close doesn't
- * cross-fire.
+ * for the drag wrapper. The debounce is per-domain so a sidebar drag
+ * during a tab close doesn't cross-fire, but the envelope itself is
+ * read and written through `state/preferences.ts` — holding a private
+ * copy is what let one panel's write revert another's.
  */
 
 import { createEffect, createSignal } from "solid-js";
 
-import {
-  getPreferences,
-  setPreferences,
-  type LeftSidebarLayout,
-  type Preferences,
-} from "../ipc/preferences";
+import { type LeftSidebarLayout } from "../ipc/preferences";
+
+import { mutatePreferences, preferencesReady } from "./preferences";
 
 /// Collapsed-rail width acts as the floor (same value as the legacy
 /// `--panel-width-left-collapsed` token). GK doesn't expose its
@@ -45,12 +43,10 @@ export const leftSidebarWidth = widthInternal;
 export const leftSidebarOpen = openInternal;
 
 let hydrated = false;
-let cachedPreferences: Preferences | undefined;
 
 export async function hydrateLeftSidebarLayout(): Promise<void> {
   if (hydrated) return;
-  const prefs = await getPreferences();
-  cachedPreferences = prefs;
+  const prefs = await preferencesReady();
   _internalSetWidth(prefs.layout.leftSidebar.width);
   _internalSetOpen(prefs.layout.leftSidebar.open);
   hydrated = true;
@@ -68,18 +64,19 @@ function schedulePersist(): void {
 }
 
 async function persistImmediate(): Promise<void> {
-  if (!cachedPreferences) return;
-  const next: Preferences = {
-    ...cachedPreferences,
+  // Until hydration lands, the signals still hold this module's
+  // defaults — writing them would clobber the saved width.
+  if (!hydrated) return;
+  await mutatePreferences((current) => ({
+    ...current,
     layout: {
-      ...cachedPreferences.layout,
+      ...current.layout,
       leftSidebar: {
         width: widthInternal(),
         open: openInternal(),
       } satisfies LeftSidebarLayout,
     },
-  };
-  cachedPreferences = await setPreferences(next);
+  }));
 }
 
 export function setLeftSidebarWidth(width: number, persist = true): void {
@@ -110,7 +107,6 @@ export function commitLeftSidebarLayout(): void {
 /// re-seed fresh state. Not exported from any public barrel.
 export function _resetForTests(): void {
   hydrated = false;
-  cachedPreferences = undefined;
   if (persistTimer !== undefined) {
     clearTimeout(persistTimer);
     persistTimer = undefined;

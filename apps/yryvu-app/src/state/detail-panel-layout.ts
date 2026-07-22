@@ -25,12 +25,9 @@
 
 import { createEffect, createSignal } from "solid-js";
 
-import {
-  getPreferences,
-  setPreferences,
-  type DetailPanelLayout,
-  type Preferences,
-} from "../ipc/preferences";
+import { type DetailPanelLayout } from "../ipc/preferences";
+
+import { mutatePreferences, preferencesReady } from "./preferences";
 
 /// GK verbatim per audit doc `01-panel-chrome.md` — bundle clamps
 /// `width: clamp(353, current, max)` and `height: clamp(566, current, max)`
@@ -93,12 +90,10 @@ export const detailPanelOpen = openInternal;
 export const commitRegionHeight = commitRegionInternal;
 
 let hydrated = false;
-let cachedPreferences: Preferences | undefined;
 
 export async function hydrateDetailPanelLayout(): Promise<void> {
   if (hydrated) return;
-  const prefs = await getPreferences();
-  cachedPreferences = prefs;
+  const prefs = await preferencesReady();
   _internalSetWidth(prefs.layout.detailPanel.width);
   _internalSetHeight(prefs.layout.detailPanel.height);
   _internalSetOpen(prefs.layout.detailPanel.open);
@@ -119,13 +114,13 @@ function schedulePersist(): void {
 
 async function persistImmediate(): Promise<void> {
   // Skip until hydration completes — otherwise a setter fired before
-  // `hydrateDetailPanelLayout` resolves would round-trip an empty
-  // envelope back to disk and clobber the user's saved sections.
-  if (!cachedPreferences) return;
-  const next: Preferences = {
-    ...cachedPreferences,
+  // `hydrateDetailPanelLayout` resolves would write this module's
+  // defaults over what the user actually had saved.
+  if (!hydrated) return;
+  await mutatePreferences((current) => ({
+    ...current,
     layout: {
-      ...cachedPreferences.layout,
+      ...current.layout,
       detailPanel: {
         width: widthInternal(),
         height: heightInternal(),
@@ -133,8 +128,7 @@ async function persistImmediate(): Promise<void> {
       } satisfies DetailPanelLayout,
       commitRegion: { height: Math.round(commitRegionInternal()) },
     },
-  };
-  cachedPreferences = await setPreferences(next);
+  }));
 }
 
 /// Public setters. The `*Persist` flag controls whether the change
@@ -181,7 +175,6 @@ export function commitDetailPanelLayout(): void {
 /// re-seed fresh state. Not exported from any public barrel.
 export function _resetForTests(): void {
   hydrated = false;
-  cachedPreferences = undefined;
   if (persistTimer !== undefined) {
     clearTimeout(persistTimer);
     persistTimer = undefined;
@@ -192,7 +185,7 @@ export function _resetForTests(): void {
   _internalSetCommitRegion(MIN_COMMIT_REGION_HEIGHT);
 }
 
-/// Eat a Solid effect dependency on `cachedPreferences` so external
+/// Eat a Solid effect dependency on the signals so external
 /// reloads (e.g. preferences window reset) refresh signals to match
 /// disk state without a full reload. Wires automatically when the
 /// module is imported — same pattern `tabs/state.ts` uses for its

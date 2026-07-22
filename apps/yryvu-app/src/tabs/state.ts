@@ -20,13 +20,9 @@
 
 import { createEffect, createMemo, createSignal } from "solid-js";
 
-import {
-  getPreferences,
-  setPreferences,
-  type PermanentTabs as PersistedPermanentTabs,
-  type Preferences,
-} from "../ipc/preferences";
+import { type PermanentTabs as PersistedPermanentTabs } from "../ipc/preferences";
 import { preferencesOpen } from "../state";
+import { mutatePreferences, preferencesReady } from "../state/preferences";
 import {
   PERMANENT_REPO_MANAGEMENT_ID,
   type ClosedTab,
@@ -132,12 +128,10 @@ export const mostRecentlyClosed = createMemo<ClosedTab | undefined>(() => {
 /// Idempotent — calling twice is a no-op (the second call overwrites with
 /// the same data). Called from AppShell at boot.
 let hydrated = false;
-let cachedPreferences: Preferences | undefined;
 
 export async function hydrateTabsFromPreferences(): Promise<void> {
   if (hydrated) return;
-  const prefs = await getPreferences();
-  cachedPreferences = prefs;
+  const prefs = await preferencesReady();
   // Defensive: the backend ships `isWorktree` as bool always (Rust default
   // = false), but a hand-edited file could omit it. Coerce.
   const seededTabs: Tab[] = prefs.tabs.tabs.map((t) => {
@@ -175,11 +169,11 @@ export function persistTabs(): void {
 }
 
 async function persistImmediate(): Promise<void> {
-  // If hydration hasn't finished, the cached prefs envelope isn't ready —
-  // skip rather than send a half-built object that could clobber the file.
-  if (!cachedPreferences) return;
-  const next: Preferences = {
-    ...cachedPreferences,
+  // If hydration hasn't finished the signals are still empty — skip
+  // rather than persist a tab list the user never had.
+  if (!hydrated) return;
+  await mutatePreferences((current) => ({
+    ...current,
     tabs: {
       tabs: tabsInternal().map((t) => {
         if (t.type === "REPO") {
@@ -198,8 +192,7 @@ async function persistImmediate(): Promise<void> {
       selectedTabId: selectedTabIdInternal(),
       permanentTabs: permanentTabsInternal() as PersistedPermanentTabs,
     },
-  };
-  cachedPreferences = await setPreferences(next);
+  }));
 }
 
 /// Auto-close the dropdown when the Preferences window opens. Mirrors
@@ -213,7 +206,6 @@ createEffect(() => {
 /// fresh state between runs. NOT exported from the public surface.
 export function _resetForTests(): void {
   hydrated = false;
-  cachedPreferences = undefined;
   if (persistTimer !== undefined) {
     clearTimeout(persistTimer);
     persistTimer = undefined;

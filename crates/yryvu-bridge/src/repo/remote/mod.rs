@@ -24,6 +24,7 @@ pub mod auth_env;
 pub(crate) mod credentials;
 mod management;
 mod push;
+mod ssh_config;
 pub mod ssh_keygen;
 mod sync;
 

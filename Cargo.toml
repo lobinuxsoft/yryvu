@@ -17,7 +17,19 @@ rust-version = "1.85"
 
 [workspace.dependencies]
 gix = { version = "0.68", default-features = false, features = ["max-performance-safe", "serde", "revision", "worktree-mutation"] }
-git2 = { version = "0.19", default-features = false, features = ["https"] }
+# `ssh` pulls in libssh2 (SSH remotes); `ssh_key_from_memory` lets the
+# credential callback hand libgit2 a key without a temp file. libgit2's
+# built-in known_hosts check stays the security backstop — an unknown or
+# changed host key is rejected with GIT_ECERTIFICATE, and we never
+# register a certificate_check that accepts blindly (#508).
+# NOTE: this adds libssh2 + openssl to every target; the AppImage relies
+# on linuxdeploy to bundle them and MUST be smoke-tested on a clean box —
+# CI green does not prove the packaging works.
+git2 = { version = "0.19", default-features = false, features = [
+    "https",
+    "ssh",
+    "ssh_key_from_memory",
+] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

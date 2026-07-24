@@ -38,9 +38,23 @@ daily flow, then differentiators, then luxuries. Each wave maps to a release.
 | 6 — Diff completeness | per-filetype renderer (#60), apply-patch / git am (#75) | v0.4.x | ✅ done |
 | 7 — M3 Pro | gitflow (#19), worktrees (#20), profiles (#22) | v0.5.0 (closes M3) | ✅ done |
 | 8 — Theme power v2 | tokens (#298), manifest (#299), icons (#300), graph vars (#301), rewrite themes (#303), docs (#302) — umbrella #297 | v0.5.x | ✅ done |
-| **9 — Perf + cleanup** | ~~RepoMgmt DOD (#217)~~, ~~lazy hunks (#178)~~, ~~graph walk (#181)~~, ~~cols resize (#37)~~, ~~don't-ask (#196)~~, ~~remote mgmt (#132)~~, HEAD-first (#126), deeplinks (#110), commit-panel parity (#151), BYO OAuth (#263), GK audit (#33) | v0.5.x → v0.6.x | 🔄 in progress (6/11 — next #151) |
+| **9 — Perf + cleanup** | ~~RepoMgmt DOD (#217)~~, ~~lazy hunks (#178)~~, ~~graph walk (#181)~~, ~~cols resize (#37)~~, ~~don't-ask (#196)~~, ~~remote mgmt (#132)~~, ~~commit-panel parity (#151)~~, HEAD-first (#126), deeplinks (#110), BYO OAuth (#263), GK audit (#33) | v0.5.x → v0.6.x | 🔄 in progress (7/11 — next #126) |
 | 10 — M4 Luxuries | timeline (#23), inline-blame (#24), terminal (#25), themes umbrella (#27) | v0.6.0 (closes M4) | ⬜ |
 | 11 — Packaging | Flathub (#361) | v1.0.0 | ⬜ |
+
+### Found off-wave (from smoke testing)
+
+- **#437** ✅ Aggregate status badges on collapsed directory rows (PR #507). A
+  collapsed folder now shows per-status file counts (GK-verbatim gate + bucket
+  order; letters not icons, deliberately).
+- **#509** ✅ Fetch-all no longer aborts on the first bad remote and reports the
+  outcome honestly — partial runs are `info` with the count in the title, only
+  an all-failed run is an error (PR #510).
+- **#508** 🔄 SSH remotes. Foundation shipped (PR #511): transport enabled,
+  `~/.ssh/config` reader, OpenSSH-style key resolution, secure-by-default host
+  verification. **Trust-on-first-use prompt is the follow-up** — needs a vetted
+  known_hosts parser (git2-rs drops libgit2's validity bit); the plan and the
+  Cargo `known_hosts.rs` reference are in the issue.
 
 ### Blocked (outside waves)
 

@@ -3,7 +3,9 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use super::known_hosts::{self, HostKeyVerdict};
 use super::ssh_config;
+use super::tofu;
 
 /// Tries SSH agent → git credential helper → default credential, in
 /// that order. Reused by every git2 op that hits the network (push,
@@ -43,6 +45,15 @@ fn token_username_for(integration_type: &str) -> &'static str {
 
 fn build_callbacks_inner(token: Option<(String, String)>) -> git2::RemoteCallbacks<'static> {
     let mut callbacks = git2::RemoteCallbacks::new();
+
+    // Verify SSH host keys ourselves. Without a `certificate_check`,
+    // libgit2 does its own known_hosts check — but git2-rs discards the
+    // `valid` bit it produces, so a callback can't see the result. To
+    // tell a new host (prompt) from a changed key (reject) we re-run the
+    // check here. Registered on the shared builder so every network op
+    // (fetch / pull / push / clone) is covered by one place.
+    callbacks.certificate_check(verify_host_key);
+
     let token_attempt = Mutex::new(false);
     callbacks.credentials(move |url, username_from_url, allowed| {
         // Token first when present and we haven't tried it yet on
@@ -82,6 +93,63 @@ fn build_callbacks_inner(token: Option<(String, String)>) -> git2::RemoteCallbac
         ))
     });
     callbacks
+}
+
+/// git2 `certificate_check` callback. Passes TLS certs through to
+/// libgit2's own validation and verifies SSH host keys against
+/// `known_hosts`, prompting the user (TOFU) only for a genuinely unknown
+/// host. A changed, revoked, or unverifiable key is rejected — never
+/// prompted — so an accepted prompt can never be a man-in-the-middle.
+fn verify_host_key(
+    cert: &git2::cert::Cert<'_>,
+    host: &str,
+) -> Result<git2::CertificateCheckStatus, git2::Error> {
+    use git2::CertificateCheckStatus;
+
+    let Some(host_key) = cert.as_hostkey() else {
+        // Not an SSH host key (e.g. an HTTPS X.509 cert). Defer to
+        // libgit2's TLS validation.
+        return Ok(CertificateCheckStatus::CertificatePassthrough);
+    };
+
+    match known_hosts::verify(host_key, host) {
+        HostKeyVerdict::Trusted => Ok(CertificateCheckStatus::CertificateOk),
+        HostKeyVerdict::Unknown {
+            host,
+            key_type,
+            key_b64,
+            fingerprint,
+        } => {
+            if tofu::request_trust(&host, &key_type, &key_b64, &fingerprint) {
+                Ok(CertificateCheckStatus::CertificateOk)
+            } else {
+                Err(git2::Error::from_str(&format!(
+                    "SSH host key for {host} ({fingerprint}) was not trusted"
+                )))
+            }
+        }
+        HostKeyVerdict::Changed {
+            host,
+            fingerprint,
+            old_location,
+        } => Err(git2::Error::from_str(&format!(
+            "SSH host key for {host} has CHANGED (now {fingerprint}, previously recorded at \
+             {old_location}). This may be a man-in-the-middle attack — refusing to connect. If \
+             the server legitimately rotated its key, remove the old known_hosts entry and retry."
+        ))),
+        HostKeyVerdict::Revoked { host, location } => Err(git2::Error::from_str(&format!(
+            "SSH host key for {host} is REVOKED ({location}) and must not be accepted."
+        ))),
+        HostKeyVerdict::CertAuthorityOnly { host, location } => {
+            Err(git2::Error::from_str(&format!(
+                "SSH host {host} is covered only by an unsupported @cert-authority entry \
+                 ({location}); its key cannot be verified."
+            )))
+        }
+        HostKeyVerdict::Unavailable => Err(git2::Error::from_str(
+            "could not read the remote SSH host key to verify it",
+        )),
+    }
 }
 
 /// Resolve an SSH credential: the agent first, then on-disk keys.

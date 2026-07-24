@@ -74,3 +74,13 @@ pub async fn read_ssh_public_key(private_key_path: String) -> Result<String, Str
     .await
     .map_err(|e| e.to_string())?
 }
+
+/// Deliver the user's answer to a Trust-On-First-Use prompt (#508). A
+/// fetch/push blocked on an unknown SSH host is waiting on this; `accept`
+/// unblocks it (the key is then appended to `known_hosts`), `false`
+/// aborts the operation. Fire-and-forget — an unknown or stale session
+/// id is a no-op. Not spawn_blocking: it only signals a channel.
+#[tauri::command]
+pub fn ssh_tofu_resolve(session_id: String, accept: bool) {
+    crate::repo::remote::tofu::resolve(&session_id, accept);
+}

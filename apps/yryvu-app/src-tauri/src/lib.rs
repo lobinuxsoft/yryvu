@@ -123,6 +123,7 @@ pub fn run() {
             yryvu_bridge::commands::add_ssh_key_to_agent,
             yryvu_bridge::commands::read_ssh_public_key,
             yryvu_bridge::commands::ensure_ssh_config_entry,
+            yryvu_bridge::commands::ssh_tofu_resolve,
             yryvu_bridge::commands::merge_branch,
             yryvu_bridge::commands::delete_remote_branch,
             yryvu_bridge::commands::abort_merge,
@@ -226,6 +227,11 @@ pub fn run() {
         .setup(|app| {
             let m = menu::build(app.handle())?;
             app.set_menu(m)?;
+
+            // Register the app handle so the SSH host-key callback can
+            // raise a Trust-On-First-Use prompt (#508). Without it an
+            // unknown host is refused, never trusted blindly.
+            yryvu_bridge::init_ssh_host_verification(app.handle().clone());
 
             // File watcher for `<config>/themes/` — emits `theme-changed`
             // on edits so the frontend can hot-reload the active theme.

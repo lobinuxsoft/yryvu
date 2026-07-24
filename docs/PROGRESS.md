@@ -269,6 +269,15 @@ everything fallible (parent, author, committer) and refuse a dirty index
 - Error variants surface to the frontend as `BackendError` Display strings
   (the command does `.map_err(|e| e.to_string())`); the UI prefix-matches
   them, so keep Display prefixes stable.
+- **A TOFU prompt is a claim the host is genuinely new.** SSH host-key
+  verification (`repo/remote/known_hosts.rs`) must re-check `known_hosts`
+  itself — git2-rs discards libgit2's `valid` bit, so a `certificate_check`
+  can't learn whether the internal check passed. Only a hostname that matches
+  *no* entry may prompt; a hostname that matches with a different key is a
+  possible MITM and is rejected, never prompted. Never register a
+  `certificate_check` that returns `Ok(CertificateOk)` unconditionally — that
+  is the blind-accept hole. The decision logic is ported from Cargo's
+  `known_hosts.rs`; don't "simplify" its branches (#508).
 
 ## Dev setup (cross-OS)
 
@@ -291,6 +300,17 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-24:** **SSH trust-on-first-use (#508, follow-up to #511).** Registered
+  a git2 `certificate_check` that re-checks `known_hosts` ourselves — git2-rs
+  discards libgit2's `valid` bit, so a callback can't tell a new host from a
+  changed key. The decision core (hashed `|1|` entries, `@revoked`,
+  `@cert-authority`, glob/negated patterns, new-vs-changed) is ported verbatim
+  from Cargo's `known_hosts.rs`, tests included. A genuinely unknown host emits
+  `ssh-tofu-prompt` and blocks the fetch worker on a channel (`repo/remote/tofu.rs`,
+  registry + `OnceLock<AppHandle>` — same shape as the OAuth wait); the modal
+  shows the SHA256 fingerprint, and on trust the exact approved key is appended
+  to `~/.ssh/known_hosts`. A changed/revoked/unverifiable key is rejected hard
+  and never prompts; no answer (timeout, no UI) refuses. **Durable rule below.**
 - **2026-07-22:** **SSH remotes — foundation (#508, PR #511, open).** yryvu was
   built with `git2` minus the `ssh` feature, so every `git@host` remote failed
   with "unsupported URL protocol". Enabled `ssh` + `ssh_key_from_memory`, added a

@@ -13,7 +13,7 @@ non-obvious conventions.
 - **Released:** **v0.5.2** (2026-07-20, tag `yryvu-v0.5.2`). `main` and
   `development` are in sync at that version; unreleased Wave 9 perf work sits
   on `development` since.
-- **Wave 9 — Perf + cleanup, in progress (6/11).** Closed: **#217** (RepoManagement
+- **Wave 9 — Perf + cleanup, in progress (7/11).** Closed: **#217** (RepoManagement
   DOD — SoA `KnownReposBatch` wire + virtualization + pre-indexed search),
   **#178** (metadata-only combined-diff summary — the inspector stopped
   serializing hunks), **#181** (graph walk perf — `BreadthFirst` for the full
@@ -22,10 +22,24 @@ non-obvious conventions.
   #181 was **re-diagnosed by measurement**: the original "stream the
   sort/layout" premise was wrong — the walk/decode is ~87% of the cost, the
   sort/layout ~10%. #37 turned out to be three parity defects in infrastructure
-  that already existed, not a feature, and **#196** ("don't ask again" on the
+  that already existed, not a feature. Also closed: **#196** ("don't ask again" on the
   force-push confirmation — the one git-destructive prompt GitKraken lets you
-  skip) and **#132** (remote management — rename plus split push URLs).
-  **Next: #151 (commit-panel structural parity).**
+  skip), **#132** (remote management — rename plus split push URLs), and
+  **#151** (commit-panel structural parity — header trash + change count, sort
+  direction, expand/collapse, the Y-axis splitter, exact labels; plus a
+  4-preferences-caches→1 owner fix that was reverting panel sizes on every write).
+  **Next: #126 (HEAD-first).**
+- **Housekeeping (this session, all merged):** the SSH **trust-on-first-use**
+  prompt landed (#508 follow-up, PR #513 — a `certificate_check` re-checking
+  `known_hosts` with Cargo's decision core; new host prompts, changed/revoked
+  rejects). Then a **monolith split pass** (PR #514 `known_hosts.rs` 935→folder;
+  PR #515 `types.rs`/`undo.rs`/`rebase tests` split by domain) and an
+  **exhaustive dead-code sweep** (PR #516 — 6 dead command chains, 2 inherent
+  methods, 3 unused app-crate deps, plus dead frontend exports/components/asset;
+  −4070 lines). Kept `discard_lines` and `open_external_terminal`: both are
+  half-wired features (live sibling ops / a tested config builder), not stale
+  code. Smoke-tested live: signed + unsigned commits, remotes, diff, tabs, graph
+  — no regressions. A stale-gpg-lock UX improvement was filed as **#517**.
 - **Shipped in v0.5.2 — data-safety hardening, umbrella #448 CLOSED.** A user
   report ("a merge only keeps my side") turned out to be two distinct bugs;
   auditing the core git ops surfaced a cluster of **21 silent data-loss
@@ -36,9 +50,10 @@ non-obvious conventions.
   token expansion (#298), multi-file `[layers]` (#299), `mask-image` icon system
   with `icons/`-folder override (#300), themeable graph node/edge vars (#301),
   9 themes' `personality.css` rewritten vs the real DOM (#303), `docs/themes/` (#302).
-- **Backlog hygiene owed:** 7 open issues sit in no wave (#231 Add Worktree,
-  #437, #38, #99, #101, #108, #233) and #27 (theme system) is likely already
-  satisfied by Wave 8 — triage them into a wave or close them.
+- **Backlog hygiene owed:** 6 open issues sit in no wave (#231 Add Worktree,
+  #38, #99, #101, #108, #233) and #27 (theme system) is likely already
+  satisfied by Wave 8 — triage them into a wave or close them. (#437 closed via
+  PR #507.)
 - **Un-smoked debt:** the #448 fixes shipped with backend regression tests + the
   undo-UX ones with vitest, but no live smoke of the touched flows (undo/redo,
   rejected push, branch rename, rebase `edit`). #75 (Apply Patch flow) + Wave 6's
@@ -300,6 +315,28 @@ everything fallible (parent, author, committer) and refuse a dirty index
 
 Newest first. Keep entries short — one unit of work each.
 
+- **2026-07-24:** **Exhaustive dead-code sweep (PR #516).** Three parallel audits
+  (Rust / TS / deps) + per-symbol grep. Removed 6 dead command chains
+  (`combined_commit_diff`, `list_remotes`, `invalidate_search_index`+`cache_clear`,
+  `commit_staged`, `amend_commit` — command + handler + trait method + impl + core
+  fn, tests adjusted), two never-called inherent methods, three unused app-crate
+  deps, and the frontend's dead wrappers/exports/components + `pattern.svg`
+  (−4070 lines). **Kept `discard_lines` and `open_external_terminal`: both are
+  half-wired features (live sibling ops / a tested config builder), not stale
+  code — the lesson is distinguishing "old dead code" from "incomplete feature
+  with a live backend".** A grep gotcha surfaced: an `invoke("cmd")` string lives
+  *inside* a dead IPC wrapper, so counting the string alone marks the command
+  "live" — cross-check the wrapper's callers too. Smoked live, no regressions;
+  a stale-gpg-lock UX improvement filed as #517.
+- **2026-07-24:** **Monolith split pass (PRs #514, #515).** `known_hosts.rs`
+  (935, the repo's largest after #513) → a folder (`parse`/`bundled`/`check`/
+  `append`); `backend/types.rs` → `entities`/`ops`/`diff`; `repo/undo.rs` → by
+  direction (`inverse`/`redo`/`shared`/`tests`); the interactive-rebase test file
+  → by concern. Folder + `mod.rs` re-export so importers don't change; no logic
+  changes. **Measurement gotcha: the `^#[cfg(test)]` grep misses
+  `#[cfg(all(test, unix))]`, which over-counted `stage.rs`'s production lines —
+  use `^#\[cfg\((all\()?test`.** After this pass the only remaining >400-line
+  production files are the two documented inescapable trait def/impl exceptions.
 - **2026-07-24:** **SSH trust-on-first-use (#508, follow-up to #511).** Registered
   a git2 `certificate_check` that re-checks `known_hosts` ourselves — git2-rs
   discards libgit2's `valid` bit, so a callback can't tell a new host from a

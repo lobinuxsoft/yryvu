@@ -47,21 +47,6 @@ export interface RowEdgeCell {
 export type RowEdges = Map<number, RowEdgeCell>;
 
 /**
- * Build per-row edges dict for the whole commit stream. O(n·k) where k is
- * the average number of live edges per row — linear in total live-edges
- * over the whole walk.
- *
- * Pure, non-incremental version. For streaming graphs prefer
- * `createIncrementalEdgeStates()` (#141): full recomputation on every
- * stream batch is O(N²) over the lifetime of a large repo.
- */
-export function buildEdgeStates(rows: GraphRow[]): RowEdges[] {
-  const result: RowEdges[] = [];
-  appendRowEdges(result, new Map(), rows, 0);
-  return result;
-}
-
-/**
  * Inner loop extracted so both the pure and incremental builders can
  * share it. Mutates `out` in place — pushes one entry per row processed
  * starting at `from`. Returns the final `prev` Map so an incremental

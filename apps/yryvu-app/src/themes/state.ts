@@ -12,7 +12,7 @@
 //! before this resolves; the injection then takes over in the next
 //! microtask.
 
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { createEffect, createResource, createSignal, on, untrack } from "solid-js";
 
 import { notify } from "../components/Notifications";
@@ -47,7 +47,6 @@ export { themesResource as themes };
 export { refetchThemes };
 
 let osScopeUnsub: (() => void) | null = null;
-let watcherUnsub: UnlistenFn | null = null;
 
 /// Compute the concrete id that should be active given the current
 /// preference and theme list. `"auto"` resolves; anything else passes
@@ -75,8 +74,6 @@ export function mountThemeProvider(): void {
   // below picks up the resource change and re-injects the active CSS.
   void listen(THEME_CHANGED_EVENT, () => {
     void refetchThemes();
-  }).then((unlisten) => {
-    watcherUnsub = unlisten;
   });
 
   // Effect: re-inject whenever the active id changes. `on()` makes the
@@ -92,16 +89,6 @@ export function mountThemeProvider(): void {
       },
     ),
   );
-}
-
-/// Eject the OS listener + watcher subscription — used by tests for
-/// clean teardown. Production code calls [`mountThemeProvider`] once
-/// and never unmounts.
-export function unmountThemeProvider(): void {
-  osScopeUnsub?.();
-  osScopeUnsub = null;
-  watcherUnsub?.();
-  watcherUnsub = null;
 }
 
 async function injectById(id: string): Promise<void> {

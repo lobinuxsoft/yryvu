@@ -70,7 +70,7 @@ function scheduleFlush() {
 
 /// Subscribe to the backend repo-watcher events so the UI live-refreshes on
 /// external edits, terminal `git`, and builds. Idempotent — a second call is
-/// a no-op until [`unmountRepoLiveRefresh`] runs. The watcher itself is
+/// a no-op. The watcher itself is
 /// started per-repo from `state/repo.ts`; this only wires the listeners.
 export async function mountRepoLiveRefresh(): Promise<void> {
   if (unlisteners.length) return;
@@ -89,16 +89,4 @@ export async function mountRepoLiveRefresh(): Promise<void> {
     listen(INDEX_CHANGED_EVENT, onWorktree),
     listen(WORKTREE_CHANGED_EVENT, onWorktree),
   ]);
-}
-
-/// Tear down the listeners — used by tests for isolation.
-export function unmountRepoLiveRefresh(): void {
-  if (flushTimer !== undefined) {
-    clearTimeout(flushTimer);
-    flushTimer = undefined;
-  }
-  pendingRefs = false;
-  pendingWorktree = false;
-  for (const unlisten of unlisteners) unlisten();
-  unlisteners = [];
 }

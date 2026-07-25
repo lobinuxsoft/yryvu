@@ -24,10 +24,6 @@ export function buildSearchIndex(repoPath: string) {
   return invoke<IndexCounts>("build_search_index", { repoPath });
 }
 
-export function invalidateSearchIndex(repoPath: string) {
-  return invoke<void>("invalidate_search_index", { repoPath });
-}
-
 export function searchRepo(
   repoPath: string,
   mode: SearchMode,

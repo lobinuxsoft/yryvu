@@ -44,10 +44,3 @@ export function mountZoomProvider(): void {
     }),
   );
 }
-
-/// Eject the inline style — used by tests for clean teardown. Production
-/// code calls [`mountZoomProvider`] once and never unmounts.
-export function unmountZoomProvider(): void {
-  mounted = false;
-  document.documentElement.style.zoom = "";
-}

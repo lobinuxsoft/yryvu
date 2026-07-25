@@ -40,9 +40,7 @@ mod stage;
 mod status;
 mod types;
 
-pub use commit::{
-    amend_commit, commit_and_push, commit_staged, create_commit, head_commit_message,
-};
+pub use commit::{commit_and_push, create_commit, head_commit_message};
 pub use diff::{diff_staged, diff_unstaged};
 pub use partial::{
     discard_hunks, discard_lines, stage_hunks, stage_lines, unstage_hunks, unstage_lines, LineRange,

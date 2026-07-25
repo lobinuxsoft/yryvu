@@ -88,28 +88,6 @@ pub async fn diff_staged(repo_path: String, path: String) -> Result<FileDiff, St
 }
 
 #[tauri::command]
-pub async fn commit_staged(repo_path: String, message: String) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        GixBackend
-            .commit_staged(&PathBuf::from(&repo_path), &message)
-            .map_err(|e| e.to_string())
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
-#[tauri::command]
-pub async fn amend_commit(repo_path: String, message: String) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        GixBackend
-            .amend_commit(&PathBuf::from(&repo_path), &message)
-            .map_err(|e| e.to_string())
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
-#[tauri::command]
 pub async fn head_commit_message(repo_path: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         GixBackend

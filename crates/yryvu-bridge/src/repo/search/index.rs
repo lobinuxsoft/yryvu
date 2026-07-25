@@ -93,12 +93,6 @@ pub fn build_index(repo_path: &Path) -> Result<IndexCounts, BackendError> {
     Ok(counts)
 }
 
-/// Drop the cached index. Called from the IPC layer on `refresh` hooks
-/// when refs / worktree / stash list changes.
-pub fn invalidate_index(repo_path: &Path) {
-    super::cache_clear(repo_path);
-}
-
 pub(crate) fn build_index_inner(repo_path: &Path) -> Result<SearchIndex, BackendError> {
     let repo = open_git2(repo_path)?;
     let commits = build_commits(&repo)?;

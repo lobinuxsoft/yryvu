@@ -17,10 +17,10 @@ use std::path::Path;
 use graph_core::Commit;
 
 use crate::backend::{
-    ApplyPatchOutcome, AuthorInfo, BackendError, BranchInfo, CombinedDiff, CommitDiff,
-    CommitOptions, FetchReport, FileDiff, GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo,
-    LineRange, MergeResult, MergeStrategy, PushOptions, RemoteInfo, RepoStateInfo, ResetMode,
-    SignConfig, SignFormat, StashInfo, SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
+    ApplyPatchOutcome, AuthorInfo, BackendError, BranchInfo, CommitDiff, CommitOptions,
+    FetchReport, FileDiff, GenerateKeyRequest, GeneratedKey, GitBackend, GpgKeyInfo, LineRange,
+    MergeResult, MergeStrategy, PushOptions, RemoteInfo, RepoStateInfo, ResetMode, SignConfig,
+    SignFormat, StashInfo, SubmoduleInfo, TagInfo, WorkingTreeStatus, WorktreeInfo,
 };
 
 use super::{
@@ -232,10 +232,6 @@ impl GitBackend for GixBackend {
         crate::repo::search::build_index(repo_path)
     }
 
-    fn invalidate_search_index(&self, repo_path: &Path) {
-        crate::repo::search::invalidate_index(repo_path);
-    }
-
     fn search_repo(
         &self,
         repo_path: &Path,
@@ -336,10 +332,6 @@ impl GitBackend for GixBackend {
         name: &str,
     ) -> Result<(), BackendError> {
         remote::delete_tag_remote(repo_path, remote, name)
-    }
-
-    fn list_remotes(&self, repo_path: &Path) -> Result<Vec<String>, BackendError> {
-        remote::list_remotes(repo_path)
     }
 
     fn add_remote(&self, repo_path: &Path, name: &str, url: &str) -> Result<(), BackendError> {
@@ -488,15 +480,6 @@ impl GitBackend for GixBackend {
         commits::commit_diff(repo_path, sha)
     }
 
-    fn combined_commit_diff(
-        &self,
-        repo_path: &Path,
-        shas: &[String],
-        include_workdir: bool,
-    ) -> Result<CombinedDiff, BackendError> {
-        commits::combined_commit_diff(repo_path, shas, include_workdir)
-    }
-
     fn working_tree_status(&self, repo_path: &Path) -> Result<WorkingTreeStatus, BackendError> {
         staging::working_tree_status(repo_path)
     }
@@ -515,14 +498,6 @@ impl GitBackend for GixBackend {
 
     fn diff_staged(&self, repo_path: &Path, path: &str) -> Result<FileDiff, BackendError> {
         staging::diff_staged(repo_path, path)
-    }
-
-    fn commit_staged(&self, repo_path: &Path, message: &str) -> Result<String, BackendError> {
-        staging::commit_staged(repo_path, message)
-    }
-
-    fn amend_commit(&self, repo_path: &Path, message: &str) -> Result<String, BackendError> {
-        staging::amend_commit(repo_path, message)
     }
 
     fn head_commit_message(&self, repo_path: &Path) -> Result<String, BackendError> {

@@ -4,9 +4,7 @@ use std::path::Path;
 
 use anyhow::anyhow;
 
-use crate::backend::{
-    BackendError, CombinedDiff, CombinedDiffKind, CombinedDiffSummary, CommitDiff,
-};
+use crate::backend::{BackendError, CombinedDiffKind, CombinedDiffSummary, CommitDiff};
 
 use super::super::common::{diff_to_file_diffs, diff_to_file_metas, git2_err, open_git2};
 
@@ -79,12 +77,12 @@ pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendErr
     })
 }
 
-/// Multi-revision / WIP-aware diff for the inspector. `shas` is youngest-first
-/// (graph-row order, matching the frontend's selection order). The kind tag in
-/// the result lets the right panel pick its header copy without re-deriving the
-/// state.
+/// The built `git2::Diff` plus the derived kind / counts, consumed by the
+/// metadata-only [`combined_commit_diff_summary`]. The diff borrows `repo`,
+/// so the caller owns the `Repository` and this stays a borrow.
 ///
-/// Tree pairing follows GitKraken's `getCommitDiffSelectionTrees` convention:
+/// Tree pairing follows GitKraken's `getCommitDiffSelectionTrees` convention
+/// (`shas` youngest-first, matching the frontend's selection order):
 ///
 /// | Selection                        | Old tree                 | New tree                  |
 /// |----------------------------------|--------------------------|---------------------------|
@@ -96,15 +94,6 @@ pub fn commit_diff(repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendErr
 ///
 /// "Working tree" means **index merged with worktree** — anything the user
 /// would commit if they staged everything. Matches GK's `WIP` semantics.
-///
-/// Empty `shas` + `!include_workdir` is a programming error and returns an
-/// `InvalidArgument`-flavoured `Revwalk` error rather than panicking — the
-/// frontend should never construct that combination, but a safe rejection is
-/// cheaper to debug than a backend crash.
-/// The built `git2::Diff` plus the derived kind / counts, shared by the
-/// full [`combined_commit_diff`] and the metadata-only
-/// [`combined_commit_diff_summary`]. The diff borrows `repo`, so the
-/// caller owns the `Repository` and this stays a borrow.
 struct CombinedDiffPlan<'r> {
     diff: git2::Diff<'r>,
     kind: CombinedDiffKind,
@@ -205,25 +194,7 @@ fn build_combined_diff<'r>(
     })
 }
 
-pub fn combined_commit_diff(
-    repo_path: &Path,
-    shas: &[String],
-    include_workdir: bool,
-) -> Result<CombinedDiff, BackendError> {
-    let repo = open_git2(repo_path)?;
-    let plan = build_combined_diff(&repo, shas, include_workdir)?;
-    let files = diff_to_file_diffs(&plan.diff)?;
-    Ok(CombinedDiff {
-        kind: plan.kind,
-        n_commits: plan.n_commits,
-        include_workdir,
-        shas: shas.to_vec(),
-        files,
-        rename_detection_skipped: plan.rename_detection_skipped,
-    })
-}
-
-/// Metadata-only variant of [`combined_commit_diff`] (#178): identical
+/// Metadata-only variant of the combined diff (#178): identical
 /// selection semantics, but the file rows carry no hunk bodies. The
 /// inspector's file list + stat chips read only path / status / counts,
 /// so this stops a 15K-file WIP diff from serialising every line across
@@ -310,57 +281,14 @@ mod tests {
             FileStatus::Renamed | FileStatus::Copied
         ));
 
-        let combined = combined_commit_diff(dir.path(), &[second.to_string()], false).unwrap();
+        let combined =
+            combined_commit_diff_summary(dir.path(), &[second.to_string()], false).unwrap();
         assert!(!combined.rename_detection_skipped);
         assert_eq!(combined.files.len(), 1);
         assert!(matches!(
             combined.files[0].status,
             FileStatus::Renamed | FileStatus::Copied
         ));
-    }
-
-    /// The summary must agree with the full diff on every metadata field —
-    /// same files, same status, same add/del counts — while carrying no
-    /// hunks. If the shared `delta_meta` core ever drifts, this catches it.
-    #[test]
-    fn summary_matches_full_metadata_without_hunks() {
-        let dir = TempDir::new().unwrap();
-        let repo = Repository::init(dir.path()).unwrap();
-
-        fs::write(dir.path().join("a.txt"), "one\ntwo\nthree\n").unwrap();
-        fs::write(dir.path().join("keep.txt"), "x\n").unwrap();
-        let first = commit_all(&repo, "seed", None);
-
-        // Modify a.txt (adds + deletions) and add a new file.
-        fs::write(dir.path().join("a.txt"), "one\nTWO\nthree\nfour\n").unwrap();
-        fs::write(dir.path().join("b.txt"), "new\n").unwrap();
-        let second = commit_all(&repo, "edit + add", Some(first));
-
-        let full = combined_commit_diff(dir.path(), &[second.to_string()], false).unwrap();
-        let summary =
-            combined_commit_diff_summary(dir.path(), &[second.to_string()], false).unwrap();
-
-        assert_eq!(summary.kind as u8, full.kind as u8);
-        assert_eq!(summary.n_commits, full.n_commits);
-        assert_eq!(summary.shas, full.shas);
-        assert_eq!(summary.files.len(), full.files.len());
-        assert!(
-            full.files.iter().any(|f| !f.hunks.is_empty()),
-            "fixture should have hunks"
-        );
-
-        for meta in &summary.files {
-            let full_file = full
-                .files
-                .iter()
-                .find(|f| f.path == meta.path)
-                .expect("summary path must exist in the full diff");
-            assert_eq!(meta.status as u8, full_file.status as u8, "{}", meta.path);
-            assert_eq!(meta.additions, full_file.additions, "adds {}", meta.path);
-            assert_eq!(meta.deletions, full_file.deletions, "dels {}", meta.path);
-            assert_eq!(meta.is_binary, full_file.is_binary, "{}", meta.path);
-            assert_eq!(meta.old_mode, full_file.old_mode, "{}", meta.path);
-        }
     }
 
     /// Empty selection with no workdir is a programming error on both

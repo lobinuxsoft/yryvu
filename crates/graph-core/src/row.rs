@@ -116,15 +116,6 @@ pub struct Commit {
     pub node_type: NodeType,
 }
 
-impl Commit {
-    /// Convenience: the legacy `"Name <email>"` format used elsewhere in the
-    /// codebase (commit-list panel, detail inspector) until those consumers
-    /// switch to the split fields.
-    pub fn author_display(&self) -> String {
-        format!("{} <{}>", self.author_name, self.author_email)
-    }
-}
-
 /// Output row ready for the renderer.
 ///
 /// `parent_lanes` and `parent_shas` are aligned: index `i` in both refers to the

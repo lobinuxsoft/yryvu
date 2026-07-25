@@ -22,11 +22,13 @@
 
 pub mod auth_env;
 pub(crate) mod credentials;
+mod known_hosts;
 mod management;
 mod push;
 mod ssh_config;
 pub mod ssh_keygen;
 mod sync;
+pub(crate) mod tofu;
 
 pub use management::{
     add_remote, get_remote_url, list_remotes, list_remotes_detailed, remove_remote, rename_remote,

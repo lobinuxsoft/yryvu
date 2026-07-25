@@ -13,3 +13,8 @@ pub mod themes;
 pub mod undo_log;
 
 pub use backend::{GitBackend, GixBackend};
+
+/// Register the Tauri `AppHandle` used to raise SSH Trust-On-First-Use
+/// prompts (#508). Call once from the app's `setup` hook; without it,
+/// an unknown SSH host is refused rather than prompted.
+pub use repo::remote::tofu::init_app_handle as init_ssh_host_verification;

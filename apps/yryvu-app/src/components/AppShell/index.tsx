@@ -34,6 +34,7 @@ import { ContextMenu } from "../ContextMenu";
 import { ToastContainer } from "../Notifications";
 import { CredentialSetupDialog } from "../CredentialSetup/CredentialSetupDialog";
 import { SshKeyGenDialog } from "../CredentialSetup/SshKeyGenDialog";
+import { SshTofuDialog } from "../SshTofuDialog";
 import { hydrateIntegrationsOnAppStart } from "../PreferencesWindow/panels/Integrations/tokenStorage";
 import { Tooltip } from "../Tooltip";
 import { wireAnimationMode } from "./animationMode";
@@ -340,6 +341,7 @@ export function AppShell() {
       <UndoDirtyDialog />
       <CredentialSetupDialog />
       <SshKeyGenDialog />
+      <SshTofuDialog />
       <About />
       <ToastContainer />
     </div>

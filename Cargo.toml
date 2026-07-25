@@ -61,6 +61,13 @@ ssh-key = { version = "0.6", features = ["ed25519", "rsa", "encryption", "getran
 # Pinned to 0.21 to reuse the version already resolved in the tree (no
 # duplicate base64 build). Used to ship image blob bytes to the UI (#60).
 base64 = "0.21"
+# known_hosts verification (#508). glob for hostname patterns, hmac+sha1
+# for OpenSSH's hashed `|1|` entries, sha2 for the SHA256 fingerprint.
+# Ported from Cargo's src/sources/git/known_hosts.rs (MIT/Apache).
+glob = "0.3"
+hmac = "0.12"
+sha1 = "0.10"
+sha2 = "0.10"
 
 criterion = { version = "0.5", features = ["html_reports"] }
 

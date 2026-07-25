@@ -50,11 +50,13 @@ daily flow, then differentiators, then luxuries. Each wave maps to a release.
 - **#509** ✅ Fetch-all no longer aborts on the first bad remote and reports the
   outcome honestly — partial runs are `info` with the count in the title, only
   an all-failed run is an error (PR #510).
-- **#508** 🔄 SSH remotes. Foundation shipped (PR #511): transport enabled,
-  `~/.ssh/config` reader, OpenSSH-style key resolution, secure-by-default host
-  verification. **Trust-on-first-use prompt is the follow-up** — needs a vetted
-  known_hosts parser (git2-rs drops libgit2's validity bit); the plan and the
-  Cargo `known_hosts.rs` reference are in the issue.
+- **#508** 🔄 SSH remotes. Foundation shipped (PR #511) and the
+  **trust-on-first-use prompt** followed: a `certificate_check` re-checks
+  `known_hosts` ourselves (git2-rs drops libgit2's validity bit) with the
+  decision core ported from Cargo's `known_hosts.rs` — a new host prompts, a
+  changed/revoked key is rejected. Remaining follow-ups: passphrase prompt for
+  agent-less keys, `~/.ssh/config` host aliases, and the AppImage/MSI packaging
+  smoke (libssh2+openssl — CI won't prove it).
 
 ### Blocked (outside waves)
 

@@ -2,6 +2,7 @@
 
 import { AppShell } from "./components/AppShell";
 import { mountRepoLiveRefresh } from "./state/repo-live";
+import { mountSshTofuListener } from "./state/ssh-tofu";
 import { mountThemeProvider } from "./themes";
 import { mountZoomProvider } from "./zoom";
 import "./styles/index.css";
@@ -11,6 +12,7 @@ function App() {
   mountThemeProvider();
   mountZoomProvider();
   void mountRepoLiveRefresh();
+  void mountSshTofuListener();
   return <AppShell />;
 }
 

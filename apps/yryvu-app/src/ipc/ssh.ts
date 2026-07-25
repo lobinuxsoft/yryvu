@@ -73,3 +73,14 @@ export function addSshKeyToAgent(privateKeyPath: string): Promise<void> {
 export function readSshPublicKey(privateKeyPath: string): Promise<string> {
   return invoke<string>("read_ssh_public_key", { privateKeyPath });
 }
+
+/// Answer a Trust-On-First-Use prompt for an unknown SSH host (#508). A
+/// fetch/push is blocked in the backend waiting on this: `true` trusts
+/// the host (its key is appended to known_hosts) and lets the operation
+/// proceed, `false` aborts it. Fire-and-forget — resolves immediately.
+export function sshTofuResolve(
+  sessionId: string,
+  accept: boolean,
+): Promise<void> {
+  return invoke<void>("ssh_tofu_resolve", { sessionId, accept });
+}

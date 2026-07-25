@@ -139,11 +139,6 @@ export function setDetailPanelWidth(width: number, persist = true): void {
   if (persist) schedulePersist();
 }
 
-export function setDetailPanelHeight(height: number, persist = true): void {
-  _internalSetHeight(height);
-  if (persist) schedulePersist();
-}
-
 /// Height of the commit region inside the WIP panel. Same drag cadence
 /// as the panel dimensions: `persist=false` per pointermove, one flush
 /// via `commitDetailPanelLayout` on pointerup.
@@ -169,20 +164,6 @@ export function commitDetailPanelLayout(): void {
     persistTimer = undefined;
   }
   void persistImmediate();
-}
-
-/// Test-only escape hatch — resets the hydration latch so tests can
-/// re-seed fresh state. Not exported from any public barrel.
-export function _resetForTests(): void {
-  hydrated = false;
-  if (persistTimer !== undefined) {
-    clearTimeout(persistTimer);
-    persistTimer = undefined;
-  }
-  _internalSetWidth(MIN_WIDTH);
-  _internalSetHeight(MIN_HEIGHT);
-  _internalSetOpen(true);
-  _internalSetCommitRegion(MIN_COMMIT_REGION_HEIGHT);
 }
 
 /// Eat a Solid effect dependency on the signals so external

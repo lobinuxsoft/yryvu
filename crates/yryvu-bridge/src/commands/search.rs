@@ -18,16 +18,6 @@ pub async fn build_search_index(repo_path: String) -> Result<IndexCounts, String
 }
 
 #[tauri::command]
-pub async fn invalidate_search_index(repo_path: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        GixBackend.invalidate_search_index(&PathBuf::from(&repo_path));
-        Ok::<(), String>(())
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
-#[tauri::command]
 pub async fn search_repo(
     repo_path: String,
     mode: SearchMode,

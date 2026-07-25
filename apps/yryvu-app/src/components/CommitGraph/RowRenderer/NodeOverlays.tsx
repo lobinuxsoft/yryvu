@@ -136,37 +136,6 @@ export function InitialCommitOutline(props: NodeBaseProps): JSX.Element {
   );
 }
 
-/// Layer 4 — conflict indicator. WIP row with at least one conflicted
-/// path. Wrapped in `<g opacity="1">` to override the WIP row's 0.7
-/// dim — "you have conflicts" beats dimming.
-export function ConflictIndicator(props: NodeBaseProps): JSX.Element {
-  // Triangle 10×10 anchored at upper-right (+ x, − y).
-  const ax = () => props.cx + props.radius * 0.7;
-  const ay = () => props.cy - props.radius * 0.7;
-  return (
-    <g opacity="1">
-      <title>Working tree has unresolved conflicts</title>
-      <path
-        d={`M ${ax()} ${ay()} l 10 0 l -5 8.66 z`}
-        fill="#e74c3c"
-        stroke="#000"
-        stroke-width="0.5"
-      />
-      <text
-        x={ax() + 5}
-        y={ay() + 6}
-        font-size="8"
-        font-weight="700"
-        text-anchor="middle"
-        fill="#fff"
-        style={{ "user-select": "none", "pointer-events": "none" }}
-      >
-        !
-      </text>
-    </g>
-  );
-}
-
 interface PrIconProps extends NodeBaseProps {
   pr: PullRequestSummary;
 }

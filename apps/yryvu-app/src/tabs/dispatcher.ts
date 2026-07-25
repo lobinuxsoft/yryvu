@@ -139,7 +139,7 @@ function applyBulkClose(tabIds: string[]): void {
 
 function applyMutate(tabId: string, tabParams: Tab): void {
   // MUTATE preserves the tab's array index AND re-uses the existing
-  // tabId — this is what lets `replaceSelectedTabWithNewTab` flip a REPO
+  // tabId — this is what lets a MUTATE dispatch flip a REPO
   // tab into NEW without remounting (cited bundle:2588). Override the
   // params' id with the original to enforce the contract even if the
   // caller passed a fresh one.

@@ -95,7 +95,7 @@ export {
   dirtyFileCount,
 } from "./refresh";
 export { maybeAutoUpdateSubmodules } from "./submoduleAutoUpdate";
-export { hiddenRefs, setHiddenRef, clearHiddenRefs } from "./refs";
+export { hiddenRefs, setHiddenRef } from "./refs";
 export {
   ALL_SECTION_KEYS,
   ALWAYS_VISIBLE_SECTION_KEYS,
@@ -117,7 +117,6 @@ export {
   activeColumnSettings,
   activeOrderedZones,
   setGraphZoneWidth,
-  setGraphZoneWidthInteractive,
   setGraphZonePairInteractive,
   commitGraphColumnLayout,
   setGraphZoneVisible,

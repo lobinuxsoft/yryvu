@@ -59,13 +59,6 @@ pub struct OAuthSession {
 }
 
 impl OAuthSession {
-    /// Loopback port the provider should redirect to. Useful for
-    /// surfaces that need to display the redirect URL the user
-    /// registered (self-hosted setups, debug overlays).
-    pub fn redirect_port(&self) -> u16 {
-        self.server.port()
-    }
-
     /// Constructor for tests in sibling modules (e.g. the registry
     /// in `state.rs`). Not part of the public API — gated to `cfg(test)`
     /// callers via a `pub(super)` cousin would have been ideal but

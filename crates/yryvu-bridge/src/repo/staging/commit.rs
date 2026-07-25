@@ -42,9 +42,7 @@ fn merge_heads(repo: &git2::Repository) -> Result<Vec<git2::Oid>, BackendError> 
         .collect()
 }
 
-/// Write a new commit (or amend HEAD) with the bundled options. Replaces
-/// the pair `commit_staged` / `amend_commit` — both kept as thin wrappers
-/// below for call sites that don't care about description / flags.
+/// Write a new commit (or amend HEAD) with the bundled options.
 ///
 /// When a merge is in progress, the other parent is read from `MERGE_HEAD`
 /// and the merge state is cleared afterwards. Without that, resolving
@@ -235,27 +233,6 @@ fn move_head_to(
         }
     }
     Ok(())
-}
-
-pub fn commit_staged(repo_path: &Path, message: &str) -> Result<String, BackendError> {
-    create_commit(
-        repo_path,
-        &CommitOptions {
-            summary: message.to_string(),
-            ..CommitOptions::default()
-        },
-    )
-}
-
-pub fn amend_commit(repo_path: &Path, message: &str) -> Result<String, BackendError> {
-    create_commit(
-        repo_path,
-        &CommitOptions {
-            summary: message.to_string(),
-            amend: true,
-            ..CommitOptions::default()
-        },
-    )
 }
 
 /// GitKraken's one-shot `Commit and Push`: write the commit, then push

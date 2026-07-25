@@ -89,10 +89,6 @@ export function setLeftSidebarOpen(open: boolean): void {
   schedulePersist();
 }
 
-export function toggleLeftSidebarOpen(): void {
-  setLeftSidebarOpen(!openInternal());
-}
-
 /// Force a persist immediately (e.g. drag-end after a stream of
 /// non-persisted updates). No-op when hydration hasn't finished.
 export function commitLeftSidebarLayout(): void {
@@ -101,18 +97,6 @@ export function commitLeftSidebarLayout(): void {
     persistTimer = undefined;
   }
   void persistImmediate();
-}
-
-/// Test-only escape hatch — resets the hydration latch so tests can
-/// re-seed fresh state. Not exported from any public barrel.
-export function _resetForTests(): void {
-  hydrated = false;
-  if (persistTimer !== undefined) {
-    clearTimeout(persistTimer);
-    persistTimer = undefined;
-  }
-  _internalSetWidth(215);
-  _internalSetOpen(true);
 }
 
 createEffect(() => {

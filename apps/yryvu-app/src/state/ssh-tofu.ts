@@ -28,20 +28,12 @@ export const currentTofuPrompt = () => queue()[0] ?? null;
 
 let unlisten: UnlistenFn | null = null;
 
-/// Subscribe to backend TOFU prompts. Idempotent — a second call is a
-/// no-op until [`unmountSshTofuListener`] runs.
+/// Subscribe to backend TOFU prompts. Idempotent — a second call is a no-op.
 export async function mountSshTofuListener(): Promise<void> {
   if (unlisten) return;
   unlisten = await listen<SshTofuPrompt>(SSH_TOFU_PROMPT_EVENT, (event) => {
     setQueue((q) => [...q, event.payload]);
   });
-}
-
-/// Tear down the listener (tests / teardown).
-export function unmountSshTofuListener(): void {
-  unlisten?.();
-  unlisten = null;
-  setQueue([]);
 }
 
 /// Answer the current prompt and advance the queue. `accept` trusts the

@@ -3,7 +3,7 @@
 /**
  * Dropdown popover that lists Open Tabs + Closed Recently with a single
  * substring filter. Single click handler routes to `selectTab` (Open
- * Tabs) or `reopenTab` (Closed Recently) based on which group the row
+ * Tabs) or reopens it (Closed Recently) based on which group the row
  * belongs to (audit doc 04).
  *
  * Position: Portal-rendered, positioned by the parent (TabBar) which

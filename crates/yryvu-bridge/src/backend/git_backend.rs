@@ -6,8 +6,8 @@ use graph_core::Commit;
 
 use super::errors::BackendError;
 use super::types::{
-    ApplyPatchOutcome, BranchInfo, CombinedDiff, CommitDiff, FileDiff, MergeResult, MergeStrategy,
-    PushOptions, RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
+    ApplyPatchOutcome, BranchInfo, CommitDiff, FileDiff, MergeResult, MergeStrategy, PushOptions,
+    RepoStateInfo, ResetMode, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo,
 };
 use crate::repo::commits::AuthorInfo;
 use crate::repo::conflicts::{ConflictDiff3, ConflictListing, ConflictSide, ConflictSource};
@@ -136,10 +136,6 @@ pub trait GitBackend: Send + Sync {
         remote: &str,
         name: &str,
     ) -> Result<(), BackendError>;
-
-    /// Enumerate configured remote names. The tag-menu `Delete from
-    /// all remotes` and `Push to remote` items branch on the count.
-    fn list_remotes(&self, repo_path: &Path) -> Result<Vec<String>, BackendError>;
 
     /// Register a new remote pointing at `url`. Powers the
     /// `Add remote…` action on the REMOTE-header context menu (#227).
@@ -379,10 +375,6 @@ pub trait GitBackend: Send + Sync {
     /// the per-mode counts so the palette tabs can show "(N)".
     fn build_search_index(&self, repo_path: &Path) -> Result<IndexCounts, BackendError>;
 
-    /// Drop the cached index — call when refs / worktree / stash list
-    /// change so the next `search_repo` rebuilds lazily.
-    fn invalidate_search_index(&self, repo_path: &Path);
-
     /// Run a fuzzy query against the cached index.
     fn search_repo(
         &self,
@@ -432,18 +424,6 @@ pub trait GitBackend: Send + Sync {
 
     fn commit_diff(&self, repo_path: &Path, sha: &str) -> Result<CommitDiff, BackendError>;
 
-    /// Multi-revision / WIP-aware diff for the right-panel inspector.
-    /// `shas` is ordered youngest-first (graph-row order). `include_workdir`
-    /// extends the comparison's new-side to the working tree (staged + unstaged
-    /// merged). The resulting [`CombinedDiff::kind`] tells the frontend which
-    /// inspector header to render — see [`super::types::CombinedDiffKind`].
-    fn combined_commit_diff(
-        &self,
-        repo_path: &Path,
-        shas: &[String],
-        include_workdir: bool,
-    ) -> Result<CombinedDiff, BackendError>;
-
     fn working_tree_status(&self, repo_path: &Path) -> Result<WorkingTreeStatus, BackendError>;
 
     fn stage_files(&self, repo_path: &Path, paths: &[String]) -> Result<(), BackendError>;
@@ -453,10 +433,6 @@ pub trait GitBackend: Send + Sync {
     fn diff_unstaged(&self, repo_path: &Path, path: &str) -> Result<FileDiff, BackendError>;
 
     fn diff_staged(&self, repo_path: &Path, path: &str) -> Result<FileDiff, BackendError>;
-
-    fn commit_staged(&self, repo_path: &Path, message: &str) -> Result<String, BackendError>;
-
-    fn amend_commit(&self, repo_path: &Path, message: &str) -> Result<String, BackendError>;
 
     fn head_commit_message(&self, repo_path: &Path) -> Result<String, BackendError>;
 

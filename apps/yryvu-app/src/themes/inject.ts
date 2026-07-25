@@ -40,11 +40,3 @@ export function applyThemeCss(id: string, css: ThemeCss): void {
   ensureStyleEl(PERSONALITY_ID).textContent = css.personality;
 }
 
-/// Remove injected style tags. Used by tests to clean up between cases.
-/// In production the injection is replaced, never removed.
-export function clearInjectedTheme(): void {
-  document.getElementById(TOKENS_ID)?.remove();
-  document.getElementById(ICONS_ID)?.remove();
-  document.getElementById(PERSONALITY_ID)?.remove();
-  delete document.documentElement.dataset.theme;
-}

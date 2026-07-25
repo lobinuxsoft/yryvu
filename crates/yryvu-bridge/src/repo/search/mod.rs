@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::backend::BackendError;
 
-pub use index::{build_index, invalidate_index, IndexCounts, SearchIndex};
+pub use index::{build_index, IndexCounts, SearchIndex};
 pub use query::{search, SearchHit};
 
 /// Which corpus the palette is searching.
@@ -65,14 +65,6 @@ pub(crate) fn cache_insert(repo_path: &Path, index: SearchIndex) {
     let key = repo_path.to_path_buf();
     if let Ok(mut guard) = INDEX_CACHE.lock() {
         guard.get_or_insert_with(HashMap::new).insert(key, index);
-    }
-}
-
-pub(crate) fn cache_clear(repo_path: &Path) {
-    if let Ok(mut guard) = INDEX_CACHE.lock() {
-        if let Some(map) = guard.as_mut() {
-            map.remove(repo_path);
-        }
     }
 }
 

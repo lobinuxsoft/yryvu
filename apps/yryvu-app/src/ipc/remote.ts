@@ -48,16 +48,6 @@ export function getRemoteUrl(
 }
 
 /**
- * Enumerate every configured remote name (`origin`, `upstream`, …).
- * The tag context-menu uses the count to decide whether `Push to
- * remote` and `Delete from remote` need a picker dialog or can fire
- * silently against the single remote.
- */
-export function listRemotes(repoPath: string): Promise<string[]> {
-  return invoke<string[]>("list_remotes", { repoPath });
-}
-
-/**
  * Register a new remote pointing at `url`. Powers the `Add remote…`
  * action on the REMOTE-header context menu (#227). Backend validates
  * the name shape and rejects duplicates with typed errors.

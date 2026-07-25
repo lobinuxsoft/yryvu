@@ -40,9 +40,3 @@ export function setHiddenRef(key: string, hidden: boolean): void {
   persistHiddenRefs(next);
   setHiddenRefsInternal(next);
 }
-
-export function clearHiddenRefs(): void {
-  const empty = new Set<string>();
-  persistHiddenRefs(empty);
-  setHiddenRefsInternal(empty);
-}

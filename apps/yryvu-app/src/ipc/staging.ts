@@ -53,20 +53,6 @@ export function getStagedDiff(
   return invoke<FileDiff>("diff_staged", { repoPath, path });
 }
 
-export function commitStaged(
-  repoPath: string,
-  message: string
-): Promise<string> {
-  return invoke<string>("commit_staged", { repoPath, message });
-}
-
-export function amendCommit(
-  repoPath: string,
-  message: string
-): Promise<string> {
-  return invoke<string>("amend_commit", { repoPath, message });
-}
-
 export function getHeadCommitMessage(repoPath: string): Promise<string> {
   return invoke<string>("head_commit_message", { repoPath });
 }

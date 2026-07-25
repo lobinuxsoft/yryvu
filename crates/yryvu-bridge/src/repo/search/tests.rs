@@ -118,17 +118,6 @@ fn empty_query_returns_recents_capped_by_limit() {
 }
 
 #[test]
-fn invalidate_index_drops_cache() {
-    cache_reset();
-    let (_d, path) = build_seed_repo();
-    build_index(&path).unwrap();
-    invalidate_index(&path);
-    // After invalidation, `search` rebuilds lazily — should still work.
-    let hits = search(&path, SearchMode::Commits, "alpha", None).unwrap();
-    assert!(!hits.is_empty());
-}
-
-#[test]
 fn search_no_match_returns_empty() {
     cache_reset();
     let (_d, path) = build_seed_repo();

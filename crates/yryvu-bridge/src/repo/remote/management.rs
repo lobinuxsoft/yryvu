@@ -35,16 +35,6 @@ pub fn get_remote_url(repo_path: &Path, remote_name: &str) -> Result<String, Bac
     })
 }
 
-/// Enumerate every configured remote name (e.g. `origin`, `upstream`).
-/// Frontend uses this to decide whether the tag context menu's
-/// `Push to remote` and `Delete from remote` actions need a remote-picker
-/// dialog (>1 remote) or can fire silently (==1 remote).
-pub fn list_remotes(repo_path: &Path) -> Result<Vec<String>, BackendError> {
-    let repo = open_git2(repo_path)?;
-    let names = repo.remotes().map_err(git2_err)?;
-    Ok(names.iter().filter_map(|s| s.map(String::from)).collect())
-}
-
 /// Enumerate remotes with their fetch and push URLs. Backs the remote
 /// rows in the sidebar (which show the URL GitKraken never surfaces
 /// anywhere) and the edit dialog's initial state.
@@ -256,11 +246,7 @@ mod tests {
             problems.is_empty(),
             "default refspec should rewrite cleanly"
         );
-        assert_eq!(
-            list_remotes(&p).unwrap(),
-            vec!["upstream".to_string()],
-            "old name must be gone"
-        );
+        assert_eq!(out(&p, &["remote"]), "upstream", "old name must be gone");
         assert_eq!(
             out(&p, &["rev-parse", "refs/remotes/upstream/main"]),
             head,
@@ -304,7 +290,7 @@ mod tests {
         let (_d, p) = repo_with_origin();
         let err = rename_remote(&p, "origin", "bad name").unwrap_err();
         assert!(matches!(err, BackendError::InvalidRemoteName { .. }));
-        assert_eq!(list_remotes(&p).unwrap(), vec!["origin".to_string()]);
+        assert_eq!(out(&p, &["remote"]), "origin");
     }
 
     /// `None` clears the key outright. GitKraken writes the fetch URL

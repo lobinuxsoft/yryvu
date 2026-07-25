@@ -18,7 +18,7 @@
 
 import { performTabOperation } from "./dispatcher";
 import { closedTabs, currentTab, selectedTabId, tabs } from "./state";
-import { PERMANENT_REPO_MANAGEMENT_ID, type Tab } from "./types";
+import { PERMANENT_REPO_MANAGEMENT_ID } from "./types";
 
 function newId(): string {
   return crypto.randomUUID();
@@ -50,20 +50,6 @@ export async function openRepoInAnotherTab(
   await performTabOperation({
     type: "CREATE",
     switchToCreatedTab: true,
-    tabParams: { type: "REPO", id: newId(), repoPath, isWorktree },
-  });
-}
-
-/// Open `repoPath` in another tab WITHOUT switching to it. Used by the
-/// "open in background" right-click menu entry.
-export async function openRepoInAnotherTabWithoutSwitching(
-  repoPath: string,
-  isWorktree = false,
-): Promise<void> {
-  if (await switchToRepoTabIfItExists(repoPath)) return;
-  await performTabOperation({
-    type: "CREATE",
-    switchToCreatedTab: false,
     tabParams: { type: "REPO", id: newId(), repoPath, isWorktree },
   });
 }
@@ -166,56 +152,7 @@ export function handleCloseTabShortcut(): Promise<void> {
   return closeSelectedTab();
 }
 
-/// Close every tab of the given type. Used internally on workspace remove.
-export function closeAllTabsOfType(tabType: Tab["type"]): Promise<void> {
-  const ids = tabs()
-    .filter((t) => t.type === tabType)
-    .map((t) => t.id);
-  if (ids.length === 0) return Promise.resolve();
-  return performTabOperation({ type: "BULK_CLOSE", tabIds: ids });
-}
-
-/// Close every REPO tab whose repoPath matches one of the given paths.
-/// Used when a workspace is removed or a directory is deleted out from
-/// under chajá. Path matching is case- and separator-sensitive — callers
-/// should normalize beforehand.
-export function closeOpenedRepoTabsByPaths(paths: string[]): Promise<void> {
-  const set = new Set(paths);
-  const ids = tabs()
-    .filter((t) => t.type === "REPO" && set.has(t.repoPath))
-    .map((t) => t.id);
-  if (ids.length === 0) return Promise.resolve();
-  return performTabOperation({ type: "BULK_CLOSE", tabIds: ids });
-}
-
-/* ---------------------------------------------------------------- Mutate */
-
-/// MUTATE the selected tab into a NEW tab — preserves the tabId so the
-/// React/Solid reconciler keeps the DOM node (cited bundle:2588). Falls
-/// through to CREATE when selection is on the permanent REPO_MANAGEMENT
-/// pill (which can't be mutated into a transient type).
-export async function replaceSelectedTabWithNewTab(): Promise<void> {
-  const id = selectedTabId();
-  const cur = currentTab();
-  if (cur && id) {
-    await performTabOperation({
-      type: "MUTATE",
-      tabId: id,
-      tabParams: { type: "NEW", id },
-    });
-    return;
-  }
-  // Selection is on the permanent tab or no selection — create a fresh
-  // NEW tab and switch to it.
-  await openNewTab();
-}
-
 /* ---------------------------------------------------------------- Reopen */
-
-/// Reopen a specific closed tab by id. No-op if `tabId` isn't on the stack.
-export function reopenTab(tabId: string): Promise<void> {
-  return performTabOperation({ type: "REOPEN", tabId });
-}
 
 /// Reopen the most-recently closed tab. Cmd+Shift+T.
 export function reopenMostRecentlyClosedTab(): Promise<void> {

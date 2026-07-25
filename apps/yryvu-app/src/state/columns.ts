@@ -116,7 +116,7 @@ function applyLayoutEphemeral(next: Record<GraphZoneId, ColumnSettings>): void {
 }
 
 /// Persist whatever the current layout is. Idempotent. Call from
-/// `pointerup` after a sequence of `setGraphZoneWidthInteractive` updates,
+/// `pointerup` after a sequence of interactive width updates,
 /// or after any other batch mutation that intentionally skipped persistence.
 export function commitGraphColumnLayout(): void {
   localStorage.setItem(
@@ -200,19 +200,6 @@ export function setGraphZoneWidth(id: GraphZoneId, width: number): void {
   persistLayout(layout);
 }
 
-/// Pointer-drag entry point. Same cascade math as `setGraphZoneWidth` but
-/// **does not write to localStorage** — caller commits once on `pointerup`
-/// via `commitGraphColumnLayout()`. At ~60 fps a drag can fire 60+
-/// `pointermove`s per second; persisting each one was visibly slow.
-export function setGraphZoneWidthInteractive(
-  id: GraphZoneId,
-  width: number,
-): void {
-  clearGraphWidthIntent([id]);
-  const { layout } = computeResizedLayout(id, width);
-  applyLayoutEphemeral(layout);
-}
-
 /// Splitter pair resize: redistribute width between two ADJACENT visible
 /// zones without rippling into the rest of the row. Used by
 /// `GraphColumnResizer` — drag the handle between col A and col B,
@@ -226,8 +213,7 @@ export function setGraphZoneWidthInteractive(
 /// rather than dragging the wrong side past zero.
 ///
 /// Ephemeral only: caller commits once on `pointerup` via
-/// `commitGraphColumnLayout()` — same contract as
-/// `setGraphZoneWidthInteractive`.
+/// `commitGraphColumnLayout()`.
 export function setGraphZonePairInteractive(
   leftZone: GraphZoneId,
   leftWidth: number,

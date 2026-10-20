@@ -256,7 +256,7 @@ fn topo_sort_children_first(
                 position_counter += 1;
                 position.insert(sha.clone(), pos);
                 heap.push(TopoEntry {
-                    time: commit.author_date,
+                    time: sort_time(commit),
                     position: pos,
                     sha: sha.clone(),
                 });
@@ -279,7 +279,7 @@ fn topo_sort_children_first(
                         position_counter += 1;
                         position.insert(parent.clone(), pos);
                         heap.push(TopoEntry {
-                            time: parent_commit.author_date,
+                            time: sort_time(parent_commit),
                             position: pos,
                             sha: parent.clone(),
                         });
@@ -291,6 +291,12 @@ fn topo_sort_children_first(
     }
 
     out
+}
+
+/// Committer time, as `git log --date-order` and GitKraken use. Author time
+/// diverges on rebases and cherry-picks.
+fn sort_time(commit: &Commit) -> i64 {
+    commit.committer_date.unwrap_or(commit.author_date)
 }
 
 #[derive(PartialEq, Eq)]
@@ -438,6 +444,43 @@ mod tests {
         }
         // The merge (only childless node) is newest, so it leads.
         assert_eq!(rows[0].sha, merge.to_string(), "merge leads children-first");
+    }
+
+    /// Two sibling tips whose author-date and committer-date orders disagree
+    /// (a rebased commit keeps its old author date). Rows follow committer time.
+    #[test]
+    fn rows_follow_committer_time() {
+        let dir = linear_repo(1);
+        let repo = Repository::open(dir.path()).unwrap();
+        let base = repo.head().unwrap().peel_to_commit().unwrap();
+        let tree = base.tree().unwrap();
+        let at = |secs| Signature::new("t", "t@e", &git2::Time::new(secs, 0)).unwrap();
+
+        // `old` was authored first but committed last; `new` the other way round.
+        let old = repo
+            .commit(
+                Some("refs/heads/old"),
+                &at(100),
+                &at(300),
+                "old",
+                &tree,
+                &[&base],
+            )
+            .unwrap();
+        let new = repo
+            .commit(
+                Some("refs/heads/new"),
+                &at(200),
+                &at(200),
+                "new",
+                &tree,
+                &[&base],
+            )
+            .unwrap();
+
+        let rows = walked(dir.path(), None);
+        assert_eq!(rows[0].sha, old.to_string(), "newest committer time leads");
+        assert_eq!(rows[1].sha, new.to_string());
     }
 
     #[test]

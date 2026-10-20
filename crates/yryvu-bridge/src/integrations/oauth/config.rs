@@ -67,6 +67,18 @@ fn baked_secret(env_value: Option<&str>) -> Option<String> {
     env_value.map(|s| s.to_string())
 }
 
+/// [`for_provider`] with the user's own OAuth App instead of the baked one.
+pub fn for_provider_with_user_creds(
+    integration_type: &str,
+    client_id: &str,
+    client_secret: &str,
+) -> Option<ProviderOAuthConfig> {
+    let mut config = for_provider(integration_type)?;
+    config.client_id = client_id.to_string();
+    config.client_secret = Some(client_secret.to_string()).filter(|s| !s.is_empty());
+    Some(config)
+}
+
 /// Default config for a `.com` provider. Self-hosted variants are
 /// constructed by the caller from the user's hostname (see the form in
 /// `SelfHostedConfiguration` dialog, PR #247).
@@ -120,5 +132,19 @@ pub fn for_provider(integration_type: &str) -> Option<ProviderOAuthConfig> {
             client_secret: None,
         }),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn user_creds_override_baked() {
+        let c = for_provider_with_user_creds("github", "my-id", "my-secret").unwrap();
+        assert_eq!(c.client_id, "my-id");
+        assert_eq!(c.client_secret.as_deref(), Some("my-secret"));
+        assert_eq!(c.token_url, for_provider("github").unwrap().token_url);
+        assert!(for_provider_with_user_creds("nope", "a", "b").is_none());
     }
 }

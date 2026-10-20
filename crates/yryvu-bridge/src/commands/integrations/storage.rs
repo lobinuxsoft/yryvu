@@ -126,3 +126,64 @@ pub async fn integration_preflight(
         .await
         .map_err(|e| e.to_string())
 }
+
+/// What the UI may know about a custom OAuth App. The secret never
+/// leaves the keyring.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomOAuthAppInfo {
+    pub client_id: String,
+}
+
+#[tauri::command]
+pub async fn save_custom_oauth_app(
+    integration_type: String,
+    client_id: String,
+    client_secret: String,
+) -> Result<(), String> {
+    let (client_id, client_secret) = (
+        client_id.trim().to_string(),
+        client_secret.trim().to_string(),
+    );
+    if client_id.is_empty() || client_secret.is_empty() {
+        return Err("Client ID and client secret are both required".to_string());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        integrations::save_oauth_app(
+            &integration_type,
+            &integrations::CustomOAuthApp {
+                client_id,
+                client_secret,
+            },
+        )
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn get_custom_oauth_app(
+    integration_type: String,
+) -> Result<Option<CustomOAuthAppInfo>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        integrations::get_oauth_app(&integration_type)
+            .map(|app| {
+                app.map(|a| CustomOAuthAppInfo {
+                    client_id: a.client_id,
+                })
+            })
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn remove_custom_oauth_app(integration_type: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        integrations::remove_oauth_app(&integration_type).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

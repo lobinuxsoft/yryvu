@@ -19,8 +19,53 @@ use crate::backend::BackendError;
 /// keyring.
 const KEYRING_SERVICE: &str = "io.yryvu.integrations";
 
-fn entry(integration_type: &str) -> Result<keyring::Entry, BackendError> {
-    keyring::Entry::new(KEYRING_SERVICE, integration_type).map_err(map_err)
+fn entry(account: &str) -> Result<keyring::Entry, BackendError> {
+    keyring::Entry::new(KEYRING_SERVICE, account).map_err(map_err)
+}
+
+/// User-registered OAuth App replacing the baked one. Both halves live
+/// in the keyring: the secret must not touch disk and the pair is only
+/// useful together.
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomOAuthApp {
+    pub client_id: String,
+    pub client_secret: String,
+}
+
+impl std::fmt::Debug for CustomOAuthApp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CustomOAuthApp")
+            .field("client_id", &self.client_id)
+            .field("client_secret", &"<redacted>")
+            .finish()
+    }
+}
+
+fn oauth_app_account(integration_type: &str) -> String {
+    format!("{integration_type}#oauth-app")
+}
+
+pub fn save_oauth_app(integration_type: &str, app: &CustomOAuthApp) -> Result<(), BackendError> {
+    let json = serde_json::to_string(app).map_err(|e| BackendError::KeyringFailed {
+        detail: e.to_string(),
+    })?;
+    save_token(&oauth_app_account(integration_type), &json)
+}
+
+pub fn get_oauth_app(integration_type: &str) -> Result<Option<CustomOAuthApp>, BackendError> {
+    let Some(json) = get_token(&oauth_app_account(integration_type))? else {
+        return Ok(None);
+    };
+    serde_json::from_str(&json)
+        .map(Some)
+        .map_err(|e| BackendError::KeyringFailed {
+            detail: format!("stored OAuth App is unreadable: {e}"),
+        })
+}
+
+pub fn remove_oauth_app(integration_type: &str) -> Result<(), BackendError> {
+    remove_token(&oauth_app_account(integration_type))
 }
 
 fn map_err(e: keyring::Error) -> BackendError {

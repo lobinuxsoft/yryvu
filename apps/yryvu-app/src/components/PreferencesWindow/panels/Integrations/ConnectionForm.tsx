@@ -4,6 +4,7 @@ import { createSignal, Show, type JSX } from "solid-js";
 import { notify } from "../../../Notifications";
 import { Tooltip } from "../../../Tooltip";
 import { ConnectButton } from "./ConnectButton";
+import { CustomOAuthApp } from "./CustomOAuthApp";
 import { DisconnectButton } from "./DisconnectButton";
 import { PatEntryDialog } from "./PatEntryDialog";
 import { SelfHostedConfigurationDialog } from "./SelfHostedConfigurationDialog";
@@ -246,6 +247,16 @@ export function ConnectionForm(props: { provider: ProviderInfo }): JSX.Element {
               Use {props.provider.tokenIsAppPassword ? "an" : "a"} {tokenLabel()} instead
             </button>
           </Tooltip>
+        </Show>
+
+        <Show
+          when={
+            props.provider.authType === "OAUTH" &&
+            props.provider.cohort === "v1" &&
+            state().tag === "disconnected"
+          }
+        >
+          <CustomOAuthApp provider={props.provider} />
         </Show>
 
         <p class="integrations-form__hint">

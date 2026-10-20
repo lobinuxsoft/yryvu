@@ -44,7 +44,10 @@ pub use clients::{
     ProjectMergeSettings, ProjectSquashOption, PullRequestDetail, PullRequestState,
     PullRequestSummary, ReviewDecision, UserInfo,
 };
-pub use keyring::{get_token, remove_token, save_token};
+pub use keyring::{
+    get_oauth_app, get_token, remove_oauth_app, remove_token, save_oauth_app, save_token,
+    CustomOAuthApp,
+};
 pub use sidecar::{read as read_sidecar, write as write_sidecar, IntegrationsConfig};
 pub use types::{AuthData, IntegrationEntry, SIDECAR_VERSION};
 

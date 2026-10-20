@@ -27,6 +27,6 @@ pub mod flow;
 pub mod loopback;
 pub mod state;
 
-pub use config::{for_provider, ProviderOAuthConfig};
+pub use config::{for_provider, for_provider_with_user_creds, ProviderOAuthConfig};
 pub use flow::{await_completion, begin, OAuthSession, DEFAULT_FLOW_TIMEOUT};
 pub use loopback::{CallbackParams, LoopbackServer};

@@ -87,7 +87,13 @@ impl OAuthSession {
 /// `client_id` is empty (i.e. the maintainer hasn't registered the
 /// OAuth app yet — true for every provider in this scaffold).
 pub fn begin(provider: &str) -> Result<(OAuthSession, String), BackendError> {
-    let config = config::for_provider(provider).ok_or(BackendError::OAuthNotConfigured)?;
+    let config = match crate::integrations::get_oauth_app(provider)? {
+        Some(app) => {
+            config::for_provider_with_user_creds(provider, &app.client_id, &app.client_secret)
+        }
+        None => config::for_provider(provider),
+    }
+    .ok_or(BackendError::OAuthNotConfigured)?;
     if !config.is_configured() {
         return Err(BackendError::OAuthNotConfigured);
     }

@@ -150,3 +150,32 @@ export function integrationPreflight(
     hostname: hostname ?? null,
   });
 }
+
+/** Client ID of the user's own OAuth App; the secret never leaves the keyring. */
+export interface CustomOAuthAppInfo {
+  clientId: string;
+}
+
+export function saveCustomOAuthApp(
+  integrationType: string,
+  clientId: string,
+  clientSecret: string,
+): Promise<void> {
+  return invoke<void>("save_custom_oauth_app", {
+    integrationType,
+    clientId,
+    clientSecret,
+  });
+}
+
+export function getCustomOAuthApp(
+  integrationType: string,
+): Promise<CustomOAuthAppInfo | null> {
+  return invoke<CustomOAuthAppInfo | null>("get_custom_oauth_app", {
+    integrationType,
+  });
+}
+
+export function removeCustomOAuthApp(integrationType: string): Promise<void> {
+  return invoke<void>("remove_custom_oauth_app", { integrationType });
+}

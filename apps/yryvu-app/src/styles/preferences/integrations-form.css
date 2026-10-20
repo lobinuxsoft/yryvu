@@ -143,3 +143,22 @@
   color: var(--fg-2);
   line-height: 1.5;
 }
+
+.integrations-form__advanced {
+  font-size: 12px;
+  color: var(--fg-2);
+}
+.integrations-form__advanced summary {
+  cursor: pointer;
+}
+.integrations-form__advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  max-width: 420px;
+}
+.integrations-form__advanced-actions {
+  display: flex;
+  gap: 6px;
+}

@@ -79,11 +79,11 @@
 
 .commit-panel__template-select {
   flex: 1;
-  background: var(--bg-2);
+  background-color: var(--bg-2);
   color: var(--fg-0);
   border: 1px solid var(--bg-3);
   border-radius: var(--radius-sm);
-  padding: 4px 8px;
+  padding: 4px 24px 4px 8px;
   font-size: 12px;
   font-family: var(--font-mono);
   cursor: pointer;

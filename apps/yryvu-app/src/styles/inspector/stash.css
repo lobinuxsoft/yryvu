@@ -59,10 +59,10 @@
   flex: 1;
 }
 .dialog__btn--danger {
-  background: var(--danger-bg, #c0392b);
-  color: var(--danger-fg, #fff);
-  border-color: var(--danger-border, #a93226);
+  background: var(--danger);
+  color: var(--accent-fg);
+  border-color: var(--danger);
 }
 .dialog__btn--danger:hover {
-  background: var(--danger-hover, #a93226);
+  background: color-mix(in srgb, var(--danger) 85%, black);
 }

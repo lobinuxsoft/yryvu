@@ -159,6 +159,20 @@
   --border: var(--bg-3);
   --selected-row: color-mix(in srgb, var(--accent) 18%, transparent);
 
+  /* Aliases for names components already use. A theme that redefines the
+     real token carries them along. */
+  --bg-primary: var(--bg-0);
+  --bg-secondary: var(--bg-1);
+  --bg-tertiary: var(--bg-2);
+  --text-primary: var(--fg-0);
+  --text-secondary: var(--fg-1);
+  --text-tertiary: var(--fg-2);
+  --border-1: var(--border);
+  --accent-1: var(--accent);
+  --accent-bg: color-mix(in srgb, var(--accent) 22%, var(--bg-1));
+  --danger-bg: color-mix(in srgb, var(--danger) 22%, var(--bg-1));
+  --danger-fg: var(--danger);
+
   font-family: var(--font-ui);
   font-size: 13px;
 }
@@ -183,4 +197,43 @@ button {
   font: inherit;
   color: inherit;
   cursor: pointer;
+}
+
+/* Native controls follow the theme by default. `:where` keeps specificity
+   at zero so component classes only need to override spacing. */
+:where(input[type="checkbox"], input[type="radio"], input[type="range"], progress) {
+  accent-color: var(--accent);
+}
+
+/* WebKitGTK paints a native <select> as system chrome unless `appearance`
+   is reset, so the chevron is drawn here. */
+:where(select) {
+  appearance: none;
+  padding: 5px 28px 5px 10px;
+  background-color: var(--bg-1);
+  background-image: linear-gradient(45deg, transparent 50%, var(--fg-2) 50%),
+    linear-gradient(135deg, var(--fg-2) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--fg-0);
+  font: inherit;
+  cursor: pointer;
+}
+
+:where(select:focus-visible) {
+  outline: none;
+  border-color: var(--accent);
+}
+
+:where(select:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:where(option, optgroup) {
+  background-color: var(--bg-1);
+  color: var(--fg-0);
 }

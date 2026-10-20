@@ -24,6 +24,7 @@ import {
 } from "../../state";
 import type { ContextMenuItem } from "../ContextMenu";
 import { notify } from "../Notifications";
+import { copyDeepLink } from "../../state/deepLink";
 import { buildCommitMenuItems } from "./commitMenuItems";
 import { buildStashMenuItems } from "./stashMenuItems";
 
@@ -83,6 +84,11 @@ export function createCommitOps(deps: CommitOpsDeps) {
       // Clipboard failures are non-fatal; the user can always read the SHA
       // from the inspector. No toast system exists yet to surface this.
     }
+  }
+
+  function copyLink(sha: string) {
+    const path = repoPath();
+    if (path) void copyDeepLink(path, { kind: "commit", name: sha });
   }
 
   async function tryCheckout(sha: string, shortSha: string) {
@@ -343,6 +349,7 @@ export function createCommitOps(deps: CommitOpsDeps) {
       doRevert,
       doFormatPatch,
       copySha,
+      copyLink,
     });
     setMenu({ x: e.clientX, y: e.clientY, sha, shortSha, items });
   }

@@ -19,6 +19,7 @@ import { LoadingSkeleton } from "./LoadingSkeleton";
 import { createCommitOps } from "./useCommitOps";
 import { hydrateGraphDims, ROW_HEIGHT } from "./RowRenderer";
 import { themeAppliedVersion } from "../../themes/state";
+import { consumeDeepLinkSha, pendingDeepLinkSha } from "../../state/deepLink";
 import { useGraphData } from "./useGraphData";
 import { useGraphLayout } from "./useGraphLayout";
 import { useGraphSelection } from "./useGraphSelection";
@@ -144,6 +145,15 @@ export function CommitGraph(props: CommitGraphProps) {
       clearPendingRefNav();
     }),
   );
+
+  // Deep link target (#110): the sha may stream in after the tab opens, so
+  // retry on every row change until it shows up.
+  createEffect(() => {
+    const sha = pendingDeepLinkSha();
+    if (sha && layout.displayRows().some((r) => r.sha === sha)) {
+      consumeDeepLinkSha(sha);
+    }
+  });
 
   const deps: ZoneDeps = {
     rows: layout.displayRows,

@@ -8,6 +8,7 @@ import { openCreatePrDialog } from "../../components/CreatePrDialog/state";
 import { openRebaseInteractiveDialog } from "../../components/RebaseInteractiveDialog/state";
 import { notify } from "../../components/Notifications";
 import { repoPath } from "../../state";
+import { copyDeepLink } from "../../state/deepLink";
 import type { MenuDeps } from "./types";
 
 /**
@@ -163,6 +164,13 @@ export function openBranchContextMenu(
       onSelect: () => {
         void navigator.clipboard.writeText(b.name);
         notify.info("Branch name copied", { message: b.name, category: "branch" });
+      },
+    },
+    {
+      label: "Copy deep link",
+      onSelect: () => {
+        const path = repoPath();
+        if (path) void copyDeepLink(path, { kind: "branch", name: b.name });
       },
     },
   ];

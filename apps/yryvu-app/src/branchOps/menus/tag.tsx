@@ -3,6 +3,8 @@
 import type { TagInfo } from "../../ipc";
 import type { ContextMenuItem } from "../../components/ContextMenu";
 import { notify } from "../../components/Notifications";
+import { repoPath } from "../../state";
+import { copyDeepLink } from "../../state/deepLink";
 import type { MenuDeps } from "./types";
 
 /**
@@ -104,6 +106,13 @@ export function openTagContextMenu(
         message: tag.name,
         category: "repoObject",
       });
+    },
+  });
+  items.push({
+    label: "Copy deep link",
+    onSelect: () => {
+      const path = repoPath();
+      if (path) void copyDeepLink(path, { kind: "tag", name: tag.name });
     },
   });
   items.push({

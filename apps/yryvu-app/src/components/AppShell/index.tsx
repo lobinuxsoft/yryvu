@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { createEffect, createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js";
-import { type UnlistenFn } from "@tauri-apps/api/event";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
+import { takePendingLink } from "../../ipc/deepLink";
+import { handleDeepLink } from "../../state/deepLink";
 import { About } from "../About";
 import { CommitGraph } from "../CommitGraph";
 import { GraphColumnHeaders } from "../CommitGraph/GraphColumnHeaders";
@@ -136,6 +138,11 @@ export function AppShell() {
     }
 
     unlisteners.push(...(await registerMenuListeners()));
+    unlisteners.push(
+      await listen<string>("deep-link-open", (e) => void handleDeepLink(e.payload)),
+    );
+    const launchLink = await takePendingLink();
+    if (launchLink) void handleDeepLink(launchLink);
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     onCleanup(() => window.removeEventListener("keydown", handleGlobalKeyDown));

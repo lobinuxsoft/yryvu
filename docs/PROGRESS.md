@@ -28,7 +28,7 @@ non-obvious conventions.
   **#151** (commit-panel structural parity — header trash + change count, sort
   direction, expand/collapse, the Y-axis splitter, exact labels; plus a
   4-preferences-caches→1 owner fix that was reverting panel sizes on every write).
-  **Next: #126 (HEAD-first).**
+  **#126 landed: GK orders rows by committer date, not HEAD-first. Next: #110 (deeplinks).**
 - **Housekeeping (this session, all merged):** the SSH **trust-on-first-use**
   prompt landed (#508 follow-up, PR #513 — a `certificate_check` re-checking
   `known_hosts` with Cargo's decision core; new host prompts, changed/revoked

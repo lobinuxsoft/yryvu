@@ -23,6 +23,7 @@ export interface CommitMenuHandlers {
   doRevert: (sha: string) => void | Promise<void>;
   doFormatPatch: (sha: string) => void | Promise<void>;
   copySha: (sha: string) => void | Promise<void>;
+  copyLink: (sha: string) => void | Promise<void>;
 }
 
 export function buildCommitMenuItems(
@@ -82,6 +83,10 @@ export function buildCommitMenuItems(
     {
       label: "Copy commit SHA",
       onSelect: () => void h.copySha(sha),
+    },
+    {
+      label: "Copy deep link",
+      onSelect: () => void h.copyLink(sha),
     },
   ];
 }

@@ -2,8 +2,29 @@
 
 mod menu;
 
-use tauri::Manager;
+use std::sync::Mutex;
+
+use tauri::{Emitter, Manager};
+use tauri_plugin_deep_link::DeepLinkExt;
 use tracing::warn;
+
+const DEEP_LINK_EVENT: &str = "deep-link-open";
+
+/// Link that launched the app, held until the frontend can listen.
+#[derive(Default)]
+struct PendingLink(Mutex<Option<String>>);
+
+#[tauri::command]
+fn take_pending_link(state: tauri::State<PendingLink>) -> Option<String> {
+    state.0.lock().ok()?.take()
+}
+
+fn focus_main(app: &tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,9 +36,17 @@ pub fn run() {
         .init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            focus_main(app);
+        }))
+        .plugin(tauri_plugin_deep_link::init())
+        .manage(PendingLink::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            take_pending_link,
+            yryvu_bridge::commands::build_repo_link,
+            yryvu_bridge::commands::resolve_repo_link,
             yryvu_bridge::commands::stream_graph,
             yryvu_bridge::commands::list_branches,
             yryvu_bridge::commands::create_branch,
@@ -246,6 +275,25 @@ pub fn run() {
                 }
                 Err(e) => warn!("failed to resolve app_config_dir for themes watcher: {e}"),
             }
+
+            // Dev builds are not installed, so the OS has no handler for the
+            // scheme until we register it at runtime.
+            #[cfg(any(target_os = "linux", windows))]
+            if let Err(e) = app.deep_link().register_all() {
+                warn!("failed to register deep-link scheme: {e}");
+            }
+            if let Ok(Some(urls)) = app.deep_link().get_current() {
+                if let Some(url) = urls.first() {
+                    *app.state::<PendingLink>().0.lock().unwrap() = Some(url.to_string());
+                }
+            }
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                if let Some(url) = event.urls().first() {
+                    focus_main(&handle);
+                    let _ = handle.emit(DEEP_LINK_EVENT, url.to_string());
+                }
+            });
 
             Ok(())
         })

@@ -39,3 +39,4 @@ export * from "./undo";
 export * from "./validate";
 export * from "./worktree";
 export * from "./worktrees";
+export * from "./deepLink";
